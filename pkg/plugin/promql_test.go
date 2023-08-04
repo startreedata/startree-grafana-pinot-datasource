@@ -172,4 +172,32 @@ func TestParseAggregation(t *testing.T) {
 	}
 }
 
-func TestParseAggregationWithBy(t *testing.T) {}
+func TestParseAggregationWithBy(t *testing.T) {
+	// avg by(<id>) (<metric>)
+	for _, test := range []string{
+		"avg by(label) (metric)",
+		" avg by(label) (metric)",
+		"avg by(label)( metric )",
+	} {
+		parser := CreateParser(test)
+		agg, good := parser.ParseAggregation()
+
+		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.By.Labels) == 1 && len(agg.Metric.LabelFilters) == 0) || !good {
+			t.Fatalf("%s: Invalid metric", test)
+		}
+	}
+
+	// avg by(<id>[,<id>]) (<metric>)
+	for _, test := range []string{
+		"avg by(label, label2) (metric)",
+		" avg by(label, label2) (metric)",
+		"avg by(label, label2)( metric )",
+	} {
+		parser := CreateParser(test)
+		agg, good := parser.ParseAggregation()
+
+		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.By.Labels) == 2 && len(agg.Metric.LabelFilters) == 0) || !good {
+			t.Fatalf("%s: Invalid metric", test)
+		}
+	}
+}

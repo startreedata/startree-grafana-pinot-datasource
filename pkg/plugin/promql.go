@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"strings"
 	"unicode"
 )
 
@@ -17,6 +18,11 @@ type Metric struct {
 type Aggregation struct {
 	Op     string
 	Metric Metric
+	By     By
+}
+
+type By struct {
+	Labels []string
 }
 
 type Parser struct {
@@ -185,6 +191,9 @@ func (p *Parser) ParseAggregation() (Aggregation, bool) {
 		return Aggregation{}, false
 	}
 
+	// Check for By clause
+	by, good := p.parseBy()
+
 	// read (
 	if !p.parseChar('(') {
 		p.idx = tmpIdx
@@ -203,7 +212,52 @@ func (p *Parser) ParseAggregation() (Aggregation, bool) {
 		return Aggregation{}, false
 	}
 
-	return Aggregation{Op: op, Metric: metric}, true
+	return Aggregation{Op: op, Metric: metric, By: by}, true
+}
+
+func (p *Parser) parseBy() (By, bool) {
+	// skip whitespace
+	if !p.skipWhitespace() {
+		return By{}, false
+	}
+
+	by_clause, good := p.parseID()
+	if strings.ToLower(by_clause) != "by" || !good {
+		return By{}, false
+	}
+
+	tmpIdx := p.idx
+	// Read (
+	if !p.parseChar('(') {
+		p.idx = tmpIdx
+		return By{}, false
+	}
+
+	labels := []string{}
+	// Read list of label IDs
+	label, good := p.parseID()
+	if !good {
+		p.idx = tmpIdx
+		return By{}, false
+	}
+	labels = append(labels, label)
+
+	for p.parseChar(',') {
+		label, good := p.parseID()
+		if !good {
+			p.idx = tmpIdx
+			return By{}, false
+		}
+		labels = append(labels, label)
+	}
+
+	// Read )
+	if !p.parseChar(')') {
+		p.idx = tmpIdx
+		return By{}, false
+	}
+
+	return By{Labels: labels}, true
 }
 
 func (p *Parser) skipWhitespace() bool {
