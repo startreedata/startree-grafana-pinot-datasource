@@ -49,11 +49,11 @@ func TestParseID(t *testing.T) {
 func TestParseLabelFilter(t *testing.T) {
 	// <id>:<string>
 	for _, test := range []string{
-		"label:\"value\"",
-		" label:\"value\"",
-		"label : \"value\"",
-		"label: \"value\" ",
-		"label: \"value\"() ",
+		"label=\"value\"",
+		" label=\"value\"",
+		"label = \"value\"",
+		"label= \"value\" ",
+		"label= \"value\"() ",
 	} {
 		parser := CreateParser(test)
 		filter, good := parser.parseLabelFilter()
@@ -108,11 +108,11 @@ func TestParsePlainMetric(t *testing.T) {
 func TestParseMetricWithLabels(t *testing.T) {
 	// <id>{<label_filter>}
 	for _, test := range []string{
-		"metric{label:\"value\"}",
-		"metric {label:\"value\"}",
-		"metric { label:\"value\"}",
-		"metric { label:\"value\" }",
-		"metric { label:\"value\"} ",
+		"metric{label=\"value\"}",
+		"metric {label=\"value\"}",
+		"metric { label=\"value\"}",
+		"metric { label=\"value\" }",
+		"metric { label=\"value\"} ",
 	} {
 		parser := CreateParser(test)
 		metric, good := parser.parseMetric()
@@ -123,10 +123,10 @@ func TestParseMetricWithLabels(t *testing.T) {
 	}
 
 	for _, test := range []string{
-		"metric{label:\"value\", label2:\"zalue\"}",
-		"metric {label:\"value\", label2:\"zalue\"  }",
-		"metric { label:\"value\" ,label2:\"zalue\"}",
-		"metric { label:\"value\" , label2:\"zalue\"}",
+		"metric{label=\"value\", label2=\"zalue\"}",
+		"metric {label=\"value\", label2=\"zalue\"  }",
+		"metric { label=\"value\" ,label2=\"zalue\"}",
+		"metric { label=\"value\" , label2=\"zalue\"}",
 	} {
 		parser := CreateParser(test)
 		metric, good := parser.parseMetric()
@@ -173,9 +173,9 @@ func TestParseAggregation(t *testing.T) {
 	}
 
 	for _, test := range []string{
-		"avg(metric{label: \"test\"})",
-		" avg(metric{label: \"test\"})",
-		"avg( metric {label: \"test\"})",
+		"avg(metric{label= \"test\"})",
+		" avg(metric{label= \"test\"})",
+		"avg( metric {label= \"test\"})",
 	} {
 		parser := CreateParser(test)
 		agg, good := parser.ParseAggregation()

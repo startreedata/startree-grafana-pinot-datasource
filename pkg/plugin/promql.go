@@ -19,14 +19,26 @@ func AggToSql(interval int64, agg Aggregation) string {
 
 func MetricToSql(table string, interval int64, metric Metric, from, to int64) string {
 
-	return fmt.Sprintf(
-		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+	if len(metric.LabelFilters) == 0 {
+		return fmt.Sprintf(
+			`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
 			 FROM %s 
 			 WHERE name='%s' AND bucket >= %d AND bucket <= %d 
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
 			 LIMIT 100`,
-		interval, table, metric.Name, from/interval, to/interval)
+			interval, table, metric.Name, from/interval, to/interval)
+	} else {
+		return fmt.Sprintf(
+			`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 WHERE name='%s' AND bucket >= %d AND bucket <= %d 
+			 	AND labels='%s:%s'
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 100`,
+			interval, table, metric.Name, from/interval, to/interval, metric.LabelFilters[0].Label, metric.LabelFilters[0].Value)
+	}
 
 	//return fmt.Sprintf("SELECT min(\"time\") as \"time\", avg(value), floor(\"time\" / %d) as bucket FROM %s WHERE name='%s' GROUP BY bucket", interval, table, metric.Name)
 	//return `SELECT min("time") as "time", avg(value) as value, floor("time" / 20000) as bucket FROM metrics_hc_sort_time WHERE name='up' GROUP BY bucket`
@@ -151,8 +163,8 @@ func (p *Parser) parseLabelFilter() (LabelFilter, bool) {
 		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
-	// Read :
-	if !p.parseChar(':') {
+	// Read =
+	if !p.parseChar('=') {
 		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
