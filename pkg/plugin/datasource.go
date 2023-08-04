@@ -93,7 +93,9 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	parser := CreateParser(qm.QueryText)
 	// try just metric
 	sqlQuery := ""
-	if metric, good := parser.parseMetric(); good {
+	if agg, good := parser.ParseAggregation(); good {
+		sqlQuery = AggToSql("metrics_hc_sort_time", interval, agg, from, to)
+	} else if metric, good := parser.parseMetric(); good {
 		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
 	}
 
@@ -140,8 +142,8 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, times),
-		data.NewField("values", nil, values),
+		data.NewField("Time", nil, times),
+		data.NewField("Values", nil, values),
 	)
 
 	// add the frames to the response.

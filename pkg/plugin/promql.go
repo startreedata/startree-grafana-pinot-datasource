@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-func AggToSql(interval int64, agg Aggregation) string {
+func AggToSql(table string, interval int64, agg Aggregation, from, to int64) string {
 	sqlAgg := ""
 	if strings.ToLower(agg.Op) == "avg" {
 		sqlAgg = "avg"
@@ -14,34 +14,33 @@ func AggToSql(interval int64, agg Aggregation) string {
 		sqlAgg = "sum"
 	}
 
-	return fmt.Sprintf("SELECT floor(\"time\" / %d) as ts, %s(value) FROM metrics WHERE name='%s' GROUP BY ts ORDER BY bucket ASC", interval, sqlAgg, agg.Metric.Name)
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", %s(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 100`,
+		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
 }
 
 func MetricToSql(table string, interval int64, metric Metric, from, to int64) string {
-
-	if len(metric.LabelFilters) == 0 {
-		return fmt.Sprintf(
-			`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
 			 FROM %s 
-			 WHERE name='%s' AND bucket >= %d AND bucket <= %d 
+			 %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
 			 LIMIT 100`,
-			interval, table, metric.Name, from/interval, to/interval)
+		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
+}
+
+func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
+	if len(labels) == 0 {
+		return fmt.Sprintf(`WHERE name='%s' AND bucket >= %d AND bucket <= %d`, metricName, from/interval, to/interval)
 	} else {
-		return fmt.Sprintf(
-			`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
-			 FROM %s 
-			 WHERE name='%s' AND bucket >= %d AND bucket <= %d 
-			 	AND labels='%s:%s'
-			 GROUP BY bucket 
-			 ORDER BY bucket ASC
-			 LIMIT 100`,
-			interval, table, metric.Name, from/interval, to/interval, metric.LabelFilters[0].Label, metric.LabelFilters[0].Value)
+		return fmt.Sprintf(`WHERE name='%s' AND labels='%s:%s' AND bucket >= %d AND bucket <= %d`, metricName, labels[0].Label, labels[0].Value, from/interval, to/interval)
 	}
-
-	//return fmt.Sprintf("SELECT min(\"time\") as \"time\", avg(value), floor(\"time\" / %d) as bucket FROM %s WHERE name='%s' GROUP BY bucket", interval, table, metric.Name)
-	//return `SELECT min("time") as "time", avg(value) as value, floor("time" / 20000) as bucket FROM metrics_hc_sort_time WHERE name='up' GROUP BY bucket`
 }
 
 type LabelFilter struct {
@@ -244,7 +243,7 @@ func (p *Parser) ParseAggregation() (Aggregation, bool) {
 	}
 
 	// Check for By clause
-	by, good := p.parseBy()
+	by, _ := p.parseBy()
 
 	// read (
 	if !p.parseChar('(') {
