@@ -171,3 +171,30 @@ func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequ
 		Message: message,
 	}, nil
 }
+
+/*
+Parse PromQL:
+- id: [A-Za-z_0-9]
+- string: ".*"
+- metric: <id>[{<id> : <string>}]
+- by: by(<id>[, <id>]*)
+- aggregate: <id> [<by>] (<metric>)   (start with sum and avg)
+
+
+type:
+	Aggregate
+		- operator name
+		- option BY clause
+		- metric
+
+	By:
+		labels: []string
+
+	Metric:
+		name: str
+		label filters: []LabelFilter
+
+	LabelFilter
+		name: str
+		value: str
+*/
