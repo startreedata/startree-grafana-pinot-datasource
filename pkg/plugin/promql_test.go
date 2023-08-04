@@ -79,6 +79,7 @@ func TestParsePlainMetric(t *testing.T) {
 		"metric",
 		" metric",
 		"metric ",
+		"metric {} ",
 		"  metric() ",
 	} {
 		parser := CreateParser(test)
@@ -106,12 +107,69 @@ func TestParsePlainMetric(t *testing.T) {
 
 func TestParseMetricWithLabels(t *testing.T) {
 	// <id>{<label_filter>}
+	for _, test := range []string{
+		"metric{label:\"value\"}",
+		"metric {label:\"value\"}",
+		"metric { label:\"value\"}",
+		"metric { label:\"value\" }",
+		"metric { label:\"value\"} ",
+	} {
+		parser := CreateParser(test)
+		metric, good := parser.parseMetric()
+
+		if !(metric.Name == "metric" && len(metric.LabelFilters) == 1) || !good {
+			t.Fatalf("%s: Invalid metric got %s, %s", test, metric.Name, metric.LabelFilters)
+		}
+	}
+
+	for _, test := range []string{
+		"metric{\"value\"}",
+		"metric {:}",
+		"metric { label:}",
+		"metric { label:\" }",
+		"metric { label:\"value\" ",
+	} {
+		parser := CreateParser(test)
+		_, good := parser.parseMetric()
+
+		if good {
+			t.Fatalf("%s: Expected Failure", test)
+		}
+	}
 }
 
 func TestParseBy(t *testing.T) {
 	// by(<id>)
 }
 
-func TestParseAggregation(t *testing.T) {}
+func TestParseAggregation(t *testing.T) {
+	// operator (<metric>)
+	for _, test := range []string{
+		"avg(metric)",
+		" avg(metric)",
+		"avg( metric )",
+		"avg( metric{} )",
+	} {
+		parser := CreateParser(test)
+		agg, good := parser.ParseAggregation()
+
+		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.Metric.LabelFilters) == 0) || !good {
+			t.Fatalf("%s: Invalid metric", test)
+		}
+	}
+
+	for _, test := range []string{
+		"avg(metric{label: \"test\"})",
+		" avg(metric{label: \"test\"})",
+		"avg( metric {label: \"test\"})",
+	} {
+		parser := CreateParser(test)
+		agg, good := parser.ParseAggregation()
+
+		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.Metric.LabelFilters) == 1) || !good {
+			t.Fatalf("%s: Invalid metric", test)
+		}
+	}
+}
 
 func TestParseAggregationWithBy(t *testing.T) {}

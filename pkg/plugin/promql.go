@@ -10,7 +10,13 @@ type LabelFilter struct {
 }
 
 type Metric struct {
-	Name string
+	Name         string
+	LabelFilters []LabelFilter
+}
+
+type Aggregation struct {
+	Op     string
+	Metric Metric
 }
 
 type Parser struct {
@@ -83,37 +89,44 @@ func (p *Parser) parseString() (string, bool) {
 	for p.idx < len(p.stream) && p.stream[p.idx] != '"' {
 		p.idx += 1
 	}
-	end := p.idx
 	// If EOF then return false
 	if p.idx == len(p.stream) || p.stream[p.idx] != '"' {
 		return "", false
 	}
 
+	end := p.idx
+	p.idx += 1
+
 	return string(p.stream[start:end]), true
 }
 
 func (p *Parser) parseLabelFilter() (LabelFilter, bool) {
+	tmpIdx := p.idx
 	// Skip leading white space
 	for p.idx < len(p.stream) && unicode.IsSpace(p.stream[p.idx]) {
 		p.idx += 1
 	}
 
 	if p.idx == len(p.stream) {
+		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
 
 	// Read ID
 	label, good := p.parseID()
 	if !good {
+		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
 	// Read :
 	if !p.parseChar(':') {
+		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
 	// Read string
 	value, good := p.parseString()
 	if !good {
+		p.idx = tmpIdx
 		return LabelFilter{}, false
 	}
 
@@ -131,7 +144,66 @@ func (p *Parser) parseMetric() (Metric, bool) {
 		return Metric{}, false
 	}
 
+	if !p.skipWhitespace() {
+		return Metric{Name: name}, true
+	}
+	// If there is a { then read labels
+	if p.stream[p.idx] == '{' {
+		p.idx += 1
+
+		labels := []LabelFilter{}
+		label, good := p.parseLabelFilter()
+		if good {
+			labels = append(labels, label)
+		}
+
+		if !p.skipWhitespace() {
+			return Metric{}, false
+		}
+
+		if p.stream[p.idx] != '}' {
+			return Metric{}, false
+		}
+		p.idx += 1
+
+		return Metric{Name: name, LabelFilters: labels}, true
+	}
 	return Metric{Name: name}, true
+}
+
+func (p *Parser) ParseAggregation() (Aggregation, bool) {
+	// skip whitespace
+	if !p.skipWhitespace() {
+		return Aggregation{}, false
+	}
+
+	tmpIdx := p.idx
+	// read ID
+	op, good := p.parseID()
+	if !good {
+		p.idx = tmpIdx
+		return Aggregation{}, false
+	}
+
+	// read (
+	if !p.parseChar('(') {
+		p.idx = tmpIdx
+		return Aggregation{}, false
+	}
+
+	// read metric
+	metric, good := p.parseMetric()
+	if !good {
+		p.idx = tmpIdx
+		return Aggregation{}, false
+	}
+	// read )
+	if !p.parseChar(')') {
+		p.idx = tmpIdx
+		return Aggregation{}, false
+	}
+
+	return Aggregation{Op: op, Metric: metric}, true
 }
 
 func (p *Parser) skipWhitespace() bool {
@@ -140,11 +212,7 @@ func (p *Parser) skipWhitespace() bool {
 		p.idx += 1
 	}
 
-	if p.idx == len(p.stream) {
-		return false
-	}
-
-	return true
+	return p.idx != len(p.stream)
 }
 
 func (p *Parser) parseChar(c rune) bool {
