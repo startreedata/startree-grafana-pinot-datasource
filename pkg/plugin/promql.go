@@ -144,9 +144,11 @@ func (p *Parser) parseMetric() (Metric, bool) {
 		return Metric{}, false
 	}
 
+	tmpIdx := p.idx
 	// Read ID
 	name, good := p.parseID()
 	if !good {
+		p.idx = tmpIdx
 		return Metric{}, false
 	}
 
@@ -163,11 +165,22 @@ func (p *Parser) parseMetric() (Metric, bool) {
 			labels = append(labels, label)
 		}
 
+		for p.parseChar(',') {
+			label, good := p.parseLabelFilter()
+			if !good {
+				p.idx = tmpIdx
+				return Metric{}, false
+			}
+			labels = append(labels, label)
+		}
+
 		if !p.skipWhitespace() {
+			p.idx = tmpIdx
 			return Metric{}, false
 		}
 
 		if p.stream[p.idx] != '}' {
+			p.idx = tmpIdx
 			return Metric{}, false
 		}
 		p.idx += 1

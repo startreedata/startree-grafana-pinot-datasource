@@ -123,6 +123,20 @@ func TestParseMetricWithLabels(t *testing.T) {
 	}
 
 	for _, test := range []string{
+		"metric{label:\"value\", label2:\"zalue\"}",
+		"metric {label:\"value\", label2:\"zalue\"  }",
+		"metric { label:\"value\" ,label2:\"zalue\"}",
+		"metric { label:\"value\" , label2:\"zalue\"}",
+	} {
+		parser := CreateParser(test)
+		metric, good := parser.parseMetric()
+
+		if !(metric.Name == "metric" && len(metric.LabelFilters) == 2) || !good {
+			t.Fatalf("%s: Invalid metric got %s, %s", test, metric.Name, metric.LabelFilters)
+		}
+	}
+
+	for _, test := range []string{
 		"metric{\"value\"}",
 		"metric {:}",
 		"metric { label:}",
