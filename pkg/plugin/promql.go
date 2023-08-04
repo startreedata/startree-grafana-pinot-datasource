@@ -92,12 +92,12 @@ func (p *Parser) parseID() (string, bool) {
 	start := p.idx
 
 	// Check that first char is not a digit
-	if unicode.IsDigit(p.stream[p.idx]) {
+	if unicode.IsDigit(p.stream[p.idx]) || p.stream[p.idx] == '_' {
 		return "", false
 	}
 
 	// read until whitespace or non-alphanumeric
-	for p.idx < len(p.stream) && (unicode.IsLetter(p.stream[p.idx]) || unicode.IsDigit(p.stream[p.idx])) {
+	for p.idx < len(p.stream) && (unicode.IsLetter(p.stream[p.idx]) || unicode.IsDigit(p.stream[p.idx]) || p.stream[p.idx] == '_') {
 		p.idx += 1
 	}
 	end := p.idx
