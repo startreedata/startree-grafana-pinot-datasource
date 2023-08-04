@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -120,14 +121,14 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
 	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
-	times := []int64{}
+	times := []time.Time{}
 	values := []float64{}
 
 	// Iterate over each row
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
 		// Extract timestamp
 		ts := int64(results.GetDouble(rowIdx, timeIdx))
-		times = append(times, ts)
+		times = append(times, time.UnixMilli(ts))
 
 		// Extract labels
 		// Extract value
@@ -142,8 +143,8 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
-		data.NewField("Time", nil, times),
-		data.NewField("Values", nil, values),
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, values),
 	)
 
 	// add the frames to the response.
