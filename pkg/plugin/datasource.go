@@ -89,10 +89,15 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
-	//interval := query.Interval.Milliseconds()
+	interval := query.Interval.Milliseconds()
+	parser := CreateParser(qm.QueryText)
+	// try just metric
+	sqlQuery := ""
+	if metric, good := parser.parseMetric(); good {
+		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
+	}
 
-	rangedQuery := fmt.Sprintf("%s WHERE \"time\" >= %d AND \"time\" <= %d", qm.QueryText, from, to)
-	resp, err := d.client.ExecuteSQL("metrics", rangedQuery)
+	resp, err := d.client.ExecuteSQL("metrics_hc_sort_time", sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
@@ -119,7 +124,7 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 	// Iterate over each row
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
 		// Extract timestamp
-		ts := results.GetLong(rowIdx, timeIdx)
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
 		times = append(times, ts)
 
 		// Extract labels

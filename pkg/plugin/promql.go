@@ -1,9 +1,36 @@
 package plugin
 
 import (
+	"fmt"
 	"strings"
 	"unicode"
 )
+
+func AggToSql(interval int64, agg Aggregation) string {
+	sqlAgg := ""
+	if strings.ToLower(agg.Op) == "avg" {
+		sqlAgg = "avg"
+	} else if strings.ToLower(agg.Op) == "sum" {
+		sqlAgg = "sum"
+	}
+
+	return fmt.Sprintf("SELECT floor(\"time\" / %d) as ts, %s(value) FROM metrics WHERE name='%s' GROUP BY ts ORDER BY bucket ASC", interval, sqlAgg, agg.Metric.Name)
+}
+
+func MetricToSql(table string, interval int64, metric Metric, from, to int64) string {
+
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 WHERE name='%s' AND bucket >= %d AND bucket <= %d 
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 100`,
+		interval, table, metric.Name, from/interval, to/interval)
+
+	//return fmt.Sprintf("SELECT min(\"time\") as \"time\", avg(value), floor(\"time\" / %d) as bucket FROM %s WHERE name='%s' GROUP BY bucket", interval, table, metric.Name)
+	//return `SELECT min("time") as "time", avg(value) as value, floor("time" / 20000) as bucket FROM metrics_hc_sort_time WHERE name='up' GROUP BY bucket`
+}
 
 type LabelFilter struct {
 	Label string
