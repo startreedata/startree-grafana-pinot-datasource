@@ -20,7 +20,7 @@ func AggToSql(table string, interval int64, agg Aggregation, from, to int64) str
 			 %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
-			 LIMIT 100`,
+			 LIMIT 1000`,
 		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
 }
 
@@ -31,7 +31,7 @@ func MetricToSql(table string, interval int64, metric Metric, from, to int64) st
 			 %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
-			 LIMIT 100`,
+			 LIMIT 1000`,
 		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
 }
 
