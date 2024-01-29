@@ -98,6 +98,8 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		sqlQuery = AggToSql("metrics_hc_sort_time", interval, agg, from, to)
 	} else if metric, good := parser.parseMetric(); good {
 		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
+	} else if logQl, good := parser.parseLogQl(); good {
+		sqlQuery = LogQlToSql("logQlTable", interval, logQl, from, to)
 	}
 
 	resp, err := d.client.ExecuteSQL("metrics_hc_sort_time", sqlQuery)

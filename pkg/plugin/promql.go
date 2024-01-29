@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/grafana/loki/pkg/logql"
+	"github.com/prometheus/prometheus/pkg/labels"
 )
 
 func AggToSql(table string, interval int64, agg Aggregation, from, to int64) string {
@@ -35,6 +38,17 @@ func MetricToSql(table string, interval int64, metric Metric, from, to int64) st
 		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
 }
 
+func LogQlToSql(table string, interval int64, logQl LogQl, from, to int64) string {
+	return fmt.Sprintf(
+		`SELECT floor("time" / %d) as bucket, logLine, 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 1000`,
+		interval, table, logQl.predicate)
+}
+
 func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
 	if len(labels) == 0 {
 		return fmt.Sprintf(`WHERE name='%s' AND bucket >= %d AND bucket <= %d`, metricName, from/interval, to/interval)
@@ -53,6 +67,10 @@ type Metric struct {
 	LabelFilters []LabelFilter
 }
 
+type LogQl struct {
+	predicate string
+}
+
 type Aggregation struct {
 	Op     string
 	Metric Metric
@@ -65,12 +83,14 @@ type By struct {
 
 type Parser struct {
 	idx    int
+	query  string
 	stream []rune
 }
 
 func CreateParser(text string) Parser {
 	return Parser{
 		idx:    0,
+		query:  text,
 		stream: []rune(text),
 	}
 }
@@ -226,6 +246,51 @@ func (p *Parser) parseMetric() (Metric, bool) {
 		return Metric{Name: name, LabelFilters: labels}, true
 	}
 	return Metric{Name: name}, true
+}
+
+func (p *Parser) parseLogQl() (LogQl, bool) {
+
+	parsedExpr, err := logql.ParseLogSelector(p.query)
+
+	expr, err := logql.ParseLogSelector(p.query)
+	if err != nil {
+		return LogQl{}, false
+	}
+
+	return LogQl{p.convertLogQLExprToPinotPredicate(parsedExpr)}, true
+}
+
+// logQL ast -> pinot predicates
+func (p *Parser) convertLogQLExprToPinotPredicate(expr logql.LogSelectorExpr) string {
+	matchers := expr.Matchers()
+	// filters, _ := expr.Filter()
+	var sb strings.Builder
+
+	for _, matcher := range matchers {
+		var predicate string
+		switch matcher.Type {
+		case labels.MatchEqual:
+			predicate = matcher.Name + " = '" + matcher.Value + "'"
+			break
+		case labels.MatchNotEqual:
+			predicate = matcher.Name + " != '" + matcher.Value + "'"
+			break
+		case labels.MatchNotRegexp:
+			predicate = "REGEXP_NOT_LIKE(" + matcher.Name + ", '" + matcher.Value + "')"
+			break
+		case labels.MatchRegexp:
+			predicate = "REGEXP_LIKE(" + matcher.Name + ", '" + matcher.Value + "')"
+			break
+		}
+		if sb.Len() == 0 {
+			// First one
+			sb.WriteString(predicate)
+		} else {
+			sb.WriteString(" AND " + predicate)
+		}
+	}
+
+	return sb.String()
 }
 
 func (p *Parser) ParseAggregation() (Aggregation, bool) {
