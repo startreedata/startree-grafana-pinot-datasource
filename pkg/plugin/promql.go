@@ -249,10 +249,7 @@ func (p *Parser) parseMetric() (Metric, bool) {
 }
 
 func (p *Parser) parseLogQl() (LogQl, bool) {
-
 	parsedExpr, err := logql.ParseLogSelector(p.query)
-
-	expr, err := logql.ParseLogSelector(p.query)
 	if err != nil {
 		return LogQl{}, false
 	}
@@ -290,7 +287,63 @@ func (p *Parser) convertLogQLExprToPinotPredicate(expr logql.LogSelectorExpr) st
 		}
 	}
 
+	filterPredicates := extractFilterPredicates(expr.String())
+
+	if len(filterPredicates) > 0 {
+		if sb.Len() == 0 {
+			// First one
+			sb.WriteString(filterPredicates)
+		} else {
+			sb.WriteString(" AND " + filterPredicates)
+		}
+	}
+
 	return sb.String()
+}
+
+func isOperatorCharacter(expr string, position int) bool {
+	return []rune(expr)[position] == '|' || []rune(expr)[position] == '!'
+}
+
+func extractFilterPredicates(parsedExpr string) string {
+	// Find last occurance of '}' character
+	var predicaetBuilder strings.Builder
+
+	labelMatcherEnd := strings.LastIndex(parsedExpr, "}")
+	labelMatcherEnd++
+
+	var operator string
+	var predicate string
+	for labelMatcherEnd < len(parsedExpr) {
+		operator = parsedExpr[labelMatcherEnd : labelMatcherEnd+2]
+		var literalStart = labelMatcherEnd + 2
+		var literalEnd = labelMatcherEnd + 2
+		for literalEnd < len(parsedExpr) && !isOperatorCharacter(parsedExpr, literalEnd) {
+			literalEnd++
+		}
+
+		var literal = parsedExpr[literalStart:literalEnd]
+		labelMatcherEnd = literalEnd
+		switch operator {
+		case "|=": // Contains
+			predicate = "TEXT_CONTAINS(logLine, '" + literal + "')"
+		case "!=": // Not contains
+			predicate = "!TEXT_CONTAINS(logLine, '" + literal + "')"
+		case "|~": // REGEXP_LIKE
+			predicate = "REGEXP_LIKE(logLine, '" + literal + "')"
+		case "!~": // REGEXP_NOT_LIKE
+			predicate = "REGEXP_NOT_LIKE(logLine, '" + literal + "')"
+		}
+
+		if predicaetBuilder.Len() == 0 {
+			// First one
+			predicaetBuilder.WriteString(predicate)
+		} else {
+			predicaetBuilder.WriteString(" AND " + predicate)
+		}
+	}
+
+	return predicaetBuilder.String()
 }
 
 func (p *Parser) ParseAggregation() (Aggregation, bool) {
