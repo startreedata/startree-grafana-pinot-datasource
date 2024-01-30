@@ -94,15 +94,19 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	parser := CreateParser(qm.QueryText)
 	// try just metric
 	sqlQuery := ""
+	table := ""
 	if agg, good := parser.ParseAggregation(); good {
+		table = "metrics_hc_sort_time"
 		sqlQuery = AggToSql("metrics_hc_sort_time", interval, agg, from, to)
 	} else if metric, good := parser.parseMetric(); good {
+		table = "metrics_hc_sort_time"
 		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
 	} else if logQl, good := parser.parseLogQl(); good {
-		sqlQuery = LogQlToSql("logQlTable", interval, logQl, from, to)
+		table = "clpLogTest"
+		sqlQuery = LogQlToSql("clpLogTest", interval, logQl, from, to)
 	}
 
-	resp, err := d.client.ExecuteSQL("metrics_hc_sort_time", sqlQuery)
+	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
@@ -123,8 +127,10 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
 	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
+	valueDataType := results.DataSchema.ColumnDataTypes[valueIdx]
+
 	times := []time.Time{}
-	values := []float64{}
+	values := []any{}
 
 	// Iterate over each row
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
@@ -134,7 +140,14 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 
 		// Extract labels
 		// Extract value
-		value := results.GetDouble(rowIdx, valueIdx)
+		var value any
+		switch valueDataType {
+		case "STRING":
+			value = results.GetDouble(rowIdx, valueIdx)
+			break
+		default:
+			value = results.GetDouble(rowIdx, valueIdx)
+		}
 		values = append(values, value)
 	}
 

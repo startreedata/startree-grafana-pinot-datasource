@@ -40,9 +40,9 @@ func MetricToSql(table string, interval int64, metric Metric, from, to int64) st
 
 func LogQlToSql(table string, interval int64, logQl LogQl, from, to int64) string {
 	return fmt.Sprintf(
-		`SELECT floor("time" / %d) as bucket, logLine, 
+		`SELECT min("time") as "time", floor("time" / %d) as bucket, logLine as value, 
 			 FROM %s 
-			 %s
+			 WHERE %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
 			 LIMIT 1000`,
@@ -326,13 +326,13 @@ func extractFilterPredicates(parsedExpr string) string {
 		labelMatcherEnd = literalEnd
 		switch operator {
 		case "|=": // Contains
-			predicate = "TEXT_CONTAINS(logLine, '" + literal + "')"
+			predicate = "REGEXP_LIKE(logLine, '" + literal + "')"
 		case "!=": // Not contains
-			predicate = "!TEXT_CONTAINS(logLine, '" + literal + "')"
+			predicate = "not(REGEXP_LIKE(logLine, '" + literal + "'))"
 		case "|~": // REGEXP_LIKE
 			predicate = "REGEXP_LIKE(logLine, '" + literal + "')"
 		case "!~": // REGEXP_NOT_LIKE
-			predicate = "REGEXP_NOT_LIKE(logLine, '" + literal + "')"
+			predicate = "not(REGEXP_LIKE(logLine, '" + literal + "'))"
 		}
 
 		if predicaetBuilder.Len() == 0 {
