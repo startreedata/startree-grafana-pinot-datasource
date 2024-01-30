@@ -6,6 +6,32 @@ import (
 	"unicode"
 )
 
+func LogQlToSql(table string, interval int64, logQl LogQlQuery, from, to int64) string {
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", logLine as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 1000`,
+		interval, table, LogQlToWhereClause(logQl, interval, from, to))
+}
+
+func LogQlToWhereClause(logQl LogQlQuery, interval, from, to int64) string {
+	var whereClause string
+	whereClause = fmt.Sprintf(`WHERE bucket >= %d AND bucket <= %d`, from/interval, to/interval)
+
+	for i := 0; i < len(logQl.labelFilters); i++ {
+		whereClause += " AND " + logQl.labelFilters[i].String()
+	}
+
+	for i := 0; i < len(logQl.logFilters); i++ {
+		whereClause += " AND " + logQl.logFilters[i].String()
+	}
+
+	return whereClause
+}
+
 func AggToSql(table string, interval int64, agg Aggregation, from, to int64) string {
 	sqlAgg := ""
 	if strings.ToLower(agg.Op) == "avg" {
@@ -46,11 +72,34 @@ func filterToWhereClause(metricName string, interval, from, to int64, labels []L
 type LabelFilter struct {
 	Label string
 	Value string
+	Op    string
+}
+
+func (l *LabelFilter) String() string {
+	switch l.Op {
+	case "=":
+		return l.Label + "=" + l.Value
+	case "!=":
+		return l.Label + "!=" + l.Value
+	case "=~":
+		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
+	case "!~":
+		return "not(REGEXP_LIKE(" + l.Label + ", '" + l.Value + "'))"
+	case "|=":
+		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
+	default:
+		return ""
+	}
 }
 
 type Metric struct {
 	Name         string
 	LabelFilters []LabelFilter
+}
+
+type LogQlQuery struct {
+	labelFilters []LabelFilter
+	logFilters   []LabelFilter
 }
 
 type Aggregation struct {
@@ -336,4 +385,72 @@ func (p *Parser) parseChar(c rune) bool {
 	}
 
 	return false
+}
+
+/**
+LOGQL Parsing logic
+**/
+
+func (p *Parser) isOperatorChar(c rune) bool {
+	return c == '=' || c == '!' || c == '~' || c == '|'
+}
+
+func (p *Parser) parseLogQlOp() (string, bool) {
+	// Skip leading white space
+	for p.idx < len(p.stream) && unicode.IsSpace(p.stream[p.idx]) {
+		p.idx += 1
+	}
+
+	if p.idx == len(p.stream) {
+		return "", false
+	}
+
+	start := p.idx
+	for p.idx < len(p.stream) && p.isOperatorChar(p.stream[p.idx]) {
+		p.idx++
+	}
+
+	end := p.idx
+	// Convert slice into string
+	id := string(p.stream[start:end])
+
+	// Update the cursor and return the string
+	return id, true
+}
+
+func (p *Parser) parseLogQlQuery() (LogQlQuery, bool) {
+	if !p.parseChar('{') {
+		return LogQlQuery{}, false
+	}
+
+	// Parse label filters
+	var labels []LabelFilter
+	for !p.parseChar('}') {
+		labelName, _ := p.parseID()
+		operator, _ := p.parseLogQlOp()
+		matchString, _ := p.parseString()
+
+		labels = append(labels, LabelFilter{Label: labelName, Value: matchString, Op: operator})
+		p.parseChar(',')
+	}
+
+	p.parseChar('}')
+
+	// Parse log filters
+	var logFilters []LabelFilter
+	for p.hasChar() {
+		op, result := p.parseLogQlOp()
+		if result == false {
+			break
+		}
+
+		matchString, _ := p.parseString()
+		logFilters = append(logFilters, LabelFilter{Label: "value", Value: matchString, Op: op})
+	}
+
+	return LogQlQuery{labelFilters: labels, logFilters: logFilters}, true
+}
+
+func (p *Parser) hasChar() bool {
+	return p.idx < len(p.stream)
 }
