@@ -7,19 +7,13 @@ import (
 )
 
 func LogQlToSql(table string, interval int64, logQl LogQlQuery, from, to int64) string {
-	return fmt.Sprintf(
-		`SELECT min("time") as "time", logLine as value, floor("time" / %d) as bucket 
-			 FROM %s 
-			 %s
-			 GROUP BY bucket 
-			 ORDER BY bucket ASC
-			 LIMIT 1000`,
-		interval, table, LogQlToWhereClause(logQl, interval, from, to))
+	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch as \"time\" FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
+		table, LogQlToWhereClause(logQl, interval, from, to))
 }
 
 func LogQlToWhereClause(logQl LogQlQuery, interval, from, to int64) string {
 	var whereClause string
-	whereClause = fmt.Sprintf(`WHERE bucket >= %d AND bucket <= %d`, from/interval, to/interval)
+	whereClause = "WHERE 1=1" // fmt.Sprintf(`WHERE timestampInEpoch >= %d AND timestampInEpoch <= %d`, from, to)
 
 	for i := 0; i < len(logQl.labelFilters); i++ {
 		whereClause += " AND " + logQl.labelFilters[i].String()
@@ -78,9 +72,9 @@ type LabelFilter struct {
 func (l *LabelFilter) String() string {
 	switch l.Op {
 	case "=":
-		return l.Label + "=" + l.Value
+		return l.Label + "='" + l.Value + "'"
 	case "!=":
-		return l.Label + "!=" + l.Value
+		return l.Label + "!='" + l.Value + "'"
 	case "=~":
 		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
 	case "!~":
@@ -445,7 +439,7 @@ func (p *Parser) parseLogQlQuery() (LogQlQuery, bool) {
 		}
 
 		matchString, _ := p.parseString()
-		logFilters = append(logFilters, LabelFilter{Label: "value", Value: matchString, Op: op})
+		logFilters = append(logFilters, LabelFilter{Label: "logLine", Value: matchString, Op: op})
 	}
 
 	return LogQlQuery{labelFilters: labels, logFilters: logFilters}, true

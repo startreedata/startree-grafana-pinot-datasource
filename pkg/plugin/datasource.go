@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	log "github.com/sirupsen/logrus"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
@@ -27,7 +29,9 @@ var (
 // NewDatasource creates a new datasource instance.
 func NewDatasource(_ backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	// Create Pinot Client
-	client, err := pinot.NewFromController("http://localhost:9000")
+	var brokers []string
+	brokers = append(brokers, "http://192.168.1.3:8000")
+	client, err := pinot.NewFromBrokerList(brokers)
 
 	return &Datasource{
 		client: *client,
@@ -106,6 +110,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
 	}
 
+	log.Info("Running query : %s", sqlQuery)
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
@@ -128,7 +133,10 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
 	times := []time.Time{}
-	values := []any{}
+	values := []string{}
+
+	var timestampFieldName string = "time"
+	var bodyFieldName string = "value"
 
 	// Iterate over each row
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
@@ -138,12 +146,14 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 
 		// Extract labels
 		// Extract value
-		var value any
-		switch results.DataSchema.ColumnDataTypes[valueIdx].ToLower {
+		var value string
+		switch strings.ToLower(results.DataSchema.ColumnDataTypes[valueIdx]) {
 		case "string":
+			timestampFieldName = "timestamp"
+			bodyFieldName = "body"
 			value = results.GetString(rowIdx, valueIdx)
 		default:
-			value = results.GetDouble(rowIdx, valueIdx)
+			// value = results.GetDouble(rowIdx, valueIdx)
 		}
 		values = append(values, value)
 	}
@@ -155,8 +165,8 @@ func extractResults(results *pinot.ResultTable) *data.Frame {
 
 	// add fields.
 	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, times),
-		data.NewField("values", nil, values),
+		data.NewField(timestampFieldName, nil, times),
+		data.NewField(bodyFieldName, nil, values),
 	)
 
 	// add the frames to the response.
