@@ -4,56 +4,10 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
-
-func LogQlToSql(table string, interval int64, logQl LogQlQuery, from, to int64) string {
-	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch as \"time\" FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
-		table, LogQlToWhereClause(logQl, interval, from, to))
-}
-
-func LogQlToWhereClause(logQl LogQlQuery, interval, from, to int64) string {
-	var whereClause string
-	whereClause = "WHERE 1=1" // fmt.Sprintf(`WHERE timestampInEpoch >= %d AND timestampInEpoch <= %d`, from, to)
-
-	for i := 0; i < len(logQl.labelFilters); i++ {
-		whereClause += " AND " + logQl.labelFilters[i].String()
-	}
-
-	for i := 0; i < len(logQl.logFilters); i++ {
-		whereClause += " AND " + logQl.logFilters[i].String()
-	}
-
-	return whereClause
-}
-
-func AggToSql(table string, interval int64, agg Aggregation, from, to int64) string {
-	sqlAgg := ""
-	if strings.ToLower(agg.Op) == "avg" {
-		sqlAgg = "avg"
-	} else if strings.ToLower(agg.Op) == "sum" {
-		sqlAgg = "sum"
-	}
-
-	return fmt.Sprintf(
-		`SELECT min("time") as "time", %s(value) as value, floor("time" / %d) as bucket 
-			 FROM %s 
-			 %s
-			 GROUP BY bucket 
-			 ORDER BY bucket ASC
-			 LIMIT 1000`,
-		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
-}
-
-func MetricToSql(table string, interval int64, metric Metric, from, to int64) string {
-	return fmt.Sprintf(
-		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
-			 FROM %s 
-			 %s
-			 GROUP BY bucket 
-			 ORDER BY bucket ASC
-			 LIMIT 1000`,
-		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
-}
 
 func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
 	if len(labels) == 0 {
@@ -86,9 +40,34 @@ func (l *LabelFilter) String() string {
 	}
 }
 
+type QueryRepresentation interface {
+	getTableName() string
+	toSqlQuery(table string, interval, from, to int64) string
+	extractResults(results *pinot.ResultTable) *data.Frame
+}
+
 type Metric struct {
 	Name         string
 	LabelFilters []LabelFilter
+}
+
+func (m *Metric) extractResults(results *pinot.ResultTable) *data.Frame {
+
+}
+
+func (metric Metric) getTableName() string {
+	return "metrics_hc_sort_time"
+}
+
+func (metric Metric) toSqlQuery(table string, interval, from, to int64) string {
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 1000`,
+		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
 }
 
 type LogQlQuery struct {
@@ -96,10 +75,56 @@ type LogQlQuery struct {
 	logFilters   []LabelFilter
 }
 
+func (q LogQlQuery) getTableName() string {
+	return "clpTestTable"
+}
+
+func (q LogQlQuery) toSqlQuery(table string, interval, from, to int64) string {
+	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
+		table, q.LogQlToWhereClause(interval, from, to))
+}
+
+func (q LogQlQuery) LogQlToWhereClause(interval, from, to int64) string {
+	var whereClause string
+	whereClause = fmt.Sprintf("WHERE timestampInEpoch >= %d AND timestampInEpoch <= %d", from, to)
+
+	for i := 0; i < len(q.labelFilters); i++ {
+		whereClause += " AND " + q.labelFilters[i].String()
+	}
+
+	for i := 0; i < len(q.logFilters); i++ {
+		whereClause += " AND " + q.logFilters[i].String()
+	}
+
+	return whereClause
+}
+
 type Aggregation struct {
 	Op     string
 	Metric Metric
 	By     By
+}
+
+func (agg Aggregation) getTableName() string {
+	return "metrics_hc_sort_time"
+}
+
+func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
+	sqlAgg := ""
+	if strings.ToLower(agg.Op) == "avg" {
+		sqlAgg = "avg"
+	} else if strings.ToLower(agg.Op) == "sum" {
+		sqlAgg = "sum"
+	}
+
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", %s(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 1000`,
+		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
 }
 
 type By struct {
@@ -410,6 +435,18 @@ func (p *Parser) parseLogQlOp() (string, bool) {
 
 	// Update the cursor and return the string
 	return id, true
+}
+
+func (p *Parser) parse() (QueryRepresentation, bool) {
+	if queryRepresentation, good := p.parseLogQlQuery(); good {
+		return queryRepresentation, true
+	} else if queryRepresentation, good := p.ParseAggregation(); good {
+		return queryRepresentation, true
+	} else if queryRepresentation, good := p.parseMetric(); good {
+		return queryRepresentation, true
+	}
+
+	return nil, false
 }
 
 func (p *Parser) parseLogQlQuery() (LogQlQuery, bool) {

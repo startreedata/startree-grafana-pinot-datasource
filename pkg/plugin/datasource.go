@@ -26,12 +26,25 @@ var (
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
-// NewDatasource creates a new datasource instance.
-func NewDatasource(_ backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	// Create Pinot Client
+func createPinotClient(settings backend.DataSourceInstanceSettings) (*pinot.Connection, error) {
+	// TODO we also need ot handle the apiKey etc from the settings being passed in
+	// Eventualy also store the type of connection source (controllerBased, ZK based, broker based etc)
+	var dat map[string]interface{}
+	if settings.JSONData != nil {
+		if err := json.Unmarshal(settings.JSONData, &dat); err != nil {
+			return nil, err
+		}
+	}
 	var brokers []string
-	brokers = append(brokers, "http://192.168.1.3:8000")
-	client, err := pinot.NewFromBrokerList(brokers)
+	brokers = append(brokers, dat["brokerUrl"].(string))
+
+	return pinot.NewFromBrokerList(brokers)
+}
+
+// NewDatasource creates a new datasource instance.
+func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	// Create Pinot Client, get brokers from the settings
+	client, err := createPinotClient(settings)
 
 	return &Datasource{
 		client: *client,
@@ -99,16 +112,9 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	// try just metric
 	sqlQuery := ""
 	table := ""
-	if logQl, good := parser.parseLogQlQuery(); good {
-		sqlQuery = LogQlToSql("clpTestTable", interval, logQl, from, to)
-		table = "clpTestTable"
-	} else if agg, good := parser.ParseAggregation(); good {
-		table = "metrics_hc_sort_time"
-		sqlQuery = AggToSql("metrics_hc_sort_time", interval, agg, from, to)
-	} else if metric, good := parser.parseMetric(); good {
-		table = "metrics_hc_sort_time"
-		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
-	}
+	queryRepresentation, _ := parser.parse()
+	table = queryRepresentation.getTableName()
+	sqlQuery = queryRepresentation.toSqlQuery(table, interval, from, to)
 
 	log.Info("Running query : %s", sqlQuery)
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
@@ -119,7 +125,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
 	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
-	frame := extractResults(resp.ResultTable)
+	frame := queryRepresentation.extractResults(resp.ResultTable) // extractResults(resp.ResultTable)
 
 	// add the frames to the response.
 	response.Frames = append(response.Frames, frame)
