@@ -13,19 +13,17 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
 
   const onTableNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange({ ...query, tableName: event.target.value });
-    // executes the query
-    onRunQuery();
   };
 
   const { queryText, tableName } = query;
 
   return (
     <div className="gf-form">
-      <InlineField label="Table" labelWidth={24} tooltip="Not used yet">
-        <Input onChange={onTableNameChange} value={tableName || ''} width={20}/>
+      <InlineField label="Table" labelWidth={16} tooltip="Not used yet">
+        <Input onChange={onTableNameChange} value={tableName || ''} width={24}/>
       </InlineField>
-      <InlineField label="Query Text" labelWidth={80} tooltip="Not used yet">
-        <Input onChange={onQueryTextChange} value={queryText || ''} />
+      <InlineField label="Query Text" labelWidth={16} tooltip="Not used yet">
+        <Input onChange={onQueryTextChange} value={queryText || ''} width={80} />
       </InlineField>
     </div>
   );
