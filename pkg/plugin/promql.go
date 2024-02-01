@@ -42,7 +42,6 @@ func (l *LabelFilter) String() string {
 }
 
 type QueryRepresentation interface {
-	getTableName() string
 	toSqlQuery(table string, interval, from, to int64) string
 	extractResults(results *pinot.ResultTable) *data.Frame
 }
@@ -87,10 +86,6 @@ func (m Metric) extractResults(results *pinot.ResultTable) *data.Frame {
 	return frame
 }
 
-func (metric Metric) getTableName() string {
-	return "metrics_hc_sort_time"
-}
-
 func (metric Metric) toSqlQuery(table string, interval, from, to int64) string {
 	return fmt.Sprintf(
 		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
@@ -105,10 +100,6 @@ func (metric Metric) toSqlQuery(table string, interval, from, to int64) string {
 type LogQlQuery struct {
 	labelFilters []LabelFilter
 	logFilters   []LabelFilter
-}
-
-func (q LogQlQuery) getTableName() string {
-	return "clpTestTable"
 }
 
 func (q LogQlQuery) toSqlQuery(table string, interval, from, to int64) string {
@@ -167,10 +158,6 @@ type Aggregation struct {
 	Op     string
 	Metric Metric
 	By     By
-}
-
-func (agg Aggregation) getTableName() string {
-	return "metrics_hc_sort_time"
 }
 
 func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
