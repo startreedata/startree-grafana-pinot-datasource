@@ -3,6 +3,7 @@ package plugin
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -51,8 +52,39 @@ type Metric struct {
 	LabelFilters []LabelFilter
 }
 
-func (m *Metric) extractResults(results *pinot.ResultTable) *data.Frame {
+func (m Metric) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
+	times := []time.Time{}
+	values := []float64{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+
+		// Extract labels
+		// Extract value
+		value := results.GetDouble(rowIdx, valueIdx)
+		values = append(values, value)
+	}
+
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
+
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, values),
+	)
+
+	// add the frames to the response.
+	return frame
 }
 
 func (metric Metric) getTableName() string {
@@ -99,6 +131,38 @@ func (q LogQlQuery) LogQlToWhereClause(interval, from, to int64) string {
 	return whereClause
 }
 
+func (q LogQlQuery) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
+
+	times := []time.Time{}
+	values := []string{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+		value := results.GetString(rowIdx, valueIdx)
+		values = append(values, value)
+	}
+
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
+
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("timestamp", nil, times),
+		data.NewField("body", nil, values),
+	)
+
+	// add the frames to the response.
+	return frame
+}
+
 type Aggregation struct {
 	Op     string
 	Metric Metric
@@ -125,6 +189,41 @@ func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string
 			 ORDER BY bucket ASC
 			 LIMIT 1000`,
 		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
+}
+
+func (agg Aggregation) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
+
+	times := []time.Time{}
+	values := []float64{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+
+		// Extract labels
+		// Extract value
+		value := results.GetDouble(rowIdx, valueIdx)
+		values = append(values, value)
+	}
+
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
+
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, values),
+	)
+
+	// add the frames to the response.
+	return frame
 }
 
 type By struct {
