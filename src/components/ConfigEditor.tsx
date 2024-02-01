@@ -10,7 +10,7 @@ export function ConfigEditor(props: Props) {
   const onPathChange = (event: ChangeEvent<HTMLInputElement>) => {
     const jsonData = {
       ...options.jsonData,
-      path: event.target.value,
+      brokerUrl: event.target.value,
     };
     onOptionsChange({ ...options, jsonData });
   };
@@ -44,10 +44,10 @@ export function ConfigEditor(props: Props) {
 
   return (
     <div className="gf-form-group">
-      <InlineField label="Path" labelWidth={12}>
+      <InlineField label="Broker url" labelWidth={12}>
         <Input
           onChange={onPathChange}
-          value={jsonData.path || ''}
+          value={jsonData.brokerUrl || ''}
           placeholder="json field returned to frontend"
           width={40}
         />

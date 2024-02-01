@@ -112,7 +112,7 @@ func (q LogQlQuery) getTableName() string {
 }
 
 func (q LogQlQuery) toSqlQuery(table string, interval, from, to int64) string {
-	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
+	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch as tstamp FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
 		table, q.LogQlToWhereClause(interval, from, to))
 }
 
@@ -133,7 +133,7 @@ func (q LogQlQuery) LogQlToWhereClause(interval, from, to int64) string {
 
 func (q LogQlQuery) extractResults(results *pinot.ResultTable) *data.Frame {
 	// Get the time columna
-	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	timeIdx, _ := getColumnIdx("tstamp", &results.DataSchema)
 	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
 	times := []time.Time{}
