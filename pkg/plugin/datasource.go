@@ -123,7 +123,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	queryRepresentation, _ := parser.parse()
 	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
 
-	log.Info("Running query : %s", sqlQuery)
+	log.Info("Running query : ", sqlQuery)
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))

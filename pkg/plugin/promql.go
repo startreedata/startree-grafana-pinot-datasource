@@ -10,11 +10,12 @@ import (
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
-func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
+func filterToWhereClause(metricName string, leftOperand string, interval, from, to int64, labels []LabelFilter) string {
 	if len(labels) == 0 {
-		return fmt.Sprintf(`WHERE name='%s' AND bucket >= %d AND bucket <= %d`, metricName, from/interval, to/interval)
+		return fmt.Sprintf(`WHERE name='%s' AND %s >= %d AND %s <= %d`, metricName, leftOperand, from/interval, leftOperand, to/interval)
 	} else {
-		return fmt.Sprintf(`WHERE name='%s' AND labels='%s:%s' AND bucket >= %d AND bucket <= %d`, metricName, labels[0].Label, labels[0].Value, from/interval, to/interval)
+		return fmt.Sprintf(`WHERE name='%s' AND labels='%s:%s' AND %s >= %d AND %s <= %d`,
+			metricName, labels[0].Label, labels[0].Value, leftOperand, from/interval, leftOperand, to/interval)
 	}
 }
 
@@ -87,14 +88,15 @@ func (m Metric) extractResults(results *pinot.ResultTable) *data.Frame {
 }
 
 func (metric Metric) toSqlQuery(table string, interval, from, to int64) string {
+	leftOperand := fmt.Sprintf(`floor("time" / %d)`, interval)
 	return fmt.Sprintf(
-		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+		`SELECT min("time") as "time", avg(value) as value, %s as bucket 
 			 FROM %s 
 			 %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
 			 LIMIT 1000`,
-		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
+		leftOperand, table, filterToWhereClause(metric.Name, leftOperand, interval, from, to, metric.LabelFilters))
 }
 
 type LogQlQuery struct {
@@ -161,6 +163,7 @@ type Aggregation struct {
 }
 
 func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
+	leftOperand := fmt.Sprintf(`floor("time" / %d)`, interval)
 	sqlAgg := ""
 	if strings.ToLower(agg.Op) == "avg" {
 		sqlAgg = "avg"
@@ -169,13 +172,13 @@ func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string
 	}
 
 	return fmt.Sprintf(
-		`SELECT min("time") as "time", %s(value) as value, floor("time" / %d) as bucket 
+		`SELECT min("time") as "time", %s(value) as value, %s as bucket 
 			 FROM %s 
 			 %s
 			 GROUP BY bucket 
 			 ORDER BY bucket ASC
 			 LIMIT 1000`,
-		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
+		sqlAgg, leftOperand, table, filterToWhereClause(agg.Metric.Name, leftOperand, interval, from, to, agg.Metric.LabelFilters))
 }
 
 func (agg Aggregation) extractResults(results *pinot.ResultTable) *data.Frame {
