@@ -63,6 +63,7 @@ export function ConfigEditor(props: Props) {
       <InlineField label="connectionType" labelWidth={24}>
         <Select
             options={connectionTypeOptions}
+            value={connectionTypeOptions.find(option => option.label === jsonData.type) || connectionTypeOptions[1]}
             onChange={onTypeChange}
         />
       </InlineField>
