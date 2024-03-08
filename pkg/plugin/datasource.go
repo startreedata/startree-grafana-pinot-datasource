@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -104,7 +103,7 @@ type queryModel struct {
 	Format       string  `json:"format"`
 }
 
-func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
+func (d *Datasource) query(_ context.Context, _ backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var response backend.DataResponse
 
 	// Unmarshal the JSON into our queryModel.
@@ -148,11 +147,6 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	var status = backend.HealthStatusOk
 	var message = "Data source is working"
-
-	if rand.Int()%2 == 0 {
-		status = backend.HealthStatusError
-		message = "randomized error"
-	}
 
 	return &backend.CheckHealthResult{
 		Status:  status,
