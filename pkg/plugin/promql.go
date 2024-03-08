@@ -560,7 +560,7 @@ func (p *Parser) parseLogQlQuery() (LogQlQuery, bool) {
 	var logFilters []LabelFilter
 	for p.hasChar() {
 		op, result := p.parseLogQlOp()
-		if result == false {
+		if !result {
 			break
 		}
 

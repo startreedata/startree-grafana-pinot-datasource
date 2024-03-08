@@ -13,5 +13,5 @@ func getColumnIdx(col string, schema *pinot.RespSchema) (int, error) {
 		}
 	}
 
-	return -1, fmt.Errorf("Column not found")
+	return -1, fmt.Errorf("column not found")
 }
