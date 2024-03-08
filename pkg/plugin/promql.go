@@ -163,7 +163,6 @@ type Aggregation struct {
 }
 
 func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
-	leftOperand := fmt.Sprintf(`floor("time" / %d)`, interval)
 	sqlAgg := ""
 	if strings.ToLower(agg.Op) == "avg" {
 		sqlAgg = "avg"
@@ -171,6 +170,7 @@ func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string
 		sqlAgg = "sum"
 	}
 
+	leftOperand := fmt.Sprintf(`floor("time" / %d)`, interval)
 	return fmt.Sprintf(
 		`SELECT min("time") as "time", %s(value) as value, %s as bucket 
 			 FROM %s 

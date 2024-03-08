@@ -118,6 +118,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
 	interval := query.Interval.Milliseconds()
+	log.Info("PromQL: ", qm.QueryText)
 	parser := CreateParser(qm.QueryText)
 	table := qm.TableName
 	queryRepresentation, _ := parser.parse()
