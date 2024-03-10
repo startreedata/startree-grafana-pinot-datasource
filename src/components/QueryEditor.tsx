@@ -11,21 +11,19 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
     onChange({ ...query, queryText: event.target.value });
   };
 
-  const onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
+  const onTableNameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onChange({ ...query, tableName: event.target.value });
   };
 
-  const { queryText, constant } = query;
+  const { queryText, tableName } = query;
 
   return (
     <div className="gf-form">
-      <InlineField label="Constant">
-        <Input onChange={onConstantChange} value={constant} width={8} type="number" step="0.1" />
+      <InlineField label="Table" labelWidth={16} tooltip="Not used yet">
+        <Input onChange={onTableNameChange} value={tableName || ''} width={24}/>
       </InlineField>
       <InlineField label="Query Text" labelWidth={16} tooltip="Not used yet">
-        <Input onChange={onQueryTextChange} value={queryText || ''} />
+        <Input onChange={onQueryTextChange} value={queryText || ''} width={80} />
       </InlineField>
     </div>
   );

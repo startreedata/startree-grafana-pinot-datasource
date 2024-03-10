@@ -5,11 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"time"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
+	log "github.com/sirupsen/logrus"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
@@ -24,10 +23,37 @@ var (
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
+func createPinotClient(settings backend.DataSourceInstanceSettings) (*pinot.Connection, error) {
+	// TODO we also need ot handle the apiKey etc from the settings being passed in
+	// Eventualy also store the type of connection source (controllerBased, ZK based, broker based etc)
+	var dat map[string]interface{}
+	if settings.JSONData != nil {
+		if err := json.Unmarshal(settings.JSONData, &dat); err != nil {
+			return nil, err
+		}
+	}
+	var brokers []string
+	var ConnectionType = dat["type"].(string)
+
+	switch ConnectionType {
+	case "Zookeeper":
+		// return pinot.NewFromZookeeper(dat["url"].(string)) // TODO this needs some more variables in the ui form
+	case "Controller":
+		return pinot.NewFromController(dat["url"].(string))
+	case "Broker":
+		brokers = append(brokers, dat["url"].(string))
+		return pinot.NewFromBrokerList(brokers)
+	}
+
+	return nil, fmt.Errorf(
+		"please specify at least one of Zookeeper, Broker or Controller to connect",
+	)
+}
+
 // NewDatasource creates a new datasource instance.
-func NewDatasource(_ backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	// Create Pinot Client
-	client, err := pinot.NewFromController("http://localhost:9000")
+func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	// Create Pinot Client, get brokers from the settings
+	client, err := createPinotClient(settings)
 
 	return &Datasource{
 		client: *client,
@@ -70,6 +96,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 type queryModel struct {
 	QueryText    string  `json:"queryText"`
+	TableName    string  `json:"tableName"`
 	Fill         bool    `json:"fill"`
 	FillInterval float64 `json:"fillInterval"`
 	FillMode     string  `json:"fillMode"`
@@ -92,15 +119,12 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	to := query.TimeRange.To.UnixMilli()
 	interval := query.Interval.Milliseconds()
 	parser := CreateParser(qm.QueryText)
-	// try just metric
-	sqlQuery := ""
-	if agg, good := parser.ParseAggregation(); good {
-		sqlQuery = AggToSql("metrics_hc_sort_time", interval, agg, from, to)
-	} else if metric, good := parser.parseMetric(); good {
-		sqlQuery = MetricToSql("metrics_hc_sort_time", interval, metric, from, to)
-	}
+	table := qm.TableName
+	queryRepresentation, _ := parser.parse()
+	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
 
-	resp, err := d.client.ExecuteSQL("metrics_hc_sort_time", sqlQuery)
+	log.Info("Running query : %s", sqlQuery)
+	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
@@ -108,57 +132,12 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	// create data frame response.
 	// For an overview on data frames and how grafana handles them:
 	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
-	frame := extractResults(resp.ResultTable)
+	frame := queryRepresentation.extractResults(resp.ResultTable) // extractResults(resp.ResultTable)
 
 	// add the frames to the response.
 	response.Frames = append(response.Frames, frame)
 
 	return response
-}
-
-func extractResults(results *pinot.ResultTable) *data.Frame {
-	// Get the time columna
-	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
-	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
-
-	times := []time.Time{}
-	values := []float64{}
-
-	// Iterate over each row
-	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
-		// Extract timestamp
-		ts := int64(results.GetDouble(rowIdx, timeIdx))
-		times = append(times, time.UnixMilli(ts))
-
-		// Extract labels
-		// Extract value
-		value := results.GetDouble(rowIdx, valueIdx)
-		values = append(values, value)
-	}
-
-	// create data frame response.
-	// For an overview on data frames and how grafana handles them:
-	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
-	frame := data.NewFrame("response")
-
-	// add fields.
-	frame.Fields = append(frame.Fields,
-		data.NewField("time", nil, times),
-		data.NewField("values", nil, values),
-	)
-
-	// add the frames to the response.
-	return frame
-}
-
-func getColumnIdx(col string, schema *pinot.RespSchema) (int, error) {
-	for idx := 0; idx < len(schema.ColumnNames); idx++ {
-		if schema.ColumnNames[idx] == col {
-			return idx, nil
-		}
-	}
-
-	return -1, fmt.Errorf("Column not found")
 }
 
 // CheckHealth handles health checks sent from Grafana to the plugin.

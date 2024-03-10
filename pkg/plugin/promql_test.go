@@ -26,6 +26,41 @@ func TestParseString(t *testing.T) {
 	}
 }
 
+func TestLogQlQuery(t *testing.T) {
+	test := "   {   labelA = \"foo\"  ,   labelB!=\"bar\",  labelC=~\"^.baz\", labelD!~\"^..*z\" }  |= \"error\" |~ \"tsdb-ops.*io:2003\" !~ \"**d\" "
+
+	parser := CreateParser(test)
+	query, _ := parser.parseLogQlQuery()
+
+	if len(query.labelFilters) != 4 {
+		t.Fatalf("Expected %d but got %d", 4, len(query.labelFilters))
+	}
+
+	var labelFilters []LabelFilter
+	labelFilters = append(labelFilters, LabelFilter{Label: "labelA", Value: "foo", Op: "="})
+	labelFilters = append(labelFilters, LabelFilter{Label: "labelB", Value: "bar", Op: "!="})
+	labelFilters = append(labelFilters, LabelFilter{Label: "labelC", Value: "^.baz", Op: "=~"})
+	labelFilters = append(labelFilters, LabelFilter{Label: "labelD", Value: "^..*z", Op: "!~"})
+
+	for i := 0; i < len(query.labelFilters); i++ {
+		if query.labelFilters[i] != labelFilters[i] {
+			t.Fatalf("Expected %s but got %s", labelFilters[i], query.labelFilters[i])
+		}
+	}
+
+	var logFilters []LabelFilter
+	logFilters = append(logFilters, LabelFilter{Label: "value", Value: "error", Op: "|="})
+	logFilters = append(logFilters, LabelFilter{Label: "value", Value: "tsdb-ops.*io:2003", Op: "|~"})
+	logFilters = append(logFilters, LabelFilter{Label: "value", Value: "**d", Op: "!~"})
+
+	for i := 0; i < len(query.logFilters); i++ {
+		if query.logFilters[i] != logFilters[i] {
+			t.Fatalf("Expected %s but got %s", logFilters[i], query.logFilters[i])
+		}
+	}
+
+}
+
 func TestParseID(t *testing.T) {
 	for _, test := range []string{"test", " test", "test ", " test ", "test()"} {
 		parser := CreateParser(test)

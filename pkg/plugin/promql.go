@@ -3,10 +3,164 @@ package plugin
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
+
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
-func AggToSql(table string, interval int64, agg Aggregation, from, to int64) string {
+func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
+	if len(labels) == 0 {
+		return fmt.Sprintf(`WHERE name='%s' AND bucket >= %d AND bucket <= %d`, metricName, from/interval, to/interval)
+	} else {
+		return fmt.Sprintf(`WHERE name='%s' AND labels='%s:%s' AND bucket >= %d AND bucket <= %d`, metricName, labels[0].Label, labels[0].Value, from/interval, to/interval)
+	}
+}
+
+type LabelFilter struct {
+	Label string
+	Value string
+	Op    string
+}
+
+func (l *LabelFilter) String() string {
+	switch l.Op {
+	case "=":
+		return l.Label + "='" + l.Value + "'"
+	case "!=":
+		return l.Label + "!='" + l.Value + "'"
+	case "=~":
+		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
+	case "!~":
+		return "not(REGEXP_LIKE(" + l.Label + ", '" + l.Value + "'))"
+	case "|=":
+		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
+	default:
+		return ""
+	}
+}
+
+type QueryRepresentation interface {
+	toSqlQuery(table string, interval, from, to int64) string
+	extractResults(results *pinot.ResultTable) *data.Frame
+}
+
+type Metric struct {
+	Name         string
+	LabelFilters []LabelFilter
+}
+
+func (m Metric) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
+
+	times := []time.Time{}
+	values := []float64{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+
+		// Extract labels
+		// Extract value
+		value := results.GetDouble(rowIdx, valueIdx)
+		values = append(values, value)
+	}
+
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
+
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, values),
+	)
+
+	// add the frames to the response.
+	return frame
+}
+
+func (metric Metric) toSqlQuery(table string, interval, from, to int64) string {
+	return fmt.Sprintf(
+		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
+			 FROM %s 
+			 %s
+			 GROUP BY bucket 
+			 ORDER BY bucket ASC
+			 LIMIT 1000`,
+		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
+}
+
+type LogQlQuery struct {
+	labelFilters []LabelFilter
+	logFilters   []LabelFilter
+}
+
+func (q LogQlQuery) toSqlQuery(table string, interval, from, to int64) string {
+	return fmt.Sprintf("SELECT logLine as value, timestampInEpoch as tstamp FROM %s %s ORDER BY timestampInEpoch ASC LIMIT 1000",
+		table, q.LogQlToWhereClause(interval, from, to))
+}
+
+func (q LogQlQuery) LogQlToWhereClause(interval, from, to int64) string {
+	var whereClause string
+	whereClause = fmt.Sprintf("WHERE timestampInEpoch >= %d AND timestampInEpoch <= %d", from, to)
+
+	for i := 0; i < len(q.labelFilters); i++ {
+		whereClause += " AND " + q.labelFilters[i].String()
+	}
+
+	for i := 0; i < len(q.logFilters); i++ {
+		whereClause += " AND " + q.logFilters[i].String()
+	}
+
+	return whereClause
+}
+
+func (q LogQlQuery) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("tstamp", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
+
+	times := []time.Time{}
+	values := []string{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+		value := results.GetString(rowIdx, valueIdx)
+		values = append(values, value)
+	}
+
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
+
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("timestamp", nil, times),
+		data.NewField("body", nil, values),
+	)
+
+	// add the frames to the response.
+	return frame
+}
+
+type Aggregation struct {
+	Op     string
+	Metric Metric
+	By     By
+}
+
+func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
 	sqlAgg := ""
 	if strings.ToLower(agg.Op) == "avg" {
 		sqlAgg = "avg"
@@ -24,39 +178,39 @@ func AggToSql(table string, interval int64, agg Aggregation, from, to int64) str
 		sqlAgg, interval, table, filterToWhereClause(agg.Metric.Name, interval, from, to, agg.Metric.LabelFilters))
 }
 
-func MetricToSql(table string, interval int64, metric Metric, from, to int64) string {
-	return fmt.Sprintf(
-		`SELECT min("time") as "time", avg(value) as value, floor("time" / %d) as bucket 
-			 FROM %s 
-			 %s
-			 GROUP BY bucket 
-			 ORDER BY bucket ASC
-			 LIMIT 1000`,
-		interval, table, filterToWhereClause(metric.Name, interval, from, to, metric.LabelFilters))
-}
+func (agg Aggregation) extractResults(results *pinot.ResultTable) *data.Frame {
+	// Get the time columna
+	timeIdx, _ := getColumnIdx("time", &results.DataSchema)
+	valueIdx, _ := getColumnIdx("value", &results.DataSchema)
 
-func filterToWhereClause(metricName string, interval, from, to int64, labels []LabelFilter) string {
-	if len(labels) == 0 {
-		return fmt.Sprintf(`WHERE name='%s' AND bucket >= %d AND bucket <= %d`, metricName, from/interval, to/interval)
-	} else {
-		return fmt.Sprintf(`WHERE name='%s' AND labels='%s:%s' AND bucket >= %d AND bucket <= %d`, metricName, labels[0].Label, labels[0].Value, from/interval, to/interval)
+	times := []time.Time{}
+	values := []float64{}
+
+	// Iterate over each row
+	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
+		// Extract timestamp
+		ts := int64(results.GetDouble(rowIdx, timeIdx))
+		times = append(times, time.UnixMilli(ts))
+
+		// Extract labels
+		// Extract value
+		value := results.GetDouble(rowIdx, valueIdx)
+		values = append(values, value)
 	}
-}
 
-type LabelFilter struct {
-	Label string
-	Value string
-}
+	// create data frame response.
+	// For an overview on data frames and how grafana handles them:
+	// https://grafana.com/docs/grafana/latest/developers/plugins/data-frames/
+	frame := data.NewFrame("response")
 
-type Metric struct {
-	Name         string
-	LabelFilters []LabelFilter
-}
+	// add fields.
+	frame.Fields = append(frame.Fields,
+		data.NewField("time", nil, times),
+		data.NewField("values", nil, values),
+	)
 
-type Aggregation struct {
-	Op     string
-	Metric Metric
-	By     By
+	// add the frames to the response.
+	return frame
 }
 
 type By struct {
@@ -336,4 +490,84 @@ func (p *Parser) parseChar(c rune) bool {
 	}
 
 	return false
+}
+
+/**
+LOGQL Parsing logic
+**/
+
+func (p *Parser) isOperatorChar(c rune) bool {
+	return c == '=' || c == '!' || c == '~' || c == '|'
+}
+
+func (p *Parser) parseLogQlOp() (string, bool) {
+	// Skip leading white space
+	for p.idx < len(p.stream) && unicode.IsSpace(p.stream[p.idx]) {
+		p.idx += 1
+	}
+
+	if p.idx == len(p.stream) {
+		return "", false
+	}
+
+	start := p.idx
+	for p.idx < len(p.stream) && p.isOperatorChar(p.stream[p.idx]) {
+		p.idx++
+	}
+
+	end := p.idx
+	// Convert slice into string
+	id := string(p.stream[start:end])
+
+	// Update the cursor and return the string
+	return id, true
+}
+
+func (p *Parser) parse() (QueryRepresentation, bool) {
+	if queryRepresentation, good := p.parseLogQlQuery(); good {
+		return queryRepresentation, true
+	} else if queryRepresentation, good := p.ParseAggregation(); good {
+		return queryRepresentation, true
+	} else if queryRepresentation, good := p.parseMetric(); good {
+		return queryRepresentation, true
+	}
+
+	return nil, false
+}
+
+func (p *Parser) parseLogQlQuery() (LogQlQuery, bool) {
+	if !p.parseChar('{') {
+		return LogQlQuery{}, false
+	}
+
+	// Parse label filters
+	var labels []LabelFilter
+	for !p.parseChar('}') {
+		labelName, _ := p.parseID()
+		operator, _ := p.parseLogQlOp()
+		matchString, _ := p.parseString()
+
+		labels = append(labels, LabelFilter{Label: labelName, Value: matchString, Op: operator})
+		p.parseChar(',')
+	}
+
+	p.parseChar('}')
+
+	// Parse log filters
+	var logFilters []LabelFilter
+	for p.hasChar() {
+		op, result := p.parseLogQlOp()
+		if result == false {
+			break
+		}
+
+		matchString, _ := p.parseString()
+		logFilters = append(logFilters, LabelFilter{Label: "logLine", Value: matchString, Op: op})
+	}
+
+	return LogQlQuery{labelFilters: labels, logFilters: logFilters}, true
+}
+
+func (p *Parser) hasChar() bool {
+	return p.idx < len(p.stream)
 }
