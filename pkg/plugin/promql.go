@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	log "github.com/sirupsen/logrus"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
@@ -164,10 +165,17 @@ type Aggregation struct {
 
 func (agg Aggregation) toSqlQuery(table string, interval, from, to int64) string {
 	sqlAgg := ""
-	if strings.ToLower(agg.Op) == "avg" {
+	op := strings.ToLower(agg.Op)
+	if op == "avg" {
 		sqlAgg = "avg"
-	} else if strings.ToLower(agg.Op) == "sum" {
+	} else if op == "sum" {
 		sqlAgg = "sum"
+	} else if op == "max" {
+		sqlAgg = "max"
+	} else if op == "min" {
+		sqlAgg = "min"
+	} else {
+		log.Error("Unknown aggregation operator: ", agg.Op)
 	}
 
 	leftOperand := fmt.Sprintf(`floor("time" / %d)`, interval)
