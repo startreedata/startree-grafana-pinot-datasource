@@ -589,8 +589,6 @@ func (p *Parser) parseLogQlOp() (string, bool) {
 
 func (p *Parser) parse() (QueryRepresentation, bool) {
 	switch p.queryType {
-	case "PinotQL":
-		return PinotNativeQuery{Query: p.originalText}, true
 	case "LoqQL":
 		if queryRepresentation, good := p.parseLogQlQuery(); good {
 			return queryRepresentation, true
@@ -601,6 +599,9 @@ func (p *Parser) parse() (QueryRepresentation, bool) {
 		} else if queryRepresentation, good := p.parseMetric(); good {
 			return queryRepresentation, true
 		}
+	case "PinotQL":
+	default:
+		return PinotNativeQuery{Query: p.originalText}, true
 	}
 
 	return nil, false
