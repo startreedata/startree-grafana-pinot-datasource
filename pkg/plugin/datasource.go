@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
-	log "github.com/sirupsen/logrus"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
@@ -96,6 +95,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 type queryModel struct {
 	QueryText    string  `json:"queryText"`
+	QueryType    string  `json:"queryType"`
 	TableName    string  `json:"tableName"`
 	Fill         bool    `json:"fill"`
 	FillInterval float64 `json:"fillInterval"`
@@ -115,15 +115,16 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
+	backend.Logger.Info("json unmarshal: %v", qm)
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
 	interval := query.Interval.Milliseconds()
-	parser := CreateParser(qm.QueryText)
+	parser := CreateParser(qm.QueryText, qm.QueryType)
 	table := qm.TableName
 	queryRepresentation, _ := parser.parse()
 	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
 
-	log.Info("Running query : %s", sqlQuery)
+	backend.Logger.Info(fmt.Sprintf("Running query : %s", sqlQuery))
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
