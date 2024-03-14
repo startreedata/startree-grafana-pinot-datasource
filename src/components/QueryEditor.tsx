@@ -1,5 +1,5 @@
 import React, { ChangeEvent } from 'react';
-import { InlineField, Input, Select } from '@grafana/ui';
+import { InlineField, Input, Select, InlineFieldRow } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
 import { MyDataSourceOptions, MyQuery } from '../types';
@@ -30,15 +30,20 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
 
   return (
     <div className="gf-form">
-      <InlineField label="Table" labelWidth={16} tooltip="Supply table name">
-        <Input onChange={onTableNameChange} value={tableName || ''} width={24}/>
-      </InlineField>
-      <InlineField label="Query Type" labelWidth={16} tooltip="Select query type">
-      <Select options={queryTypeOptions} value={queryTypeOptions.find(option => option.label === queryType) || queryTypeOptions[0]} onChange={onQueryTypeChange}/>
-      </InlineField>
+      <InlineFieldRow>
+        <InlineField label="Table" labelWidth={16} tooltip="Supply table name">
+          <Input onChange={onTableNameChange} value={tableName || ''} width={24}/>
+        </InlineField>
+        <InlineField label="Query Type" labelWidth={16} tooltip="Select query type">
+        <Select options={queryTypeOptions} value={queryTypeOptions.find(option => option.label === queryType) || queryTypeOptions[0]} onChange={onQueryTypeChange}/>
+        </InlineField>
+      </InlineFieldRow>
+
+      <InlineFieldRow>
       <InlineField label="Query Text" labelWidth={16} tooltip="Query">
-        <Input onChange={onQueryTextChange} value={queryText || ''} width={80} />
+        <Input onChange={onQueryTextChange} value={queryText || ''} width={700} />
       </InlineField>
+      </InlineFieldRow>
     </div>
   );
 }
