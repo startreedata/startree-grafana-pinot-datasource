@@ -31,22 +31,34 @@ func createPinotClient(settings backend.DataSourceInstanceSettings) (*pinot.Conn
 			return nil, err
 		}
 	}
-	var brokers []string
+
 	var ConnectionType = dat["type"].(string)
+	var authToken, authTokenPresent = settings.DecryptedSecureJSONData["authToken"]
+	var headers = map[string]string{}
+	if authTokenPresent {
+		headers["Authorization"] = authToken
+	}
+	var clientConfig *pinot.ClientConfig
 
 	switch ConnectionType {
 	case "Zookeeper":
 		// return pinot.NewFromZookeeper(dat["url"].(string)) // TODO this needs some more variables in the ui form
 	case "Controller":
-		return pinot.NewFromController(dat["url"].(string))
+		clientConfig = &pinot.ClientConfig{
+			ControllerConfig: &pinot.ControllerConfig{
+				ControllerAddress: dat["url"].(string),
+			},
+			ExtraHTTPHeader: headers,
+		}
 	case "Broker":
-		brokers = append(brokers, dat["url"].(string))
-		return pinot.NewFromBrokerList(brokers)
+		clientConfig = &pinot.ClientConfig{
+			BrokerList:      []string{dat["url"].(string)},
+			ExtraHTTPHeader: headers,
+		}
 	}
 
-	return nil, fmt.Errorf(
-		"please specify at least one of Zookeeper, Broker or Controller to connect",
-	)
+	backend.Logger.Info("Connecting to Pinot with config: %v", clientConfig)
+	return pinot.NewWithConfig(clientConfig)
 }
 
 // NewDatasource creates a new datasource instance.
@@ -124,9 +136,7 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	queryRepresentation, _ := parser.parse()
 
 	backend.Logger.Info(fmt.Sprintf("Parsed query : %v", queryRepresentation))
-
 	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
-
 	backend.Logger.Info(fmt.Sprintf("Running query : %s", sqlQuery))
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
