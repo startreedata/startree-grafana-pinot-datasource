@@ -600,6 +600,7 @@ func (p *Parser) parse() (QueryRepresentation, bool) {
 			return queryRepresentation, true
 		}
 	case "PinotQL":
+		return PinotNativeQuery{Query: p.originalText}, true
 	default:
 		return PinotNativeQuery{Query: p.originalText}, true
 	}

@@ -122,6 +122,9 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 	parser := CreateParser(qm.QueryText, qm.QueryType)
 	table := qm.TableName
 	queryRepresentation, _ := parser.parse()
+
+	backend.Logger.Info(fmt.Sprintf("Parsed query : %v", queryRepresentation))
+
 	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
 
 	backend.Logger.Info(fmt.Sprintf("Running query : %s", sqlQuery))
