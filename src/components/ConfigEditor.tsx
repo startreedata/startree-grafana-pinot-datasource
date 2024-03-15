@@ -36,7 +36,7 @@ export function ConfigEditor(props: Props) {
     onOptionsChange({
       ...options,
       secureJsonData: {
-        apiKey: event.target.value,
+        authToken: event.target.value,
       },
     });
   };
@@ -46,11 +46,11 @@ export function ConfigEditor(props: Props) {
       ...options,
       secureJsonFields: {
         ...options.secureJsonFields,
-        apiKey: false,
+        authToken: false,
       },
       secureJsonData: {
         ...options.secureJsonData,
-        apiKey: '',
+        authToken: '',
       },
     });
   };
@@ -77,10 +77,10 @@ export function ConfigEditor(props: Props) {
         />
       </InlineField>
 
-      <InlineField label="API Key" labelWidth={24}>
+      <InlineField label="Auth Key" labelWidth={24}>
         <SecretInput
           isConfigured={(secureJsonFields && secureJsonFields.apiKey) as boolean}
-          value={secureJsonData.apiKey || ''}
+          value={secureJsonData.authToken || ''}
           placeholder="secure json field (backend only)"
           width={40}
           onReset={onResetAPIKey}
