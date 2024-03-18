@@ -589,7 +589,7 @@ func (p *Parser) parseLogQlOp() (string, bool) {
 
 func (p *Parser) parse() (QueryRepresentation, bool) {
 	switch p.queryType {
-	case "LoqQL":
+	case "LogQL":
 		if queryRepresentation, good := p.parseLogQlQuery(); good {
 			return queryRepresentation, true
 		}
