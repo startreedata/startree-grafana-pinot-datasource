@@ -36,6 +36,8 @@ func (l *LabelFilter) String() string {
 		return "not(REGEXP_LIKE(" + l.Label + ", '" + l.Value + "'))"
 	case "|=":
 		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
+	case "|~":
+		return "REGEXP_LIKE(" + l.Label + ", '" + l.Value + "')"
 	default:
 		return ""
 	}
