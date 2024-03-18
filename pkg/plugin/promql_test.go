@@ -1,6 +1,9 @@
 package plugin
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestParsePromQL(t *testing.T) {
 
@@ -8,7 +11,7 @@ func TestParsePromQL(t *testing.T) {
 
 func TestParseString(t *testing.T) {
 	for _, test := range []string{"\"test\"", " \"test\"", "\"test\" ", " \"test\" ", "\"test\"()"} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		str, good := parser.parseString()
 
 		if str != "test" || !good {
@@ -17,7 +20,7 @@ func TestParseString(t *testing.T) {
 	}
 
 	for _, test := range []string{"test", "", "\"", " \"test", "test\""} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		str, good := parser.parseString()
 
 		if good {
@@ -29,8 +32,9 @@ func TestParseString(t *testing.T) {
 func TestLogQlQuery(t *testing.T) {
 	test := "   {   labelA = \"foo\"  ,   labelB!=\"bar\",  labelC=~\"^.baz\", labelD!~\"^..*z\" }  |= \"error\" |~ \"tsdb-ops.*io:2003\" !~ \"**d\" "
 
-	parser := CreateParser(test)
-	query, _ := parser.parseLogQlQuery()
+	parser := CreateParser(test, "LogQL")
+	q, _ := parser.parse()
+	query := q.(LogQlQuery)
 
 	if len(query.labelFilters) != 4 {
 		t.Fatalf("Expected %d but got %d", 4, len(query.labelFilters))
@@ -41,6 +45,8 @@ func TestLogQlQuery(t *testing.T) {
 	labelFilters = append(labelFilters, LabelFilter{Label: "labelB", Value: "bar", Op: "!="})
 	labelFilters = append(labelFilters, LabelFilter{Label: "labelC", Value: "^.baz", Op: "=~"})
 	labelFilters = append(labelFilters, LabelFilter{Label: "labelD", Value: "^..*z", Op: "!~"})
+	pinotQuery := query.toSqlQuery("myTable", 1, 1, 1)
+	fmt.Println(pinotQuery)
 
 	for i := 0; i < len(query.labelFilters); i++ {
 		if query.labelFilters[i] != labelFilters[i] {
@@ -63,7 +69,7 @@ func TestLogQlQuery(t *testing.T) {
 
 func TestParseID(t *testing.T) {
 	for _, test := range []string{"test", " test", "test ", " test ", "test()"} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		id, good := parser.parseID()
 
 		if id != "test" || !good {
@@ -72,7 +78,7 @@ func TestParseID(t *testing.T) {
 	}
 
 	for _, test := range []string{"", "  ", "()", " (test ", "()test"} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		id, good := parser.parseID()
 
 		if good {
@@ -90,7 +96,7 @@ func TestParseLabelFilter(t *testing.T) {
 		"label= \"value\" ",
 		"label= \"value\"() ",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		filter, good := parser.parseLabelFilter()
 
 		if filter.Label != "label" || filter.Value != "value" || !good {
@@ -99,7 +105,7 @@ func TestParseLabelFilter(t *testing.T) {
 	}
 
 	for _, test := range []string{"", "  ", "()", " (test ", "()test", "label: ", ":\"value\"", "label:value"} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		id, good := parser.parseLabelFilter()
 
 		if good {
@@ -117,7 +123,7 @@ func TestParsePlainMetric(t *testing.T) {
 		"metric {} ",
 		"  metric() ",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		metric, good := parser.parseMetric()
 
 		if metric.Name != "metric" || !good {
@@ -131,7 +137,7 @@ func TestParsePlainMetric(t *testing.T) {
 		"\"metric\"",
 		"1143",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		_, good := parser.parseMetric()
 
 		if good {
@@ -149,7 +155,7 @@ func TestParseMetricWithLabels(t *testing.T) {
 		"metric { label=\"value\" }",
 		"metric { label=\"value\"} ",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		metric, good := parser.parseMetric()
 
 		if !(metric.Name == "metric" && len(metric.LabelFilters) == 1) || !good {
@@ -163,7 +169,7 @@ func TestParseMetricWithLabels(t *testing.T) {
 		"metric { label=\"value\" ,label2=\"zalue\"}",
 		"metric { label=\"value\" , label2=\"zalue\"}",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		metric, good := parser.parseMetric()
 
 		if !(metric.Name == "metric" && len(metric.LabelFilters) == 2) || !good {
@@ -178,7 +184,7 @@ func TestParseMetricWithLabels(t *testing.T) {
 		"metric { label:\" }",
 		"metric { label:\"value\" ",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		_, good := parser.parseMetric()
 
 		if good {
@@ -199,7 +205,7 @@ func TestParseAggregation(t *testing.T) {
 		"avg( metric )",
 		"avg( metric{} )",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		agg, good := parser.ParseAggregation()
 
 		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.Metric.LabelFilters) == 0) || !good {
@@ -212,7 +218,7 @@ func TestParseAggregation(t *testing.T) {
 		" avg(metric{label= \"test\"})",
 		"avg( metric {label= \"test\"})",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		agg, good := parser.ParseAggregation()
 
 		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.Metric.LabelFilters) == 1) || !good {
@@ -228,7 +234,7 @@ func TestParseAggregationWithBy(t *testing.T) {
 		" avg by(label) (metric)",
 		"avg by(label)( metric )",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		agg, good := parser.ParseAggregation()
 
 		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.By.Labels) == 1 && len(agg.Metric.LabelFilters) == 0) || !good {
@@ -242,7 +248,7 @@ func TestParseAggregationWithBy(t *testing.T) {
 		" avg by(label, label2) (metric)",
 		"avg by(label, label2)( metric )",
 	} {
-		parser := CreateParser(test)
+		parser := CreateParser(test, "PromQL")
 		agg, good := parser.ParseAggregation()
 
 		if !(agg.Op == "avg" && agg.Metric.Name == "metric" && len(agg.By.Labels) == 2 && len(agg.Metric.LabelFilters) == 0) || !good {
