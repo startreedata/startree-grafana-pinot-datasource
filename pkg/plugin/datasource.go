@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
-	log "github.com/sirupsen/logrus"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
 
@@ -32,22 +31,34 @@ func createPinotClient(settings backend.DataSourceInstanceSettings) (*pinot.Conn
 			return nil, err
 		}
 	}
-	var brokers []string
+
 	var ConnectionType = dat["type"].(string)
+	var authToken, authTokenPresent = settings.DecryptedSecureJSONData["authToken"]
+	var headers = map[string]string{}
+	if authTokenPresent {
+		headers["Authorization"] = authToken
+	}
+	var clientConfig *pinot.ClientConfig
 
 	switch ConnectionType {
 	case "Zookeeper":
 		// return pinot.NewFromZookeeper(dat["url"].(string)) // TODO this needs some more variables in the ui form
 	case "Controller":
-		return pinot.NewFromController(dat["url"].(string))
+		clientConfig = &pinot.ClientConfig{
+			ControllerConfig: &pinot.ControllerConfig{
+				ControllerAddress: dat["url"].(string),
+			},
+			ExtraHTTPHeader: headers,
+		}
 	case "Broker":
-		brokers = append(brokers, dat["url"].(string))
-		return pinot.NewFromBrokerList(brokers)
+		clientConfig = &pinot.ClientConfig{
+			BrokerList:      []string{dat["url"].(string)},
+			ExtraHTTPHeader: headers,
+		}
 	}
 
-	return nil, fmt.Errorf(
-		"please specify at least one of Zookeeper, Broker or Controller to connect",
-	)
+	backend.Logger.Info("Connecting to Pinot with config: %v", clientConfig)
+	return pinot.NewWithConfig(clientConfig)
 }
 
 // NewDatasource creates a new datasource instance.
@@ -96,6 +107,7 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 
 type queryModel struct {
 	QueryText    string  `json:"queryText"`
+	QueryType    string  `json:"queryType"`
 	TableName    string  `json:"tableName"`
 	Fill         bool    `json:"fill"`
 	FillInterval float64 `json:"fillInterval"`
@@ -115,15 +127,17 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
+	backend.Logger.Info("json unmarshal: %v", qm)
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
 	interval := query.Interval.Milliseconds()
-	parser := CreateParser(qm.QueryText)
+	parser := CreateParser(qm.QueryText, qm.QueryType)
 	table := qm.TableName
 	queryRepresentation, _ := parser.parse()
-	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
 
-	log.Info("Running query : %s", sqlQuery)
+	backend.Logger.Info(fmt.Sprintf("Parsed query : %v", queryRepresentation))
+	sqlQuery := queryRepresentation.toSqlQuery(table, interval, from, to)
+	backend.Logger.Info(fmt.Sprintf("Running query : %s", sqlQuery))
 	resp, err := d.client.ExecuteSQL(table, sqlQuery)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))

@@ -46,6 +46,66 @@ type QueryRepresentation interface {
 	extractResults(results *pinot.ResultTable) *data.Frame
 }
 
+type PinotNativeQuery struct {
+	Query string
+}
+
+func (p PinotNativeQuery) toSqlQuery(table string, interval, from, to int64) string {
+	return p.Query
+}
+
+func (p PinotNativeQuery) extractResults(results *pinot.ResultTable) *data.Frame {
+	frame := data.NewFrame("response")
+	for colId := 0; colId < results.GetColumnCount(); colId++ {
+		colName := results.DataSchema.ColumnNames[colId]
+		colDataType := results.DataSchema.ColumnDataTypes[colId]
+
+		if colName == "time" {
+			// TODO: hack
+			colDataType = "TIMESTAMP"
+		}
+
+		var values interface{}
+		switch colDataType {
+		case "INT":
+			values = []int32{}
+		case "FLOAT":
+			values = []float32{}
+		case "DOUBLE":
+			values = []float64{}
+		case "LONG":
+			values = []int64{}
+		case "STRING":
+			values = []string{}
+		case "TIMESTAMP":
+			values = []time.Time{}
+		}
+
+		for rowId := 0; rowId < results.GetRowCount(); rowId++ {
+			switch colDataType {
+			case "INT":
+				values = append(values.([]int32), results.GetInt(rowId, colId))
+			case "FLOAT":
+				values = append(values.([]float32), results.GetFloat(rowId, colId))
+			case "DOUBLE":
+				values = append(values.([]float64), results.GetDouble(rowId, colId))
+			case "LONG":
+				values = append(values.([]int64), results.GetLong(rowId, colId))
+			case "STRING":
+				values = append(values.([]string), results.GetString(rowId, colId))
+			case "TIMESTAMP":
+				ts := int64(results.GetDouble(rowId, colId))
+				values = append(values.([]time.Time), time.UnixMilli(ts))
+			}
+		}
+
+		frame.Fields = append(frame.Fields, data.NewField(colName, nil, values))
+	}
+
+	// add the frames to the response.
+	return frame
+}
+
 type Metric struct {
 	Name         string
 	LabelFilters []LabelFilter
@@ -218,14 +278,18 @@ type By struct {
 }
 
 type Parser struct {
-	idx    int
-	stream []rune
+	idx          int
+	stream       []rune
+	originalText string
+	queryType    string
 }
 
-func CreateParser(text string) Parser {
+func CreateParser(text string, queryTtpe string) Parser {
 	return Parser{
-		idx:    0,
-		stream: []rune(text),
+		idx:          0,
+		stream:       []rune(text),
+		originalText: text,
+		queryType:    queryTtpe,
 	}
 }
 
@@ -524,12 +588,21 @@ func (p *Parser) parseLogQlOp() (string, bool) {
 }
 
 func (p *Parser) parse() (QueryRepresentation, bool) {
-	if queryRepresentation, good := p.parseLogQlQuery(); good {
-		return queryRepresentation, true
-	} else if queryRepresentation, good := p.ParseAggregation(); good {
-		return queryRepresentation, true
-	} else if queryRepresentation, good := p.parseMetric(); good {
-		return queryRepresentation, true
+	switch p.queryType {
+	case "LoqQL":
+		if queryRepresentation, good := p.parseLogQlQuery(); good {
+			return queryRepresentation, true
+		}
+	case "PromQL":
+		if queryRepresentation, good := p.ParseAggregation(); good {
+			return queryRepresentation, true
+		} else if queryRepresentation, good := p.parseMetric(); good {
+			return queryRepresentation, true
+		}
+	case "PinotQL":
+		return PinotNativeQuery{Query: p.originalText}, true
+	default:
+		return PinotNativeQuery{Query: p.originalText}, true
 	}
 
 	return nil, false
