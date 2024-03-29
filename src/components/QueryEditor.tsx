@@ -2,7 +2,8 @@ import React, { ChangeEvent } from 'react';
 import { InlineField, Input, Select, InlineFieldRow } from '@grafana/ui';
 import { QueryEditorProps, SelectableValue } from '@grafana/data';
 import { DataSource } from '../datasource';
-import { MyDataSourceOptions, MyQuery } from '../types';
+import { PinotConnectionConfig } from '../types/config';
+import {  PinotQuery } from '../types/sql';
 
 const queryTypeOptions = [
   { label: 'PinotQL', value: 0 },
@@ -10,23 +11,22 @@ const queryTypeOptions = [
   { label: 'LogQL', value: 2},
 ];
 
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+type Props = QueryEditorProps<DataSource, PinotQuery, PinotConnectionConfig>;
 
 export function QueryEditor({ query, onChange, onRunQuery }: Props) {
-  const onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...query, queryText: event.target.value });
+  const onRawSqlChange = (event: ChangeEvent<HTMLInputElement>) => {
+    onChange({ ...query, rawSql: event.target.value });
   };
 
   const onTableNameChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange({ ...query, tableName: event.target.value });
   };
 
-
   const onQueryTypeChange = (value: SelectableValue<number>) => {
     onChange({ ...query, queryType: value.label });
   };
 
-  const { queryText, tableName, queryType } = query;
+  const { rawSql, tableName, queryType } = query;
 
   return (
     <div className="gf-form">
@@ -34,14 +34,14 @@ export function QueryEditor({ query, onChange, onRunQuery }: Props) {
         <InlineField label="Table" labelWidth={16} tooltip="Supply table name">
           <Input onChange={onTableNameChange} value={tableName || ''} width={24}/>
         </InlineField>
-        <InlineField label="Query Type" labelWidth={16} tooltip="Select query type">
+        <InlineField label="Query Type" labelWidth={16} tooltip="Query Type">
         <Select options={queryTypeOptions} value={queryTypeOptions.find(option => option.label === queryType) || queryTypeOptions[0]} onChange={onQueryTypeChange}/>
         </InlineField>
       </InlineFieldRow>
 
       <InlineFieldRow>
-      <InlineField label="Query Text" labelWidth={16} tooltip="Query">
-        <Input onChange={onQueryTextChange} value={queryText || ''} width={700} />
+      <InlineField label="Raw Query" labelWidth={16} tooltip="Raw Query SQL">
+        <Input onChange={onRawSqlChange} value={rawSql || ''} width={700} />
       </InlineField>
       </InlineFieldRow>
     </div>

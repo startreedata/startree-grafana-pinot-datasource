@@ -1,14 +1,15 @@
 import { DataSourceInstanceSettings, CoreApp } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
 
-import { MyQuery, MyDataSourceOptions, DEFAULT_QUERY } from './types';
+import { PinotConnectionConfig } from './types/config';
+import { PinotQuery, DEFAULT_QUERY } from './types/sql';
 
-export class DataSource extends DataSourceWithBackend<MyQuery, MyDataSourceOptions> {
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+export class DataSource extends DataSourceWithBackend<PinotQuery, PinotConnectionConfig> {
+  constructor(instanceSettings: DataSourceInstanceSettings<PinotConnectionConfig>) {
     super(instanceSettings);
   }
 
-  getDefaultQuery(_: CoreApp): Partial<MyQuery> {
+  getDefaultQuery(_: CoreApp): Partial<PinotQuery> {
     return DEFAULT_QUERY
   }
 }
