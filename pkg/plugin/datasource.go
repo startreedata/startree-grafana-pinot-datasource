@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
@@ -22,59 +21,58 @@ var (
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
-func createPinotClient(settings backend.DataSourceInstanceSettings) (*pinot.Connection, error) {
-	// TODO we also need ot handle the apiKey etc from the settings being passed in
-	// Eventualy also store the type of connection source (controllerBased, ZK based, broker based etc)
-	var dat map[string]interface{}
-	if settings.JSONData != nil {
-		if err := json.Unmarshal(settings.JSONData, &dat); err != nil {
-			return nil, err
-		}
-	}
+func createPinotClient(pinotConfigMap map[string]interface{}, pinotSecureConfigMap map[string]string) (*pinot.Connection, error) {
+	var controllerUrl = pinotConfigMap["controllerUrl"].(string)
+	var brokerUrl = pinotConfigMap["brokerUrl"].(string)
 
-	var ConnectionType = dat["type"].(string)
-	var authToken, authTokenPresent = settings.DecryptedSecureJSONData["authToken"]
+	var authToken, authTokenPresent = pinotSecureConfigMap["authToken"]
 	var headers = map[string]string{}
 	if authTokenPresent {
 		headers["Authorization"] = authToken
 	}
 	var clientConfig *pinot.ClientConfig
 
-	switch ConnectionType {
-	case "Zookeeper":
-		// return pinot.NewFromZookeeper(dat["url"].(string)) // TODO this needs some more variables in the ui form
-	case "Controller":
+	if brokerUrl != "" {
+		clientConfig = &pinot.ClientConfig{
+			BrokerList:      []string{brokerUrl},
+			ExtraHTTPHeader: headers,
+		}
+	} else if controllerUrl != "" {
 		clientConfig = &pinot.ClientConfig{
 			ControllerConfig: &pinot.ControllerConfig{
-				ControllerAddress: dat["url"].(string),
+				ControllerAddress: controllerUrl,
 			},
 			ExtraHTTPHeader: headers,
 		}
-	case "Broker":
-		clientConfig = &pinot.ClientConfig{
-			BrokerList:      []string{dat["url"].(string)},
-			ExtraHTTPHeader: headers,
-		}
+	} else {
+		return nil, fmt.Errorf("no valid Pinot connection configs found")
 	}
-
 	backend.Logger.Info("Connecting to Pinot with config: %v", clientConfig)
 	return pinot.NewWithConfig(clientConfig)
 }
 
 // NewDatasource creates a new datasource instance.
 func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	// Create Pinot Client, get brokers from the settings
-	client, err := createPinotClient(settings)
 
+	var pinotConfigMap map[string]interface{}
+	if settings.JSONData != nil {
+		if err := json.Unmarshal(settings.JSONData, &pinotConfigMap); err != nil {
+			return nil, err
+		}
+	}
+	// Create Pinot Client, get brokers from the settings
+	client, err := createPinotClient(pinotConfigMap, settings.DecryptedSecureJSONData)
 	return &Datasource{
-		client: *client,
+		client:        *client,
+		controllerUrl: pinotConfigMap["controllerUrl"].(string),
 	}, err
 }
 
 // Datasource is an example datasource which can respond to data queries, reports
 // its health and has streaming skills.
 type Datasource struct {
-	client pinot.Connection
+	client        pinot.Connection
+	controllerUrl string
 }
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
@@ -106,8 +104,8 @@ func (d *Datasource) QueryData(ctx context.Context, req *backend.QueryDataReques
 }
 
 type queryModel struct {
-	QueryText    string  `json:"queryText"`
-	QueryType    string  `json:"queryType"`
+	RawSql       string  `json:"rawSql"`
+	QueryType    string  `json:"editorType"`
 	TableName    string  `json:"tableName"`
 	Fill         bool    `json:"fill"`
 	FillInterval float64 `json:"fillInterval"`
@@ -116,23 +114,27 @@ type queryModel struct {
 	Format       string  `json:"format"`
 }
 
-func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
+func (d *Datasource) query(context context.Context, pCtx backend.PluginContext, query backend.DataQuery) backend.DataResponse {
 	var response backend.DataResponse
 
 	// Unmarshal the JSON into our queryModel.
-	var qm queryModel
+	var queryModel queryModel
 
-	err := json.Unmarshal(query.JSON, &qm)
+	err := json.Unmarshal(query.JSON, &queryModel)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
-	backend.Logger.Info("json unmarshal: %v", qm)
+	backend.Logger.Info("context = %v", context)
+	backend.Logger.Info("backend.PluginContext = %v", pCtx)
+	backend.Logger.Info("backend.DataQuery = %v", query)
+
+	backend.Logger.Info("json unmarshal: %v", queryModel)
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
 	interval := query.Interval.Milliseconds()
-	parser := CreateParser(qm.QueryText, qm.QueryType)
-	table := qm.TableName
+	parser := CreateParser(queryModel.RawSql, queryModel.QueryType)
+	table := queryModel.TableName
 	queryRepresentation, _ := parser.parse()
 
 	backend.Logger.Info(fmt.Sprintf("Parsed query : %v", queryRepresentation))
@@ -160,11 +162,11 @@ func (d *Datasource) query(_ context.Context, pCtx backend.PluginContext, query 
 // a datasource is working as expected.
 func (d *Datasource) CheckHealth(_ context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	var status = backend.HealthStatusOk
-	var message = "Data source is working"
-
-	if rand.Int()%2 == 0 {
+	var message = "Pinot data source is working"
+	_, err := d.client.ExecuteSQL("", "select 1")
+	if err != nil {
 		status = backend.HealthStatusError
-		message = "randomized error"
+		message = err.Error()
 	}
 
 	return &backend.CheckHealthResult{

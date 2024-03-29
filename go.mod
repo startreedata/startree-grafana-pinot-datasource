@@ -2,7 +2,10 @@ module github.com/startree/pinot
 
 go 1.19
 
-require github.com/grafana/grafana-plugin-sdk-go v0.171.0
+require (
+	github.com/grafana/grafana-plugin-sdk-go v0.171.0
+	github.com/startreedata/pinot-client-go v0.3.0
+)
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
@@ -57,7 +60,6 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/startreedata/pinot-client-go v0.0.0-20230530093945-eb2df726f06f // indirect
 	github.com/unknwon/bra v0.0.0-20200517080246-1e3013ecaff8 // indirect
 	github.com/unknwon/com v1.0.1 // indirect
 	github.com/unknwon/log v0.0.0-20150304194804-e617c87089d3 // indirect

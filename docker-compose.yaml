@@ -1,6 +1,17 @@
 version: '3.0'
 
 services:
+  pinot:
+    container_name: 'pinot'
+    image: apachepinot/pinot:latest
+    ports:
+      - 9000:9000/tcp
+      - 8000:8000/tcp
+      - 2123:2123/tcp
+    command:
+      - QuickStart
+      - -type
+      - batch
   grafana:
     container_name: 'startree-pinot-datasource'
     build:
