@@ -1,0 +1,42 @@
+name: Startree Grafana Pinot Data Source
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  golangci:
+    runs-on: ubuntu-latest
+    name: Linter
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+          cache: false
+
+      - name: Linter
+        run: npm install && npm run lint
+
+  npm-build:
+    runs-on: ubuntu-latest
+    name: NPM Build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+
+      - name: Build
+        run: npm install && npm run build
