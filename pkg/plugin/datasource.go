@@ -125,10 +125,6 @@ func (d *Datasource) query(context context.Context, pCtx backend.PluginContext, 
 		return backend.ErrDataResponse(backend.StatusBadRequest, fmt.Sprintf("json unmarshal: %v", err.Error()))
 	}
 
-	backend.Logger.Info("context = %v", context)
-	backend.Logger.Info("backend.PluginContext = %v", pCtx)
-	backend.Logger.Info("backend.DataQuery = %v", query)
-
 	backend.Logger.Info("json unmarshal: %v", queryModel)
 	from := query.TimeRange.From.UnixMilli()
 	to := query.TimeRange.To.UnixMilli()
