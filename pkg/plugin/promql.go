@@ -6,6 +6,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	pinot "github.com/startreedata/pinot-client-go/pinot"
 )
@@ -53,7 +54,14 @@ type PinotNativeQuery struct {
 }
 
 func (p PinotNativeQuery) toSqlQuery(table string, interval, from, to int64) string {
-	return p.Query
+	query := strings.ReplaceAll(p.Query, "$__table", table)
+	query = strings.ReplaceAll(query, "$__interval", fmt.Sprintf("%d", interval))
+	query = strings.ReplaceAll(query, "$__from", fmt.Sprintf("%d", from))
+	query = strings.ReplaceAll(query, "$__to", fmt.Sprintf("%d", to))
+	if query != p.Query {
+		backend.Logger.Info(fmt.Sprintf("Replace query template from %s to %s", p.Query, query))
+	}
+	return query
 }
 
 func (p PinotNativeQuery) extractResults(results *pinot.ResultTable) *data.Frame {
