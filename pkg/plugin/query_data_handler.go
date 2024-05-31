@@ -1,0 +1,45 @@
+package plugin
+
+import (
+	"context"
+	"fmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+)
+
+func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
+	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+		response := backend.NewQueryDataResponse()
+		for _, query := range req.Queries {
+			backend.Logger.Info(fmt.Sprintf("received query: %s", string(query.JSON)))
+			response.Responses[query.RefID] = fetchData(client, ctx, query)
+		}
+		return response, nil
+	})
+}
+
+func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
+	queryCtx, err := BuildQueryContext(client, ctx, query)
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+	}
+	Logger.Info(fmt.Sprintf("loaded query context %#v", queryCtx))
+
+	driver := SqlDriver{}
+	sql, err := driver.RenderPinotSql(queryCtx)
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+
+	resp, err := client.ExecuteSQL(ctx, queryCtx.TableName, sql)
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+
+	results, err := driver.ExtractResults(resp.ResultTable)
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+
+	return backend.DataResponse{Frames: data.Frames{results}}
+}
