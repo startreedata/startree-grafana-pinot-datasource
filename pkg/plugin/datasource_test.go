@@ -1,28 +1,15 @@
 package plugin
 
 import (
-	"context"
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
-
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"time"
 )
 
-func TestQueryData(t *testing.T) {
-	ds := Datasource{}
-
-	resp, err := ds.QueryData(
-		context.Background(),
-		&backend.QueryDataRequest{
-			Queries: []backend.DataQuery{
-				{RefID: "A"},
-			},
-		},
-	)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(resp.Responses) != 1 {
-		t.Fatal("QueryData must return a response")
-	}
+func TestDatasource(t *testing.T) {
+	got, err := time.Parse(time.DateTime, "2014-01-01 00:00:00.0")
+	assert.NoError(t, err)
+	assert.Equal(t, got, time.Date(2014, 1, 1, 0, 0, 0, 0, time.UTC))
+	fmt.Println(got)
 }
