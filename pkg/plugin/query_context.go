@@ -46,7 +46,6 @@ func BuildQueryContext(client *PinotClient, ctx context.Context, query backend.D
 		Logger.Error("failed to fetch table schema", "error", err)
 		return QueryContext{}, fmt.Errorf("failed to fetch table schema: %w", err)
 	}
-	Logger.Info("extracted table schema", tableSchema)
 
 	return QueryContext{
 		TableName:    queryModel.TableName,
