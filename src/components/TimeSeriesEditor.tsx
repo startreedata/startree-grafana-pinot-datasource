@@ -53,12 +53,10 @@ function usePinotTables(props: TimeSeriesProps): string[] {
 function useTableSchema(props: TimeSeriesProps, tableName?: string) {
   const [tableSchema, setTableSchema] = useState<TableSchema | null>(null)
   useEffect(() => {
-    if (tableName == null || tableName == "") {
-      return
+    if (tableName) {
+      props.datasource.getResource<GetTableSchemaResponse>('tables/' + tableName + '/schema')
+      .then(resp => setTableSchema(resp.schema))
     }
-
-    props.datasource.getResource<GetTableSchemaResponse>('tables/' + tableName + '/schema')
-    .then(resp => setTableSchema(resp.schema))
   }, [tableName]);
   return tableSchema
 }
@@ -79,7 +77,7 @@ export function TimeSeriesQueryEditor(props: TimeSeriesProps) {
   };
 
   const onTableNameChange = (value: SelectableValue<string>) => {
-    onChange({...query, tableName: value.value});
+    onChange({...query, tableName: value.value, timeColumn: undefined, metricColumn: undefined});
   };
 
   const tables = usePinotTables(props)
@@ -95,7 +93,7 @@ export function TimeSeriesQueryEditor(props: TimeSeriesProps) {
   return (
       <div className="gf-form">
         <InlineFieldRow>
-          <InlineField label="Table" labelWidth={16} tooltip="Supply table name">
+          <InlineField label="Table" tooltip="Table name">
             <Select
                 options={tables.map(name => ({label: name, value: name}))}
                 value={query.tableName}
