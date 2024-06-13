@@ -7,14 +7,17 @@ import (
 	"testing"
 )
 
-func TestTimeSeriesDriver(t *testing.T) {
-	args := templArgs{
-		TableName:        "my_table",
-		DimensionColumns: []string{"dim1", "dim2"},
-		TimeColumn:       "ts",
-		MetricColumn:     "met",
-		TimeFilterExp:    "where ts >= 10 and ts <= 20",
-		TimeGroupExp:     `DATETIMECONVERT(ts, '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,
+func TestTimeSeriesAggTemplate(t *testing.T) {
+	args := timeSeriesTemplateArgs{
+		TableName:           "my_table",
+		DimensionColumns:    []string{"dim1", "dim2"},
+		TimeColumn:          "ts",
+		MetricColumn:        "met",
+		AggregationFunction: "sum",
+		TimeFilterExpr:      "where ts >= 10 and ts <= 20",
+		TimeGroupExpr:       `DATETIMECONVERT(ts, '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,
+		TimeColumnAlias:     TimeSeriesTimeColumnAlias,
+		MetricColumnAlias:   TimeSeriesMetricColumnAlias,
 	}
 	var buf bytes.Buffer
 	err := timeSeriesSqlTemplate.Execute(&buf, args)

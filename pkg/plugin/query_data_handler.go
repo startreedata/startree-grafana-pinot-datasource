@@ -25,8 +25,11 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 	}
 	Logger.Info(fmt.Sprintf("loaded query context %#v", queryCtx))
 
-	driver := SqlDriver{}
-	sql, err := driver.RenderPinotSql(queryCtx)
+	driver, err := NewTimeSeriesDriver(queryCtx)
+	if err != nil {
+		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+	}
+	sql, err := driver.RenderPinotSql()
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}

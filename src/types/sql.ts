@@ -1,6 +1,5 @@
-
-import { DataQuery } from '@grafana/schema';
-import { BuilderMode, QueryType, QueryBuilderOptions } from './queryBuilder';
+import {DataQuery} from '@grafana/schema';
+import {BuilderMode, QueryBuilderOptions, QueryType} from './queryBuilder';
 
 /**
  * EditorType determines the query editor type.
@@ -16,6 +15,12 @@ export interface PinotQueryBase extends DataQuery {
   rawSql: string;
   tableName?: string;
   queryType?: string;
+
+
+  timeColumn?: string;
+  metricColumn?: string;
+  dimensionColumns?: string[];
+  aggregationFunction?: string;
 }
 
 export interface PinotSqlQuery extends PinotQueryBase {
@@ -64,12 +69,12 @@ export const defaultCHSqlQuery: Omit<PinotSqlQuery, 'refId'> = {
 
 
 export const DEFAULT_QUERY: Partial<PinotQuery> = {
-    pluginVersion: '0.0.0',
-    editorType: EditorType.SQL,
-    rawSql: '',
-    tableName: '',
-    queryType: 'PinotSQL',
-    meta: {
-      timezone: 'UTC',
-    },  
+  pluginVersion: '0.0.0',
+  editorType: EditorType.SQL,
+  rawSql: '',
+  tableName: '',
+  queryType: 'PinotSQL',
+  meta: {
+    timezone: 'UTC',
+  },
 };

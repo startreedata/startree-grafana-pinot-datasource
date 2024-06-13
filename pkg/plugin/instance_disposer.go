@@ -9,7 +9,6 @@ import (
 // be disposed and a new one will be created using NewSampleDatasource factory function.
 func NewInstanceDisposer() instancemgmt.InstanceDisposer {
 	return disposerFunc(func() {
-		ResetTimeExpressionBuilderCache()
 	})
 }
 

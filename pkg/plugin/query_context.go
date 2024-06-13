@@ -16,21 +16,23 @@ type QueryContext struct {
 	TimeRange         backend.TimeRange
 	SqlContext        SqlContext
 	TimeSeriesContext TimeSeriesContext
+	MaxDataPoints     int64
 }
 
 func BuildQueryContext(client *PinotClient, ctx context.Context, query backend.DataQuery) (QueryContext, error) {
 	var queryModel struct {
-		QueryType    string  `json:"editorType"`
-		TableName    string  `json:"tableName"`
-		Fill         bool    `json:"fill"`
-		FillInterval float64 `json:"fillInterval"`
-		FillMode     string  `json:"fillMode"`
-		FillValue    float64 `json:"fillValue"`
-		Format       string  `json:"format"`
-		RawSql       string  `json:"rawSql"`
-
-		SqlContext        `json:"sqlContext"`
-		TimeSeriesContext `json:"timeSeriesContext"`
+		QueryType           string   `json:"editorType"`
+		TableName           string   `json:"tableName"`
+		Fill                bool     `json:"fill"`
+		FillInterval        float64  `json:"fillInterval"`
+		FillMode            string   `json:"fillMode"`
+		FillValue           float64  `json:"fillValue"`
+		Format              string   `json:"format"`
+		RawSql              string   `json:"rawSql"`
+		TimeColumn          string   `json:"timeColumn"`
+		MetricColumn        string   `json:"metricColumn"`
+		DimensionColumns    []string `json:"dimensionColumns"`
+		AggregationFunction string   `json:"aggregationFunction"`
 	}
 
 	err := json.Unmarshal(query.JSON, &queryModel)
@@ -47,11 +49,18 @@ func BuildQueryContext(client *PinotClient, ctx context.Context, query backend.D
 	Logger.Info("extracted table schema", tableSchema)
 
 	return QueryContext{
-		TableName:         queryModel.TableName,
-		TableSchema:       tableSchema,
-		IntervalSize:      query.Interval,
-		TimeRange:         query.TimeRange,
-		SqlContext:        SqlContext{RawSql: queryModel.RawSql},
-		TimeSeriesContext: queryModel.TimeSeriesContext,
+		TableName:    queryModel.TableName,
+		TableSchema:  tableSchema,
+		IntervalSize: query.Interval,
+		TimeRange:    query.TimeRange,
+		SqlContext:   SqlContext{RawSql: queryModel.RawSql},
+		TimeSeriesContext: TimeSeriesContext{
+			TableName:           queryModel.TableName,
+			TimeColumn:          queryModel.TimeColumn,
+			MetricColumn:        queryModel.MetricColumn,
+			DimensionColumns:    queryModel.DimensionColumns,
+			AggregationFunction: queryModel.AggregationFunction,
+		},
+		MaxDataPoints: query.MaxDataPoints,
 	}, nil
 }
