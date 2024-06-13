@@ -13,9 +13,9 @@ func TestExpandMacros_TableName(t *testing.T) {
 		SqlContext: SqlContext{RawSql: "SELECT * FROM __tableName"},
 	}
 
-	res, err := ExpandMacros(queryContext)
+	res, err := ExpandMacros(queryContext, "SELECT * FROM __tableName")
 	assert.NoError(t, err)
-	assert.Equal(t, "SELECT * FROM  my_table", res.SqlContext.RawSql)
+	assert.Equal(t, "SELECT * FROM  my_table", res)
 }
 
 func TestExpandMacros_TimeFilterMacro(t *testing.T) {
@@ -46,7 +46,7 @@ func TestExpandMacros_TimeFilterMacro(t *testing.T) {
 		SqlContext: SqlContext{RawSql: `SELECT * FROM my_table WHERE __timeFilter("ts")`},
 	}
 
-	res, err := ExpandMacros(queryContext)
+	res, err := ExpandMacros(queryContext, `SELECT * FROM my_table WHERE __timeFilter("ts")`)
 	assert.NoError(t, err)
-	assert.Equal(t, `SELECT * FROM my_table WHERE  "ts" >= 1558044072642 AND "ts" <= 1715896872642`, res.SqlContext.RawSql)
+	assert.Equal(t, `SELECT * FROM my_table WHERE  "ts" >= 1558044072642 AND "ts" <= 1715896872642`, res)
 }

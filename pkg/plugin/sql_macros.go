@@ -30,31 +30,30 @@ type sqlMacro struct {
 	render func(queryCtx QueryContext, args []string) (string, error)
 }
 
-func ExpandMacros(queryCtx QueryContext) (QueryContext, error) {
+func ExpandMacros(queryCtx QueryContext, input string) (string, error) {
+	var err error
 	for _, macro := range macros {
-		rendered, err := expandSingleMacro(queryCtx, macro)
+		input, err = expandSingleMacro(queryCtx, input, macro)
 		if err != nil {
-			return QueryContext{}, err
+			return "", err
 		}
-		queryCtx.SqlContext.RawSql = rendered
 	}
-	queryCtx.SqlContext.RawSql = strings.TrimSpace(queryCtx.SqlContext.RawSql)
-	return queryCtx, nil
+	input = strings.TrimSpace(queryCtx.SqlContext.RawSql)
+	return input, nil
 }
 
-func expandSingleMacro(queryCtx QueryContext, macro sqlMacro) (string, error) {
+func expandSingleMacro(queryCtx QueryContext, input string, macro sqlMacro) (string, error) {
 	// TODO: Compile these at startup?
 	re := regexp.MustCompile(macro.name + `\s*(\([^)]*\))?`)
-	rendered := queryCtx.SqlContext.RawSql
-	for _, matches := range re.FindAllStringSubmatch(queryCtx.SqlContext.RawSql, -1) {
+	for _, matches := range re.FindAllStringSubmatch(input, -1) {
 		invocation, args := parseArgs(matches)
 		result, err := macro.render(queryCtx, args)
 		if err != nil {
 			return "", fmt.Errorf("failed to expand macro `%s`: %w", macro.name, err)
 		}
-		rendered = strings.Replace(rendered, invocation, " "+result+" ", 1)
+		input = strings.Replace(input, invocation, " "+result+" ", 1)
 	}
-	return rendered, nil
+	return input, nil
 }
 
 func parseArgs(matches []string) (string, []string) {
