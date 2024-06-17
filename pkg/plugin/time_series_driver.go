@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"strings"
 	"text/template"
 )
 
@@ -13,8 +14,9 @@ type TimeSeriesContext struct {
 	TableName           string
 	TimeColumn          string
 	MetricColumn        string
-	DimensionColumns    []string
+	DimensionColumns    []DimensionData
 	AggregationFunction string
+	IncludeOverall      bool
 }
 
 const TimeSeriesTimeColumnAlias = "ts"
@@ -22,18 +24,104 @@ const TimeSeriesMetricColumnAlias = "met"
 
 var timeSeriesSqlTemplate = template.Must(template.New("pinot-time-series-template").Parse(`
 SELECT
-	{{ range .DimensionColumns }} {{ . }}, {{ end }}
-	{{.TimeGroupExpr}} AS {{.TimeColumnAlias}}, 
+	{{ range .PivotColumnExprs }} {{ . }}, {{ end }}
+	{{.TimeGroupExpr}} AS {{.TimeColumnAlias}},
 	{{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAlias}}
 FROM
     "{{.TableName}}"
 WHERE
     {{.TimeFilterExpr}}
 GROUP BY
-	{{ range .DimensionColumns }} {{ . }}, {{ end }}
     {{.TimeGroupExpr}}
 LIMIT {{.Limit}}
 `))
+
+type DimensionData struct {
+	Name       string
+	ValueExprs []string // This is the value as a sql expression. Underlying strings should be quoted.
+}
+
+type PivotColumn struct {
+	Alias    string
+	WhenExpr string
+}
+
+func constructPivotColumnExprs(metricColumn string, aggregationFunction string, dimensions []DimensionData) []string {
+	pivotColumns := constructPivotColumns(metricColumn, dimensions)
+	pivotColumnExprs := make([]string, len(pivotColumns))
+	for i := range pivotColumns {
+		pivotColumnExprs[i] = pivotColumnExpr(metricColumn, aggregationFunction, pivotColumns[i])
+	}
+	return pivotColumnExprs
+}
+
+func pivotColumnExpr(metricColumn string, aggregationFunction string, pivotColumn PivotColumn) string {
+	switch aggregationFunction {
+	case "sum":
+		return fmt.Sprintf(`SUM(CASE %s THEN "%s" ELSE 0) as %s`, pivotColumn.WhenExpr, metricColumn, pivotColumn.Alias)
+	default: // Count
+		return fmt.Sprintf(`SUM(CASE %s THEN 1 ELSE 0) as %s`, pivotColumn.WhenExpr, pivotColumn.Alias)
+	}
+}
+
+func constructPivotColumns(metricColumn string, dimensions []DimensionData) []PivotColumn {
+	dimensionColumns := make([]string, len(dimensions))
+	for i := range dimensions {
+		dimensionColumns[i] = dimensions[i].Name
+	}
+
+	distinctValues := make(map[string][]string, len(dimensions))
+	for _, d := range dimensions {
+		distinctValues[d.Name] = d.ValueExprs
+	}
+
+	valueCombinations := cartesianProduct(distinctValues, dimensionColumns)
+	pivotColumns := make([]PivotColumn, 0, len(valueCombinations))
+	for _, values := range valueCombinations {
+		pivotColumns = append(pivotColumns, PivotColumn{
+			Alias:    getPivotColumnAlias(metricColumn, dimensionColumns, values),
+			WhenExpr: getPivotColumnWhenExpr(dimensionColumns, values),
+		})
+	}
+	return pivotColumns
+}
+
+func getPivotColumnAlias(metricColumn string, dimensions []string, values []string) string {
+	names := make([]string, len(dimensions)+1)
+	names[0] = fmt.Sprintf("__name__=%s", metricColumn)
+	for i := range dimensions {
+		names[i+1] = fmt.Sprintf("%s=%s", dimensions[i], strings.Trim(values[i], `'`))
+	}
+	return fmt.Sprintf("{%s}", strings.Join(names, ","))
+}
+
+func getPivotColumnWhenExpr(dimensions []string, values []string) string {
+	conditions := make([]string, len(dimensions))
+	for i := range dimensions {
+		conditions[i] = fmt.Sprintf("%s = %s", dimensions[i], values[i])
+	}
+	return strings.Join(conditions, " AND ")
+}
+
+// Function to generate all combinations of distinct values
+// TODO: Can I optimize this at all? Does it matter?
+func cartesianProduct(distinctValues map[string][]string, dimensionColumns []string) [][]string {
+	var result [][]string
+
+	if len(dimensionColumns) == 0 {
+		return [][]string{{}}
+	}
+
+	firstDim := dimensionColumns[0]
+	restDims := dimensionColumns[1:]
+
+	for _, val := range distinctValues[firstDim] {
+		for _, combination := range cartesianProduct(distinctValues, restDims) {
+			result = append(result, append([]string{val}, combination...))
+		}
+	}
+	return result
+}
 
 type timeSeriesTemplateArgs struct {
 	TableName           string
@@ -49,8 +137,9 @@ type timeSeriesTemplateArgs struct {
 }
 
 type TimeSeriesDriver struct {
-	queryCtx   QueryContext
-	timeFormat string
+	queryCtx    QueryContext
+	pinotClient PinotClient
+	timeFormat  string
 }
 
 var AggregationFunctions = []string{"sum", "count", "avg", "max"}
@@ -96,7 +185,6 @@ func templArgsFor(queryCtx QueryContext, exprBuilder TimeExpressionBuilder) time
 		TableName:           queryCtx.TimeSeriesContext.TableName,
 		TimeColumn:          queryCtx.TimeSeriesContext.TimeColumn,
 		MetricColumn:        queryCtx.TimeSeriesContext.MetricColumn,
-		DimensionColumns:    queryCtx.TimeSeriesContext.DimensionColumns,
 		TimeFilterExpr:      exprBuilder.BuildTimeFilterExpr(queryCtx.TimeRange),
 		TimeGroupExpr:       exprBuilder.BuildTimeGroupExpr(queryCtx.IntervalSize),
 		AggregationFunction: queryCtx.TimeSeriesContext.AggregationFunction,
