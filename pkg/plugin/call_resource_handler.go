@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
@@ -14,6 +15,7 @@ func NewCallResourceHandler(client *PinotClient) backend.CallResourceHandler {
 	router := mux.NewRouter()
 	router.HandleFunc("/tables/{tableName}/schema", newTableSchemaHandler(client))
 	router.HandleFunc("/tables", newTablesHandler(client))
+	router.HandleFunc("/tables/{tableName}/{dimensionColumn}/distinctValues", newDimensionValuesHandler(client))
 	return httpadapter.New(router)
 }
 
@@ -23,6 +25,10 @@ type GetTablesResponse struct {
 
 type GetTableSchemaResponse struct {
 	Schema TableSchema `json:"schema"`
+}
+
+type GetTableDimensionDistinctValuesResponse struct {
+	Values []string `json:"values"`
 }
 
 func newTablesHandler(client *PinotClient) http.HandlerFunc {
@@ -55,6 +61,26 @@ func newTableSchemaHandler(client *PinotClient) http.HandlerFunc {
 		writeJsonData(w, GetTableSchemaResponse{
 			Schema: schema,
 		})
+	}
+}
+
+func newDimensionValuesHandler(client *PinotClient) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		tableName := vars["tableName"]
+		dimensionColumn := vars["dimensionColumn"]
+
+		query := fmt.Sprintf(`SELECT DISTINCT "%s" FROM "%s"`, dimensionColumn, tableName)
+		resp, err := client.ExecuteSQL(r.Context(), tableName, query)
+
+		if err != nil {
+			Logger.Error(err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		distinctValues := ExtractColumnExpr(resp.ResultTable, 0)
+		writeJsonData(w, GetTableDimensionDistinctValuesResponse{distinctValues})
 	}
 }
 

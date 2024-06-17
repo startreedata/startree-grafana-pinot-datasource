@@ -32,6 +32,32 @@ func ExtractColumnToField(results *pinot.ResultTable, colIdx int) *data.Field {
 	return data.NewField(colName, nil, ExtractColumn(results, colIdx))
 }
 
+// ExtractColumnExpr extracts the column as a slice of sql expressions representing the column value.
+// Strings will be single-quoted. Numbers are unquoted.
+func ExtractColumnExpr(results *pinot.ResultTable, colIdx int) []string {
+	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
+
+	exprs := make([]string, results.GetRowCount())
+	switch colDataType {
+	case "INT", "LONG":
+		values := ExtractTypedColumn[int64](results, colIdx, results.GetLong)
+		for i := range values {
+			exprs[i] = fmt.Sprintf("%d", values[i])
+		}
+	case "FLOAT", "DOUBLE":
+		values := ExtractTypedColumn[float64](results, colIdx, results.GetDouble)
+		for i := range values {
+			exprs[i] = fmt.Sprintf("%v", values[i])
+		}
+	case "STRING":
+		values := ExtractTypedColumn[string](results, colIdx, results.GetString)
+		for i := range values {
+			exprs[i] = fmt.Sprintf("'%s'", values[i])
+		}
+	}
+	return exprs
+}
+
 // ExtractColumn Extracts the column as a single array suitable for Grafana's data.Field.
 func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]

@@ -21,18 +21,18 @@ type QueryContext struct {
 
 func BuildQueryContext(client *PinotClient, ctx context.Context, query backend.DataQuery) (QueryContext, error) {
 	var queryModel struct {
-		QueryType           string   `json:"editorType"`
-		TableName           string   `json:"tableName"`
-		Fill                bool     `json:"fill"`
-		FillInterval        float64  `json:"fillInterval"`
-		FillMode            string   `json:"fillMode"`
-		FillValue           float64  `json:"fillValue"`
-		Format              string   `json:"format"`
-		RawSql              string   `json:"rawSql"`
-		TimeColumn          string   `json:"timeColumn"`
-		MetricColumn        string   `json:"metricColumn"`
-		DimensionColumns    []string `json:"dimensionColumns"`
-		AggregationFunction string   `json:"aggregationFunction"`
+		QueryType           string          `json:"editorType"`
+		TableName           string          `json:"tableName"`
+		Fill                bool            `json:"fill"`
+		FillInterval        float64         `json:"fillInterval"`
+		FillMode            string          `json:"fillMode"`
+		FillValue           float64         `json:"fillValue"`
+		Format              string          `json:"format"`
+		RawSql              string          `json:"rawSql"`
+		TimeColumn          string          `json:"timeColumn"`
+		MetricColumn        string          `json:"metricColumn"`
+		DimensionColumns    []DimensionData `json:"dimensionColumns"`
+		AggregationFunction string          `json:"aggregationFunction"`
 	}
 
 	err := json.Unmarshal(query.JSON, &queryModel)
@@ -47,6 +47,7 @@ func BuildQueryContext(client *PinotClient, ctx context.Context, query backend.D
 		return QueryContext{}, fmt.Errorf("failed to fetch table schema: %w", err)
 	}
 
+	// TODO: Flatten this data structure.
 	return QueryContext{
 		TableName:    queryModel.TableName,
 		TableSchema:  tableSchema,
