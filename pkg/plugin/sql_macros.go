@@ -4,56 +4,54 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
-var macros = []sqlMacro{
-	{
-		name:   "__tableName",
-		render: renderTableNameMacro,
-	},
-	{
-		name:   "__timeFilter",
-		render: renderTimeFilterMacro,
-	},
-	{
-		name:   "__timeGroup",
-		render: renderTimeGroupMacro,
-	},
-	{
-		name:   "__timeColumn",
-		render: nil,
-	},
+type MacroEngine struct {
+	TableName string
+	TableSchema
+	TimeRange
+	IntervalSize time.Duration
 }
 
-type sqlMacro struct {
+type Macro struct {
 	name   string
-	render func(queryCtx QueryContext, args []string) (string, error)
+	re     *regexp.Regexp
+	render func(args []string) (string, error)
 }
 
-func ExpandMacros(queryCtx QueryContext, input string) (string, error) {
+var tableNameRegex = regexp.MustCompile(`__tableName\s*(\([^)]*\))?`)
+var timeFilterRegex = regexp.MustCompile(`__timeFilter\s*(\([^)]*\))?`)
+var timeGroupRegex = regexp.MustCompile(`__timeGroup\s*(\([^)]*\))?`)
+
+func (x MacroEngine) ExpandMacros(query string) (string, error) {
+	macros := []Macro{
+		{"__tableName", tableNameRegex, x.renderTableNameMacro},
+		{"__timeFilter", timeFilterRegex, x.renderTimeFilterMacro},
+		{"__timeGroup", timeGroupRegex, x.renderTimeGroupMacro},
+	}
+
 	var err error
 	for _, macro := range macros {
-		input, err = expandSingleMacro(queryCtx, input, macro)
+		query, err = expandSingleMacro(query, macro)
 		if err != nil {
 			return "", err
 		}
 	}
-	input = strings.TrimSpace(queryCtx.SqlContext.RawSql)
-	return input, nil
+	return strings.TrimSpace(query), nil
 }
 
-func expandSingleMacro(queryCtx QueryContext, input string, macro sqlMacro) (string, error) {
+func expandSingleMacro(query string, macro Macro) (string, error) {
 	// TODO: Compile these at startup?
-	re := regexp.MustCompile(macro.name + `\s*(\([^)]*\))?`)
-	for _, matches := range re.FindAllStringSubmatch(input, -1) {
+	for _, matches := range macro.re.FindAllStringSubmatch(query, -1) {
 		invocation, args := parseArgs(matches)
-		result, err := macro.render(queryCtx, args)
+		result, err := macro.render(args)
 		if err != nil {
 			return "", fmt.Errorf("failed to expand macro `%s`: %w", macro.name, err)
 		}
-		input = strings.Replace(input, invocation, " "+result+" ", 1)
+		query = strings.Replace(query, invocation, " "+result+" ", 1)
 	}
-	return input, nil
+	return query, nil
 }
 
 func parseArgs(matches []string) (string, []string) {
@@ -74,28 +72,28 @@ func parseArgs(matches []string) (string, []string) {
 	return matches[0], args
 }
 
-func renderTableNameMacro(queryCtx QueryContext, _ []string) (string, error) {
-	return queryCtx.TableName, nil
+func (x MacroEngine) renderTableNameMacro(_ []string) (string, error) {
+	return x.TableName, nil
 }
 
-func renderTimeFilterMacro(queryCtx QueryContext, args []string) (string, error) {
+func (x MacroEngine) renderTimeFilterMacro(args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 	}
-	builder, err := TimeExpressionBuilderFor(queryCtx, args[0])
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
 	if err != nil {
 		return "", err
 	}
-	return builder.BuildTimeFilterExpr(queryCtx.TimeRange), nil
+	return builder.BuildTimeFilterExpr(x.TimeRange), nil
 }
 
-func renderTimeGroupMacro(queryCtx QueryContext, args []string) (string, error) {
+func (x MacroEngine) renderTimeGroupMacro(args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 	}
-	builder, err := TimeExpressionBuilderFor(queryCtx, args[0])
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
 	if err != nil {
 		return "", err
 	}
-	return builder.BuildTimeGroupExpr(queryCtx.IntervalSize), nil
+	return builder.BuildTimeGroupExpr(x.IntervalSize), nil
 }

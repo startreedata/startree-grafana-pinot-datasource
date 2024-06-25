@@ -19,13 +19,20 @@ func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
 }
 
 func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
-	queryCtx, err := BuildQueryContext(client, ctx, query)
+	pinotDataQuery, err := PinotDataQueryFrom(query)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
-	Logger.Info(fmt.Sprintf("loaded query context %#v", queryCtx))
 
-	driver, err := NewTimeSeriesDriver(queryCtx)
+	var tableSchema TableSchema
+	if pinotDataQuery.TableName != "" {
+		tableSchema, err = client.GetTableSchema(ctx, pinotDataQuery.DatabaseName, pinotDataQuery.TableName)
+		if err != nil {
+			return backend.ErrDataResponse(backend.StatusInternal, err.Error())
+		}
+	}
+
+	driver, err := BuildDriver(pinotDataQuery, tableSchema, query.TimeRange)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
@@ -34,7 +41,7 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}
 
-	resp, err := client.ExecuteSQL(ctx, queryCtx.TableName, sql)
+	resp, err := client.ExecuteSQL(ctx, pinotDataQuery.TableName, sql)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 	}

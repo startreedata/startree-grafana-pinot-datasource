@@ -8,7 +8,7 @@ import (
 )
 
 func TestTimeSeriesAggTemplate(t *testing.T) {
-	args := timeSeriesTemplateArgs{
+	args := TimeSeriesTemplateArgs{
 		TableName:           "my_table",
 		DimensionColumns:    []string{"dim1", "dim2"},
 		TimeColumn:          "ts",
