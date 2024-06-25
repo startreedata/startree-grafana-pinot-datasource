@@ -18,8 +18,8 @@ func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, bool) {
 	return -1, false
 }
 
-func GetTimeColumnFormat(ctx QueryContext, timeColumn string) (string, error) {
-	for _, dtField := range ctx.TableSchema.DateTimeFieldSpecs {
+func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, error) {
+	for _, dtField := range tableSchema.DateTimeFieldSpecs {
 		if dtField.Name == timeColumn {
 			return dtField.Format, nil
 		}
@@ -63,15 +63,36 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case "INT", "LONG":
-		return ExtractTypedColumn[int64](results, colIdx, results.GetLong)
+		return ExtractLongColumn(results, colIdx)
 	case "FLOAT", "DOUBLE":
-		return ExtractTypedColumn[float64](results, colIdx, results.GetDouble)
+		return ExtractDoubleColumn(results, colIdx)
 	case "STRING":
-		return ExtractTypedColumn[string](results, colIdx, results.GetString)
+		return ExtractStringColumn(results, colIdx)
 	default:
 		Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
 		return make([]int64, results.GetRowCount())
 	}
+}
+
+func ExtractDoubleColumn(results *pinot.ResultTable, colIdx int) []float64 {
+	return ExtractTypedColumn[float64](results, colIdx, results.GetDouble)
+}
+
+func ExtractLongColumn(results *pinot.ResultTable, colIdx int) []int64 {
+	return ExtractTypedColumn[int64](results, colIdx, results.GetLong)
+}
+
+func ExtractStringColumn(results *pinot.ResultTable, colIdx int) []string {
+	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
+	if colDataType == "STRING" {
+		return ExtractTypedColumn[string](results, colIdx, results.GetString)
+	}
+
+	result := make([]string, results.GetRowCount())
+	for i, val := range ExtractDoubleColumn(results, colIdx) {
+		result[i] = fmt.Sprintf("%v", val)
+	}
+	return result
 }
 
 func ExtractTypedColumn[V int64 | float64 | string](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
@@ -142,4 +163,16 @@ func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, boo
 	default:
 		return nil, false
 	}
+}
+
+func GetDistinctValues[T comparable](vals []T) []T {
+	index := make(map[T]interface{})
+	for _, val := range vals {
+		index[val] = nil
+	}
+	result := make([]T, 0, len(vals))
+	for key, _ := range index {
+		result = append(result, key)
+	}
+	return result
 }

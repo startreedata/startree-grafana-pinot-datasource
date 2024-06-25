@@ -1,12 +1,11 @@
 package cache
 
 import (
-	"context"
 	"sync"
 	"time"
 )
 
-type CacheLoader[V any] func(ctx context.Context) (val V, err error)
+type Loader[V any] func() (val V, err error)
 
 type ResourceCache[V any] struct {
 	entry *cacheEntry[V]
@@ -20,8 +19,8 @@ func NewResourceCache[V any](ttl time.Duration) *ResourceCache[V] {
 	}
 }
 
-func (x *ResourceCache[V]) Get(ctx context.Context, loader CacheLoader[V]) (V, error) {
-	return x.entry.getVal(ctx, x.ttl, loader)
+func (x *ResourceCache[V]) Get(loader Loader[V]) (V, error) {
+	return x.entry.getVal(x.ttl, loader)
 }
 
 type MultiResourceCache[K comparable, V any] struct {
@@ -38,8 +37,8 @@ func NewMultiResourceCache[K comparable, V any](ttl time.Duration) *MultiResourc
 	}
 }
 
-func (x *MultiResourceCache[K, V]) Get(ctx context.Context, key K, loader CacheLoader[V]) (V, error) {
-	return x.getEntry(key).getVal(ctx, x.ttl, loader)
+func (x *MultiResourceCache[K, V]) Get(key K, loader Loader[V]) (V, error) {
+	return x.getEntry(key).getVal(x.ttl, loader)
 }
 
 func (x *MultiResourceCache[K, V]) getEntry(key K) *cacheEntry[V] {
@@ -59,7 +58,7 @@ type cacheEntry[V any] struct {
 
 func newCacheEntry[V any]() *cacheEntry[V] { return &cacheEntry[V]{} }
 
-func (x *cacheEntry[V]) getVal(ctx context.Context, ttl time.Duration, loader CacheLoader[V]) (V, error) {
+func (x *cacheEntry[V]) getVal(ttl time.Duration, loader Loader[V]) (V, error) {
 	x.lock.Lock()
 	defer x.lock.Unlock()
 
@@ -67,7 +66,7 @@ func (x *cacheEntry[V]) getVal(ctx context.Context, ttl time.Duration, loader Ca
 		return x.value, nil
 	}
 
-	val, err := loader(ctx)
+	val, err := loader()
 	if err != nil {
 		return val, err
 	}

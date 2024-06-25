@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"fmt"
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"strings"
 	"time"
 )
@@ -13,13 +12,13 @@ type TimeExpressionBuilder struct {
 	timeExprFormat   TimeExprFormat
 }
 
-func TimeExpressionBuilderFor(queryCtx QueryContext, timeColumn string) (TimeExpressionBuilder, error) {
+func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
 	timeColumn = strings.Trim(timeColumn, "\"`")
 	if len(timeColumn) == 0 {
 		return TimeExpressionBuilder{}, fmt.Errorf("timeColumn cannot be empty")
 	}
 
-	timeColumnFormat, err := GetTimeColumnFormat(queryCtx, timeColumn)
+	timeColumnFormat, err := GetTimeColumnFormat(tableSchema, timeColumn)
 	if err != nil {
 		return TimeExpressionBuilder{}, err
 	}
@@ -36,7 +35,7 @@ func TimeExpressionBuilderFor(queryCtx QueryContext, timeColumn string) (TimeExp
 	}, nil
 }
 
-func (x TimeExpressionBuilder) BuildTimeFilterExpr(timeRange backend.TimeRange) string {
+func (x TimeExpressionBuilder) BuildTimeFilterExpr(timeRange TimeRange) string {
 	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
 		x.timeColumn, x.timeExprFormat.encodeTime(timeRange.From),
 		x.timeColumn, x.timeExprFormat.encodeTime(timeRange.To),
