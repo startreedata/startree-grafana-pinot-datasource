@@ -253,8 +253,7 @@ function SelectAggregation(props: PinotQueryEditorProps) {
   const { query, onChange } = props;
 
   // TODO: Where do these belong more permanently?
-  const aggFunctions = ['sum', 'count'];
-
+  const aggFunctions = ['SUM', 'COUNT', 'AVG', 'MAX'];
   return (
     <div className={'gf-form'}>
       <InlineFormLabel width={8} className="query-keyword" tooltip={'Select aggregation function'}>
@@ -295,16 +294,17 @@ function SelectGroupBy(props: PinotQueryEditorProps) {
 }
 
 function SqlPreview(props: PinotQueryEditorProps) {
-  const { range, query, datasource } = props;
+  const { data, range, query, datasource } = props;
+
   const sql = useSqlPreview(datasource, {
     aggregationFunction: query.aggregationFunction,
     databaseName: query.databaseName,
     dimensionColumns: query.dimensionColumns,
-    intervalSize: 0,
+    intervalSize: data?.request?.interval || '0',
     metricColumn: query.metricColumn,
     tableName: query.tableName,
     timeColumn: query.timeColumn,
-    timeRange: { from: range?.to, to: range?.from },
+    timeRange: { to: range?.to, from: range?.from },
   });
 
   return (

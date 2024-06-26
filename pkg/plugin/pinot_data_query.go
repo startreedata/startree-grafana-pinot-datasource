@@ -8,7 +8,8 @@ import (
 )
 
 type PinotDataQuery struct {
-	QueryType           string        `json:"editorType"`
+	QueryType           string        `json:"queryType"`
+	EditorMode          string        `json:"editorMode"`
 	DatabaseName        string        `json:"databaseName"`
 	TableName           string        `json:"tableName"`
 	RawSql              string        `json:"rawSql"`

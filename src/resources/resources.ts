@@ -44,7 +44,7 @@ interface SqlPreviewResponse {
 
 export interface SqlPreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  intervalSize: number;
+  intervalSize: string;
   databaseName?: string;
   tableName?: string;
   timeColumn?: string;
