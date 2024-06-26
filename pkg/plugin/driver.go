@@ -28,7 +28,7 @@ func BuildDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backen
 			})
 		} else {
 			Logger.Info("constructed pinot-ql-code driver")
-			return NewSqlTableDriver(query, tableSchema, timeRange), nil
+			return NewPinotQlCodeDriver(query, tableSchema, TimeRange{To: timeRange.To, From: timeRange.From}), nil
 		}
 	}
 	Logger.Info("constructed no-op driver")

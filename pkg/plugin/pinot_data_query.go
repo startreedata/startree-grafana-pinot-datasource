@@ -12,13 +12,12 @@ type PinotDataQuery struct {
 	EditorMode          string        `json:"editorMode"`
 	DatabaseName        string        `json:"databaseName"`
 	TableName           string        `json:"tableName"`
-	RawSql              string        `json:"rawSql"`
+	RawSql              string        `json:"pinotQlCode"`
 	TimeColumn          string        `json:"timeColumn"`
 	MetricColumn        string        `json:"metricColumn"`
 	DimensionColumns    []string      `json:"dimensionColumns"`
 	AggregationFunction string        `json:"aggregationFunction"`
 	IntervalSize        time.Duration `json:"intervalSize"`
-	TimeRange           TimeRange     `json:"timeRange"`
 }
 
 type TimeRange struct {
@@ -34,5 +33,6 @@ func PinotDataQueryFrom(query backend.DataQuery) (PinotDataQuery, error) {
 	if pinotDataQuery.IntervalSize == 0 {
 		pinotDataQuery.IntervalSize = query.Interval
 	}
+
 	return pinotDataQuery, nil
 }
