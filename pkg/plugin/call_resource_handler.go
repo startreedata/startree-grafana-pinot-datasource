@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -92,14 +93,14 @@ func (x PinotResourceHandler) getTableSchema(w http.ResponseWriter, r *http.Requ
 }
 
 type GetSqlPreviewRequest struct {
-	TimeRange           TimeRange     `json:"timeRange"`
-	IntervalSize        time.Duration `json:"intervalSize"`
-	DatabaseName        string        `json:"databaseName"`
-	TableName           string        `json:"tableName"`
-	TimeColumn          string        `json:"timeColumn"`
-	MetricColumn        string        `json:"metricColumn"`
-	DimensionColumns    []string      `json:"dimensionColumns"`
-	AggregationFunction string        `json:"aggregationFunction"`
+	TimeRange           TimeRange `json:"timeRange"`
+	IntervalSize        string    `json:"intervalSize"`
+	DatabaseName        string    `json:"databaseName"`
+	TableName           string    `json:"tableName"`
+	TimeColumn          string    `json:"timeColumn"`
+	MetricColumn        string    `json:"metricColumn"`
+	DimensionColumns    []string  `json:"dimensionColumns"`
+	AggregationFunction string    `json:"aggregationFunction"`
 }
 
 type GetSqlPreviewResponse struct {
@@ -127,10 +128,17 @@ func (x PinotResourceHandler) getPreview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	driver, err := NewTimeSeriesDriver(TimeSeriesDriverParams{
+	var interval time.Duration
+	if data.IntervalSize == "1d" {
+		interval = time.Second * 24 * 3600
+	} else {
+		interval, _ = time.ParseDuration(data.IntervalSize)
+	}
+
+	driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
 		TableSchema:         tableSchema,
 		TimeRange:           data.TimeRange,
-		IntervalSize:        data.IntervalSize,
+		IntervalSize:        interval,
 		DatabaseName:        data.DatabaseName,
 		TableName:           data.TableName,
 		TimeColumn:          data.TimeColumn,
@@ -154,7 +162,7 @@ func (x PinotResourceHandler) getPreview(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeJsonData(w, &GetSqlPreviewResponse{Sql: sql})
+	writeJsonData(w, &GetSqlPreviewResponse{Sql: strings.TrimSpace(sql)})
 }
 
 func newDimensionValuesHandler(client *PinotClient) http.HandlerFunc {

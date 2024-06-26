@@ -16,24 +16,28 @@ const TimeSeriesTimeColumnAlias = "ts"
 const TimeSeriesMetricColumnAlias = "met"
 
 var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").Parse(`
-SELECT
-	{{ range .DimensionColumns }} {{ . }}, {{ end }}
-	{{.TimeGroupExpr}} AS {{.TimeColumnAlias}},
-	{{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAlias}}
+SELECT {{ range .DimensionColumns }} 
+    "{{ . }}", 
+    {{- end }}
+    {{.TimeGroupExpr}} AS "{{.TimeColumnAlias}}",
+    {{.AggregationFunction}}("{{.MetricColumn}}") AS "{{.MetricColumnAlias}}"
 FROM
     "{{.TableName}}"
 WHERE
     {{.TimeFilterExpr}}
-GROUP BY
-    {{ range .DimensionColumns }} {{ . }}, {{ end }}
+GROUP BY {{ range .DimensionColumns }} 
+    "{{ . }}", 
+    {{- end }}
     {{.TimeGroupExpr}}
+ORDER BY "{{.MetricColumnAlias}}" DESC
+LIMIT 1000000
 `))
 
-type TimeSeriesDriver struct {
-	TimeSeriesDriverParams
+type PinotQlBuilderDriver struct {
+	PinotQlBuilderParams
 }
 
-type TimeSeriesDriverParams struct {
+type PinotQlBuilderParams struct {
 	TableSchema
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
@@ -63,18 +67,17 @@ type TimeSeriesTemplateArgs struct {
 	MetricColumnAlias   string
 }
 
-var AggregationFunctions = []string{"sum", "count", "avg", "max"}
-
 func IsValidAggregationFunction(aggregationFunction string) bool {
-	for i := range AggregationFunctions {
-		if AggregationFunctions[i] == aggregationFunction {
+	var aggregationFunctions = []string{"SUM", "COUNT", "AVG", "MAX"}
+	for i := range aggregationFunctions {
+		if aggregationFunctions[i] == strings.ToUpper(aggregationFunction) {
 			return true
 		}
 	}
 	return false
 }
 
-func NewTimeSeriesDriver(params TimeSeriesDriverParams) (*TimeSeriesDriver, error) {
+func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
 	if params.TimeColumn == "" {
 		return nil, errors.New("time column cannot be empty")
 	} else if params.MetricColumn == "" {
@@ -82,10 +85,10 @@ func NewTimeSeriesDriver(params TimeSeriesDriverParams) (*TimeSeriesDriver, erro
 	} else if !IsValidAggregationFunction(params.AggregationFunction) {
 		return nil, fmt.Errorf("`%s` is not a valid aggregation function", params.AggregationFunction)
 	}
-	return &TimeSeriesDriver{params}, nil
+	return &PinotQlBuilderDriver{params}, nil
 }
 
-func (p TimeSeriesDriver) RenderPinotSql() (string, error) {
+func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	Logger.Info("time-series-driver: rendering time series pinot query")
 
 	templArgs, err := p.getTemplateArgs()
@@ -101,7 +104,7 @@ func (p TimeSeriesDriver) RenderPinotSql() (string, error) {
 	return buf.String(), nil
 }
 
-func (p TimeSeriesDriver) getTemplateArgs() (TimeSeriesTemplateArgs, error) {
+func (p PinotQlBuilderDriver) getTemplateArgs() (TimeSeriesTemplateArgs, error) {
 	exprBuilder, err := TimeExpressionBuilderFor(p.TableSchema, p.TimeColumn)
 	if err != nil {
 		return TimeSeriesTemplateArgs{}, err
@@ -111,6 +114,7 @@ func (p TimeSeriesDriver) getTemplateArgs() (TimeSeriesTemplateArgs, error) {
 		TableName:           p.TableName,
 		TimeColumn:          p.TimeColumn,
 		MetricColumn:        p.MetricColumn,
+		DimensionColumns:    p.DimensionColumns,
 		TimeFilterExpr:      exprBuilder.BuildTimeFilterExpr(p.TimeRange),
 		TimeGroupExpr:       exprBuilder.BuildTimeGroupExpr(p.IntervalSize),
 		AggregationFunction: p.AggregationFunction,
@@ -119,39 +123,15 @@ func (p TimeSeriesDriver) getTemplateArgs() (TimeSeriesTemplateArgs, error) {
 	}, nil
 }
 
-func (p TimeSeriesDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	frame := data.NewFrame("response")
-
-	timeColIdx, ok := GetColumnIdx(results, TimeSeriesTimeColumnAlias)
-	if !ok {
-		return nil, fmt.Errorf("time column not found")
-	}
-	timeCol, err := ExtractTimeColumn(results, timeColIdx, TimeGroupExprOutputFormat)
+func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+	metrics, err := p.extractTimeSeriesMetrics(results)
 	if err != nil {
 		return nil, err
 	}
-	frame.Fields = append(frame.Fields, data.NewField("time", nil, timeCol))
-
-	metColIdx, ok := GetColumnIdx(results, TimeSeriesMetricColumnAlias)
-	if !ok {
-		return nil, fmt.Errorf("metric column not found")
-	}
-	metCol := ExtractTypedColumn[float64](results, metColIdx, results.GetDouble)
-
-	if len(p.DimensionColumns) == 0 {
-		frame.Fields = append(frame.Fields, data.NewField(p.MetricColumn, nil, metCol))
-		return frame, nil
-	}
-	return nil, nil
+	return p.pivotMetrics(metrics), nil
 }
 
-type Metric struct {
-	name      string
-	timestamp time.Time
-	value     float64
-}
-
-func (p TimeSeriesDriver) do(results *pinot.ResultTable) (*data.Frame, error) {
+func (p PinotQlBuilderDriver) extractTimeSeriesMetrics(results *pinot.ResultTable) ([]TimeSeriesMetric, error) {
 	timeColIdx, ok := GetColumnIdx(results, TimeSeriesTimeColumnAlias)
 	if !ok {
 		return nil, fmt.Errorf("time column not found")
@@ -173,7 +153,8 @@ func (p TimeSeriesDriver) do(results *pinot.ResultTable) (*data.Frame, error) {
 		if colIdx == timeColIdx || colIdx == metColIdx {
 			continue
 		}
-		dimensions[results.GetColumnName(colIdx)] = ExtractStringColumn(results, colIdx)
+		name := results.GetColumnName(colIdx)
+		dimensions[name] = ExtractStringColumn(results, colIdx)
 	}
 
 	metrics := make([]TimeSeriesMetric, results.GetRowCount())
@@ -190,39 +171,58 @@ func (p TimeSeriesDriver) do(results *pinot.ResultTable) (*data.Frame, error) {
 		}
 	}
 
-	distinctTimeCol := GetDistinctValues(timeCol)
-	sort.Slice(distinctTimeCol, func(i, j int) bool {
-		return distinctTimeCol[i].Before(distinctTimeCol[j])
-	})
+	return metrics, nil
+}
 
-	timeIndex := make(map[time.Time]int, len(distinctTimeCol))
-	for i, val := range distinctTimeCol {
+func (p PinotQlBuilderDriver) pivotMetrics(metrics []TimeSeriesMetric) *data.Frame {
+	timeCol := p.getTimeColum(metrics)
+
+	timeIndex := make(map[time.Time]int, len(timeCol))
+	for i, val := range timeCol {
 		timeIndex[val] = i
 	}
 
 	timeSeries := make(map[string][]*float64)
 	for _, met := range metrics {
-		name := p.nameFromLabels(met.labels)
+		name := p.metricNameFromLabels(met.labels)
 		if _, ok := timeSeries[name]; !ok {
-			timeSeries[name] = make([]*float64, len(distinctTimeCol))
+			timeSeries[name] = make([]*float64, len(timeCol))
 		}
 		colIdx := timeIndex[met.timestamp]
-		timeSeries[name][colIdx] = &met.value
+		value := met.value
+		timeSeries[name][colIdx] = &value
 	}
 
 	fields := make([]*data.Field, 0, len(timeSeries)+1)
 	for tsName, tsCol := range timeSeries {
 		fields = append(fields, data.NewField(tsName, nil, tsCol))
 	}
-	return data.NewFrame("response", fields...), nil
+	fields = append(fields, data.NewField("time", nil, timeCol))
+	return data.NewFrame("response", fields...)
 }
 
-func (p TimeSeriesDriver) nameFromLabels(labels map[string]string) string {
-	formatted := make([]string, 0, len(labels)+1)
-	formatted = append(formatted, fmt.Sprintf("__name__=%s", p.MetricColumn))
+func (p PinotQlBuilderDriver) getTimeColum(metrics []TimeSeriesMetric) []time.Time {
+	observed := make(map[time.Time]interface{})
+	result := make([]time.Time, 0, len(metrics))
+	for _, metric := range metrics {
+		val := metric.timestamp
+		if _, ok := observed[val]; !ok {
+			result = append(result, val)
+			observed[val] = nil
+		}
+	}
+	return result[:]
+}
+
+func (p PinotQlBuilderDriver) metricNameFromLabels(labels map[string]string) string {
+	if len(labels) == 0 {
+		return p.MetricColumn
+	}
+
+	formatted := make([]string, 0, len(labels))
 	for key, value := range labels {
 		formatted = append(formatted, fmt.Sprintf("%s=%s", key, value))
 	}
-	sort.Strings(formatted[1:])
-	return fmt.Sprintf("%s{%s}", p.MetricColumn, strings.Join(formatted, ","))
+	sort.Strings(formatted)
+	return fmt.Sprintf(`%s{%s}`, p.MetricColumn, strings.Join(formatted, ","))
 }

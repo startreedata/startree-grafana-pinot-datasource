@@ -7,6 +7,8 @@ import (
 	"testing"
 )
 
+
+
 func TestTimeSeriesAggTemplate(t *testing.T) {
 	args := TimeSeriesTemplateArgs{
 		TableName:           "my_table",

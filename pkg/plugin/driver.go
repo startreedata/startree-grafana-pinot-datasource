@@ -12,24 +12,27 @@ type Driver interface {
 }
 
 func BuildDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) (Driver, error) {
-	switch query.QueryType {
-	case "PinotSql":
-		return NewSqlTableDriver(query, tableSchema, timeRange), nil
-	case "TimeSeriesSql":
-		return NewTimeSeriesDriver(TimeSeriesDriverParams{
-			TableSchema:         tableSchema,
-			TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
-			IntervalSize:        query.IntervalSize,
-			DatabaseName:        query.DatabaseName,
-			TableName:           query.TableName,
-			TimeColumn:          query.TimeColumn,
-			MetricColumn:        query.MetricColumn,
-			DimensionColumns:    query.DimensionColumns,
-			AggregationFunction: query.AggregationFunction,
-		})
-	default:
-		return &NoOpDriver{}, nil
+	if query.QueryType == "PinotQL" {
+		if query.EditorMode == "Builder" {
+			Logger.Info("constructed pinot-ql-builder driver")
+			return NewPinotQlBuilderDriver(PinotQlBuilderParams{
+				TableSchema:         tableSchema,
+				TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
+				IntervalSize:        query.IntervalSize,
+				DatabaseName:        query.DatabaseName,
+				TableName:           query.TableName,
+				TimeColumn:          query.TimeColumn,
+				MetricColumn:        query.MetricColumn,
+				DimensionColumns:    query.DimensionColumns,
+				AggregationFunction: query.AggregationFunction,
+			})
+		} else {
+			Logger.Info("constructed pinot-ql-code driver")
+			return NewSqlTableDriver(query, tableSchema, timeRange), nil
+		}
 	}
+	Logger.Info("constructed no-op driver")
+	return &NoOpDriver{}, nil
 }
 
 var _ Driver = &NoOpDriver{}
@@ -37,8 +40,10 @@ var _ Driver = &NoOpDriver{}
 type NoOpDriver struct{}
 
 func (d *NoOpDriver) RenderPinotSql() (string, error) {
+	Logger.Info("no-op rendering sql")
 	return "select 1", nil
 }
 func (d *NoOpDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+	Logger.Info("no-op extracting results")
 	return data.NewFrame("results"), nil
 }

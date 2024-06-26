@@ -61,7 +61,7 @@ func (x TimeExpressionBuilder) BuildTimeGroupExpr(bucketSize time.Duration) stri
 		granularity = fmt.Sprintf("%d:NANOSECONDS", int(bucketSize.Nanoseconds()))
 	}
 
-	return fmt.Sprintf(` DATETIMECONVERT("%s", '%s', '%s', '%s') `,
+	return fmt.Sprintf(`DATETIMECONVERT("%s", '%s', '%s', '%s')`,
 		x.timeColumn, x.timeExprFormat.inputFormat, TimeGroupExprOutputFormat, granularity)
 }
 
