@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
 )
@@ -16,16 +15,13 @@ type SqlTableDriver struct {
 }
 
 // TODO: Redo this constructor.
-func NewSqlTableDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) SqlTableDriver {
+func NewPinotQlCodeDriver(query PinotDataQuery, tableSchema TableSchema, timeRange TimeRange) SqlTableDriver {
 	return SqlTableDriver{
 		RawQuery: query.RawSql,
 		MacroEngine: MacroEngine{
-			TableName:   query.TableName,
-			TableSchema: tableSchema,
-			TimeRange: TimeRange{
-				To:   timeRange.To,
-				From: timeRange.From,
-			},
+			TableName:    query.TableName,
+			TableSchema:  tableSchema,
+			TimeRange:    timeRange,
 			IntervalSize: query.IntervalSize,
 		}}
 }

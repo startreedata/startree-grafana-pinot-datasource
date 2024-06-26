@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-const TimeSeriesTimeColumnAlias = "ts"
-const TimeSeriesMetricColumnAlias = "met"
+const TimeSeriesTimeColumnAlias = "time"
+const TimeSeriesMetricColumnAlias = "metric"
 
 var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").Parse(`
 SELECT {{ range .DimensionColumns }} 
@@ -29,7 +29,7 @@ GROUP BY {{ range .DimensionColumns }}
     "{{ . }}", 
     {{- end }}
     {{.TimeGroupExpr}}
-ORDER BY "{{.MetricColumnAlias}}" DESC
+ORDER BY "{{.TimeColumnAlias}}" DESC
 LIMIT 1000000
 `))
 
@@ -177,9 +177,9 @@ func (p PinotQlBuilderDriver) extractTimeSeriesMetrics(results *pinot.ResultTabl
 func (p PinotQlBuilderDriver) pivotMetrics(metrics []TimeSeriesMetric) *data.Frame {
 	timeCol := p.getTimeColum(metrics)
 
-	timeIndex := make(map[time.Time]int, len(timeCol))
+	timestampToIdx := make(map[time.Time]int, len(timeCol))
 	for i, val := range timeCol {
-		timeIndex[val] = i
+		timestampToIdx[val] = i
 	}
 
 	timeSeries := make(map[string][]*float64)
@@ -188,7 +188,7 @@ func (p PinotQlBuilderDriver) pivotMetrics(metrics []TimeSeriesMetric) *data.Fra
 		if _, ok := timeSeries[name]; !ok {
 			timeSeries[name] = make([]*float64, len(timeCol))
 		}
-		colIdx := timeIndex[met.timestamp]
+		colIdx := timestampToIdx[met.timestamp]
 		value := met.value
 		timeSeries[name][colIdx] = &value
 	}
