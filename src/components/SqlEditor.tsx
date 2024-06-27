@@ -2,14 +2,35 @@ import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
 import { InlineFormLabel } from '@grafana/ui';
 import React from 'react';
 import { SQLEditor } from '@grafana/experimental';
+import { useTableSchema } from '../resources/resources';
 
 export function SqlEditor(props: PinotQueryEditorProps) {
-  const { query, onChange } = props;
+  const { query, datasource, onChange } = props;
+
+  const tableSchema = useTableSchema(datasource, query.databaseName, query.tableName);
+
+  const timeCol = tableSchema?.dateTimeFieldSpecs.find((col) => col !== undefined)?.name;
+  const metricCol = tableSchema?.metricFieldSpecs.find((col) => col !== undefined)?.name;
 
   const onChangeCode = (value: string) => onChange({ ...props.query, pinotQlCode: value });
 
-  if (!query.pinotQlCode) {
-    onChangeCode('SELECT * FROM __tableName WHERE __timeFilter;');
+  const defaultSql = `
+SELECT 
+  __timeGroup("${timeCol}") AS "time",
+  SUM("${metricCol}") AS "metric"
+FROM 
+    __tableName 
+WHERE 
+    __timeFilter("${timeCol}")
+GROUP BY
+    __timeGroup("${timeCol}")
+ORDER BY
+    "time" DESC
+LIMIT 1000000
+`.trim();
+
+  if (query.tableName && timeCol && metricCol && !query.pinotQlCode) {
+    onChangeCode(defaultSql);
   }
 
   return (
@@ -20,7 +41,11 @@ export function SqlEditor(props: PinotQueryEditorProps) {
         </InlineFormLabel>
       </div>
       <div style={{ flex: '1 1 auto' }}>
-        <SQLEditor query={query.pinotQlCode || ''} onChange={onChangeCode} />
+        {query.tableName ? (
+          <SQLEditor query={query.pinotQlCode || defaultSql} onChange={onChangeCode} />
+        ) : (
+          <pre>{'--- Select a table.'}</pre>
+        )}
       </div>
     </div>
   );

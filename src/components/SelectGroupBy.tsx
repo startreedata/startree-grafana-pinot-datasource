@@ -4,6 +4,7 @@ import { InlineFormLabel, MultiSelect } from '@grafana/ui';
 import { styles } from '../styles';
 import { SelectableValue } from '@grafana/data';
 import React from 'react';
+import { canRunQuery } from '../types/PinotDataQuery';
 
 export function SelectGroupBy(props: PinotQueryEditorProps) {
   const { datasource, query, onChange, onRunQuery } = props;
@@ -22,8 +23,11 @@ export function SelectGroupBy(props: PinotQueryEditorProps) {
         value={query.dimensionColumns}
         onChange={(item: SelectableValue<string>[]) => {
           const selected = item.map((v) => v.value).filter((v) => v !== undefined) as string[];
-          onChange({ ...query, dimensionColumns: selected });
-          onRunQuery();
+          const newQuery = { ...query, dimensionColumns: selected };
+          onChange(newQuery);
+          if (canRunQuery(newQuery)) {
+            onRunQuery();
+          }
         }}
       />
     </div>
