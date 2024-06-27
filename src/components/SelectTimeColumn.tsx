@@ -3,9 +3,10 @@ import { useTableSchema } from '../resources/resources';
 import { InlineFormLabel, Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
+import { canRunQuery } from '../types/PinotDataQuery';
 
 export function SelectTimeColumn(props: PinotQueryEditorProps) {
-  const { datasource, query, onChange } = props;
+  const { datasource, query, onChange, onRunQuery } = props;
 
   // TODO: Pass this as a param
   const schema = useTableSchema(datasource, query.databaseName, query.tableName);
@@ -20,7 +21,13 @@ export function SelectTimeColumn(props: PinotQueryEditorProps) {
         className={`width-15 ${styles.Common.inlineSelect}`}
         options={(timeColumns || []).map((name) => ({ label: name, value: name }))}
         value={query.timeColumn}
-        onChange={(value) => onChange({ ...query, timeColumn: value.value })}
+        onChange={(value) => {
+          const newQuery = { ...query, timeColumn: value.value };
+          onChange(newQuery);
+          if (canRunQuery(newQuery)) {
+            onRunQuery();
+          }
+        }}
       />
     </div>
   );

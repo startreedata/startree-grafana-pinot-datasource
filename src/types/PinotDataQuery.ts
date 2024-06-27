@@ -20,3 +20,19 @@ export interface PinotDataQuery extends DataQuery {
   aggregationFunction?: string;
   limit?: number;
 }
+
+export function canRunQuery(query: PinotDataQuery): boolean {
+  switch (query.queryType) {
+    case QueryType.PinotQL:
+      switch (query.editorMode) {
+        case EditorMode.Builder:
+          return !!(query.tableName && query.timeColumn && query.metricColumn && query.aggregationFunction);
+        case EditorMode.Code:
+          return !!query.pinotQlCode;
+        default:
+          return false;
+      }
+    default:
+      return false;
+  }
+}
