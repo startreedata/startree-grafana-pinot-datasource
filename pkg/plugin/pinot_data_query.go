@@ -8,16 +8,22 @@ import (
 )
 
 type PinotDataQuery struct {
-	QueryType           string        `json:"queryType"`
-	EditorMode          string        `json:"editorMode"`
-	DatabaseName        string        `json:"databaseName"`
-	TableName           string        `json:"tableName"`
-	RawSql              string        `json:"pinotQlCode"`
-	TimeColumn          string        `json:"timeColumn"`
-	MetricColumn        string        `json:"metricColumn"`
-	DimensionColumns    []string      `json:"dimensionColumns"`
-	AggregationFunction string        `json:"aggregationFunction"`
-	IntervalSize        time.Duration `json:"intervalSize"`
+	QueryType    string        `json:"queryType"`
+	EditorMode   string        `json:"editorMode"`
+	DatabaseName string        `json:"databaseName"`
+	TableName    string        `json:"tableName"`
+	IntervalSize time.Duration `json:"intervalSize"`
+
+	TimeColumn          string   `json:"timeColumn"`
+	MetricColumn        string   `json:"metricColumn"`
+	DimensionColumns    []string `json:"dimensionColumns"`
+	AggregationFunction string   `json:"aggregationFunction"`
+	Limit               int      `json:"limit"`
+
+	PinotQlCode       string `json:"pinotQlCode"`
+	TimeColumnAlias   string `json:"timeColumnAlias"`
+	TimeColumnFormat  string `json:"timeColumnFormat"`
+	MetricColumnAlias string `json:"metricColumnAlias"`
 }
 
 type TimeRange struct {

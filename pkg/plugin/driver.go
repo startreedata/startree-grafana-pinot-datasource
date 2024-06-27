@@ -11,10 +11,13 @@ type Driver interface {
 	ExtractResults(results *pinot.ResultTable) (*data.Frame, error)
 }
 
-func BuildDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) (Driver, error) {
+func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) (Driver, error) {
 	if query.QueryType == "PinotQL" {
-		if query.EditorMode == "Builder" {
-			Logger.Info("constructed pinot-ql-builder driver")
+		switch true {
+		case query.TableName == "":
+			// Don't return an error when a user first lands on the query editor.
+			return &NoOpDriver{}, nil
+		case query.EditorMode == "Builder":
 			return NewPinotQlBuilderDriver(PinotQlBuilderParams{
 				TableSchema:         tableSchema,
 				TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
@@ -26,12 +29,20 @@ func BuildDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backen
 				DimensionColumns:    query.DimensionColumns,
 				AggregationFunction: query.AggregationFunction,
 			})
-		} else {
-			Logger.Info("constructed pinot-ql-code driver")
-			return NewPinotQlCodeDriver(query, tableSchema, TimeRange{To: timeRange.To, From: timeRange.From}), nil
+		default:
+			return NewPinotQlCodeDriver(PinotQlCodeDriverParams{
+				Code:              query.PinotQlCode,
+				DatabaseName:      query.DatabaseName,
+				TableName:         query.TableName,
+				TimeColumnAlias:   query.TimeColumnAlias,
+				TimeColumnFormat:  query.TimeColumnFormat,
+				MetricColumnAlias: query.MetricColumnAlias,
+				TimeRange:         TimeRange{To: timeRange.To, From: timeRange.From},
+				IntervalSize:      query.IntervalSize,
+				TableSchema:       tableSchema,
+			})
 		}
 	}
-	Logger.Info("constructed no-op driver")
 	return &NoOpDriver{}, nil
 }
 
@@ -40,10 +51,8 @@ var _ Driver = &NoOpDriver{}
 type NoOpDriver struct{}
 
 func (d *NoOpDriver) RenderPinotSql() (string, error) {
-	Logger.Info("no-op rendering sql")
 	return "select 1", nil
 }
 func (d *NoOpDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	Logger.Info("no-op extracting results")
 	return data.NewFrame("results"), nil
 }

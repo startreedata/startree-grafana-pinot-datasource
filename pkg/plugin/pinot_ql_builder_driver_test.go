@@ -7,10 +7,8 @@ import (
 	"testing"
 )
 
-
-
 func TestTimeSeriesAggTemplate(t *testing.T) {
-	args := TimeSeriesTemplateArgs{
+	args := TimeSeriesTemplateParams{
 		TableName:           "my_table",
 		DimensionColumns:    []string{"dim1", "dim2"},
 		TimeColumn:          "ts",
@@ -18,8 +16,8 @@ func TestTimeSeriesAggTemplate(t *testing.T) {
 		AggregationFunction: "sum",
 		TimeFilterExpr:      "where ts >= 10 and ts <= 20",
 		TimeGroupExpr:       `DATETIMECONVERT(ts, '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,
-		TimeColumnAlias:     TimeSeriesTimeColumnAlias,
-		MetricColumnAlias:   TimeSeriesMetricColumnAlias,
+		TimeColumnAlias:     DefaultTimeColumnAlias,
+		MetricColumnAlias:   DefaultMetricColumnAlias,
 	}
 	var buf bytes.Buffer
 	err := timeSeriesSqlTemplate.Execute(&buf, args)
