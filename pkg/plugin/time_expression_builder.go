@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const TimeGroupExprOutputFormat = "1:MILLISECONDS:EPOCH"
+
 type TimeExpressionBuilder struct {
 	timeColumn       string
 	timeColumnFormat string
@@ -37,12 +39,14 @@ func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeE
 
 func (x TimeExpressionBuilder) BuildTimeFilterExpr(timeRange TimeRange) string {
 	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
-		x.timeColumn, x.timeExprFormat.encodeTime(timeRange.From),
-		x.timeColumn, x.timeExprFormat.encodeTime(timeRange.To),
+		x.timeColumn, x.TimeExpr(timeRange.From),
+		x.timeColumn, x.TimeExpr(timeRange.To),
 	)
 }
 
-const TimeGroupExprOutputFormat = "1:MILLISECONDS:EPOCH"
+func (x TimeExpressionBuilder) TimeExpr(ts time.Time) string {
+	return x.timeExprFormat.encodeTime(ts)
+}
 
 func (x TimeExpressionBuilder) BuildTimeGroupExpr(bucketSize time.Duration) string {
 	var granularity string
@@ -121,7 +125,7 @@ func NewTimeExprFormat(timeColumnFormat string) (TimeExprFormat, bool) {
 
 	return TimeExprFormat{
 		inputFormat: "1:DAYS:SIMPLE_DATE_FORMAT:" + sdfPattern,
-		encodeTime:  func(d time.Time) string { return fmt.Sprintf(`"%s"`, d.Format(sdfPattern)) },
+		encodeTime:  func(d time.Time) string { return fmt.Sprintf(`'%s'`, d.Format(sdfPattern)) },
 	}, true
 }
 

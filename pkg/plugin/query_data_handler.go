@@ -36,7 +36,7 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 		return fmt.Sprintf("Error: %s.", err.Error())
 	}
 
-	driver, err := BuildDriver(pinotDataQuery, tableSchema, query.TimeRange)
+	driver, err := NewDriver(pinotDataQuery, tableSchema, query.TimeRange)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
 	}

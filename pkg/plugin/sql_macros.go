@@ -8,7 +8,9 @@ import (
 )
 
 type MacroEngine struct {
-	TableName string
+	TableName   string
+	TimeAlias   string
+	MetricAlias string
 	TableSchema
 	TimeRange
 	IntervalSize time.Duration
@@ -20,15 +22,24 @@ type Macro struct {
 	render func(args []string) (string, error)
 }
 
-var tableNameRegex = regexp.MustCompile(`__tableName\s*(\([^)]*\))?`)
-var timeFilterRegex = regexp.MustCompile(`__timeFilter\s*(\([^)]*\))?`)
-var timeGroupRegex = regexp.MustCompile(`__timeGroup\s*(\([^)]*\))?`)
+// TODO: I'm still not very pleased with this setup.
+var tableNameRegex = regexp.MustCompile(`\$__table(\([^)]*\))?`)
+var timeFilterRegex = regexp.MustCompile(`\$__timeFilter(\([^)]*\))?`)
+var timeGroupRegex = regexp.MustCompile(`\$__timeGroup(\([^)]*\))?`)
+var timeToRegex = regexp.MustCompile(`\$__timeTo(\([^)]*\))?`)
+var timeFromRegex = regexp.MustCompile(`\$__timeFrom(\([^)]*\))?`)
+var metricAliasRegex = regexp.MustCompile(`\$__metricAlias(\([^)]*\))?`)
+var timeAliasRegex = regexp.MustCompile(`\$__timeAlias(\([^)]*\))?`)
 
 func (x MacroEngine) ExpandMacros(query string) (string, error) {
 	macros := []Macro{
-		{"__tableName", tableNameRegex, x.renderTableNameMacro},
-		{"__timeFilter", timeFilterRegex, x.renderTimeFilterMacro},
-		{"__timeGroup", timeGroupRegex, x.renderTimeGroupMacro},
+		{"table", tableNameRegex, x.renderTable},
+		{"timeFilter", timeFilterRegex, x.renderTimeFilter},
+		{"timeGroup", timeGroupRegex, x.renderTimeGroup},
+		{"timeTo", timeToRegex, x.renderTimeTo},
+		{"timeFrom", timeFromRegex, x.renderTimeFrom},
+		{"timeAlias", timeAliasRegex, x.renderTimeAlias},
+		{"metricAlias", metricAliasRegex, x.renderMetricAlias},
 	}
 
 	var err error
@@ -42,7 +53,6 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 }
 
 func expandSingleMacro(query string, macro Macro) (string, error) {
-	// TODO: Compile these at startup?
 	for _, matches := range macro.re.FindAllStringSubmatch(query, -1) {
 		invocation, args := parseArgs(matches)
 		result, err := macro.render(args)
@@ -72,11 +82,11 @@ func parseArgs(matches []string) (string, []string) {
 	return matches[0], args
 }
 
-func (x MacroEngine) renderTableNameMacro(_ []string) (string, error) {
-	return x.TableName, nil
+func (x MacroEngine) renderTable(_ []string) (string, error) {
+	return fmt.Sprintf(`"%s"`, x.TableName), nil
 }
 
-func (x MacroEngine) renderTimeFilterMacro(args []string) (string, error) {
+func (x MacroEngine) renderTimeFilter(args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 	}
@@ -87,7 +97,7 @@ func (x MacroEngine) renderTimeFilterMacro(args []string) (string, error) {
 	return builder.BuildTimeFilterExpr(x.TimeRange), nil
 }
 
-func (x MacroEngine) renderTimeGroupMacro(args []string) (string, error) {
+func (x MacroEngine) renderTimeGroup(args []string) (string, error) {
 	if len(args) != 1 {
 		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 	}
@@ -96,4 +106,28 @@ func (x MacroEngine) renderTimeGroupMacro(args []string) (string, error) {
 		return "", err
 	}
 	return builder.BuildTimeGroupExpr(x.IntervalSize), nil
+}
+
+func (x MacroEngine) renderTimeTo(args []string) (string, error) {
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+	if err != nil {
+		return "", err
+	}
+	return builder.TimeExpr(x.To), nil
+}
+
+func (x MacroEngine) renderTimeFrom(args []string) (string, error) {
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+	if err != nil {
+		return "", err
+	}
+	return builder.TimeExpr(x.From), nil
+}
+
+func (x MacroEngine) renderTimeAlias(_ []string) (string, error) {
+	return fmt.Sprintf(`"%s"`, x.TimeAlias), nil
+}
+
+func (x MacroEngine) renderMetricAlias(_ []string) (string, error) {
+	return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
 }

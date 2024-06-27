@@ -9,15 +9,13 @@ export function QueryEditor(props: PinotQueryEditorProps) {
   return (
     <div>
       <SelectEditorType {...props} />
-      {SubEditor(props)}
+      {(() => {
+        switch (props.query.queryType) {
+          case QueryType.PinotQL:
+          default:
+            return <PinotQlEditor {...props} />;
+        }
+      })()}
     </div>
   );
-}
-
-function SubEditor(props: PinotQueryEditorProps) {
-  switch (props.query.queryType) {
-    case QueryType.PinotQL:
-    default:
-      return PinotQlEditor(props);
-  }
 }

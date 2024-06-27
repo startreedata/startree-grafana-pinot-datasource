@@ -11,14 +11,21 @@ export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
   editorMode?: string;
-  pinotQlCode?: string;
   databaseName?: string;
   tableName?: string;
+
+  // PinotQl Builder
   timeColumn?: string;
   metricColumn?: string;
   dimensionColumns?: string[];
   aggregationFunction?: string;
   limit?: number;
+
+  // PinotQl Code
+  pinotQlCode?: string;
+  timeColumnAlias?: string;
+  timeColumnFormat?: string;
+  metricColumnAlias?: string;
 }
 
 export function canRunQuery(query: PinotDataQuery): boolean {
