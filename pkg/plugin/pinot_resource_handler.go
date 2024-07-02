@@ -26,7 +26,6 @@ type GetTableSchemaResponse struct {
 	Schema TableSchema `json:"schema"`
 }
 
-
 func (x *PinotResourceHandler) getDatabases(w http.ResponseWriter, r *http.Request) {
 	databases, err := x.client.ListDatabases(r.Context())
 	if err != nil {
@@ -94,16 +93,16 @@ type SqlPreviewRequest struct {
 	TableName           string            `json:"tableName"`
 	TimeColumn          string            `json:"timeColumn"`
 	MetricColumn        string            `json:"metricColumn"`
-	DimensionColumns    []string          `json:"dimensionColumns"`
+	GroupByColumns      []string          `json:"groupByColumns"`
 	AggregationFunction string            `json:"aggregationFunction"`
-	DimensionFilters    []DimensionFilter `json:"dimensionFilters"`
+	DimensionFilters    []DimensionFilter `json:"filters"`
 }
 
 type SqlPreviewResponse struct {
 	Sql string `json:"sql"`
 }
 
-func (x *PinotResourceHandler) getPreview(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request) {
 	var data SqlPreviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		Logger.Error(err.Error())
@@ -139,7 +138,7 @@ func (x *PinotResourceHandler) getPreview(w http.ResponseWriter, r *http.Request
 		TableName:           data.TableName,
 		TimeColumn:          data.TimeColumn,
 		MetricColumn:        data.MetricColumn,
-		DimensionColumns:    data.DimensionColumns,
+		GroupByColumns:      data.GroupByColumns,
 		AggregationFunction: data.AggregationFunction,
 		DimensionFilters:    data.DimensionFilters,
 	})
@@ -168,14 +167,14 @@ type DistinctValuesRequest struct {
 	TableName        string            `json:"tableName"`
 	ColumnName       string            `json:"columnName"`
 	TimeColumn       string            `json:"timeColumn"`
-	DimensionFilters []DimensionFilter `json:"dimensionFilters"`
+	DimensionFilters []DimensionFilter `json:"filters"`
 }
 
 type DistinctValuesResponse struct {
 	ValueExprs []string `json:"valueExprs"`
 }
 
-func (x *PinotResourceHandler) distinctValues(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) DistinctValues(w http.ResponseWriter, r *http.Request) {
 	var data DistinctValuesRequest
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		Logger.Error(err.Error())
@@ -204,16 +203,11 @@ func (x *PinotResourceHandler) distinctValues(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	filterExprs := make([]string, len(data.DimensionFilters))
-	for i, filter := range data.DimensionFilters {
-		filterExprs[i] = DimensionFilterExpr(filter)
-	}
-
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
 		ColumnName:           data.ColumnName,
 		TableName:            data.TableName,
 		TimeFilterExpr:       exprBuilder.TimeFilterExpr(data.TimeRange),
-		DimensionFilterExprs: filterExprs,
+		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
 	})
 	if err != nil {
 		// TODO: Handle this error

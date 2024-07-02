@@ -16,10 +16,10 @@ type PinotDataQuery struct {
 
 	TimeColumn          string            `json:"timeColumn"`
 	MetricColumn        string            `json:"metricColumn"`
-	DimensionColumns    []string          `json:"dimensionColumns"`
+	GroupByColumns      []string          `json:"groupByColumns"`
 	AggregationFunction string            `json:"aggregationFunction"`
 	Limit               int               `json:"limit"`
-	DimensionFilters    []DimensionFilter `json:"dimensionFilters"`
+	DimensionFilters    []DimensionFilter `json:"filters"`
 
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`

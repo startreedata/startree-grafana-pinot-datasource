@@ -10,7 +10,7 @@ import (
 const TimeSeriesSqlTemplateName = "pinot/time-series-sql"
 
 var timeSeriesSqlTemplate = template.Must(template.New(TimeSeriesSqlTemplateName).Parse(`
-SELECT{{ range .DimensionColumns }}
+SELECT{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}} AS "{{.TimeColumnAlias}}",
@@ -21,7 +21,7 @@ WHERE
     {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }} 
 {{- end }}
-GROUP BY{{ range .DimensionColumns }}
+GROUP BY{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}}
@@ -31,7 +31,7 @@ LIMIT 1000000
 
 type TimeSeriesSqlParams struct {
 	TableName            string
-	DimensionColumns     []string
+	GroupByColumns       []string
 	TimeColumn           string
 	MetricColumn         string
 	AggregationFunction  string
