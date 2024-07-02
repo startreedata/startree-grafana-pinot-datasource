@@ -21,7 +21,7 @@ export function InputLimit(props: PinotQueryEditorProps) {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row' }}>
+    <div className={'gf-form'} style={{ display: 'flex', flexDirection: 'row' }}>
       <InlineFormLabel width={8} className="query-keyword">
         Limit
       </InlineFormLabel>

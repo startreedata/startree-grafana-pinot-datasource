@@ -1,32 +1,23 @@
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { useTableSchema } from '../resources/resources';
-import { InlineFormLabel, Select } from '@grafana/ui';
+import { Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
-import { canRunQuery } from '../types/PinotDataQuery';
+import { FormLabel } from './FormLabel';
 
-export function SelectMetricColumn(props: PinotQueryEditorProps) {
-  const { datasource, query, onChange, onRunQuery } = props;
-
-  const schema = useTableSchema(datasource, query.databaseName, query.tableName);
-  const metricColumns = schema?.metricFieldSpecs.map((spec) => spec.name);
+export function SelectMetricColumn(props: {
+  selected?: string;
+  options?: string[];
+  onChange: (val: string | undefined) => void;
+}) {
+  const { selected, options, onChange } = props;
 
   return (
     <div className={'gf-form'}>
-      <InlineFormLabel width={8} className="query-keyword" tooltip={'Select metric column'}>
-        Metric Column
-      </InlineFormLabel>
+      <FormLabel tooltip={'Select metric column'} label={'Metric Column'} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
-        options={(metricColumns || []).map((name) => ({ label: name, value: name }))}
-        value={query.metricColumn}
-        onChange={(value) => {
-          const newQuery = { ...query, metricColumn: value.value }
-          onChange(newQuery);
-          if (canRunQuery(newQuery)) {
-            onRunQuery();
-          }
-        }}
+        options={options?.map((name) => ({ label: name, value: name }))}
+        value={selected}
+        onChange={(change) => onChange(change.value)}
       />
     </div>
   );

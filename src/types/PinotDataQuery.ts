@@ -1,6 +1,7 @@
 import { QueryType } from './QueryType';
 import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
+import { DimensionFilter } from '../resources/resources';
 
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,
@@ -20,6 +21,7 @@ export interface PinotDataQuery extends DataQuery {
   dimensionColumns?: string[];
   aggregationFunction?: string;
   limit?: number;
+  dimensionFilters: DimensionFilter[];
 
   // PinotQl Code
   pinotQlCode?: string;
