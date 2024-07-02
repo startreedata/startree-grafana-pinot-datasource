@@ -15,6 +15,7 @@ func NewCallResourceHandler(client *PinotClient) backend.CallResourceHandler {
 	router.HandleFunc("/databases", handler.getDatabases)
 	router.HandleFunc("/tables/{table}/schema", handler.getTableSchema)
 	router.HandleFunc("/tables", handler.getTables)
-	router.HandleFunc("/preview", handler.getPreview)
+	router.HandleFunc("/preview", handler.SqlPreview)
+	router.HandleFunc("/distinctValues", handler.DistinctValues)
 	return httpadapter.New(router)
 }

@@ -2,6 +2,17 @@ import { DataSource } from '../datasource';
 import { useEffect, useState } from 'react';
 import { DateTime } from '@grafana/data';
 
+export const PinotDataType = Object.freeze({
+  INT: 'INT',
+  LONG: 'LONG',
+  FLOAT: 'FLOAT',
+  DOUBLE: 'DOUBLE',
+  STRING: 'STRING',
+});
+
+export const PinotDataTypes = Object.values(PinotDataType);
+export const NumericPinotDataTypes = [PinotDataType.INT, PinotDataType.LONG, PinotDataType.FLOAT, PinotDataType.DOUBLE];
+
 export interface GetDatabasesResponse {
   databases: string[];
 }
@@ -49,8 +60,9 @@ export interface SqlPreviewRequest {
   tableName?: string;
   timeColumn?: string;
   metricColumn?: string;
-  dimensionColumns?: string[];
+  groupByColumns?: string[];
   aggregationFunction?: string;
+  filters?: DimensionFilter[];
 }
 
 export function useSqlPreview(datasource: DataSource, request: SqlPreviewRequest): string {
@@ -68,7 +80,7 @@ interface DistinctValuesResponse {
 
 export interface DimensionFilter {
   columnName?: string;
-  operation?: string;
+  operator?: string;
   valueExprs?: string[];
 }
 
@@ -78,7 +90,7 @@ export interface DistinctValuesRequest {
   columnName?: string;
   timeColumn?: string;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  dimensionFilters?: DimensionFilter[];
+  filters?: DimensionFilter[];
 }
 
 export function useDistinctValues(datasource: DataSource, request: DistinctValuesRequest): string[] | undefined {
@@ -90,14 +102,14 @@ export function useDistinctValues(datasource: DataSource, request: DistinctValue
   return data;
 }
 
-export function useDatabases(datasource: DataSource): string[] {
+export function useDatabases(datasource: DataSource): string[] | undefined {
   const resp = useControllerResource<GetDatabasesResponse>(datasource, undefined, 'databases');
-  return resp?.databases || [];
+  return resp?.databases;
 }
 
-export function useTables(datasource: DataSource, databaseName?: string): string[] {
+export function useTables(datasource: DataSource, databaseName: string | undefined): string[] | undefined {
   const resp = useControllerResource<GetTablesResponse>(datasource, databaseName, 'tables');
-  return resp?.tables || [];
+  return resp?.tables;
 }
 
 export function useTableSchema(

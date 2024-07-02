@@ -1,7 +1,7 @@
 import { useSqlPreview } from '../resources/resources';
-import { InlineFormLabel } from '@grafana/ui';
 import React from 'react';
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { FormLabel } from './FormLabel';
 
 export function SqlPreview(props: PinotQueryEditorProps) {
   const { data, range, query, datasource } = props;
@@ -9,19 +9,18 @@ export function SqlPreview(props: PinotQueryEditorProps) {
   const sql = useSqlPreview(datasource, {
     aggregationFunction: query.aggregationFunction,
     databaseName: query.databaseName,
-    dimensionColumns: query.dimensionColumns,
+    groupByColumns: query.groupByColumns,
     intervalSize: data?.request?.interval || '0',
     metricColumn: query.metricColumn,
     tableName: query.tableName,
     timeColumn: query.timeColumn,
     timeRange: { to: range?.to, from: range?.from },
+    filters: query.filters,
   });
 
   return (
     <div className="gf-form">
-      <InlineFormLabel width={8} className="query-keyword" tooltip={'Sql Preview'}>
-        Sql Preview
-      </InlineFormLabel>
+      <FormLabel tooltip={'Sql Preview'} label={'Sql Preview'} />
       <pre>{sql}</pre>
     </div>
   );

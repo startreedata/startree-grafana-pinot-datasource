@@ -16,9 +16,26 @@ const (
 	FilterOpLessThan           = "<"
 	FilterOpGreaterThanOrEqual = ">="
 	FilterOpLessThanOrEqual    = "<="
+	FilterOpIn                 = "in"
+	FilterOpNotIn              = "not in"
 )
 
-func DimensionFilterExpr(filter DimensionFilter) string {
+func FilterExprsFrom(filters []DimensionFilter) []string {
+	exprs := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		if filter.ColumnName == "" || filter.Operator == "" || len(filter.ValueExprs) == 0 {
+			continue
+		}
+		expr := dimensionFilterExpr(filter)
+		if expr == "" {
+			continue
+		}
+		exprs = append(exprs, expr)
+	}
+	return exprs[:]
+}
+
+func dimensionFilterExpr(filter DimensionFilter) string {
 	format := func(valueExpr string) string {
 		switch filter.Operator {
 		case FilterOpEquals:
@@ -41,6 +58,10 @@ func DimensionFilterExpr(filter DimensionFilter) string {
 			return fmt.Sprintf(`"%s" >= %s`, filter.ColumnName, valueExpr)
 		case FilterOpLessThanOrEqual:
 			return fmt.Sprintf(`"%s" <= %s`, filter.ColumnName, valueExpr)
+		case FilterOpIn:
+			return fmt.Sprintf(`"%s" in %s`, filter.ColumnName, valueExpr)
+		case FilterOpNotIn:
+			return fmt.Sprintf(`"%s" not in %s`, filter.ColumnName, valueExpr)
 		default:
 			return "1=1"
 		}
@@ -50,5 +71,5 @@ func DimensionFilterExpr(filter DimensionFilter) string {
 	for i, expr := range filter.ValueExprs {
 		exprs[i] = format(expr)
 	}
-	return fmt.Sprintf(`(%s)`, strings.Join(exprs, " AND "))
+	return fmt.Sprintf(`(%s)`, strings.Join(exprs, " OR "))
 }

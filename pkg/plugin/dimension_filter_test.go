@@ -23,7 +23,7 @@ func TestDimensionFilter(t *testing.T) {
 	}
 	for _, args := range testArgs {
 		t.Run(args.operator, func(t *testing.T) {
-			assert.Equal(t, args.expected, DimensionFilterExpr(DimensionFilter{
+			assert.Equal(t, args.expected, dimensionFilterExpr(DimensionFilter{
 				ColumnName: "dim",
 				Operator:   args.operator,
 				ValueExprs: []string{`'val1'`, `'val2'`},

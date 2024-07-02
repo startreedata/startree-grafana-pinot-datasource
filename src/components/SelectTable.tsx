@@ -1,33 +1,23 @@
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { useTables } from '../resources/resources';
-import { InlineFormLabel, Select } from '@grafana/ui';
+import { Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
+import { FormLabel } from './FormLabel';
 
-export function SelectTable(props: PinotQueryEditorProps) {
-  const { datasource, query, onChange } = props;
+export function SelectTable(props: {
+  selected: string | undefined;
+  options: string[] | undefined;
+  onChange: (val: string | undefined) => void;
+}) {
+  const { selected, options, onChange } = props;
 
-  const tables = useTables(datasource, query.databaseName);
-
-  // TODO: Use AsyncSelect
   return (
     <>
-      <InlineFormLabel width={8} className="query-keyword" tooltip={'Select Pinot table'}>
-        Table
-      </InlineFormLabel>
+      <FormLabel tooltip={'Select Pinot Table'} label={'Table'} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
-        options={tables.map((name) => ({ label: name, value: name }))}
-        value={query.tableName}
-        onChange={(value) =>
-          onChange({
-            ...query,
-            tableName: value.value,
-            timeColumn: undefined,
-            metricColumn: undefined,
-            dimensionColumns: undefined,
-          })
-        }
+        options={options?.map((name) => ({ label: name, value: name }))}
+        value={selected}
+        onChange={(change) => onChange(change.value)}
       />
     </>
   );

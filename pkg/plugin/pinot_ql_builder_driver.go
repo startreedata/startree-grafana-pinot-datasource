@@ -27,7 +27,7 @@ type PinotQlBuilderParams struct {
 	TableName           string
 	TimeColumn          string
 	MetricColumn        string
-	DimensionColumns    []string
+	GroupByColumns      []string
 	AggregationFunction string
 	DimensionFilters    []DimensionFilter
 }
@@ -57,15 +57,16 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	}
 
 	return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-		TableName:           p.TableName,
-		TimeColumn:          p.TimeColumn,
-		MetricColumn:        p.MetricColumn,
-		DimensionColumns:    p.DimensionColumns,
-		TimeFilterExpr:      exprBuilder.TimeFilterExpr(p.TimeRange),
-		TimeGroupExpr:       exprBuilder.BuildTimeGroupExpr(p.IntervalSize),
-		AggregationFunction: p.AggregationFunction,
-		TimeColumnAlias:     DefaultTimeColumnAlias,
-		MetricColumnAlias:   DefaultMetricColumnAlias,
+		TableName:            p.TableName,
+		TimeColumn:           p.TimeColumn,
+		MetricColumn:         p.MetricColumn,
+		GroupByColumns:       p.GroupByColumns,
+		TimeFilterExpr:       exprBuilder.TimeFilterExpr(p.TimeRange),
+		TimeGroupExpr:        exprBuilder.BuildTimeGroupExpr(p.IntervalSize),
+		AggregationFunction:  p.AggregationFunction,
+		TimeColumnAlias:      DefaultTimeColumnAlias,
+		MetricColumnAlias:    DefaultMetricColumnAlias,
+		DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 	})
 }
 

@@ -26,7 +26,7 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				TableName:           query.TableName,
 				TimeColumn:          query.TimeColumn,
 				MetricColumn:        query.MetricColumn,
-				DimensionColumns:    query.DimensionColumns,
+				GroupByColumns:      query.GroupByColumns,
 				AggregationFunction: query.AggregationFunction,
 				DimensionFilters:    query.DimensionFilters,
 			})

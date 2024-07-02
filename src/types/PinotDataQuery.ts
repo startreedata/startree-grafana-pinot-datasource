@@ -18,10 +18,10 @@ export interface PinotDataQuery extends DataQuery {
   // PinotQl Builder
   timeColumn?: string;
   metricColumn?: string;
-  dimensionColumns?: string[];
+  groupByColumns?: string[];
   aggregationFunction?: string;
   limit?: number;
-  dimensionFilters: DimensionFilter[];
+  filters?: DimensionFilter[];
 
   // PinotQl Code
   pinotQlCode?: string;

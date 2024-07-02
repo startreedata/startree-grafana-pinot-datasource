@@ -4,8 +4,8 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 
 export function SelectMetricColumn(props: {
-  selected?: string;
-  options?: string[];
+  selected: string | undefined;
+  options: string[] | undefined;
   onChange: (val: string | undefined) => void;
 }) {
   const { selected, options, onChange } = props;
