@@ -10,33 +10,36 @@ import (
 const TimeSeriesSqlTemplateName = "pinot/time-series-sql"
 
 var timeSeriesSqlTemplate = template.Must(template.New(TimeSeriesSqlTemplateName).Parse(`
-SELECT {{ range .DimensionColumns }} 
-    "{{ . }}", 
+SELECT{{ range .DimensionColumns }}
+    "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}} AS "{{.TimeColumnAlias}}",
     {{.AggregationFunction}}("{{.MetricColumn}}") AS "{{.MetricColumnAlias}}"
 FROM
     "{{.TableName}}"
 WHERE
-    {{.TimeFilterExpr}}
-GROUP BY {{ range .DimensionColumns }} 
-    "{{ . }}", 
+    {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
+    AND {{ . }} 
+{{- end }}
+GROUP BY{{ range .DimensionColumns }}
+    "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}}
-ORDER BY "{{.TimeColumnAlias}}" DESC
+ORDER BY "{{.TimeColumnAlias}}" ASC
 LIMIT 1000000
 `))
 
 type TimeSeriesSqlParams struct {
-	TableName           string
-	DimensionColumns    []string
-	TimeColumn          string
-	MetricColumn        string
-	AggregationFunction string
-	TimeFilterExpr      string
-	TimeGroupExpr       string
-	TimeColumnAlias     string
-	MetricColumnAlias   string
+	TableName            string
+	DimensionColumns     []string
+	TimeColumn           string
+	MetricColumn         string
+	AggregationFunction  string
+	TimeFilterExpr       string
+	TimeGroupExpr        string
+	TimeColumnAlias      string
+	MetricColumnAlias    string
+	DimensionFilterExprs []string
 }
 
 func IsValidAggregationFunction(aggregationFunction string) bool {

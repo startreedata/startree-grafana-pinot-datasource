@@ -94,7 +94,7 @@ func (x MacroEngine) renderTimeFilter(args []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return builder.BuildTimeFilterExpr(x.TimeRange), nil
+	return builder.TimeFilterExpr(x.TimeRange), nil
 }
 
 func (x MacroEngine) renderTimeGroup(args []string) (string, error) {

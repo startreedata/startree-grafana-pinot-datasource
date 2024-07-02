@@ -56,7 +56,36 @@ export interface SqlPreviewRequest {
 export function useSqlPreview(datasource: DataSource, request: SqlPreviewRequest): string {
   const [data, setData] = useState<string>('');
   useEffect(() => {
+    // TODO: No need to make the request until all fields are present.
     datasource.postResource<SqlPreviewResponse>('preview', request).then((resp) => setData(resp.sql));
+  }, [JSON.stringify(request)]);
+  return data;
+}
+
+interface DistinctValuesResponse {
+  valueExprs: string[];
+}
+
+export interface DimensionFilter {
+  columnName?: string;
+  operation?: string;
+  valueExprs?: string[];
+}
+
+export interface DistinctValuesRequest {
+  databaseName?: string;
+  tableName?: string;
+  columnName?: string;
+  timeColumn?: string;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  dimensionFilters?: DimensionFilter[];
+}
+
+export function useDistinctValues(datasource: DataSource, request: DistinctValuesRequest): string[] | undefined {
+  const [data, setData] = useState<string[]>([]);
+  useEffect(() => {
+    // TODO: No need to make the request until all fields are present.
+    datasource.postResource<DistinctValuesResponse>('distinctValues', request).then((resp) => setData(resp.valueExprs));
   }, [JSON.stringify(request)]);
   return data;
 }

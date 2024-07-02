@@ -37,7 +37,7 @@ func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeE
 	}, nil
 }
 
-func (x TimeExpressionBuilder) BuildTimeFilterExpr(timeRange TimeRange) string {
+func (x TimeExpressionBuilder) TimeFilterExpr(timeRange TimeRange) string {
 	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
 		x.timeColumn, x.TimeExpr(timeRange.From),
 		x.timeColumn, x.TimeExpr(timeRange.To),

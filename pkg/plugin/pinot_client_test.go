@@ -22,7 +22,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 	ctx := context.Background()
 	client := mustCreateClient(t)
 
-	gotTables, err := client.ListTables(ctx)
+	gotTables, err := client.ListTables(ctx, "")
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, gotTables)
@@ -32,7 +32,7 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 	ctx := context.Background()
 	client := mustCreateClient(t)
 
-	res, err := client.GetTableSchema(ctx, "ABTestSampleData")
+	res, err := client.GetTableSchema(ctx, "","ABTestSampleData")
 
 	assert.NoError(t, err)
 	fmt.Printf("%v", res)

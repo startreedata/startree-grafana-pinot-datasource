@@ -29,6 +29,7 @@ type PinotQlBuilderParams struct {
 	MetricColumn        string
 	DimensionColumns    []string
 	AggregationFunction string
+	DimensionFilters    []DimensionFilter
 }
 
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
@@ -60,7 +61,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 		TimeColumn:          p.TimeColumn,
 		MetricColumn:        p.MetricColumn,
 		DimensionColumns:    p.DimensionColumns,
-		TimeFilterExpr:      exprBuilder.BuildTimeFilterExpr(p.TimeRange),
+		TimeFilterExpr:      exprBuilder.TimeFilterExpr(p.TimeRange),
 		TimeGroupExpr:       exprBuilder.BuildTimeGroupExpr(p.IntervalSize),
 		AggregationFunction: p.AggregationFunction,
 		TimeColumnAlias:     DefaultTimeColumnAlias,
