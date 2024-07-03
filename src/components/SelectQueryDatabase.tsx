@@ -4,7 +4,7 @@ import { SelectableValue } from '@grafana/data';
 import React from 'react';
 import { FormLabel } from './FormLabel';
 
-export function SelectDatabase(props: {
+export function SelectQueryDatabase(props: {
   options: string[] | undefined;
   selected: string | undefined;
   defaultValue: string;
