@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 )
@@ -25,12 +26,16 @@ type Datasource struct {
 }
 
 func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	pinotProperties, err := PinotPropertiesFrom(settings)
+	config, err := PinotDataSourceConfigFrom(settings)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := NewPinotClient(pinotProperties)
+	client, err := NewPinotClient(PinotClientProperties{
+		ControllerUrl: config.ControllerUrl,
+		BrokerUrl:     config.BrokerUrl,
+		Authorization: fmt.Sprintf("%s %s", config.TokenType, config.AuthToken),
+	})
 	if err != nil {
 		return nil, err
 	}

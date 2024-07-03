@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startree/pinot/pkg/plugin/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"net/http"
@@ -14,27 +13,20 @@ import (
 	"time"
 )
 
-type PinotProperties struct {
-	ControllerUrl string `json:"controllerUrl"`
-	BrokerUrl     string `json:"brokerUrl"`
-	Authorization string `json:"-"` // Never serialize this field.
+type PinotClient struct {
+	properties       PinotClientProperties
+	brokerConn       *pinot.Connection
+	controllerClient PinotControllerClient
+
+	listDatabasesCache  *cache.ResourceCache[[]string]
+	listTablesCache     *cache.MultiResourceCache[string, []string]
+	getTableSchemaCache *cache.MultiResourceCache[string, TableSchema]
 }
 
-func PinotPropertiesFrom(settings backend.DataSourceInstanceSettings) (PinotProperties, error) {
-	if settings.JSONData == nil {
-		return PinotProperties{}, errors.New("data source json data is null")
-	}
-
-	var properties PinotProperties
-	if err := json.Unmarshal(settings.JSONData, &properties); err != nil {
-		return PinotProperties{}, fmt.Errorf("failed to unmarshal pinot properties: %w", err)
-	} else if properties.BrokerUrl == "" {
-		return PinotProperties{}, errors.New("broker url cannot be empty")
-	} else if properties.ControllerUrl == "" {
-		return PinotProperties{}, errors.New("controller url cannot be empty")
-	}
-	properties.Authorization = settings.DecryptedSecureJSONData["authToken"]
-	return properties, nil
+type PinotClientProperties struct {
+	ControllerUrl string
+	BrokerUrl     string
+	Authorization string
 }
 
 type TableSchema struct {
@@ -61,17 +53,7 @@ type DateTimeFieldSpec struct {
 	Granularity string `json:"granularity"`
 }
 
-type PinotClient struct {
-	properties       PinotProperties
-	brokerConn       *pinot.Connection
-	controllerClient pinotControllerClient
-
-	listDatabasesCache  *cache.ResourceCache[[]string]
-	listTablesCache     *cache.MultiResourceCache[string, []string]
-	getTableSchemaCache *cache.MultiResourceCache[string, TableSchema]
-}
-
-func NewPinotClient(properties PinotProperties) (*PinotClient, error) {
+func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 	headers := make(map[string]string)
 	if properties.Authorization != "" {
 		headers["Authorization"] = properties.Authorization
@@ -88,14 +70,14 @@ func NewPinotClient(properties PinotProperties) (*PinotClient, error) {
 	return &PinotClient{
 		properties:          properties,
 		brokerConn:          brokerConn,
-		controllerClient:    pinotControllerClient{properties: properties},
+		controllerClient:    PinotControllerClient{properties: properties},
 		listDatabasesCache:  cache.NewResourceCache[[]string](5 * time.Minute),
 		listTablesCache:     cache.NewMultiResourceCache[string, []string](5 * time.Minute),
 		getTableSchemaCache: cache.NewMultiResourceCache[string, TableSchema](5 * time.Minute),
 	}, nil
 }
 
-func (p *PinotClient) Properties() PinotProperties { return p.properties }
+func (p *PinotClient) Properties() PinotClientProperties { return p.properties }
 
 func (p *PinotClient) ExecuteSQL(ctx context.Context, table string, query string) (*pinot.BrokerResponse, error) {
 	select {
@@ -135,11 +117,11 @@ func (p *PinotClient) GetTableSchema(ctx context.Context, database string, table
 	})
 }
 
-type pinotControllerClient struct {
-	properties PinotProperties
+type PinotControllerClient struct {
+	properties PinotClientProperties
 }
 
-func (p *pinotControllerClient) ListDatabases(ctx context.Context) ([]string, error) {
+func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, error) {
 	req, err := p.newControllerGetRequest(ctx, "", "/databases")
 	if err != nil {
 		return nil, err
@@ -162,7 +144,7 @@ func (p *pinotControllerClient) ListDatabases(ctx context.Context) ([]string, er
 	return databases, nil
 }
 
-func (p *pinotControllerClient) ListTables(ctx context.Context, database string) ([]string, error) {
+func (p *PinotControllerClient) ListTables(ctx context.Context, database string) ([]string, error) {
 	req, err := p.newControllerGetRequest(ctx, database, "/tables")
 	if err != nil {
 		return nil, err
@@ -178,7 +160,7 @@ func (p *pinotControllerClient) ListTables(ctx context.Context, database string)
 	return tablesResp.Tables, nil
 }
 
-func (p *pinotControllerClient) GetTableSchema(ctx context.Context, database string, table string) (TableSchema, error) {
+func (p *PinotControllerClient) GetTableSchema(ctx context.Context, database string, table string) (TableSchema, error) {
 	req, err := p.newControllerGetRequest(ctx, database, "/tables/"+url.PathEscape(table)+"/schema")
 	if err != nil {
 		return TableSchema{}, err
@@ -191,7 +173,7 @@ func (p *pinotControllerClient) GetTableSchema(ctx context.Context, database str
 	return schema, nil
 }
 
-func (p *pinotControllerClient) newControllerGetRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
+func (p *PinotControllerClient) newControllerGetRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.properties.ControllerUrl+endpoint, nil)
 	if err != nil {
 		// Realistically, this should never throw an error, but pass it through anyway.
@@ -206,7 +188,7 @@ func (p *pinotControllerClient) newControllerGetRequest(ctx context.Context, dat
 	return req, err
 }
 
-func (p *pinotControllerClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
+func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
 	resp, err := p.doRequest(req)
 	if err != nil {
 		return fmt.Errorf("pinot/http request failed: %w", err)
@@ -220,7 +202,7 @@ func (p *pinotControllerClient) doRequestAndDecodeResponse(req *http.Request, de
 	return p.decodeResponse(resp, dest)
 }
 
-func (p *pinotControllerClient) doRequest(req *http.Request) (*http.Response, error) {
+func (p *PinotControllerClient) doRequest(req *http.Request) (*http.Response, error) {
 	Logger.Info(fmt.Sprintf("pinot/http %s %s", req.Method, req.URL.String()))
 	resp, err := http.DefaultClient.Do(req)
 	if resp.StatusCode != http.StatusOK {
@@ -228,13 +210,13 @@ func (p *pinotControllerClient) doRequest(req *http.Request) (*http.Response, er
 	return resp, err
 }
 
-func (p *pinotControllerClient) closeResponseBody(resp *http.Response) {
+func (p *PinotControllerClient) closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
 		Logger.Error("pinot/http failed to close response body: ", err.Error())
 	}
 }
 
-func (p *pinotControllerClient) newErrorFromResponseBody(resp *http.Response) error {
+func (p *PinotControllerClient) newErrorFromResponseBody(resp *http.Response) error {
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(resp.Body); err != nil {
 		Logger.Error("pinot/http failed to read response body: ", err.Error())
@@ -242,7 +224,7 @@ func (p *pinotControllerClient) newErrorFromResponseBody(resp *http.Response) er
 	return newControllerStatusError(resp.StatusCode, body.String())
 }
 
-func (p *pinotControllerClient) decodeResponse(resp *http.Response, dest interface{}) error {
+func (p *PinotControllerClient) decodeResponse(resp *http.Response, dest interface{}) error {
 	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
 		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
 	}
