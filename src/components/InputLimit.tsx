@@ -1,8 +1,8 @@
 import { Input } from '@grafana/ui';
 import React, { ChangeEvent, useState } from 'react';
 import { FormLabel } from './FormLabel';
+import { styles } from '../styles';
 import allLabels from '../labels';
-import {styles} from "../styles";
 
 const DefaultLimit = 1_000_000;
 
