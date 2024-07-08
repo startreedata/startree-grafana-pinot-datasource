@@ -1,18 +1,19 @@
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { InlineFormLabel, RadioButtonGroup } from '@grafana/ui';
+import { RadioButtonGroup } from '@grafana/ui';
 import React from 'react';
-import {QueryType} from "../types/QueryType";
-import {EditorMode} from "../types/EditorMode";
+import { QueryType } from '../types/QueryType';
+import { EditorMode } from '../types/EditorMode';
+import allLabels from '../labels';
+import { FormLabel } from './FormLabel';
 
 export function SelectEditorType(props: PinotQueryEditorProps) {
   const { query, onChange } = props;
+  const labels = allLabels.components.QueryEditor.editorType;
 
   return (
     <div className={'gf-form'} style={{ display: 'flex', justifyContent: 'space-between' }}>
       <div className={'gf-form'}>
-        <InlineFormLabel width={8} className="query-keyword" tooltip={'Select query type'}>
-          Query Type
-        </InlineFormLabel>
+        <FormLabel tooltip={labels.tooltip} label={labels.label} />
         <RadioButtonGroup
           options={Object.keys(QueryType).map((name) => ({ label: name, value: name }))}
           onChange={(value) => {

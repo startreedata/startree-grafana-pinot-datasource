@@ -1,11 +1,15 @@
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { InlineFormLabel, Input } from '@grafana/ui';
+import { Input } from '@grafana/ui';
 import { styles } from '../styles';
 import React, { ChangeEvent, useState } from 'react';
+import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 const DefaultLimit = 1_000_000;
 
 export function InputLimit(props: PinotQueryEditorProps) {
+  const labels = allLabels.components.QueryEditor.limit;
+
   const [inputData, setInputData] = useState<string | undefined>(DefaultLimit.toString(10));
   const [isValid, setIsValid] = useState<boolean>(true);
   const { query, onChange } = props;
@@ -22,9 +26,7 @@ export function InputLimit(props: PinotQueryEditorProps) {
 
   return (
     <div className={'gf-form'} style={{ display: 'flex', flexDirection: 'row' }}>
-      <InlineFormLabel width={8} className="query-keyword">
-        Limit
-      </InlineFormLabel>
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Input
         className={`width-15 ${styles.Common.inlineSelect}`}
         onChange={onChangeLimit}

@@ -2,6 +2,8 @@ import { Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
+
 
 export function SelectTable(props: {
   selected: string | undefined;
@@ -9,10 +11,12 @@ export function SelectTable(props: {
   onChange: (val: string | undefined) => void;
 }) {
   const { selected, options, onChange } = props;
+  const labels = allLabels.components.QueryEditor.database;
+
 
   return (
     <>
-      <FormLabel tooltip={'Select Pinot Table'} label={'Table'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
         options={options?.map((name) => ({ label: name, value: name }))}
