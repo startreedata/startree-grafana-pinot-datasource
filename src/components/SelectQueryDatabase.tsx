@@ -3,6 +3,7 @@ import { styles } from '../styles';
 import { SelectableValue } from '@grafana/data';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function SelectQueryDatabase(props: {
   options: string[] | undefined;
@@ -11,6 +12,7 @@ export function SelectQueryDatabase(props: {
   onChange: (val: string | undefined) => void;
 }) {
   const { defaultValue, selected, options, onChange } = props;
+  const labels = allLabels.components.QueryEditor.database;
 
   if (options?.length == 0 && selected == undefined) {
     onChange(defaultValue);
@@ -24,7 +26,7 @@ export function SelectQueryDatabase(props: {
 
   return (
     <>
-      <FormLabel tooltip={'Select Pinot database'} label={'Database'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
         // TODO: Handle the default db name correctly.

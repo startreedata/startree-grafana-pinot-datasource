@@ -3,6 +3,7 @@ import { styles } from '../styles';
 import { SelectableValue } from '@grafana/data';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function SelectGroupBy(props: {
   selected: string[] | undefined;
@@ -10,10 +11,11 @@ export function SelectGroupBy(props: {
   onChange: (val: string[] | undefined) => void;
 }) {
   const { options, selected, onChange } = props;
+  const labels = allLabels.components.QueryEditor.groupBy;
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={'Select dimensions function'} label={'Group By'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
         className={`width-15 ${styles.Common.inlineSelect}`}
         options={options?.map((name) => ({ label: name, value: name }))}

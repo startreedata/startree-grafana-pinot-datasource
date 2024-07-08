@@ -2,20 +2,29 @@ import { Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
+
+const AggregationOptions = [
+  { label: 'SUM', value: 'SUM' },
+  { label: 'COUNT', value: 'COUNT' },
+  { label: 'AVG', value: 'AVG' },
+  { label: 'MAX', value: 'MAX' },
+  { label: 'MIN', value: 'MIN' },
+];
 
 export function SelectAggregation(props: {
   selected: string | undefined;
-  options: string[];
   onChange: (val: string | undefined) => void;
 }) {
-  const { selected, options, onChange } = props;
+  const { selected, onChange } = props;
+  const labels = allLabels.components.QueryEditor.aggregation;
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={'Select aggregation function'} label={'Aggregation'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
-        options={options.map((name) => ({ label: name, value: name }))}
+        options={AggregationOptions}
         value={selected}
         onChange={(change) => onChange(change.value)}
       />

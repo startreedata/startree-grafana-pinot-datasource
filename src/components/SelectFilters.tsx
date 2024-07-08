@@ -5,6 +5,7 @@ import { DimensionFilter, PinotDataType, PinotDataTypes, TableSchema, useDistinc
 import { DataSource } from '../datasource';
 import { SelectableValue, TimeRange } from '@grafana/data';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function SelectFilters(props: {
   datasource: DataSource;
@@ -18,6 +19,7 @@ export function SelectFilters(props: {
   onChange: (val: DimensionFilter[]) => void;
 }) {
   const { dimensionColumns, dimensionFilters, onChange } = props;
+  const labels = allLabels.components.QueryEditor.filters;
 
   const filteredColumns = dimensionFilters?.map((f) => f.columnName) || [];
   const unusedColumns = dimensionColumns?.filter((d) => !filteredColumns.includes(d));
@@ -31,7 +33,7 @@ export function SelectFilters(props: {
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={'Select group by filters'} label={'Filters'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {dimensionFilters.map((filter, idx) => (
           <DimensionFilterEditor
@@ -175,7 +177,6 @@ export function DimensionFilterEditor(props: {
           value={thisFilter.valueExprs}
           options={valueOptions}
           allowCustomValue
-
           onChange={(change: SelectableValue<string>[]) => {
             const selected = change.map((v) => v.value).filter((v) => v !== undefined) as string[];
             onChange({

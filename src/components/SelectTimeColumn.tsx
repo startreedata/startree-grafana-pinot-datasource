@@ -2,6 +2,7 @@ import { Select } from '@grafana/ui';
 import { styles } from '../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function SelectTimeColumn(props: {
   selected?: string;
@@ -9,10 +10,11 @@ export function SelectTimeColumn(props: {
   onChange: (val: string | undefined) => void;
 }) {
   const { selected, options, onChange } = props;
+  const labels = allLabels.components.QueryEditor.timeColumn;
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={'Select time column'} label={'Time Column'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`width-15 ${styles.Common.inlineSelect}`}
         options={options?.map((name) => ({ label: name, value: name }))}

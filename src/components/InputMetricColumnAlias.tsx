@@ -1,16 +1,17 @@
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { InlineFormLabel, Input } from '@grafana/ui';
+import { Input } from '@grafana/ui';
 import React, { ChangeEvent } from 'react';
 import { styles } from '../styles';
+import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function InputMetricColumnAlias(props: PinotQueryEditorProps) {
   const { query, onChange } = props;
+  const labels = allLabels.components.QueryEditor.metricAlias;
 
   return (
     <div className={'gf-form'}>
-      <InlineFormLabel width={8} className="query-keyword" tooltip={'Metric column alias.'}>
-        Metric Alias
-      </InlineFormLabel>
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Input
         className={`width-15 ${styles.Common.inlineSelect}`}
         onChange={(event: ChangeEvent<HTMLInputElement>) =>
@@ -19,7 +20,8 @@ export function InputMetricColumnAlias(props: PinotQueryEditorProps) {
             metricColumnAlias: event.target.value,
           })
         }
-        value={query.metricColumnAlias || 'metric'}
+        placeholder={labels.placeholder}
+        value={query.metricColumnAlias}
         width={24}
       />
     </div>

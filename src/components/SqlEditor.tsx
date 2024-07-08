@@ -1,7 +1,8 @@
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
-import { InlineFormLabel } from '@grafana/ui';
 import React from 'react';
 import { SQLEditor } from '@grafana/experimental';
+import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 const DefaultSql = `
 SELECT 
@@ -16,6 +17,7 @@ LIMIT 1000000
 
 export function SqlEditor(props: PinotQueryEditorProps) {
   const { query, onChange } = props;
+  const labels = allLabels.components.QueryEditor.sqlEditor;
 
   const onChangeCode = (value: string) => onChange({ ...props.query, pinotQlCode: value });
 
@@ -26,9 +28,7 @@ export function SqlEditor(props: PinotQueryEditorProps) {
   return (
     <div className={'gf-form'}>
       <div>
-        <InlineFormLabel width={8} className="query-keyword" tooltip={'Sql Editor'}>
-          Pinot Query
-        </InlineFormLabel>
+        <FormLabel tooltip={labels.tooltip} label={labels.label} />
       </div>
       <div style={{ flex: '1 1 auto' }}>
         <SQLEditor query={query.pinotQlCode || ''} onChange={onChangeCode} />

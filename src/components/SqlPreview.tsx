@@ -2,9 +2,11 @@ import { useSqlPreview } from '../resources/resources';
 import React from 'react';
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
+import allLabels from '../labels';
 
 export function SqlPreview(props: PinotQueryEditorProps) {
   const { data, range, query, datasource } = props;
+  const labels = allLabels.components.QueryEditor.sqlPreview;
 
   const sql = useSqlPreview(datasource, {
     aggregationFunction: query.aggregationFunction,
@@ -20,7 +22,7 @@ export function SqlPreview(props: PinotQueryEditorProps) {
 
   return (
     <div className="gf-form">
-      <FormLabel tooltip={'Sql Preview'} label={'Sql Preview'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <pre>{sql}</pre>
     </div>
   );

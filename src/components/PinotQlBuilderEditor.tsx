@@ -53,7 +53,6 @@ export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
         />
         <SelectAggregation
           selected={query.aggregationFunction}
-          options={['SUM', 'COUNT', 'AVG', 'MAX']}
           onChange={(value) => onChangeAndRun({ ...query, aggregationFunction: value })}
         />
       </div>
