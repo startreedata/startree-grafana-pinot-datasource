@@ -11,7 +11,7 @@ export function SelectEditorType(props: PinotQueryEditorProps) {
   const labels = allLabels.components.QueryEditor.editorType;
 
   return (
-    <div className={'gf-form'} style={{ display: 'flex', justifyContent: 'space-between' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
       <div className={'gf-form'}>
         <FormLabel tooltip={labels.tooltip} label={labels.label} />
         <RadioButtonGroup

@@ -6,14 +6,24 @@ import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { InputTimeColumnFormat } from './InputTimeColumnFormat';
 
 export function PinotQlCodeEditor(props: PinotQueryEditorProps) {
+  const { query, onChange } = props;
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
-        <InputTimeColumnAlias {...props} />
-        <InputTimeColumnFormat {...props} />
+        <InputTimeColumnAlias
+          current={query.timeColumnAlias}
+          onChange={(val) => onChange({ ...query, timeColumnAlias: val })}
+        />
+        <InputTimeColumnFormat
+          current={query.timeColumnFormat}
+          onChange={(val) => onChange({ ...query, timeColumnFormat: val })}
+        />
       </div>
-      <InputMetricColumnAlias {...props} />
-      <SqlEditor {...props} />
+      <InputMetricColumnAlias
+        current={query.metricColumnAlias}
+        onChange={(val) => onChange({ ...props.query, metricColumnAlias: val })}
+      />
+      <SqlEditor current={query.pinotQlCode} onChange={(val) => onChange({ ...props.query, pinotQlCode: val })} />
     </div>
   );
 }

@@ -7,6 +7,26 @@ export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,
   editorMode: EditorMode.Builder,
   databaseName: 'default',
+
+  // PinotQl Code Editor
+
+  timeColumnAlias: 'time',
+  metricColumnAlias: 'metric',
+  timeColumnFormat: '1:MILLISECONDS:EPOCH',
+  pinotQlCode: `
+SELECT 
+  $__timeGroup("timestamp") AS $__timeAlias(),
+  SUM("metric") AS $__metricAlias()
+FROM $__tableName()
+WHERE $__timeFilter("timestamp")
+GROUP BY $__timeGroup("timestamp")
+ORDER BY $__timeAlias() DESC
+LIMIT 1000000
+`.trim(),
+
+  // PinotQl Builder
+
+
 });
 
 export interface PinotDataQuery extends DataQuery {

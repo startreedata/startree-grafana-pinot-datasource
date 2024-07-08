@@ -4,7 +4,6 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../labels';
 
-
 export function SelectTable(props: {
   selected: string | undefined;
   options: string[] | undefined;
@@ -13,12 +12,11 @@ export function SelectTable(props: {
   const { selected, options, onChange } = props;
   const labels = allLabels.components.QueryEditor.database;
 
-
   return (
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
-        className={`width-15 ${styles.Common.inlineSelect}`}
+        className={`${styles.QueryEditor.inputForm}`}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
         onChange={(change) => onChange(change.value)}

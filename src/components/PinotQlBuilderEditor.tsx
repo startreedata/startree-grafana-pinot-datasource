@@ -6,14 +6,26 @@ import { SqlPreview } from './SqlPreview';
 import React from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
-import { NumericPinotDataTypes, useTableSchema } from '../resources/resources';
+import { NumericPinotDataTypes, useSqlPreview, useTableSchema } from '../resources/resources';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { canRunQuery, PinotDataQuery } from '../types/PinotDataQuery';
 
 export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
-  const { datasource, query, range, onChange, onRunQuery } = props;
+  const { data, datasource, query, range, onChange, onRunQuery } = props;
 
+  const sql = useSqlPreview(datasource, {
+    aggregationFunction: query.aggregationFunction,
+    databaseName: query.databaseName,
+    groupByColumns: query.groupByColumns,
+    intervalSize: data?.request?.interval || '0',
+    metricColumn: query.metricColumn,
+    tableName: query.tableName,
+    timeColumn: query.timeColumn,
+    timeRange: { to: range?.to, from: range?.from },
+    filters: query.filters,
+  });
   const tableSchema = useTableSchema(datasource, query.databaseName, query.tableName);
+
   const timeColumns = tableSchema?.dateTimeFieldSpecs.map((spec) => spec.name);
   const metricColumns = tableSchema
     ? [...tableSchema.metricFieldSpecs, ...tableSchema.dimensionFieldSpecs]
@@ -77,10 +89,10 @@ export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
         />
       </div>
       <div>
-        <InputLimit {...props} />
+        <InputLimit current={query.limit} onChange={(val) => onChangeAndRun({ ...props.query, limit: val })} />
       </div>
       <div>
-        <SqlPreview {...props} />
+        <SqlPreview sql={sql} />
       </div>
     </>
   );

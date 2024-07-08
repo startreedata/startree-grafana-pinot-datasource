@@ -28,7 +28,7 @@ export function SelectQueryDatabase(props: {
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
-        className={`width-15 ${styles.Common.inlineSelect}`}
+        className={`${styles.QueryEditor.inputForm}`}
         // TODO: Handle the default db name correctly.
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
