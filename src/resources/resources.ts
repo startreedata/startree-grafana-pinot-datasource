@@ -56,13 +56,13 @@ interface SqlPreviewResponse {
 export interface SqlPreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string;
-  databaseName?: string;
-  tableName?: string;
-  timeColumn?: string;
-  metricColumn?: string;
-  groupByColumns?: string[];
-  aggregationFunction?: string;
-  filters?: DimensionFilter[];
+  databaseName: string | undefined;
+  tableName: string | undefined;
+  timeColumn: string | undefined;
+  metricColumn: string | undefined;
+  groupByColumns: string[] | undefined;
+  aggregationFunction: string | undefined;
+  filters: DimensionFilter[] | undefined;
 }
 
 export function useSqlPreview(datasource: DataSource, request: SqlPreviewRequest): string {

@@ -17,7 +17,7 @@ export function SelectGroupBy(props: {
     <div className={'gf-form'}>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
-        className={`width-15 ${styles.Common.inlineSelect}`}
+        className={`${styles.QueryEditor.inputForm}`}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
         onChange={(item: SelectableValue<string>[]) => {
