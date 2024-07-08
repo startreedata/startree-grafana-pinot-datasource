@@ -1,17 +1,18 @@
+import React from 'react';
 import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
 import { SelectQueryDatabase } from './SelectQueryDatabase';
 import { SelectTable } from './SelectTable';
 import { EditorMode } from '../types/EditorMode';
-import React from 'react';
 import { PinotQlBuilderEditor } from './PinotQlBuilderEditor';
 import { PinotQlCodeEditor } from './PinotQlCodeEditor';
-import { useDatabases, useTables } from '../resources/resources';
+import { useDatabases, useTables } from '../resources/controller';
+
+const DefaultDatabase = 'default';
 
 export function PinotQlEditor(props: PinotQueryEditorProps) {
   const { datasource, query, onChange } = props;
   const databases = useDatabases(datasource);
   const tables = useTables(datasource, query.databaseName);
-  const defaultDatabase = 'default';
 
   return (
     <div>
@@ -20,7 +21,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           <SelectQueryDatabase
             options={databases}
             selected={query.databaseName}
-            defaultValue={defaultDatabase}
+            defaultValue={DefaultDatabase}
             onChange={(value: string | undefined) =>
               onChange({
                 ...query,

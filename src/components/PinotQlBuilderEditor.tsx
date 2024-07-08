@@ -6,9 +6,11 @@ import { SqlPreview } from './SqlPreview';
 import React from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
-import { NumericPinotDataTypes, useSqlPreview, useTableSchema } from '../resources/resources';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { canRunQuery, PinotDataQuery } from '../types/PinotDataQuery';
+import { useSqlPreview } from '../resources/sqlPreview';
+import { useTableSchema } from '../resources/controller';
+import { NumericPinotDataTypes } from '../types/PinotDataType';
 
 export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
   const { data, datasource, query, range, onChange, onRunQuery } = props;

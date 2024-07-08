@@ -1,7 +1,7 @@
 import { QueryType } from './QueryType';
 import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
-import { DimensionFilter } from '../resources/resources';
+import {DimensionFilter} from "./DimensionFilter";
 
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,

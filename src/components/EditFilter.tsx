@@ -1,9 +1,12 @@
 import { DataSource } from '../datasource';
-import { DimensionFilter, PinotDataType, PinotDataTypes, TableSchema, useDistinctValues } from '../resources/resources';
 import { SelectableValue, TimeRange } from '@grafana/data';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { MultiSelect, Select } from '@grafana/ui';
 import React from 'react';
+import { PinotDataType, PinotDataTypes } from '../types/PinotDataType';
+import { DimensionFilter } from '../types/DimensionFilter';
+import { TableSchema } from '../types/TableSchema';
+import { useDistinctValues } from '../resources/distinctValues';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
