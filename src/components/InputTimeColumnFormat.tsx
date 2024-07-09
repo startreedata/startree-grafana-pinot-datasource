@@ -6,7 +6,7 @@ import { FormLabel } from './FormLabel';
 
 export function InputTimeColumnFormat(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;
-  const labels = allLabels.components.QueryEditor.timeAlias;
+  const labels = allLabels.components.QueryEditor.timeFormat;
 
   return (
     <div className={'gf-form'}>

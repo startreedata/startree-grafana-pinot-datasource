@@ -10,7 +10,7 @@ export function SelectTable(props: {
   onChange: (val: string | undefined) => void;
 }) {
   const { selected, options, onChange } = props;
-  const labels = allLabels.components.QueryEditor.database;
+  const labels = allLabels.components.QueryEditor.table;
 
   return (
     <>

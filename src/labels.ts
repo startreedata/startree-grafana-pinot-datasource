@@ -37,8 +37,8 @@ export default {
         label: 'Time Alias',
       },
       timeFormat: {
-        tooltip: 'Time column alias.',
-        label: 'Time Alias',
+        tooltip: 'Pinot Time format.',
+        label: 'Time Format',
       },
       aggregation: {
         tooltip: 'Select aggregation function',
