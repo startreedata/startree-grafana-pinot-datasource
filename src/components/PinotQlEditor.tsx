@@ -52,7 +52,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           />
         </div>
       </div>
-      {props.query.editorMode == EditorMode.Code ? (
+      {props.query.editorMode === EditorMode.Code ? (
         <PinotQlCodeEditor {...props} />
       ) : (
         <PinotQlBuilderEditor {...props} />

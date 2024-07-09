@@ -12,13 +12,13 @@ export function SelectConfigEditorDatabase(props: {
 
   const options = useConfigEditorDatabases(selected, tokenType, tokenValue);
 
-  if (options?.length == 0 && selected == undefined) {
+  if (options?.length === 0 && selected === undefined) {
     onChange(defaultValue);
-  } else if (options?.length == 1 && selected == undefined) {
+  } else if (options?.length === 1 && selected === undefined) {
     onChange(options[0]);
   }
 
-  if (options?.length == 0) {
+  if (options?.length === 0) {
     options.push(defaultValue);
   }
 

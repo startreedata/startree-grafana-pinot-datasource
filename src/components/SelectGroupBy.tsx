@@ -20,7 +20,7 @@ export function SelectGroupBy(props: {
         className={`${styles.QueryEditor.inputForm}`}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
-        onChange={(item: SelectableValue<string>[]) => {
+        onChange={(item: Array<SelectableValue<string>>) => {
           const selected = item.map((v) => v.value).filter((v) => v !== undefined) as string[];
           onChange(selected);
         }}

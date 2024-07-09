@@ -42,7 +42,7 @@ export function useTableSchema(
 function useControllerResource<T>(
   datasource: DataSource,
   databaseName: string | undefined,
-  path: string,
+  endpoint: string,
   noop?: boolean
 ): T | undefined {
   const [resp, setResp] = useState<T | undefined>(undefined);
@@ -52,9 +52,12 @@ function useControllerResource<T>(
     params.set('database', databaseName);
   }
 
+  const path = `${endpoint}?${params.toString()}`;
   useEffect(() => {
-    if (noop) return;
-    datasource.getResource<T>(`${path}?${params.toString()}`).then((resp) => setResp(resp));
-  }, [databaseName, path]);
+    if (noop) {
+      return;
+    }
+    datasource.getResource<T>(path).then((resp) => setResp(resp));
+  }, [datasource, databaseName, path, noop]);
   return resp;
 }

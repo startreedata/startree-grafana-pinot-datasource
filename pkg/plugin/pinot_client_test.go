@@ -10,9 +10,9 @@ import (
 
 func TestPinotClient_Query(t *testing.T) {
 	ctx := context.Background()
-	client := newPinotClient(t)
+	client := testPinotClient(t)
 
-	sql := `SELECT "timestamp" AS 'time' FROM LogAnalyticsMonitoringwhere "timestamp" >= 1715881482102 AND "timestamp" <= 1715859882102`
+	sql := `SELECT "timestamp" AS 'time' FROM LogAnalyticsMonitoring where "timestamp" >= 1715881482102 AND "timestamp" <= 1715859882102`
 
 	_, err := client.ExecuteSQL(ctx, "LogAnalyticsMonitoring", sql)
 	assert.NoError(t, err)
@@ -20,7 +20,7 @@ func TestPinotClient_Query(t *testing.T) {
 
 func TestPinotClient_ListTables(t *testing.T) {
 	ctx := context.Background()
-	client := newPinotClient(t)
+	client := testPinotClient(t)
 
 	gotTables, err := client.ListTables(ctx, "")
 
@@ -30,7 +30,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 
 func TestPinotClient_GetTableSchema(t *testing.T) {
 	ctx := context.Background()
-	client := newPinotClient(t)
+	client := testPinotClient(t)
 
 	res, err := client.GetTableSchema(ctx, "", "ABTestSampleData")
 
@@ -39,7 +39,7 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 	assert.NotEmpty(t, res)
 }
 
-func newPinotClient(t *testing.T) *PinotClient {
+func testPinotClient(t *testing.T) *PinotClient {
 	pinotClient, err := NewPinotClient(PinotClientProperties{
 		ControllerUrl: "https://pinot.demo.teprod.startree.cloud",
 		BrokerUrl:     "https://broker.pinot.demo.teprod.startree.cloud",

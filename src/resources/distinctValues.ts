@@ -21,6 +21,6 @@ export function useDistinctValues(datasource: DataSource, request: DistinctValue
   useEffect(() => {
     // TODO: No need to make the request until all fields are present.
     datasource.postResource<DistinctValuesResponse>('distinctValues', request).then((resp) => setData(resp.valueExprs));
-  }, [JSON.stringify(request)]);
+  }, [datasource, request]);
   return data;
 }

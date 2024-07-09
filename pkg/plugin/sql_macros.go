@@ -22,7 +22,6 @@ type Macro struct {
 	render func(args []string) (string, error)
 }
 
-// TODO: I'm still not very pleased with this setup.
 var tableNameRegex = regexp.MustCompile(`\$__table(\([^)]*\))?`)
 var timeFilterRegex = regexp.MustCompile(`\$__timeFilter(\([^)]*\))?`)
 var timeGroupRegex = regexp.MustCompile(`\$__timeGroup(\([^)]*\))?`)

@@ -79,3 +79,8 @@ func TestExtractColumnExpr(t *testing.T) {
 		assert.Equal(t, []string{"1.1", "2.2", "3.3"}, got)
 	})
 }
+
+func TestGetDistinctValues(t *testing.T) {
+	got := GetDistinctValues([]int64{1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 4, 3})
+	assert.Equal(t, []int64{1, 2, 3, 4, 5}, got)
+}

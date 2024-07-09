@@ -19,7 +19,7 @@ export function InputPinotToken(props: {
   const { isConfigured, tokenType, tokenValue, onChangeToken, onChangeType, onResetToken } = props;
   const labels = allLabels.components.ConfigEditor.token;
 
-  if (tokenType == undefined && tokenType != DefaultTokenType) {
+  if (tokenType === undefined && tokenType !== DefaultTokenType) {
     onChangeType(DefaultTokenType);
   }
 

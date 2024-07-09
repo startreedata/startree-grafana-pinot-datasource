@@ -26,8 +26,7 @@ func (x *ResourceCache[V]) Get(loader Loader[V]) (V, error) {
 type MultiResourceCache[K comparable, V any] struct {
 	entries map[K]*cacheEntry[V]
 	ttl     time.Duration
-
-	lock sync.RWMutex
+	lock    sync.RWMutex
 }
 
 func NewMultiResourceCache[K comparable, V any](ttl time.Duration) *MultiResourceCache[K, V] {

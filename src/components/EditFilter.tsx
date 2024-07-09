@@ -71,11 +71,11 @@ export function EditFilter(props: {
     ...(tableSchema?.dateTimeFieldSpecs || []),
     ...(tableSchema?.dimensionFieldSpecs || []),
     ...(tableSchema?.metricFieldSpecs || []),
-  ].find((spec) => spec.name == thisFilter.columnName)?.dataType;
+  ].find((spec) => spec.name === thisFilter.columnName)?.dataType;
 
   const dimOptions = unusedColumns
     ? [thisFilter.columnName, ...unusedColumns]
-        .filter((d, i, a) => a.indexOf(d) == i)
+        .filter((d, i, a) => a.indexOf(d) === i)
         .map((col) => ({
           label: col,
           value: col,
@@ -85,7 +85,7 @@ export function EditFilter(props: {
   const operatorOptions = columnType ? FilterOperators.filter((op) => op.types.includes(columnType)) : FilterOperators;
   const valueOptions = values?.map((val) => ({ label: val, value: val }));
 
-  const operatorIsMulti = FilterOperators.find((op) => op.value == thisFilter.operator)?.multi || false;
+  const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
 
   return (
     <InputGroup>
@@ -124,7 +124,7 @@ export function EditFilter(props: {
           value={thisFilter.valueExprs}
           options={valueOptions}
           allowCustomValue
-          onChange={(change: SelectableValue<string>[]) => {
+          onChange={(change: Array<SelectableValue<string>>) => {
             const selected = change.map((v) => v.value).filter((v) => v !== undefined) as string[];
             onChange({
               ...thisFilter,

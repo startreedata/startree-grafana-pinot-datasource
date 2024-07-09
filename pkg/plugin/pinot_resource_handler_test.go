@@ -12,7 +12,7 @@ import (
 )
 
 func TestPinotResourceHandler_SqlPreview(t *testing.T) {
-	pinotClient := newPinotClient(t)
+	pinotClient := testPinotClient(t)
 
 	server := httptest.NewServer(http.HandlerFunc((&PinotResourceHandler{pinotClient}).SqlPreview))
 	defer server.Close()
@@ -55,7 +55,7 @@ LIMIT 1000000
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
-	pinotClient := newPinotClient(t)
+	pinotClient := testPinotClient(t)
 
 	server := httptest.NewServer(http.HandlerFunc((&PinotResourceHandler{pinotClient}).DistinctValues))
 	defer server.Close()
@@ -90,4 +90,3 @@ func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
 
 	require.NoError(t, json.NewDecoder(&body).Decode(dest))
 }
-
