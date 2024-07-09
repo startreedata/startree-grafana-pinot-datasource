@@ -91,12 +91,3 @@ func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
 	require.NoError(t, json.NewDecoder(&body).Decode(dest))
 }
 
-func newPinotClient(t *testing.T) *PinotClient {
-	pinotClient, err := NewPinotClient(PinotClientProperties{
-		ControllerUrl: "https://pinot.demo.teprod.startree.cloud",
-		BrokerUrl:     "https://broker.pinot.demo.teprod.startree.cloud",
-		Authorization: "Basic YjBmZWI0YjcxN2UyNGE4M2E4NTE2OGRlMWMzODY3ODM6dnM3TkhjWjYrRTVFSXZ3OUpma0ZETnFtZmYrOTFZUk5NbHN1WkZucVVrMD0=",
-	})
-	require.NoError(t, err)
-	return pinotClient
-}

@@ -30,7 +30,7 @@ func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string
 	if !ok {
 		return nil, fmt.Errorf("metric column not found")
 	}
-	metCol := ExtractTypedColumn[float64](results, metColIdx, results.GetDouble)
+	metCol := ExtractDoubleColumn(results, metColIdx)
 
 	dimensions := make(map[string][]string)
 	for colIdx := 0; colIdx < results.GetColumnCount(); colIdx++ {
