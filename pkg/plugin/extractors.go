@@ -40,17 +40,17 @@ func ExtractColumnExpr(results *pinot.ResultTable, colIdx int) []string {
 	exprs := make([]string, results.GetRowCount())
 	switch colDataType {
 	case "INT", "LONG":
-		values := ExtractTypedColumn[int64](results, colIdx, results.GetLong)
+		values := extractTypedColumn[int64](results, colIdx, results.GetLong)
 		for i := range values {
 			exprs[i] = fmt.Sprintf("%d", values[i])
 		}
 	case "FLOAT", "DOUBLE":
-		values := ExtractTypedColumn[float64](results, colIdx, results.GetDouble)
+		values := extractTypedColumn[float64](results, colIdx, results.GetDouble)
 		for i := range values {
 			exprs[i] = fmt.Sprintf("%v", values[i])
 		}
 	case "STRING":
-		values := ExtractTypedColumn[string](results, colIdx, results.GetString)
+		values := extractTypedColumn[string](results, colIdx, results.GetString)
 		for i := range values {
 			exprs[i] = fmt.Sprintf("'%s'", values[i])
 		}
@@ -75,17 +75,17 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 }
 
 func ExtractDoubleColumn(results *pinot.ResultTable, colIdx int) []float64 {
-	return ExtractTypedColumn[float64](results, colIdx, results.GetDouble)
+	return extractTypedColumn[float64](results, colIdx, results.GetDouble)
 }
 
 func ExtractLongColumn(results *pinot.ResultTable, colIdx int) []int64 {
-	return ExtractTypedColumn[int64](results, colIdx, results.GetLong)
+	return extractTypedColumn[int64](results, colIdx, results.GetLong)
 }
 
 func ExtractStringColumn(results *pinot.ResultTable, colIdx int) []string {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	if colDataType == "STRING" {
-		return ExtractTypedColumn[string](results, colIdx, results.GetString)
+		return extractTypedColumn[string](results, colIdx, results.GetString)
 	}
 
 	result := make([]string, results.GetRowCount())
@@ -95,7 +95,7 @@ func ExtractStringColumn(results *pinot.ResultTable, colIdx int) []string {
 	return result
 }
 
-func ExtractTypedColumn[V int64 | float64 | string](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
+func extractTypedColumn[V int64 | float64 | string](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
 	values := make([]V, results.GetRowCount())
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
 		values[rowIdx] = getter(rowIdx, colIdx)
@@ -118,7 +118,7 @@ func ExtractSimpleDateTimeColumn(results *pinot.ResultTable, colIdx int, timeCol
 	}
 
 	values := make([]time.Time, results.GetRowCount())
-	for i, val := range ExtractTypedColumn[string](results, colIdx, results.GetString) {
+	for i, val := range extractTypedColumn[string](results, colIdx, results.GetString) {
 		ts, err := time.Parse(simpleDateTimeFormat, val)
 		if err != nil {
 			return nil, err
@@ -134,7 +134,7 @@ func ExtractLongTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFor
 		return nil, fmt.Errorf("invalid time column format: %s", timeColumnFormat)
 	}
 	values := make([]time.Time, results.GetRowCount())
-	for i, val := range ExtractTypedColumn[int64](results, colIdx, results.GetLong) {
+	for i, val := range extractTypedColumn[int64](results, colIdx, results.GetLong) {
 		values[i] = timeConverter(val)
 	}
 	return values, nil
