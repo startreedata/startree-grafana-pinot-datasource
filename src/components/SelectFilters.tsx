@@ -1,11 +1,12 @@
 import React from 'react';
 import { AccessoryButton } from '@grafana/experimental';
-import { DimensionFilter, TableSchema } from '../resources/resources';
 import { DataSource } from '../datasource';
 import { TimeRange } from '@grafana/data';
 import { FormLabel } from './FormLabel';
 import allLabels from '../labels';
 import { EditFilter } from './EditFilter';
+import { TableSchema } from '../types/TableSchema';
+import { DimensionFilter } from '../types/DimensionFilter';
 
 export function SelectFilters(props: {
   datasource: DataSource;

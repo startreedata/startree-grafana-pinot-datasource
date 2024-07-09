@@ -12,7 +12,7 @@ export function InputLimit(props: { current: number | undefined; onChange: (val:
 
   const [inputData, setInputData] = useState<string | undefined>(current?.toString(10));
 
-  if (current == undefined && current != DefaultLimit) {
+  if (current === undefined && current !== DefaultLimit) {
     onChange(DefaultLimit);
     setInputData(DefaultLimit.toString(10));
   }
@@ -45,7 +45,7 @@ function parseLimit(inputData: string | undefined): number | undefined {
       return undefined;
     case !Number.isFinite(limit):
       return undefined;
-    case inputData != limit.toString(10):
+    case inputData !== limit.toString(10):
       return undefined;
   }
   return limit;

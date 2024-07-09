@@ -24,6 +24,6 @@ export function useSqlPreview(datasource: DataSource, request: SqlPreviewRequest
   useEffect(() => {
     // TODO: No need to make the request until all fields are present.
     datasource.postResource<SqlPreviewResponse>('preview', request).then((resp) => setData(resp.sql));
-  }, [JSON.stringify(request)]);
+  }, [datasource, request]);
   return data;
 }

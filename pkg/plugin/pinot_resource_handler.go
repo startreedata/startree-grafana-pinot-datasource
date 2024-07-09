@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"net/http"
@@ -37,19 +36,6 @@ func (x *PinotResourceHandler) getDatabases(w http.ResponseWriter, r *http.Reque
 	x.writeJsonData(w, GetDatabasesResponse{
 		Databases: databases,
 	})
-}
-
-type ResourceHandlerError struct {
-	Status int
-	Err    error
-}
-
-func (x ResourceHandlerError) Error() string {
-	return fmt.Sprintf("%d: %s", x.Status, x.Err.Error())
-}
-
-func (x ResourceHandlerError) Unwrap() error {
-	return x.Err
 }
 
 func (x *PinotResourceHandler) getTables(w http.ResponseWriter, r *http.Request) {

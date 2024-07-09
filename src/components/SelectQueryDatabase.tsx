@@ -14,13 +14,13 @@ export function SelectQueryDatabase(props: {
   const { defaultValue, selected, options, onChange } = props;
   const labels = allLabels.components.QueryEditor.database;
 
-  if (options?.length == 0 && selected == undefined) {
+  if (options?.length === 0 && selected === undefined) {
     onChange(defaultValue);
-  } else if (options?.length == 1 && selected == undefined) {
+  } else if (options?.length === 1 && selected === undefined) {
     onChange(options[0]);
   }
 
-  if (options?.length == 0) {
+  if (options?.length === 0) {
     options.push(defaultValue);
   }
 
