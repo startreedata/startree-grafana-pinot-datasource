@@ -31,7 +31,7 @@ jobs:
           node-version: '20'
           cache: 'yarn'
       - name: Install dependencies
-        run: yarn install
+        run: yarn install --frozen-lockfile
       - name: Check types
         run: npm run typecheck
       - name: Lint
@@ -144,7 +144,7 @@ jobs:
       - name: Execute permissions on binary
         if: needs.build.outputs.has-backend == 'true'
         run: |
-          chmod +x ./dist/gpx_cicd_linux_amd64
+          chmod +x ./dist/gpx_pinot_linux_amd64
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
@@ -153,7 +153,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dev dependencies
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       - name: Start Grafana
         run: |
