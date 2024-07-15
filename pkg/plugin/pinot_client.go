@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/startree/pinot/pkg/plugin/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"strings"
 	"time"
 )
 
@@ -49,6 +50,9 @@ type DateTimeFieldSpec struct {
 }
 
 func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
+	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
+	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
+
 	headers := make(map[string]string)
 	if properties.Authorization != "" {
 		headers["Authorization"] = properties.Authorization

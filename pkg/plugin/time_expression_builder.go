@@ -17,7 +17,7 @@ type TimeExpressionBuilder struct {
 func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
 	timeColumn = strings.Trim(timeColumn, "\"`")
 	if len(timeColumn) == 0 {
-		return TimeExpressionBuilder{}, fmt.Errorf("timeColumn cannot be empty")
+		return TimeExpressionBuilder{}, fmt.Errorf("time column cannot be empty")
 	}
 
 	timeColumnFormat, err := GetTimeColumnFormat(tableSchema, timeColumn)
@@ -37,6 +37,10 @@ func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeE
 	}, nil
 }
 
+func (x TimeExpressionBuilder) TimeColumnFormat() string {
+	return x.timeColumnFormat
+}
+
 func (x TimeExpressionBuilder) TimeFilterExpr(timeRange TimeRange) string {
 	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
 		x.timeColumn, x.TimeExpr(timeRange.From),
@@ -48,23 +52,24 @@ func (x TimeExpressionBuilder) TimeExpr(ts time.Time) string {
 	return x.timeExprFormat.encodeTime(ts)
 }
 
-func (x TimeExpressionBuilder) BuildTimeGroupExpr(bucketSize time.Duration) string {
-	var granularity string
+func (x TimeExpressionBuilder) GranularityExpr(bucketSize time.Duration) string {
 	switch {
 	case bucketSize.Hours() >= 1:
-		granularity = fmt.Sprintf("%d:HOURS", int(bucketSize.Hours()))
+		return fmt.Sprintf("%d:HOURS", int(bucketSize.Hours()))
 	case bucketSize.Minutes() >= 1:
-		granularity = fmt.Sprintf("%d:MINUTES", int(bucketSize.Minutes()))
+		return fmt.Sprintf("%d:MINUTES", int(bucketSize.Minutes()))
 	case bucketSize.Seconds() >= 1:
-		granularity = fmt.Sprintf("%d:SECONDS", int(bucketSize.Seconds()))
+		return fmt.Sprintf("%d:SECONDS", int(bucketSize.Seconds()))
 	case bucketSize.Milliseconds() >= 1:
-		granularity = fmt.Sprintf("%d:MILLISECONDS", int(bucketSize.Milliseconds()))
+		return fmt.Sprintf("%d:MILLISECONDS", int(bucketSize.Milliseconds()))
 	case bucketSize.Microseconds() >= 1:
-		granularity = fmt.Sprintf("%d:MICROSECONDS", int(bucketSize.Microseconds()))
+		return fmt.Sprintf("%d:MICROSECONDS", int(bucketSize.Microseconds()))
 	default:
-		granularity = fmt.Sprintf("%d:NANOSECONDS", int(bucketSize.Nanoseconds()))
+		return fmt.Sprintf("%d:NANOSECONDS", int(bucketSize.Nanoseconds()))
 	}
+}
 
+func (x TimeExpressionBuilder) BuildTimeGroupExpr(granularity string) string {
 	return fmt.Sprintf(`DATETIMECONVERT("%s", '%s', '%s', '%s')`,
 		x.timeColumn, x.timeExprFormat.inputFormat, TimeGroupExprOutputFormat, granularity)
 }

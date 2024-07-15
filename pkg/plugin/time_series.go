@@ -16,9 +16,9 @@ type TimeSeriesMetric struct {
 }
 
 func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]TimeSeriesMetric, error) {
-	timeColIdx, ok := GetColumnIdx(results, timeColumnAlias)
-	if !ok {
-		return nil, fmt.Errorf("time column not found")
+	timeColIdx, err := GetColumnIdx(results, timeColumnAlias)
+	if err != nil {
+		return nil, err
 	}
 
 	timeCol, err := ExtractTimeColumn(results, timeColIdx, timeColumnFormat)
@@ -26,9 +26,9 @@ func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string
 		return nil, err
 	}
 
-	metColIdx, ok := GetColumnIdx(results, metricColumnAlias)
-	if !ok {
-		return nil, fmt.Errorf("metric column not found")
+	metColIdx, err := GetColumnIdx(results, metricColumnAlias)
+	if err != nil {
+		return nil, err
 	}
 	metCol := ExtractDoubleColumn(results, metColIdx)
 
@@ -68,13 +68,13 @@ func PivotToDataFrame(name string, metrics []TimeSeriesMetric) *data.Frame {
 
 	timeSeries := make(map[string][]*float64)
 	for _, met := range metrics {
-		name := GetSeriesName(name, met.Labels)
-		if _, ok := timeSeries[name]; !ok {
-			timeSeries[name] = make([]*float64, len(timeCol))
+		tsName := GetSeriesName(name, met.Labels)
+		if _, ok := timeSeries[tsName]; !ok {
+			timeSeries[tsName] = make([]*float64, len(timeCol))
 		}
 		colIdx := timestampToIdx[met.Timestamp]
 		value := met.Value
-		timeSeries[name][colIdx] = &value
+		timeSeries[tsName][colIdx] = &value
 	}
 
 	fields := make([]*data.Field, 0, len(timeSeries)+1)

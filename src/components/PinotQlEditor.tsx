@@ -3,8 +3,8 @@ import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
 import { SelectQueryDatabase } from './SelectQueryDatabase';
 import { SelectTable } from './SelectTable';
 import { EditorMode } from '../types/EditorMode';
-import { PinotQlBuilderEditor } from './PinotQlBuilderEditor';
-import { PinotQlCodeEditor } from './PinotQlCodeEditor';
+import { PinotQlBuilder } from './PinotQlBuilder';
+import { PinotQlCode } from './PinotQlCode';
 import { useDatabases, useTables } from '../resources/controller';
 
 const DefaultDatabase = 'default';
@@ -30,7 +30,6 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
                 timeColumn: undefined,
                 metricColumn: undefined,
                 groupByColumns: undefined,
-                aggregationFunction: undefined,
                 filters: undefined,
               })
             }
@@ -52,11 +51,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           />
         </div>
       </div>
-      {props.query.editorMode === EditorMode.Code ? (
-        <PinotQlCodeEditor {...props} />
-      ) : (
-        <PinotQlBuilderEditor {...props} />
-      )}
+      {props.query.editorMode === EditorMode.Code ? <PinotQlCode {...props} /> : <PinotQlBuilder {...props} />}
     </div>
   );
 }

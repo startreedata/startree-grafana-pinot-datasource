@@ -40,6 +40,10 @@ export default {
         tooltip: 'Pinot Time format.',
         label: 'Time Format',
       },
+      granularity: {
+        tooltip: 'Select granularity.',
+        label: 'Granularity',
+      },
       aggregation: {
         tooltip: 'Select aggregation function',
         label: 'Aggregation',
@@ -75,7 +79,7 @@ export default {
       sqlPreview: {
         tooltip: 'Sql Preview',
         label: 'Sql Preview',
-      }
+      },
     },
   },
 };

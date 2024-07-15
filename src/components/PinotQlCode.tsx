@@ -5,7 +5,7 @@ import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { InputTimeColumnFormat } from './InputTimeColumnFormat';
 
-export function PinotQlCodeEditor(props: PinotQueryEditorProps) {
+export function PinotQlCode(props: PinotQueryEditorProps) {
   const { query, onChange } = props;
   return (
     <div>

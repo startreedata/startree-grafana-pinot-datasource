@@ -3,7 +3,6 @@ package templates
 import (
 	"bytes"
 	"fmt"
-	"strings"
 	"text/template"
 )
 
@@ -19,20 +18,19 @@ FROM
     "{{.TableName}}"
 WHERE
     {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
-    AND {{ . }} 
+    AND {{ . }}
 {{- end }}
 GROUP BY{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}}
 ORDER BY "{{.TimeColumnAlias}}" ASC
-LIMIT 1000000
+LIMIT {{.Limit}}
 `))
 
 type TimeSeriesSqlParams struct {
 	TableName            string
 	GroupByColumns       []string
-	TimeColumn           string
 	MetricColumn         string
 	AggregationFunction  string
 	TimeFilterExpr       string
@@ -40,16 +38,7 @@ type TimeSeriesSqlParams struct {
 	TimeColumnAlias      string
 	MetricColumnAlias    string
 	DimensionFilterExprs []string
-}
-
-func IsValidAggregationFunction(aggregationFunction string) bool {
-	var aggregationFunctions = []string{"SUM", "COUNT", "AVG", "MAX"}
-	for i := range aggregationFunctions {
-		if aggregationFunctions[i] == strings.ToUpper(aggregationFunction) {
-			return true
-		}
-	}
-	return false
+	Limit                int64
 }
 
 func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {

@@ -8,9 +8,10 @@ import allLabels from '../labels';
 export function SelectGroupBy(props: {
   selected: string[] | undefined;
   options: string[] | undefined;
+  disabled: boolean;
   onChange: (val: string[] | undefined) => void;
 }) {
-  const { options, selected, onChange } = props;
+  const { options, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
   return (
@@ -20,6 +21,7 @@ export function SelectGroupBy(props: {
         className={`${styles.QueryEditor.inputForm}`}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
+        disabled={disabled}
         onChange={(item: Array<SelectableValue<string>>) => {
           const selected = item.map((v) => v.value).filter((v) => v !== undefined) as string[];
           onChange(selected);

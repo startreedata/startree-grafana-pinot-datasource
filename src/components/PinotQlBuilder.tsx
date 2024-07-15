@@ -11,8 +11,11 @@ import { canRunQuery, PinotDataQuery } from '../types/PinotDataQuery';
 import { useSqlPreview } from '../resources/sqlPreview';
 import { useTableSchema } from '../resources/controller';
 import { NumericPinotDataTypes } from '../types/PinotDataType';
+import { SelectGranularity } from './SelectGranularity';
 
-export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
+const AggregationFunctionNone = 'NONE';
+
+export function PinotQlBuilder(props: PinotQueryEditorProps) {
   const { data, datasource, query, range, onChange, onRunQuery } = props;
 
   const sql = useSqlPreview(datasource, {
@@ -25,6 +28,7 @@ export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
     timeColumn: query.timeColumn,
     timeRange: { to: range?.to, from: range?.from },
     filters: query.filters,
+    limit: query.limit,
   });
   const tableSchema = useTableSchema(datasource, query.databaseName, query.tableName);
 
@@ -70,11 +74,17 @@ export function PinotQlBuilderEditor(props: PinotQueryEditorProps) {
           onChange={(value) => onChangeAndRun({ ...query, aggregationFunction: value })}
         />
       </div>
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
           selected={query.groupByColumns}
           options={dimensionColumns}
+          disabled={query.aggregationFunction === AggregationFunctionNone}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
+        />
+        <SelectGranularity
+          selected={query.granularity}
+          disabled={query.aggregationFunction === AggregationFunctionNone}
+          onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
         />
       </div>
       <div>

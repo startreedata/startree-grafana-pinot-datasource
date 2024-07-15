@@ -97,18 +97,31 @@ func (x MacroEngine) renderTimeFilter(args []string) (string, error) {
 }
 
 func (x MacroEngine) renderTimeGroup(args []string) (string, error) {
-	if len(args) != 1 {
-		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+	if len(args) < 1 || len(args) > 2 {
+		return "", fmt.Errorf("expected 1-2 arguments, got %d", len(args))
 	}
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+	timeColumn := args[0]
+
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 	if err != nil {
 		return "", err
 	}
-	return builder.BuildTimeGroupExpr(x.IntervalSize), nil
+
+	granularity := builder.GranularityExpr(x.IntervalSize)
+	if len(args) == 2 {
+		granularity = args[1]
+	}
+
+	return builder.BuildTimeGroupExpr(granularity), nil
 }
 
 func (x MacroEngine) renderTimeTo(args []string) (string, error) {
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+	if len(args) < 1 {
+		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+	}
+	timeColumn := args[0]
+
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 	if err != nil {
 		return "", err
 	}

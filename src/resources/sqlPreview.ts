@@ -13,6 +13,7 @@ export interface SqlPreviewRequest {
   groupByColumns: string[] | undefined;
   aggregationFunction: string | undefined;
   filters: DimensionFilter[] | undefined;
+  limit: number | undefined;
 }
 
 interface SqlPreviewResponse {
