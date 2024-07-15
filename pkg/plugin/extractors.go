@@ -8,14 +8,13 @@ import (
 	"time"
 )
 
-func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, bool) {
-	columnNames := resultTable.DataSchema.ColumnNames
-	for idx := 0; idx < len(columnNames); idx++ {
-		if columnNames[idx] == colName {
-			return idx, true
+func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, error) {
+	for idx := range resultTable.DataSchema.ColumnNames {
+		if resultTable.DataSchema.ColumnNames[idx] == colName {
+			return idx, nil
 		}
 	}
-	return -1, false
+	return -1, fmt.Errorf("column %s not found", colName)
 }
 
 func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, error) {
@@ -158,8 +157,6 @@ func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, boo
 		return func(v int64) time.Time { return time.Unix(v*60, 0) }, true
 	case "EPOCH_HOURS", "1:HOURS:EPOCH", "EPOCH|HOURS", "EPOCH|HOURS|1":
 		return func(v int64) time.Time { return time.Unix(v*3600, 0) }, true
-	case "EPOCH_DAYS", "1:DAYS:EPOCH", "EPOCH|DAYS", "EPOCH|DAYS|1":
-		return func(v int64) time.Time { return time.Unix(v*86400, 0) }, true
 	default:
 		return nil, false
 	}

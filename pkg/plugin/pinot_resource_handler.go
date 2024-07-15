@@ -82,6 +82,8 @@ type SqlPreviewRequest struct {
 	GroupByColumns      []string          `json:"groupByColumns"`
 	AggregationFunction string            `json:"aggregationFunction"`
 	DimensionFilters    []DimensionFilter `json:"filters"`
+	Limit               int64             `json:"limit"`
+	Granularity         string            `json:"granularity"`
 }
 
 type SqlPreviewResponse struct {
@@ -127,6 +129,8 @@ func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request
 		GroupByColumns:      data.GroupByColumns,
 		AggregationFunction: data.AggregationFunction,
 		DimensionFilters:    data.DimensionFilters,
+		Limit:               data.Limit,
+		Granularity:         data.Granularity,
 	})
 
 	if err != nil {

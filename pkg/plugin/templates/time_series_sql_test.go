@@ -23,13 +23,12 @@ GROUP BY
     "dim2",
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')
 ORDER BY "time" ASC
-LIMIT 1000000
+LIMIT 10000
 `
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
 		TableName:            "my_table",
 		GroupByColumns:       []string{"dim1", "dim2"},
-		TimeColumn:           "ts",
 		MetricColumn:         "met",
 		AggregationFunction:  "sum",
 		TimeFilterExpr:       `"ts" >= 10 AND "ts" <= 20`,
@@ -37,6 +36,7 @@ LIMIT 1000000
 		TimeColumnAlias:      "time",
 		MetricColumnAlias:    "metric",
 		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
+		Limit:                10000,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)

@@ -1,0 +1,20 @@
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: pinot-grafana-demo
+  namespace: cell-9itmgf-default
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud`)
+      services:
+        - name: pinot-grafana-demo
+          namespace: cell-9itmgf-default
+          port: 3000
+          scheme: http
+          serversTransport: startree-core-frontend
+  tls:
+    secretName: startree-external-tls

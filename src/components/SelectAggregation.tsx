@@ -10,6 +10,7 @@ const AggregationOptions = [
   { label: 'AVG', value: 'AVG' },
   { label: 'MAX', value: 'MAX' },
   { label: 'MIN', value: 'MIN' },
+  { label: 'NONE', value: 'NONE' },
 ];
 
 export function SelectAggregation(props: {

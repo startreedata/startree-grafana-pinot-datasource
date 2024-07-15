@@ -29,6 +29,8 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				GroupByColumns:      query.GroupByColumns,
 				AggregationFunction: query.AggregationFunction,
 				DimensionFilters:    query.DimensionFilters,
+				Limit:               query.Limit,
+				Granularity:         query.Granularity,
 			})
 		default:
 			return NewPinotQlCodeDriver(PinotQlCodeDriverParams{

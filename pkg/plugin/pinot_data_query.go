@@ -18,8 +18,9 @@ type PinotDataQuery struct {
 	MetricColumn        string            `json:"metricColumn"`
 	GroupByColumns      []string          `json:"groupByColumns"`
 	AggregationFunction string            `json:"aggregationFunction"`
-	Limit               int               `json:"limit"`
+	Limit               int64             `json:"limit"`
 	DimensionFilters    []DimensionFilter `json:"filters"`
+	Granularity         string            `json:"granularity"`
 
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`

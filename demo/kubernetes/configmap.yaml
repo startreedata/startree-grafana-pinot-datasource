@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinot-grafana-demo-config
+  namespace: cell-9itmgf-default
+data:
+  grafana.ini: |
+    [server]
+    root_url = https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud
+    [auth]
+    disable_login_form = true
+    [auth.generic_oauth]
+    allow_sign_up = true
+    api_url = https://identity.9itmgf.cp.s7e.startree.cloud/userinfo
+    auth_url = https://identity.9itmgf.cp.s7e.startree.cloud/auth
+    client_id = pinot-grafna-demo
+    client_secret = OizfKsWuucCdXB65CR3XDbOZ
+    enabled = true
+    role_attribute_path = true || 'Admin'
+    scopes = openid profile email
+    token_url = https://identity.9itmgf.cp.s7e.startree.cloud/token
+    [log]
+    mode = console

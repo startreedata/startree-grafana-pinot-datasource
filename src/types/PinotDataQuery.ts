@@ -1,7 +1,7 @@
 import { QueryType } from './QueryType';
 import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
-import {DimensionFilter} from "./DimensionFilter";
+import { DimensionFilter } from './DimensionFilter';
 
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,
@@ -17,16 +17,12 @@ export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
 SELECT 
   $__timeGroup("timestamp") AS $__timeAlias(),
   SUM("metric") AS $__metricAlias()
-FROM $__tableName()
+FROM $__table()
 WHERE $__timeFilter("timestamp")
 GROUP BY $__timeGroup("timestamp")
 ORDER BY $__timeAlias() DESC
 LIMIT 1000000
 `.trim(),
-
-  // PinotQl Builder
-
-
 });
 
 export interface PinotDataQuery extends DataQuery {
@@ -37,6 +33,7 @@ export interface PinotDataQuery extends DataQuery {
 
   // PinotQl Builder
   timeColumn?: string;
+  granularity?: string;
   metricColumn?: string;
   groupByColumns?: string[];
   aggregationFunction?: string;

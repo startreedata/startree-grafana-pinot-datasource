@@ -73,11 +73,14 @@ func (p *PinotControllerClient) newControllerGetRequest(ctx context.Context, dat
 		return nil, err
 	}
 
-	req.Header.Set("Authorization", p.properties.Authorization)
-	req.Header.Set("Accept", "application/json")
+	if p.properties.Authorization != "" {
+		req.Header.Set("Authorization", p.properties.Authorization)
+	}
 	if database != "" {
 		req.Header.Set("Database", database)
 	}
+	req.Header.Set("Accept", "application/json")
+
 	return req, err
 }
 

@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"errors"
-	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"github.com/startreedata/pinot-client-go/pinot"
@@ -12,11 +11,14 @@ import (
 const DefaultTimeColumnAlias = "time"
 const DefaultMetricColumnAlias = "metric"
 
+const AggregationFunctionNone = "NONE"
+const GranularityAuto = "auto"
+
 type PinotQlBuilderDriver struct {
 	PinotQlBuilderParams
+	TimeExpressionBuilder
 	TimeColumnAlias   string
 	MetricColumnAlias string
-	TimeColumnFormat  string
 }
 
 type PinotQlBuilderParams struct {
@@ -30,50 +32,72 @@ type PinotQlBuilderParams struct {
 	GroupByColumns      []string
 	AggregationFunction string
 	DimensionFilters    []DimensionFilter
+	Limit               int64
+	Granularity         string
 }
 
-func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
+func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
 	if params.TimeColumn == "" {
 		return nil, errors.New("time column cannot be empty")
 	} else if params.MetricColumn == "" {
 		return nil, errors.New("metric column cannot be empty")
-	} else if !templates.IsValidAggregationFunction(params.AggregationFunction) {
-		return nil, fmt.Errorf("`%s` is not a valid aggregation function", params.AggregationFunction)
 	}
+	exprBuilder, err := TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
+	if err != nil {
+		return nil, err
+	}
+	if params.Granularity == "" || params.Granularity == GranularityAuto {
+		params.Granularity = exprBuilder.GranularityExpr(params.IntervalSize)
+	}
+
 	return &PinotQlBuilderDriver{
-		PinotQlBuilderParams: params,
-		TimeColumnAlias:      DefaultTimeColumnAlias,
-		TimeColumnFormat:     TimeGroupExprOutputFormat,
-		MetricColumnAlias:    DefaultMetricColumnAlias,
+		PinotQlBuilderParams:  params,
+		TimeColumnAlias:       DefaultTimeColumnAlias,
+		MetricColumnAlias:     DefaultMetricColumnAlias,
+		TimeExpressionBuilder: exprBuilder,
 	}, nil
 }
 
 func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
-	Logger.Info("time-series-driver: rendering time series pinot query")
-
-	exprBuilder, err := TimeExpressionBuilderFor(p.TableSchema, p.TimeColumn)
-	if err != nil {
-		return "", err
+	if p.AggregationFunction == AggregationFunctionNone {
+		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+			TableName:            p.TableName,
+			TimeColumn:           p.TimeColumn,
+			TimeColumnAlias:      p.TimeColumnAlias,
+			MetricColumn:         p.MetricColumn,
+			MetricColumnAlias:    p.MetricColumnAlias,
+			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
+			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
+			Limit:                p.Limit,
+		})
+	} else {
+		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableName:            p.TableName,
+			TimeGroupExpr:        p.BuildTimeGroupExpr(p.Granularity),
+			TimeColumnAlias:      p.TimeColumnAlias,
+			AggregationFunction:  p.AggregationFunction,
+			MetricColumn:         p.MetricColumn,
+			MetricColumnAlias:    p.MetricColumnAlias,
+			GroupByColumns:       p.GroupByColumns,
+			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
+			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
+			Limit:                p.Limit,
+		})
 	}
-
-	return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-		TableName:            p.TableName,
-		TimeColumn:           p.TimeColumn,
-		MetricColumn:         p.MetricColumn,
-		GroupByColumns:       p.GroupByColumns,
-		TimeFilterExpr:       exprBuilder.TimeFilterExpr(p.TimeRange),
-		TimeGroupExpr:        exprBuilder.BuildTimeGroupExpr(p.IntervalSize),
-		AggregationFunction:  p.AggregationFunction,
-		TimeColumnAlias:      DefaultTimeColumnAlias,
-		MetricColumnAlias:    DefaultMetricColumnAlias,
-		DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-	})
 }
 
 func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.TimeColumnFormat, p.MetricColumnAlias)
+	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.TimeColumnFormat(), p.MetricColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 	return PivotToDataFrame(p.MetricColumn, metrics), nil
+}
+
+func (p PinotQlBuilderDriver) TimeColumnFormat() string {
+	if p.AggregationFunction == AggregationFunctionNone {
+		return p.TimeExpressionBuilder.TimeColumnFormat()
+	} else {
+		return TimeGroupExprOutputFormat
+	}
 }
