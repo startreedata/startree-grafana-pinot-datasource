@@ -13,6 +13,7 @@ const DefaultMetricColumnAlias = "metric"
 
 const AggregationFunctionNone = "NONE"
 const GranularityAuto = "auto"
+const DefaultLimit = 1_000_000
 
 type PinotQlBuilderDriver struct {
 	PinotQlBuilderParams
@@ -34,6 +35,7 @@ type PinotQlBuilderParams struct {
 	DimensionFilters    []DimensionFilter
 	Limit               int64
 	Granularity         string
+	MaxDataPoints       int64
 }
 
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
@@ -70,7 +72,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			MetricColumnAlias:    p.MetricColumnAlias,
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.Limit,
+			Limit:                p.resolveLimit(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
@@ -83,23 +85,47 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			GroupByColumns:       p.GroupByColumns,
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.Limit,
+			Limit:                p.resolveLimit(),
 		})
 	}
 }
 
 func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.TimeColumnFormat(), p.MetricColumnAlias)
+	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.resolveTimeColumnFormat(), p.MetricColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 	return PivotToDataFrame(p.MetricColumn, metrics), nil
 }
 
-func (p PinotQlBuilderDriver) TimeColumnFormat() string {
+func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return p.TimeExpressionBuilder.TimeColumnFormat()
 	} else {
 		return TimeGroupExprOutputFormat
 	}
+}
+
+func (p PinotQlBuilderDriver) resolveLimit() int64 {
+	switch true {
+	case p.Limit >= 0:
+		// Use provided limit if present
+		return p.Limit
+	case p.AggregationFunction != AggregationFunctionNone && len(p.GroupByColumns) > 0:
+		// Use default limit for group by queries.
+		// TODO: Resolve more accurate limit in this case.
+		return DefaultLimit
+	case p.MaxDataPoints > 0:
+		// Queries with extra dimensions can directly use max data points.
+		return p.MaxDataPoints
+	default:
+		return DefaultLimit
+	}
+}
+
+func (p PinotQlBuilderDriver) resolveGranularity() string {
+	if p.Granularity != "" && p.Granularity != GranularityAuto {
+		return p.Granularity
+	}
+	return p.GranularityExpr(p.IntervalSize)
 }
