@@ -1,7 +1,6 @@
 import { DateTime } from '@grafana/data';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
-import { useEffect, useState } from 'react';
 
 export interface DistinctValuesRequest {
   databaseName?: string;
@@ -16,11 +15,16 @@ interface DistinctValuesResponse {
   valueExprs: string[];
 }
 
-export function useDistinctValues(datasource: DataSource, request: DistinctValuesRequest): string[] | undefined {
-  const [data, setData] = useState<string[]>([]);
-  useEffect(() => {
-    // TODO: No need to make the request until all fields are present.
-    datasource.postResource<DistinctValuesResponse>('distinctValues', request).then((resp) => setData(resp.valueExprs));
-  }, [datasource, request]);
-  return data;
+export async function fetchDistinctValues(datasource: DataSource, request: DistinctValuesRequest): Promise<string[]> {
+  if (
+    request.databaseName &&
+    request.tableName &&
+    request.columnName &&
+    request.timeRange.to &&
+    request.timeRange.from
+  ) {
+    return datasource.postResource<DistinctValuesResponse>('distinctValues', request).then((resp) => resp.valueExprs);
+  } else {
+    return [];
+  }
 }

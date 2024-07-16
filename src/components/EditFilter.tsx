@@ -2,11 +2,11 @@ import { DataSource } from '../datasource';
 import { SelectableValue, TimeRange } from '@grafana/data';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { MultiSelect, Select } from '@grafana/ui';
-import React from 'react';
+import React, { useState } from 'react';
 import { PinotDataType, PinotDataTypes } from '../types/PinotDataType';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { TableSchema } from '../types/TableSchema';
-import { useDistinctValues } from '../resources/distinctValues';
+import { fetchDistinctValues } from '../resources/distinctValues';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -58,15 +58,6 @@ export function EditFilter(props: {
     onDelete,
   } = props;
 
-  const values = useDistinctValues(datasource, {
-    databaseName: databaseName,
-    tableName: tableName,
-    columnName: thisFilter.columnName,
-    timeColumn: timeColumn,
-    timeRange: { from: range?.from, to: range?.to },
-    filters: remainingFilters,
-  });
-
   const columnType = [
     ...(tableSchema?.dateTimeFieldSpecs || []),
     ...(tableSchema?.dimensionFieldSpecs || []),
@@ -83,9 +74,25 @@ export function EditFilter(props: {
     : undefined;
 
   const operatorOptions = columnType ? FilterOperators.filter((op) => op.types.includes(columnType)) : FilterOperators;
-  const valueOptions = values?.map((val) => ({ label: val, value: val }));
 
   const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
+
+  const [valueOptions, setValueOptions] = useState<Array<SelectableValue<string>>>();
+  const [isLoadingValues, setIsLoadingValues] = useState(false);
+  const loadValueOptions = () => {
+    setIsLoadingValues(true);
+    fetchDistinctValues(datasource, {
+      databaseName: databaseName,
+      tableName: tableName,
+      columnName: thisFilter.columnName,
+      timeColumn: timeColumn,
+      timeRange: { from: range?.from, to: range?.to },
+      filters: remainingFilters,
+    })
+      .then((vals) => vals?.map((val) => ({ label: val, value: val })))
+      .then((vals) => setValueOptions(vals))
+      .then(() => setIsLoadingValues(false));
+  };
 
   return (
     <InputGroup>
@@ -121,9 +128,11 @@ export function EditFilter(props: {
         <MultiSelect
           placeholder="Select value"
           width="auto"
-          value={thisFilter.valueExprs}
-          options={valueOptions}
+          isLoading={isLoadingValues}
+          value={thisFilter.valueExprs?.map((v) => ({ label: v, value: v }))}
           allowCustomValue
+          options={valueOptions}
+          onOpenMenu={() => loadValueOptions()}
           onChange={(change: Array<SelectableValue<string>>) => {
             const selected = change.map((v) => v.value).filter((v) => v !== undefined) as string[];
             onChange({
@@ -138,8 +147,10 @@ export function EditFilter(props: {
           placeholder="Select value"
           width="auto"
           value={thisFilter.valueExprs?.find((v, i) => i === 0)}
-          options={valueOptions}
+          onOpenMenu={() => loadValueOptions()}
+          isLoading={isLoadingValues}
           allowCustomValue
+          options={valueOptions}
           onChange={(change: SelectableValue<string>) => {
             if (change.value) {
               onChange({

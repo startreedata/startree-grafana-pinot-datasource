@@ -1,8 +1,8 @@
 export interface TableSchema {
   schemaName: string;
-  dimensionFieldSpecs: DimensionFieldSpec[];
-  metricFieldSpecs: MetricFieldSpec[];
-  dateTimeFieldSpecs: DateTimeFieldSpec[];
+  dimensionFieldSpecs: DimensionFieldSpec[] | null;
+  metricFieldSpecs: MetricFieldSpec[] | null;
+  dateTimeFieldSpecs: DateTimeFieldSpec[] | null;
 }
 
 export interface DimensionFieldSpec {

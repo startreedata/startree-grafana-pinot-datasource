@@ -6,7 +6,7 @@ import allLabels from '../labels';
 
 export function SelectTimeColumn(props: {
   selected?: string;
-  options?: string[];
+  options?: string[]|undefined;
   onChange: (val: string | undefined) => void;
 }) {
   const { selected, options, onChange } = props;

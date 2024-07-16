@@ -15,7 +15,7 @@ SELECT
 FROM
     "{{.TableName}}"
 WHERE
-	"{{.MetricColumn}}" IS NOT NULL
+    "{{.MetricColumn}}" IS NOT NULL
     AND {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
