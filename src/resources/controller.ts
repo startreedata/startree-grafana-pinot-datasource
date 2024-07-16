@@ -3,25 +3,28 @@ import { TableSchema } from '../types/TableSchema';
 import { useEffect, useState } from 'react';
 
 interface GetDatabasesResponse {
-  databases: string[];
+  databases: string[] | null;
+  error: string | null;
 }
 
 export function useDatabases(datasource: DataSource): string[] | undefined {
   const resp = useControllerResource<GetDatabasesResponse>(datasource, undefined, 'databases');
-  return resp?.databases;
+  return resp?.databases || undefined;
 }
 
 interface GetTablesResponse {
-  tables: string[];
+  tables: string[] | null;
+  error: string | null;
 }
 
 export function useTables(datasource: DataSource, databaseName: string | undefined): string[] | undefined {
   const resp = useControllerResource<GetTablesResponse>(datasource, databaseName, 'tables');
-  return resp?.tables;
+  return resp?.tables || undefined;
 }
 
 interface GetTableSchemaResponse {
-  schema: TableSchema;
+  schema: TableSchema | null;
+  error: string | null;
 }
 
 export function useTableSchema(
@@ -36,7 +39,7 @@ export function useTableSchema(
     'tables/' + tableName + '/schema',
     noop
   );
-  return resp?.schema;
+  return resp?.schema || undefined;
 }
 
 function useControllerResource<T>(
@@ -57,7 +60,9 @@ function useControllerResource<T>(
     if (noop) {
       return;
     }
-    datasource.getResource<T>(path).then((resp) => setResp(resp));
+    datasource
+      .getResource<T>(path)
+      .then((resp) => setResp(resp))
   }, [datasource, databaseName, path, noop]);
   return resp;
 }

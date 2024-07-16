@@ -13,29 +13,26 @@ type PinotResourceHandler struct {
 	client *PinotClient
 }
 
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 type GetDatabasesResponse struct {
 	Databases []string `json:"databases"`
-}
-
-type GetTablesResponse struct {
-	Tables []string `json:"tables"`
-}
-
-type GetTableSchemaResponse struct {
-	Schema TableSchema `json:"schema"`
 }
 
 func (x *PinotResourceHandler) getDatabases(w http.ResponseWriter, r *http.Request) {
 	databases, err := x.client.ListDatabases(r.Context())
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	x.writeJsonData(w, GetDatabasesResponse{
-		Databases: databases,
-	})
+	x.writeJsonData(w, GetDatabasesResponse{Databases: databases})
+}
+
+type GetTablesResponse struct {
+	Tables []string `json:"tables"`
 }
 
 func (x *PinotResourceHandler) getTables(w http.ResponseWriter, r *http.Request) {
@@ -44,14 +41,15 @@ func (x *PinotResourceHandler) getTables(w http.ResponseWriter, r *http.Request)
 
 	tables, err := x.client.ListTables(r.Context(), database)
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	x.writeJsonData(w, GetTablesResponse{
-		Tables: tables,
-	})
+	x.writeJsonData(w, GetTablesResponse{Tables: tables})
+}
+
+type GetTableSchemaResponse struct {
+	Schema TableSchema `json:"schema"`
 }
 
 func (x *PinotResourceHandler) getTableSchema(w http.ResponseWriter, r *http.Request) {
@@ -62,14 +60,11 @@ func (x *PinotResourceHandler) getTableSchema(w http.ResponseWriter, r *http.Req
 
 	schema, err := x.client.GetTableSchema(r.Context(), database, table)
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	x.writeJsonData(w, GetTableSchemaResponse{
-		Schema: schema,
-	})
+	x.writeJsonData(w, GetTableSchemaResponse{Schema: schema})
 }
 
 type SqlPreviewRequest struct {
@@ -93,8 +88,7 @@ type SqlPreviewResponse struct {
 func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request) {
 	var data SqlPreviewRequest
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusBadRequest)
+		x.writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -106,8 +100,7 @@ func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request
 
 	tableSchema, err := x.client.GetTableSchema(r.Context(), data.DatabaseName, data.TableName)
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -133,18 +126,14 @@ func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request
 		Granularity:         data.Granularity,
 	})
 
-
-
 	if err != nil {
-		Logger.Error(err.Error())
-		x.writeJsonData(w, &SqlPreviewResponse{})
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -167,8 +156,7 @@ type DistinctValuesResponse struct {
 func (x *PinotResourceHandler) DistinctValues(w http.ResponseWriter, r *http.Request) {
 	var data DistinctValuesRequest
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusBadRequest)
+		x.writeError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -180,16 +168,14 @@ func (x *PinotResourceHandler) DistinctValues(w http.ResponseWriter, r *http.Req
 
 	tableSchema, err := x.client.GetTableSchema(r.Context(), data.DatabaseName, data.TableName)
 	if err != nil {
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	exprBuilder, err := TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
 	if err != nil {
 		// TODO: Handle this error
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -200,17 +186,13 @@ func (x *PinotResourceHandler) DistinctValues(w http.ResponseWriter, r *http.Req
 		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
 	})
 	if err != nil {
-		// TODO: Handle this error
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
 	results, err := x.client.ExecuteSQL(r.Context(), data.TableName, sql)
 	if err != nil {
-		// TODO: Handle this error
-		Logger.Error(err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
+		x.writeError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -222,6 +204,12 @@ func (x *PinotResourceHandler) DistinctValues(w http.ResponseWriter, r *http.Req
 func (x *PinotResourceHandler) databaseFrom(r *http.Request) string {
 	params := r.URL.Query()
 	return params.Get("database")
+}
+
+func (x *PinotResourceHandler) writeError(w http.ResponseWriter, code int, err error) {
+	Logger.Error(err.Error())
+	w.WriteHeader(code)
+	x.writeJsonData(w, ErrorResponse{Error: err.Error()})
 }
 
 func (x *PinotResourceHandler) writeJsonData(w http.ResponseWriter, data interface{}) {

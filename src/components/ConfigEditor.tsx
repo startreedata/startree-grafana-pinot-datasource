@@ -5,6 +5,8 @@ import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
 import allLabels from 'labels';
+import { useTheme2 } from '@grafana/ui';
+import { css } from '@emotion/css';
 
 interface ConfigEditorProps extends DataSourcePluginOptionsEditorProps<PinotConnectionConfig> {}
 
@@ -22,8 +24,25 @@ export function ConfigEditor(props: ConfigEditorProps) {
   const { jsonData, secureJsonFields } = options;
   const secureJsonData = (options.secureJsonData || {}) as PinotSecureConfig;
 
-  // Auto-populate broker url based on controller url.
+  // Autopopulate broker url based on controller url.
   const [formBrokerUrl, setFormBrokerUrl] = useState<string | undefined>(undefined);
+
+  const theme = useTheme2();
+
+  // Copied styles from https://github.com/grafana/grafana-experimental/blob/2880c631232876bf6069619e096b4f2ca3457361/src/ConfigEditor/DataSourceDescription.tsx#L15
+  const styles = {
+    text: css({
+      ...theme.typography.body,
+      color: theme.colors.text.secondary,
+      a: css({
+        color: theme.colors.text.link,
+        textDecoration: 'underline',
+        '&:hover': {
+          textDecoration: 'none',
+        },
+      }),
+    }),
+  };
 
   return (
     <>
@@ -69,9 +88,9 @@ export function ConfigEditor(props: ConfigEditorProps) {
         />
       </div>
       <h3>Authentication</h3>
-      <p>
+      <p className={styles.text}>
         This plugin requires a Pinot authentication token. For detailed instructions on generating a token,{' '}
-        <a href={labels.token.help}>view the documentation</a>.
+        <a href={labels.token.help} target="_blank">view the documentation</a>.
       </p>
       <div className="gf-form-group">
         <InputPinotToken

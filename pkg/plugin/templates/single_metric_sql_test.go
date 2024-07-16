@@ -17,7 +17,7 @@ WHERE
     AND "ts" >= 10 AND "ts" <= 20
     AND ("dim1" = 'val1')
     AND ("dim2" = 'val2')
-ORDER BY "time" ASC
+ORDER BY "time" DESC
 LIMIT 1000
 `
 

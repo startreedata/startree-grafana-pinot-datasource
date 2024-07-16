@@ -14,7 +14,7 @@ export function SelectTimeColumn(props: {
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         options={options?.map((name) => ({ label: name, value: name }))}

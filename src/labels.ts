@@ -79,6 +79,8 @@ export default {
       sqlPreview: {
         tooltip: 'Sql Preview',
         label: 'Sql Preview',
+        copyTooltip: 'Copy SQL to clipboard.',
+        copiedTooltip: 'Copied!',
       },
     },
   },

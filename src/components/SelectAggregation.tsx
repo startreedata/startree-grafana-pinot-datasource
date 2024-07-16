@@ -22,7 +22,7 @@ export function SelectAggregation(props: {
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         options={AggregationOptions}

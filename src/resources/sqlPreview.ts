@@ -17,7 +17,8 @@ export interface SqlPreviewRequest {
 }
 
 interface SqlPreviewResponse {
-  sql: string;
+  sql: string | null;
+  error: string | null;
 }
 
 export async function fetchSqlPreview(datasource: DataSource, request: SqlPreviewRequest): Promise<string> {
@@ -32,7 +33,10 @@ export async function fetchSqlPreview(datasource: DataSource, request: SqlPrevie
     request.timeRange.to &&
     request.timeRange.from
   ) {
-    return datasource.postResource<SqlPreviewResponse>('preview', request).then((resp) => resp.sql);
+    return datasource
+      .postResource<SqlPreviewResponse>('preview', request)
+      .then((resp) => resp.sql || '')
+      .catch(() => '');
   } else {
     return '';
   }
