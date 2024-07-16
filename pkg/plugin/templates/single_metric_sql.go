@@ -19,7 +19,7 @@ WHERE
     AND {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
-ORDER BY "{{.TimeColumnAlias}}" ASC
+ORDER BY "{{.TimeColumnAlias}}" DESC
 LIMIT {{.Limit}}
 `))
 

@@ -24,7 +24,7 @@ GROUP BY{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}}
-ORDER BY "{{.TimeColumnAlias}}" ASC
+ORDER BY "{{.TimeColumnAlias}}" DESC
 LIMIT {{.Limit}}
 `))
 

@@ -26,7 +26,7 @@ export function SelectQueryDatabase(props: {
 
   return (
     <>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         // TODO: Handle the default db name correctly.

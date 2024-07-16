@@ -29,6 +29,9 @@ func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, er
 	if resp.StatusCode == http.StatusNotFound {
 		return []string{}, nil
 	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, p.newErrorFromResponseBody(resp)
+	}
 
 	var databases []string
 	if err = p.decodeResponse(resp, &databases); err != nil {
@@ -99,10 +102,8 @@ func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, de
 }
 
 func (p *PinotControllerClient) doRequest(req *http.Request) (*http.Response, error) {
-	Logger.Info(fmt.Sprintf("pinot/http %s %s", req.Method, req.URL.String()))
 	resp, err := http.DefaultClient.Do(req)
-	if resp.StatusCode != http.StatusOK {
-	}
+	Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
 	return resp, err
 }
 

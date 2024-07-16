@@ -12,7 +12,8 @@ export interface DistinctValuesRequest {
 }
 
 interface DistinctValuesResponse {
-  valueExprs: string[];
+  valueExprs: string[] | null;
+  error: string | null;
 }
 
 export async function fetchDistinctValues(datasource: DataSource, request: DistinctValuesRequest): Promise<string[]> {
@@ -23,7 +24,10 @@ export async function fetchDistinctValues(datasource: DataSource, request: Disti
     request.timeRange.to &&
     request.timeRange.from
   ) {
-    return datasource.postResource<DistinctValuesResponse>('distinctValues', request).then((resp) => resp.valueExprs);
+    return datasource
+      .postResource<DistinctValuesResponse>('distinctValues', request)
+      .then((resp) => resp.valueExprs || [])
+      .catch(() => []);
   } else {
     return [];
   }
