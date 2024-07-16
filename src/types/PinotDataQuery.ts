@@ -8,6 +8,10 @@ export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   editorMode: EditorMode.Builder,
   databaseName: 'default',
 
+  // PinotQl Builder
+
+  limit: -1,
+
   // PinotQl Code Editor
 
   timeColumnAlias: 'time',
