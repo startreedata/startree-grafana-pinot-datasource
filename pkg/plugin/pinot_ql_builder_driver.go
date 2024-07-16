@@ -41,6 +41,8 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
 		return nil, errors.New("time column cannot be empty")
 	} else if params.MetricColumn == "" {
 		return nil, errors.New("metric column cannot be empty")
+	} else if params.AggregationFunction == "" {
+		return nil, errors.New("aggregation function cannot be empty")
 	}
 	exprBuilder, err := TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
 	if err != nil {

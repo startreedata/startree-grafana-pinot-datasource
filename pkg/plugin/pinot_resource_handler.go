@@ -133,9 +133,9 @@ func (x *PinotResourceHandler) SqlPreview(w http.ResponseWriter, r *http.Request
 		Granularity:         data.Granularity,
 	})
 
+
+
 	if err != nil {
-		// TODO: In most cases, this indicates that the params aren't valid, but dont need to source this error to ui.
-		//  How else could I handle this error? Maybe an incomplete message or something?
 		Logger.Error(err.Error())
 		x.writeJsonData(w, &SqlPreviewResponse{})
 		return
