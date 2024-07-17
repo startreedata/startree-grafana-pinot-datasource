@@ -1,6 +1,6 @@
 import { InlineField, SecretInput, Select } from '@grafana/ui';
 import React, { ChangeEvent } from 'react';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 
 const DefaultTokenType = 'Basic';
 const TokenTypeOptions = [

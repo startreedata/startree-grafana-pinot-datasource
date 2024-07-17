@@ -1,7 +1,7 @@
 import { InlineField, Select } from '@grafana/ui';
 import React, { useEffect, useState } from 'react';
 
-export function SelectConfigEditorDatabase(props: {
+export function SelectDatabase(props: {
   selected: string | undefined;
   tokenType: string | undefined;
   tokenValue: string | undefined;

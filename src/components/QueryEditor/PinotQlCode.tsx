@@ -1,4 +1,4 @@
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { SqlEditor } from './SqlEditor';
 import React from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';

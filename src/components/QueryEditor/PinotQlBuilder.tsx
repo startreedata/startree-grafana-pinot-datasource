@@ -1,4 +1,4 @@
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { SelectMetricColumn } from './SelectMetricColumn';
 import { SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
@@ -7,10 +7,10 @@ import React, { useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
-import { canRunQuery, PinotDataQuery } from '../types/PinotDataQuery';
-import { fetchSqlPreview } from '../resources/sqlPreview';
-import { useTableSchema } from '../resources/controller';
-import { NumericPinotDataTypes } from '../types/PinotDataType';
+import { canRunQuery, PinotDataQuery } from '../../types/PinotDataQuery';
+import { fetchSqlPreview } from '../../resources/sqlPreview';
+import { useTableSchema } from '../../resources/controller';
+import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 
 const AggregationFunctionNone = 'NONE';

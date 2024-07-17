@@ -1,8 +1,8 @@
 import React from 'react';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 import { Select } from '@grafana/ui';
-import { styles } from '../styles';
+import { styles } from '../../styles';
 
 const options = [
   { label: 'auto', value: 'auto' },

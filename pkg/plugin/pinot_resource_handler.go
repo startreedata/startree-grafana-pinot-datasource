@@ -21,7 +21,7 @@ type GetDatabasesResponse struct {
 	Databases []string `json:"databases"`
 }
 
-func (x *PinotResourceHandler) getDatabases(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	databases, err := x.client.ListDatabases(r.Context())
 	if err != nil {
 		x.writeError(w, http.StatusInternalServerError, err)
@@ -35,7 +35,7 @@ type GetTablesResponse struct {
 	Tables []string `json:"tables"`
 }
 
-func (x *PinotResourceHandler) getTables(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetTables(w http.ResponseWriter, r *http.Request) {
 	params := r.URL.Query()
 	database := params.Get("database")
 
@@ -52,7 +52,7 @@ type GetTableSchemaResponse struct {
 	Schema TableSchema `json:"schema"`
 }
 
-func (x *PinotResourceHandler) getTableSchema(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetTableSchema(w http.ResponseWriter, r *http.Request) {
 	database := x.databaseFrom(r)
 
 	vars := mux.Vars(r)

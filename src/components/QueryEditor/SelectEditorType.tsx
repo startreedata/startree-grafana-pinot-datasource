@@ -1,9 +1,9 @@
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { RadioButtonGroup } from '@grafana/ui';
 import React from 'react';
-import { QueryType } from '../types/QueryType';
-import { EditorMode } from '../types/EditorMode';
-import allLabels from '../labels';
+import { QueryType } from '../../types/QueryType';
+import { EditorMode } from '../../types/EditorMode';
+import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
 export function SelectEditorType(props: PinotQueryEditorProps) {

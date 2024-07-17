@@ -12,9 +12,9 @@ func NewCallResourceHandler(client *PinotClient) backend.CallResourceHandler {
 	router := mux.NewRouter()
 
 	handler := PinotResourceHandler{client: client}
-	router.HandleFunc("/databases", handler.getDatabases)
-	router.HandleFunc("/tables/{table}/schema", handler.getTableSchema)
-	router.HandleFunc("/tables", handler.getTables)
+	router.HandleFunc("/databases", handler.GetDatabases)
+	router.HandleFunc("/tables/{table}/schema", handler.GetTableSchema)
+	router.HandleFunc("/tables", handler.GetTables)
 	router.HandleFunc("/preview", handler.SqlPreview)
 	router.HandleFunc("/distinctValues", handler.DistinctValues)
 	return httpadapter.New(router)

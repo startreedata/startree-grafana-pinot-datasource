@@ -1,9 +1,9 @@
 import { Select } from '@grafana/ui';
-import { styles } from '../styles';
+import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
 import React from 'react';
 import { FormLabel } from './FormLabel';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 
 export function SelectQueryDatabase(props: {
   options: string[] | undefined;
