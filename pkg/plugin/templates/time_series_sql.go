@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -46,5 +47,5 @@ func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {
 	if err := timeSeriesSqlTemplate.Execute(&buf, params); err != nil {
 		return "", fmt.Errorf("failed execute template: %w", err)
 	}
-	return buf.String(), nil
+	return strings.TrimSpace(buf.String()), nil
 }
