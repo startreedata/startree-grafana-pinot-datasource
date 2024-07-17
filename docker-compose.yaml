@@ -1,4 +1,24 @@
 services:
+  pinot:
+    container_name: 'pinot'
+    image: apachepinot/pinot:latest
+    ports:
+      - 9000:9000/tcp
+      - 8000:8000/tcp
+      - 2123:2123/tcp
+    command:
+      - QuickStart
+      - -type
+      - batch
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl --silent --fail http://localhost:9000/tables | grep billing"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+      start_interval: 5s
+
   grafana:
     user: root
     container_name: 'startree-pinot-datasource'

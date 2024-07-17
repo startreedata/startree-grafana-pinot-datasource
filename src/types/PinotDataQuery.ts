@@ -56,7 +56,12 @@ export function canRunQuery(query: PinotDataQuery): boolean {
     case QueryType.PinotQL:
       switch (query.editorMode) {
         case EditorMode.Builder:
-          return !!(query.tableName && query.timeColumn && query.metricColumn && query.aggregationFunction);
+          return !!(
+            query.tableName &&
+            query.timeColumn &&
+            query.aggregationFunction &&
+            (query.metricColumn || query.aggregationFunction === 'COUNT')
+          );
         case EditorMode.Code:
           return !!query.pinotQlCode;
         default:

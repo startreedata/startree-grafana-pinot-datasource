@@ -5,8 +5,8 @@ import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
 const AggregationOptions = [
-  { label: 'SUM', value: 'SUM' },
   { label: 'COUNT', value: 'COUNT' },
+  { label: 'SUM', value: 'SUM' },
   { label: 'AVG', value: 'AVG' },
   { label: 'MAX', value: 'MAX' },
   { label: 'MIN', value: 'MIN' },

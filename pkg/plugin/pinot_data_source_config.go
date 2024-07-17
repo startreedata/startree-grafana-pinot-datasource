@@ -7,13 +7,14 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 )
 
+const TokenTypeNone = "None"
+
 type PinotDataSourceConfig struct {
 	ControllerUrl string
 	BrokerUrl     string
-	TokenType     string
 
 	// Secrets
-	AuthToken string
+	Authorization string
 }
 
 func PinotDataSourceConfigFrom(settings backend.DataSourceInstanceSettings) (*PinotDataSourceConfig, error) {
@@ -22,8 +23,8 @@ func PinotDataSourceConfigFrom(settings backend.DataSourceInstanceSettings) (*Pi
 		BrokerUrl     string `json:"brokerUrl"`
 		TokenType     string `json:"tokenType"`
 	}
-	authToken := settings.DecryptedSecureJSONData["authToken"]
 
+	tokenSecret := settings.DecryptedSecureJSONData["authToken"]
 	if err := json.Unmarshal(settings.JSONData, &config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal datasource config: %w", err)
 	} else if config.BrokerUrl == "" {
@@ -32,14 +33,16 @@ func PinotDataSourceConfigFrom(settings backend.DataSourceInstanceSettings) (*Pi
 		return nil, errors.New("controller url cannot be empty")
 	} else if config.TokenType == "" {
 		return nil, errors.New("token type cannot be empty")
-	} else if authToken == "" {
-		return nil, errors.New("auth token cannot be empty")
+	}
+
+	var authToken string
+	if config.TokenType != TokenTypeNone {
+		authToken = fmt.Sprintf("%s %s", config.TokenType, tokenSecret)
 	}
 
 	return &PinotDataSourceConfig{
 		ControllerUrl: config.ControllerUrl,
 		BrokerUrl:     config.BrokerUrl,
-		TokenType:     config.TokenType,
-		AuthToken:     authToken,
+		Authorization: authToken,
 	}, nil
 }

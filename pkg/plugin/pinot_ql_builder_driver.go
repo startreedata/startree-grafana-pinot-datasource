@@ -11,6 +11,7 @@ import (
 const DefaultTimeColumnAlias = "time"
 const DefaultMetricColumnAlias = "metric"
 
+const AggregationFunctionCount = "COUNT"
 const AggregationFunctionNone = "NONE"
 const GranularityAuto = "auto"
 const DefaultLimit = 1_000_000
@@ -41,7 +42,7 @@ type PinotQlBuilderParams struct {
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
 	if params.TimeColumn == "" {
 		return nil, errors.New("time column cannot be empty")
-	} else if params.MetricColumn == "" {
+	} else if params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount {
 		return nil, errors.New("metric column cannot be empty")
 	} else if params.AggregationFunction == "" {
 		return nil, errors.New("aggregation function cannot be empty")
@@ -49,9 +50,6 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
 	exprBuilder, err := TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
 	if err != nil {
 		return nil, err
-	}
-	if params.Granularity == "" || params.Granularity == GranularityAuto {
-		params.Granularity = exprBuilder.GranularityExpr(params.IntervalSize)
 	}
 
 	return &PinotQlBuilderDriver{
@@ -77,10 +75,10 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
 			TableName:            p.TableName,
-			TimeGroupExpr:        p.BuildTimeGroupExpr(p.Granularity),
+			TimeGroupExpr:        p.BuildTimeGroupExpr(p.resolveGranularity()),
 			TimeColumnAlias:      p.TimeColumnAlias,
 			AggregationFunction:  p.AggregationFunction,
-			MetricColumn:         p.MetricColumn,
+			MetricColumn:         p.resolveMetricColumn(),
 			MetricColumnAlias:    p.MetricColumnAlias,
 			GroupByColumns:       p.GroupByColumns,
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
@@ -95,7 +93,7 @@ func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.
 	if err != nil {
 		return nil, err
 	}
-	return PivotToDataFrame(p.MetricColumn, metrics), nil
+	return PivotToDataFrame(p.resolveMetricName(), metrics), nil
 }
 
 func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
@@ -103,6 +101,14 @@ func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 		return p.TimeExpressionBuilder.TimeColumnFormat()
 	} else {
 		return TimeGroupExprOutputFormat
+	}
+}
+
+func (p PinotQlBuilderDriver) resolveMetricName() string {
+	if p.AggregationFunction == AggregationFunctionCount {
+		return "count"
+	} else {
+		return p.MetricColumn
 	}
 }
 
@@ -128,4 +134,12 @@ func (p PinotQlBuilderDriver) resolveGranularity() string {
 		return p.Granularity
 	}
 	return p.GranularityExpr(p.IntervalSize)
+}
+
+func (p PinotQlBuilderDriver) resolveMetricColumn() string {
+	if p.AggregationFunction == AggregationFunctionCount {
+		return "*"
+	} else {
+		return p.MetricColumn
+	}
 }

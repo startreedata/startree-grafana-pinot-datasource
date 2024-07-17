@@ -214,7 +214,6 @@ func (x *PinotResourceHandler) writeError(w http.ResponseWriter, code int, err e
 
 func (x *PinotResourceHandler) writeJsonData(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		Logger.Error("failed to write http response: ", err)
 	}
