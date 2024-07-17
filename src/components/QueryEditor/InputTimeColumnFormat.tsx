@@ -1,7 +1,7 @@
 import { Input } from '@grafana/ui';
-import { styles } from '../styles';
+import { styles } from '../../styles';
 import React, { ChangeEvent } from 'react';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
 export function InputTimeColumnFormat(props: { current: string | undefined; onChange: (val: string) => void }) {

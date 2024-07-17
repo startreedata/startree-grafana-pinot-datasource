@@ -1,11 +1,11 @@
 import React from 'react';
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { SelectQueryDatabase } from './SelectQueryDatabase';
 import { SelectTable } from './SelectTable';
-import { EditorMode } from '../types/EditorMode';
+import { EditorMode } from '../../types/EditorMode';
 import { PinotQlBuilder } from './PinotQlBuilder';
 import { PinotQlCode } from './PinotQlCode';
-import { useDatabases, useTables } from '../resources/controller';
+import { useDatabases, useTables } from '../../resources/controller';
 
 const DefaultDatabase = 'default';
 

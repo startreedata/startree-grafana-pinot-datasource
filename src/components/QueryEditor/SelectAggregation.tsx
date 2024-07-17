@@ -1,8 +1,8 @@
 import { Select } from '@grafana/ui';
-import { styles } from '../styles';
+import { styles } from '../../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 
 const AggregationOptions = [
   { label: 'SUM', value: 'SUM' },

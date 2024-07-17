@@ -1,8 +1,8 @@
 import React from 'react';
-import { PinotQueryEditorProps } from '../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 
 import { SelectEditorType } from './SelectEditorType';
-import { QueryType } from '../types/QueryType';
+import { QueryType } from '../../types/QueryType';
 import { PinotQlEditor } from './PinotQlEditor';
 
 export function QueryEditor(props: PinotQueryEditorProps) {

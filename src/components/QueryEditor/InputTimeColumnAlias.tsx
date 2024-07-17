@@ -1,8 +1,8 @@
 import React, { ChangeEvent } from 'react';
 import { Input } from '@grafana/ui';
-import { styles } from '../styles';
+import { styles } from '../../styles';
 import { FormLabel } from './FormLabel';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 
 export function InputTimeColumnAlias(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;

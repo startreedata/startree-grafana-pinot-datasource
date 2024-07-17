@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FormLabel } from './FormLabel';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 import { IconButton } from '@grafana/ui';
 
 export function SqlPreview(props: { sql: string | undefined }) {
@@ -15,7 +15,8 @@ export function SqlPreview(props: { sql: string | undefined }) {
       <pre>
         {sql || ''}
         {sql && (
-          <div style={{ paddingTop: 0, display: 'flex', flexDirection: 'row-reverse' }}
+          <div
+            style={{ paddingTop: 0, display: 'flex', flexDirection: 'row-reverse' }}
             onMouseLeave={() => setIsCopied(false)}
           >
             <IconButton

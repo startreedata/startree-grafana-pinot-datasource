@@ -1,7 +1,7 @@
 import React from 'react';
 import { SQLEditor as GrafanaSqlEditor } from '@grafana/experimental';
 import { FormLabel } from './FormLabel';
-import allLabels from '../labels';
+import allLabels from '../../labels';
 
 export function SqlEditor(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;
