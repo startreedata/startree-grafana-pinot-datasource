@@ -50,24 +50,3 @@ export interface PinotDataQuery extends DataQuery {
   timeColumnFormat?: string;
   metricColumnAlias?: string;
 }
-
-export function canRunQuery(query: PinotDataQuery): boolean {
-  switch (query.queryType) {
-    case QueryType.PinotQL:
-      switch (query.editorMode) {
-        case EditorMode.Builder:
-          return !!(
-            query.tableName &&
-            query.timeColumn &&
-            query.aggregationFunction &&
-            (query.metricColumn || query.aggregationFunction === 'COUNT')
-          );
-        case EditorMode.Code:
-          return !!query.pinotQlCode;
-        default:
-          return false;
-      }
-    default:
-      return false;
-  }
-}
