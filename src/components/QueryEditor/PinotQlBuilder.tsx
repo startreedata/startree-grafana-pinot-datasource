@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
-import { canRunQuery, PinotDataQuery } from '../../types/PinotDataQuery';
+import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlPreview } from '../../resources/sqlPreview';
 import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
@@ -61,6 +61,15 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
   if (!sqlPreview) {
     updateSqlPreview(query);
   }
+
+  const canRunQuery = (newQuery: PinotDataQuery) => {
+    return !!(
+      newQuery.tableName &&
+      newQuery.timeColumn &&
+      newQuery.aggregationFunction &&
+      (newQuery.metricColumn || newQuery.aggregationFunction === 'COUNT')
+    );
+  };
 
   const onChangeAndRun = (newQuery: PinotDataQuery) => {
     onChange(newQuery);
