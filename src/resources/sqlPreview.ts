@@ -28,7 +28,7 @@ export async function fetchSqlPreview(datasource: DataSource, request: SqlPrevie
     request.databaseName &&
     request.tableName &&
     request.timeColumn &&
-    request.metricColumn &&
+    (request.metricColumn || request.aggregationFunction === 'COUNT') &&
     request.aggregationFunction &&
     request.timeRange.to &&
     request.timeRange.from

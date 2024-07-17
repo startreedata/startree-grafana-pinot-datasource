@@ -2,19 +2,17 @@ package plugin
 
 import (
 	"context"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sort"
 	"testing"
 )
 
 func TestPinotClient_Query(t *testing.T) {
 	ctx := context.Background()
 	client := testPinotClient(t)
-
-	sql := `SELECT "timestamp" AS 'time' FROM LogAnalyticsMonitoring where "timestamp" >= 1715881482102 AND "timestamp" <= 1715859882102`
-
-	_, err := client.ExecuteSQL(ctx, "LogAnalyticsMonitoring", sql)
+	sql := `select * from githubEvents limit 10`
+	_, err := client.ExecuteSQL(ctx, "githubEvents", sql)
 	assert.NoError(t, err)
 }
 
@@ -22,28 +20,56 @@ func TestPinotClient_ListTables(t *testing.T) {
 	ctx := context.Background()
 	client := testPinotClient(t)
 
+	wantTables := []string{"airlineStats", "baseballStats", "billing",
+		"dimBaseballTeams", "githubComplexTypeEvents", "githubEvents", "starbucksStores"}
+
 	gotTables, err := client.ListTables(ctx, "")
+	sort.Strings(gotTables)
 
 	assert.NoError(t, err)
-	assert.NotEmpty(t, gotTables)
+	assert.EqualValues(t, wantTables, gotTables)
 }
 
 func TestPinotClient_GetTableSchema(t *testing.T) {
 	ctx := context.Background()
 	client := testPinotClient(t)
 
-	res, err := client.GetTableSchema(ctx, "", "ABTestSampleData")
+	want := TableSchema{
+		SchemaName: "githubEvents",
+		DimensionFieldSpecs: []DimensionFieldSpec{
+			{Name: "id", DataType: "STRING"},
+			{Name: "type", DataType: "STRING"},
+			{Name: "actor", DataType: "JSON"},
+			{Name: "repo", DataType: "JSON"},
+			{Name: "payload", DataType: "JSON"},
+			{Name: "public", DataType: "BOOLEAN"},
+		},
+		MetricFieldSpecs: nil,
+		DateTimeFieldSpecs: []DateTimeFieldSpec{
+			{
+				Name:        "created_at",
+				DataType:    "STRING",
+				Format:      "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'",
+				Granularity: "1:SECONDS",
+			},
+			{
+				Name:        "created_at_timestamp",
+				DataType:    "TIMESTAMP",
+				Format:      "1:MILLISECONDS:TIMESTAMP",
+				Granularity: "1:SECONDS",
+			},
+		},
+	}
 
+	got, err := client.GetTableSchema(ctx, "", "githubEvents")
 	assert.NoError(t, err)
-	fmt.Printf("%v", res)
-	assert.NotEmpty(t, res)
+	assert.Equal(t, want, got)
 }
 
 func testPinotClient(t *testing.T) *PinotClient {
 	pinotClient, err := NewPinotClient(PinotClientProperties{
-		ControllerUrl: "https://pinot.demo.teprod.startree.cloud",
-		BrokerUrl:     "https://broker.pinot.demo.teprod.startree.cloud",
-		Authorization: "Basic YjBmZWI0YjcxN2UyNGE4M2E4NTE2OGRlMWMzODY3ODM6dnM3TkhjWjYrRTVFSXZ3OUpma0ZETnFtZmYrOTFZUk5NbHN1WkZucVVrMD0=",
+		ControllerUrl: "http://localhost:9000",
+		BrokerUrl:     "http://localhost:8000",
 	})
 	require.NoError(t, err)
 	return pinotClient

@@ -6,6 +6,7 @@ const DefaultTokenType = 'Basic';
 const TokenTypeOptions = [
   { label: 'Basic', value: 'Basic' },
   { label: 'Bearer', value: 'Bearer' },
+  { label: 'None', value: 'None' },
 ];
 
 export function InputPinotToken(props: {
@@ -34,16 +35,18 @@ export function InputPinotToken(props: {
           onChange={(change) => onChangeType(change.value)}
         />
       </InlineField>
-      <InlineField label={labels.valueLabel} labelWidth={8} required>
-        <SecretInput
-          isConfigured={isConfigured}
-          value={tokenValue}
-          placeholder={labels.valuePlaceholder}
-          width={40}
-          onReset={onResetToken}
-          onChange={(event: ChangeEvent<HTMLInputElement>) => onChangeToken(event.target.value)}
-        />
-      </InlineField>
+      {tokenType != 'None' && (
+        <InlineField label={labels.valueLabel} labelWidth={8} required>
+          <SecretInput
+            isConfigured={isConfigured}
+            value={tokenValue}
+            placeholder={labels.valuePlaceholder}
+            width={40}
+            onReset={onResetToken}
+            onChange={(event: ChangeEvent<HTMLInputElement>) => onChangeToken(event.target.value)}
+          />
+        </InlineField>
+      )}
     </div>
   );
 }

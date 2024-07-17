@@ -62,14 +62,15 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 
 	var got json.RawMessage
 	doPostRequest(t, server.URL, `{
-		"timeRange":    {"from": "2017-12-02T18:17:33.473Z", "to": "2018-04-14T14:02:31.973Z"},
+		"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2018-02-01T00:00:00Z"},
 		"databaseName": "default",
-		"tableName":    "CleanLogisticData",
-		"timeColumn":   "timestamp",
-		"columnName":   "City"
+		"tableName":    "githubEvents",
+		"timeColumn":   "created_at_timestamp",
+		"columnName":   "type"
 	}`, &got)
 
-	want := `{"valueExprs":["'Los_Angeles'", "'New_York'", "'San_Francisco'"]}`
+	want := `{"valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'", "'GollumEvent'", 
+				"'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'", "'PullRequestEvent'"]}`
 
 	assert.JSONEq(t, want, string(got))
 }
@@ -87,6 +88,5 @@ func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
 	_, err = body.ReadFrom(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode, "Response body: `%s`", body.String())
-
 	require.NoError(t, json.NewDecoder(&body).Decode(dest))
 }

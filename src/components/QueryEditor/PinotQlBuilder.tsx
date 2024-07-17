@@ -13,6 +13,8 @@ import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 
+const MetricColumnStar = '*';
+const AggregationFunctionCount = 'COUNT';
 const AggregationFunctionNone = 'NONE';
 
 export function PinotQlBuilder(props: PinotQueryEditorProps) {
@@ -84,13 +86,14 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectMetricColumn
-          selected={query.metricColumn}
-          options={metricColumns}
-          onChange={(value) => onChangeAndRun({ ...query, metricColumn: value })}
+          selected={query.aggregationFunction === AggregationFunctionCount ? MetricColumnStar : query.metricColumn}
+          options={query.aggregationFunction === AggregationFunctionCount ? [MetricColumnStar] : metricColumns}
+          disabled={query.aggregationFunction === AggregationFunctionCount}
+          onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
         />
         <SelectAggregation
           selected={query.aggregationFunction}
-          onChange={(value) => onChangeAndRun({ ...query, aggregationFunction: value })}
+          onChange={(aggregationFunction) => onChangeAndRun({ ...query, aggregationFunction })}
         />
       </div>
       <div>
