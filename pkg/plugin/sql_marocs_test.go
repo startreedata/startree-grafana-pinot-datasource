@@ -88,3 +88,10 @@ LIMIT 1000000
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestInvocationCoords(t *testing.T) {
+	line, col := invocationCoords(`
+    hello  `, "hello")
+	assert.Equal(t, 2, line)
+	assert.Equal(t, 5, col)
+}

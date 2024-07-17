@@ -10,7 +10,7 @@ import (
 
 func TestPinotClient_Query(t *testing.T) {
 	ctx := context.Background()
-	client := testPinotClient(t)
+	client := newPinotTestClient(t)
 	sql := `select * from githubEvents limit 10`
 	_, err := client.ExecuteSQL(ctx, "githubEvents", sql)
 	assert.NoError(t, err)
@@ -18,7 +18,7 @@ func TestPinotClient_Query(t *testing.T) {
 
 func TestPinotClient_ListTables(t *testing.T) {
 	ctx := context.Background()
-	client := testPinotClient(t)
+	client := newPinotTestClient(t)
 
 	wantTables := []string{"airlineStats", "baseballStats", "billing",
 		"dimBaseballTeams", "githubComplexTypeEvents", "githubEvents", "starbucksStores"}
@@ -32,7 +32,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 
 func TestPinotClient_GetTableSchema(t *testing.T) {
 	ctx := context.Background()
-	client := testPinotClient(t)
+	client := newPinotTestClient(t)
 
 	want := TableSchema{
 		SchemaName: "githubEvents",
@@ -66,7 +66,7 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 	assert.Equal(t, want, got)
 }
 
-func testPinotClient(t *testing.T) *PinotClient {
+func newPinotTestClient(t *testing.T) *PinotClient {
 	pinotClient, err := NewPinotClient(PinotClientProperties{
 		ControllerUrl: "http://localhost:9000",
 		BrokerUrl:     "http://localhost:8000",

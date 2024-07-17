@@ -56,11 +56,27 @@ func expandSingleMacro(query string, macro Macro) (string, error) {
 		invocation, args := parseArgs(matches)
 		result, err := macro.render(args)
 		if err != nil {
-			return "", fmt.Errorf("failed to expand macro `%s`: %w", macro.name, err)
+			line, col := invocationCoords(query, invocation)
+			return "", fmt.Errorf("failed to expand macro `%s` (line %d, col %d): %w", macro.name, line, col, err)
 		}
 		query = strings.Replace(query, invocation, " "+result+" ", 1)
 	}
 	return query, nil
+}
+
+func invocationCoords(query string, invocation string) (int, int) {
+	index := strings.Index(query, invocation)
+	line := 1
+	col := 1
+	for i := 0; i < index; i++ {
+		if query[i] == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+	return line, col
 }
 
 func parseArgs(matches []string) (string, []string) {

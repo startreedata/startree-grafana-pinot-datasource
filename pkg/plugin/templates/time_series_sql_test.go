@@ -6,8 +6,7 @@ import (
 )
 
 func TestRenderTimeSeriesSql(t *testing.T) {
-	want := `
-SELECT
+	want := `SELECT
     "dim1",
     "dim2",
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS') AS "time",
@@ -23,8 +22,7 @@ GROUP BY
     "dim2",
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')
 ORDER BY "time" DESC
-LIMIT 10000
-`
+LIMIT 10000`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
 		TableName:            "my_table",

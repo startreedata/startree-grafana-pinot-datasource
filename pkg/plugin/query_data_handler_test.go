@@ -7,7 +7,7 @@ import (
 )
 
 func TestQueryData(t *testing.T) {
-	client := testPinotClient(t)
+	client := newPinotTestClient(t)
 
 	handler := NewQueryDataHandler(client)
 	resp, err := handler.QueryData(

@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"text/template"
 )
 
@@ -39,5 +40,5 @@ func RenderSingleMetricSql(params SingleMetricSqlParams) (string, error) {
 	if err := singleMetricSqlTemplate.Execute(&buf, params); err != nil {
 		return "", fmt.Errorf("failed execute template: %w", err)
 	}
-	return buf.String(), nil
+	return strings.TrimSpace(buf.String()), nil
 }
