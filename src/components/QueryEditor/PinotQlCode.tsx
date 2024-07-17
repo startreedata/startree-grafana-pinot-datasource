@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { InputTimeColumnFormat } from './InputTimeColumnFormat';
-import { SqlPreview } from './SqlPreview';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
 
