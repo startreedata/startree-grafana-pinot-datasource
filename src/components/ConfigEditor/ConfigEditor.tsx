@@ -90,7 +90,10 @@ export function ConfigEditor(props: ConfigEditorProps) {
       <h3>Authentication</h3>
       <p className={styles.text}>
         This plugin requires a Pinot authentication token. For detailed instructions on generating a token,{' '}
-        <a href={labels.token.help} target="_blank">view the documentation</a>.
+        <a href={labels.token.help} target="_blank" rel="noreferrer">
+          view the documentation
+        </a>
+        .
       </p>
       <div className="gf-form-group">
         <InputPinotToken
