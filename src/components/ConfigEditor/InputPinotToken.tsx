@@ -35,7 +35,7 @@ export function InputPinotToken(props: {
           onChange={(change) => onChangeType(change.value)}
         />
       </InlineField>
-      {tokenType != 'None' && (
+      {tokenType !== 'None' && (
         <InlineField label={labels.valueLabel} labelWidth={8} required>
           <SecretInput
             isConfigured={isConfigured}
