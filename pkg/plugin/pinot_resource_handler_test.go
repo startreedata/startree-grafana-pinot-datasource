@@ -19,37 +19,32 @@ func TestPinotResourceHandler_SqlPreview(t *testing.T) {
 
 	want := strings.TrimSpace(`
 SELECT
-    DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '2:HOURS') AS "time",
-    COUNT("Driver_Request_API_Errors") AS "metric"
+    DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
+    MAX("AirTime") AS "metric"
 FROM
-    "CleanLogisticData"
+    "airlineStats"
 WHERE
-    "timestamp" >= 1512238653 AND "timestamp" <= 1523714551
-    AND ("City" = 'Los_Angeles' OR "City" = 'New_York')
+    "ts" >= 1388328628931 AND "ts" <= 1391280266214
 GROUP BY
-    DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '2:HOURS')
-ORDER BY "time" ASC
+    DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES')
+ORDER BY "time" DESC
 LIMIT 1000000
 `)
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL, `{
-		"aggregationFunction": "COUNT",
-		"databaseName":        "default",
-		"intervalSize":        "2h",
-		"metricColumn":        "Driver_Request_API_Errors",
-		"tableName":           "CleanLogisticData",
-		"timeColumn":          "timestamp",
-		"timeRange": {
-			"to":   "2018-04-14T14:02:31.973Z",
-			"from": "2017-12-02T18:17:33.473Z"
-		},
-		"filters": [{
-			"columnName": "City",
-			"operator":   "=",
-			"valueExprs": ["'Los_Angeles'", "'New_York'"]
-		}]
-	}`, &got)
+  "aggregationFunction": "MAX",
+  "databaseName": "default",
+  "intervalSize": "30m",
+  "metricColumn": "AirTime",
+  "tableName": "airlineStats",
+  "timeColumn": "ts",
+  "timeRange": {
+    "to": "2014-02-01T18:44:26.214Z",
+    "from": "2013-12-29T14:50:28.931Z"
+  },
+  "limit": -1
+}`, &got)
 
 	assert.Equal(t, want, got["sql"])
 }
