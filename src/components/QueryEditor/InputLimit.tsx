@@ -11,7 +11,7 @@ export function InputLimit(props: { current: number | undefined; onChange: (val:
   const labels = allLabels.components.QueryEditor.limit;
 
   const [inputData, setInputData] = useState<string | undefined>(
-    current && current >= 0 ? current.toString(10) : undefined
+    current && current >= 1 ? current.toString(10) : undefined
   );
 
   return (
@@ -42,7 +42,7 @@ function parseLimit(inputData: string | undefined): number | undefined {
 
   const limit = parseInt(inputData, 10);
   switch (true) {
-    case limit < 0:
+    case limit < 1:
       return undefined;
     case !Number.isFinite(limit):
       return undefined;

@@ -1,14 +1,21 @@
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { RadioButtonGroup, ToolbarButton } from '@grafana/ui';
 import React from 'react';
-import { QueryType } from '../../types/QueryType';
-import { EditorMode } from '../../types/EditorMode';
+import { DefaultEditorType, QueryType } from '../../types/QueryType';
+import { DefaultEditorMode, EditorMode } from '../../types/EditorMode';
 import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
 export function SelectEditorType(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
   const labels = allLabels.components.QueryEditor.editorType;
+
+  if (query.queryType === undefined) {
+    onChange({ ...query, queryType: DefaultEditorType });
+  }
+  if (query.editorMode == undefined) {
+    onChange({ ...query, editorMode: DefaultEditorMode });
+  }
 
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>

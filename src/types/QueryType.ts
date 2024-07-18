@@ -3,3 +3,5 @@ export enum QueryType {
   PromQL = 'PromQL',
   LogQL = 'LogQL',
 }
+
+export const DefaultEditorType = QueryType.PinotQL;

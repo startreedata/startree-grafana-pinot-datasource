@@ -114,7 +114,7 @@ func (p PinotQlBuilderDriver) resolveMetricName() string {
 
 func (p PinotQlBuilderDriver) resolveLimit() int64 {
 	switch true {
-	case p.Limit >= 0:
+	case p.Limit >= 1:
 		// Use provided limit if present
 		return p.Limit
 	case p.AggregationFunction != AggregationFunctionNone && len(p.GroupByColumns) > 0:
