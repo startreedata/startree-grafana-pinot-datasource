@@ -3,7 +3,7 @@ import { SelectMetricColumn } from './SelectMetricColumn';
 import { SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
@@ -42,25 +42,30 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         .map((spec) => spec.name)
     : undefined;
 
-  const updateSqlPreview = (dataQuery: PinotDataQuery) => {
-    fetchSqlPreview(datasource, {
-      aggregationFunction: dataQuery.aggregationFunction,
-      databaseName: dataQuery.databaseName,
-      groupByColumns: dataQuery.groupByColumns,
-      intervalSize: data?.request?.interval || '0',
-      metricColumn: dataQuery.metricColumn,
-      tableName: dataQuery.tableName,
-      timeColumn: dataQuery.timeColumn,
-      timeRange: { to: props.data?.request?.range.to, from: props.data?.request?.range.from },
-      filters: dataQuery.filters,
-      limit: dataQuery.limit,
-      granularity: dataQuery.granularity,
-    }).then((val) => val && setSqlPreview(val));
-  };
+  const updateSqlPreview = useCallback(
+    (dataQuery: PinotDataQuery) => {
+      fetchSqlPreview(datasource, {
+        aggregationFunction: dataQuery.aggregationFunction,
+        databaseName: dataQuery.databaseName,
+        groupByColumns: dataQuery.groupByColumns,
+        intervalSize: data?.request?.interval || '0',
+        metricColumn: dataQuery.metricColumn,
+        tableName: dataQuery.tableName,
+        timeColumn: dataQuery.timeColumn,
+        timeRange: { to: data?.request?.range.to, from: data?.request?.range.from },
+        filters: dataQuery.filters,
+        limit: dataQuery.limit,
+        granularity: dataQuery.granularity,
+      }).then((val) => val && setSqlPreview(val));
+    },
+    [datasource, data?.request?.interval, data?.request?.range.to, data?.request?.range.from]
+  );
 
-  if (!sqlPreview) {
-    updateSqlPreview(query);
-  }
+  useEffect(() => {
+    if (!sqlPreview) {
+      updateSqlPreview(query);
+    }
+  }, [sqlPreview, query, updateSqlPreview]);
 
   const canRunQuery = (newQuery: PinotDataQuery) => {
     return !!(

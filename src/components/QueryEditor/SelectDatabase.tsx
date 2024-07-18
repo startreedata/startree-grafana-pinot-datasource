@@ -5,7 +5,7 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
-export function SelectQueryDatabase(props: {
+export function SelectDatabase(props: {
   options: string[] | undefined;
   selected: string | undefined;
   defaultValue: string;
@@ -26,10 +26,10 @@ export function SelectQueryDatabase(props: {
 
   return (
     <>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
-        // TODO: Handle the default db name correctly.
+        invalid={!selected}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
         disabled={[0, 1].includes(options?.length || -1)}
