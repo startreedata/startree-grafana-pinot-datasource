@@ -7,6 +7,9 @@ import (
 	"time"
 )
 
+const DisplayTypeTable = "TABLE"
+const DisplayTypeTimeSeries = "TIMESERIES"
+
 type PinotQlCodeDriverParams struct {
 	Code              string
 	DatabaseName      string
@@ -17,6 +20,7 @@ type PinotQlCodeDriverParams struct {
 	TimeRange         TimeRange
 	IntervalSize      time.Duration
 	TableSchema       TableSchema
+	DisplayType       string
 }
 
 type PinotQlCodeDriver struct {
@@ -65,7 +69,14 @@ func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {
 }
 
 func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	return p.ExtractTimeSeriesResults(results)
+	switch p.DisplayType {
+	case DisplayTypeTable:
+		return p.ExtractTableResults(results)
+	case DisplayTypeTimeSeries:
+		return p.ExtractTimeSeriesResults(results)
+	default:
+		return p.ExtractTimeSeriesResults(results)
+	}
 }
 
 func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable) (*data.Frame, error) {

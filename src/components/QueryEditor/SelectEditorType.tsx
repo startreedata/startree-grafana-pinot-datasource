@@ -1,5 +1,5 @@
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
-import { RadioButtonGroup } from '@grafana/ui';
+import { RadioButtonGroup, ToolbarButton } from '@grafana/ui';
 import React from 'react';
 import { QueryType } from '../../types/QueryType';
 import { EditorMode } from '../../types/EditorMode';
@@ -7,7 +7,7 @@ import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
 export function SelectEditorType(props: PinotQueryEditorProps) {
-  const { query, onChange } = props;
+  const { query, onChange, onRunQuery } = props;
   const labels = allLabels.components.QueryEditor.editorType;
 
   return (
@@ -29,12 +29,17 @@ export function SelectEditorType(props: PinotQueryEditorProps) {
           value={query.queryType}
         />
       </div>
-      <div className={'gf-form'}>
-        <RadioButtonGroup
-          options={Object.keys(EditorMode).map((name) => ({ label: name, value: name }))}
-          onChange={(value) => onChange({ ...query, editorMode: value })}
-          value={query.editorMode}
-        />
+      <div style={{ display: 'flex' }}>
+        <div className={'gf-form'}>
+          <RadioButtonGroup
+            options={Object.keys(EditorMode).map((name) => ({ label: name, value: name }))}
+            onChange={(value) => onChange({ ...query, editorMode: value })}
+            value={query.editorMode}
+          />
+          <ToolbarButton icon={'play'} variant={'primary'} style={{ marginLeft: 4 }} onClick={() => onRunQuery()}>
+            Run Query
+          </ToolbarButton>
+        </div>
       </div>
     </div>
   );

@@ -6,19 +6,19 @@ import { styles } from '../../styles';
 
 const options = [
   { label: 'auto', value: 'auto' },
-  { label: 'DAYS', value: 'DAYS' },
-  { label: 'HOURS', value: 'HOURS' },
+  { label: 'DAYS', value: '1:DAYS' },
+  { label: 'HOURS', value: '1:HOURS' },
   {
     label: 'MINUTES',
-    value: 'MINUTES',
+    value: '1:MINUTES',
   },
-  { label: 'SECONDS', value: 'SECONDS' },
-  { label: 'MILLISECONDS', value: 'MILLISECONDS' },
+  { label: 'SECONDS', value: '1:SECONDS' },
+  { label: 'MILLISECONDS', value: '1:MILLISECONDS' },
   {
     label: 'MICROSECONDS',
-    value: 'MICROSECONDS',
+    value: '1:MICROSECONDS',
   },
-  { label: 'NANOSECONDS', value: 'NANOSECONDS' },
+  { label: 'NANOSECONDS', value: '1:NANOSECONDS' },
 ];
 
 export function SelectGranularity(props: {

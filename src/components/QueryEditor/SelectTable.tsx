@@ -14,9 +14,10 @@ export function SelectTable(props: {
 
   return (
     <>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
+        invalid={!selected}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected}
         onChange={(change) => onChange(change.value)}

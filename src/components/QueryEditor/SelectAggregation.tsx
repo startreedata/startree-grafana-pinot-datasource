@@ -1,8 +1,10 @@
 import { Select } from '@grafana/ui';
 import { styles } from '../../styles';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
+
+const DefaultAggregationFunction = 'SUM';
 
 const AggregationOptions = [
   { label: 'COUNT', value: 'COUNT' },
@@ -20,11 +22,18 @@ export function SelectAggregation(props: {
   const { selected, onChange } = props;
   const labels = allLabels.components.QueryEditor.aggregation;
 
+  useEffect(() => {
+    if (!selected && selected !== DefaultAggregationFunction) {
+      onChange(DefaultAggregationFunction);
+    }
+  }, [selected, onChange]);
+
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} required />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
+        invalid={!selected}
         options={AggregationOptions}
         value={selected}
         onChange={(change) => onChange(change.value)}

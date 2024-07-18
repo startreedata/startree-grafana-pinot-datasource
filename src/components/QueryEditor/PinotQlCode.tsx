@@ -6,6 +6,7 @@ import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { InputTimeColumnFormat } from './InputTimeColumnFormat';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
+import {SqlPreview} from "./SqlPreview";
 
 export function PinotQlCode(props: PinotQueryEditorProps) {
   const { query, data, datasource, onChange, onRunQuery } = props;
@@ -65,7 +66,7 @@ export function PinotQlCode(props: PinotQueryEditorProps) {
         onChange={(val) => onChange({ ...props.query, metricColumnAlias: val })}
       />
       <SqlEditor current={query.pinotQlCode} onChange={(val) => onChange({ ...props.query, pinotQlCode: val })} />
-      {/*<SqlPreview sql={sqlPreview} />*/}
+      <SqlPreview sql={sqlPreview} />
     </div>
   );
 }

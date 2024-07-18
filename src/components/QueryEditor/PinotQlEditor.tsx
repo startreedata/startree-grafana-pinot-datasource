@@ -1,6 +1,6 @@
 import React from 'react';
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
-import { SelectQueryDatabase } from './SelectQueryDatabase';
+import { SelectDatabase } from './SelectDatabase';
 import { SelectTable } from './SelectTable';
 import { EditorMode } from '../../types/EditorMode';
 import { PinotQlBuilder } from './PinotQlBuilder';
@@ -18,7 +18,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
     <div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div className={'gf-form'}>
-          <SelectQueryDatabase
+          <SelectDatabase
             options={databases}
             selected={query.databaseName}
             defaultValue={DefaultDatabase}
