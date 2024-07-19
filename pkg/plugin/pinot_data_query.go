@@ -26,6 +26,7 @@ type PinotDataQuery struct {
 	TimeColumnAlias   string `json:"timeColumnAlias"`
 	TimeColumnFormat  string `json:"timeColumnFormat"`
 	MetricColumnAlias string `json:"metricColumnAlias"`
+	DisplayType       string `json:"displayType"`
 }
 
 type TimeRange struct {

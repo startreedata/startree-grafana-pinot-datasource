@@ -43,6 +43,7 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				TimeRange:         TimeRange{To: timeRange.To, From: timeRange.From},
 				IntervalSize:      query.IntervalSize,
 				TableSchema:       tableSchema,
+				DisplayType:       query.DisplayType,
 			})
 		}
 	}
