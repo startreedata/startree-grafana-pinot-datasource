@@ -4,9 +4,15 @@ import { styles } from '../../styles';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
+const DefaultMetricColumnAlias = 'metric';
+
 export function InputMetricColumnAlias(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricAlias;
+
+  if (current === undefined) {
+    onChange(DefaultMetricColumnAlias);
+  }
 
   return (
     <div className={'gf-form'}>

@@ -12,6 +12,12 @@ export function SelectTable(props: {
   const { selected, options, onChange } = props;
   const labels = allLabels.components.QueryEditor.table;
 
+  if (options && options?.length === 1 && selected !== options[0]) {
+    onChange(options[0]);
+  } else if (options && selected && !options.includes(selected)) {
+    onChange(undefined);
+  }
+
   return (
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
@@ -19,7 +25,7 @@ export function SelectTable(props: {
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
         options={options?.map((name) => ({ label: name, value: name }))}
-        value={selected}
+        value={selected || null}
         onChange={(change) => onChange(change.value)}
       />
     </>

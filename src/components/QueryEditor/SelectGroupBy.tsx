@@ -14,6 +14,10 @@ export function SelectGroupBy(props: {
   const { options, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
+  if (options && selected && selected.filter((val) => options.includes(val)).length !== selected.length) {
+    onChange(selected.filter((val) => options.includes(val)));
+  }
+
   return (
     <div className={'gf-form'}>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />

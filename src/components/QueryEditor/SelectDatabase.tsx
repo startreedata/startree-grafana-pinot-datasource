@@ -5,23 +5,24 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
+const DefaultDatabase = 'default';
+
 export function SelectDatabase(props: {
   options: string[] | undefined;
   selected: string | undefined;
-  defaultValue: string;
   onChange: (val: string | undefined) => void;
 }) {
-  const { defaultValue, selected, options, onChange } = props;
+  const { selected, options, onChange } = props;
   const labels = allLabels.components.QueryEditor.database;
 
   if (options?.length === 0 && selected === undefined) {
-    onChange(defaultValue);
+    onChange(DefaultDatabase);
   } else if (options?.length === 1 && selected === undefined) {
     onChange(options[0]);
   }
 
   if (options?.length === 0) {
-    options.push(defaultValue);
+    options.push(DefaultDatabase);
   }
 
   return (

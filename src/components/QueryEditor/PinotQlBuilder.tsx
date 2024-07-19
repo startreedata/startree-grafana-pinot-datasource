@@ -9,9 +9,11 @@ import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlPreview } from '../../resources/sqlPreview';
-import { useTableSchema } from '../../resources/controller';
+import { useDatabases, useTables, useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
+import { SelectDatabase } from './SelectDatabase';
+import { SelectTable } from './SelectTable';
 
 const MetricColumnStar = '*';
 const AggregationFunctionCount = 'COUNT';
@@ -19,9 +21,12 @@ const AggregationFunctionNone = 'NONE';
 
 export function PinotQlBuilder(props: PinotQueryEditorProps) {
   const { data, datasource, query, range, onChange, onRunQuery } = props;
-  const [sqlPreview, setSqlPreview] = useState('');
 
+  const databases = useDatabases(datasource);
+  const tables = useTables(datasource, query.databaseName);
   const tableSchema = useTableSchema(datasource, query.databaseName, query.tableName);
+
+  const [sqlPreview, setSqlPreview] = useState('');
 
   const dateTimeFieldSpecs = tableSchema?.dateTimeFieldSpecs || [];
   const metricFieldSpecs = tableSchema?.metricFieldSpecs || [];
@@ -86,6 +91,20 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
 
   return (
     <>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className={'gf-form'}>
+          <SelectDatabase
+            options={databases}
+            selected={query.databaseName}
+            onChange={(value: string | undefined) => onChange({ ...query, databaseName: value })}
+          />
+          <SelectTable
+            options={tables}
+            selected={query.tableName}
+            onChange={(value: string | undefined) => onChange({ ...query, tableName: value, filters: undefined })}
+          />
+        </div>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectTimeColumn
           selected={query.timeColumn}
