@@ -33,17 +33,6 @@ export function PinotQlCode(props: PinotQueryEditorProps) {
     }).then((val) => val && setSqlPreview(val));
   };
 
-  const canRunQuery = (newQuery: PinotDataQuery): boolean => {
-    return !!(
-      newQuery.databaseName &&
-      newQuery.tableName &&
-      newQuery.timeColumnAlias &&
-      newQuery.timeColumnFormat &&
-      newQuery.metricColumnAlias &&
-      newQuery.pinotQlCode
-    );
-  };
-
   const onChangeAndUpdatePreview = (newQuery: PinotDataQuery) => {
     onChange(newQuery);
     updateSqlPreview(newQuery);
