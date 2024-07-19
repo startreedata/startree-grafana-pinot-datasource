@@ -13,7 +13,7 @@ export function SelectEditorType(props: PinotQueryEditorProps) {
   if (query.queryType === undefined) {
     onChange({ ...query, queryType: DefaultEditorType });
   }
-  if (query.editorMode == undefined) {
+  if (query.editorMode === undefined) {
     onChange({ ...query, editorMode: DefaultEditorMode });
   }
 
