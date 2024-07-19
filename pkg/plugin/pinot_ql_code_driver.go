@@ -89,8 +89,31 @@ func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable)
 
 func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*data.Frame, error) {
 	frame := data.NewFrame("response")
+
+	timeIdx, timeCol := p.extractTableTime(results)
+	if timeCol != nil {
+		frame.Fields = append(frame.Fields, timeCol)
+	}
+
 	for colId := 0; colId < results.GetColumnCount(); colId++ {
+		if colId == timeIdx {
+			continue
+		}
 		frame.Fields = append(frame.Fields, ExtractColumnToField(results, colId))
 	}
 	return frame, nil
+}
+
+func (p *PinotQlCodeDriver) extractTableTime(results *pinot.ResultTable) (int, *data.Field) {
+	timeIdx, err := GetColumnIdx(results, p.TimeColumnAlias)
+	if err != nil {
+		return -1, nil
+	}
+
+	timeCol, err := ExtractTimeColumn(results, timeIdx, p.TimeColumnFormat)
+	if err != nil {
+		return -1, nil
+	}
+
+	return timeIdx, data.NewField(p.TimeColumnAlias, nil, timeCol)
 }
