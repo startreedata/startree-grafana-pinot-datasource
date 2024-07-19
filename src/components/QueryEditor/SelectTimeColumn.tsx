@@ -12,15 +12,10 @@ export function SelectTimeColumn(props: {
   const { selected, options, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeColumn;
 
-  let forced = selected;
-  if (options && forced && !options.includes(forced)) {
-    forced = undefined;
-  }
-  if (options && options?.length === 1 && forced === undefined) {
-    forced = options[0];
-  }
-  if (forced !== selected) {
-    onChange(forced);
+  if (options && options?.length === 1 && selected !== options[0]) {
+    onChange(options[0]);
+  } else if (options && selected && !options.includes(selected)) {
+    onChange(undefined);
   }
 
   return (
@@ -30,8 +25,10 @@ export function SelectTimeColumn(props: {
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
         options={options?.map((name) => ({ label: name, value: name }))}
-        value={selected}
-        onChange={(change) => onChange(change.value)}
+        value={selected || null}
+        onChange={(change) => {
+          onChange(change.value);
+        }}
       />
     </div>
   );

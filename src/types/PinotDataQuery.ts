@@ -3,6 +3,7 @@ import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
 import { DimensionFilter } from './DimensionFilter';
 
+// TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,
   editorMode: EditorMode.Builder,
@@ -49,4 +50,5 @@ export interface PinotDataQuery extends DataQuery {
   timeColumnAlias?: string;
   timeColumnFormat?: string;
   metricColumnAlias?: string;
+  display?: string;
 }

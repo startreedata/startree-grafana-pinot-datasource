@@ -118,7 +118,8 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.DatabaseName, data.TableName)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
@@ -136,12 +137,14 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		Granularity:         data.Granularity,
 	})
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	return http.StatusOK, &SqlBuilderPreviewResponse{Sql: sql}, nil
@@ -170,7 +173,8 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.DatabaseName, data.TableName)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	driver, err := NewPinotQlCodeDriver(PinotQlCodeDriverParams{
@@ -185,12 +189,14 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 		Code:              data.Code,
 	})
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		// No need to surface this error in Grafana.
+		return http.StatusOK, nil, err
 	}
 
 	return http.StatusOK, &SqlCodePreviewResponse{

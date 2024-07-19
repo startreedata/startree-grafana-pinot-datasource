@@ -18,7 +18,7 @@ mv ".${PLUGIN_ARCHIVE}-next" "${PLUGIN_ARCHIVE}"
 mv "${PLUGIN_NAME}" "${PLUGIN_SRC}"
 
 ## deployment
-#kubectl --namespace cell-9itmgf-default cp startree-pinot-datasource.zip pinot-grafana-demo-0:/var/lib/grafana/plugins
-#kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- rm -rf /var/lib/grafana/plugins/startree-pinot-datasource
-#kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- unzip /var/lib/grafana/plugins/startree-pinot-datasource.zip -d /var/lib/grafana/plugins/
-#kubectl --namespace cell-9itmgf-default delete pod pinot-grafana-demo-0
+kubectl --namespace cell-9itmgf-default cp startree-pinot-datasource.zip pinot-grafana-demo-0:/var/lib/grafana/plugins
+kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- rm -rf /var/lib/grafana/plugins/startree-pinot-datasource
+kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- unzip /var/lib/grafana/plugins/startree-pinot-datasource.zip -d /var/lib/grafana/plugins/
+kubectl --namespace cell-9itmgf-default delete pod pinot-grafana-demo-0

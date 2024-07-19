@@ -4,9 +4,15 @@ import React, { ChangeEvent } from 'react';
 import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
+const DefaultTimeColumnFormat = '1:MILLISECONDS:EPOCH';
+
 export function InputTimeColumnFormat(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeFormat;
+
+  if (current === undefined) {
+    onChange(DefaultTimeColumnFormat);
+  }
 
   return (
     <div className={'gf-form'}>
