@@ -11,7 +11,7 @@ export function SqlPreview(props: { sql: string | undefined }) {
 
   return (
     <div className="gf-form">
-      <FormLabel tooltip={<p>{labels.tooltip}</p>} label={labels.label} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <pre>
         {sql || ''}
         {sql && (

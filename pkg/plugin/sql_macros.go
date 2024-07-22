@@ -29,6 +29,9 @@ var timeToRegex = regexp.MustCompile(`\$__timeTo(\([^)]*\))?`)
 var timeFromRegex = regexp.MustCompile(`\$__timeFrom(\([^)]*\))?`)
 var metricAliasRegex = regexp.MustCompile(`\$__metricAlias(\([^)]*\))?`)
 var timeAliasRegex = regexp.MustCompile(`\$__timeAlias(\([^)]*\))?`)
+var timeFilterMillisRegex = regexp.MustCompile(`\$__timeFilterMillis(\([^)]*\))?`)
+var timeToMillisRegex = regexp.MustCompile(`\$__timeToMillis(\([^)]*\))?`)
+var timeFromMillisRegex = regexp.MustCompile(`\$__timeFromMillis(\([^)]*\))?`)
 
 func (x MacroEngine) ExpandMacros(query string) (string, error) {
 	macros := []Macro{
@@ -39,6 +42,9 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 		{"timeFrom", timeFromRegex, x.renderTimeFrom},
 		{"timeAlias", timeAliasRegex, x.renderTimeAlias},
 		{"metricAlias", metricAliasRegex, x.renderMetricAlias},
+		{"timeFilterMillis", timeFilterMillisRegex, x.renderTimeFilterMillis},
+		{"timeToMillis", timeToMillisRegex, x.renderTimeToMillis},
+		{"timeFromMillis", timeFromMillisRegex, x.renderTimeFromMillis},
 	}
 
 	var err error
@@ -145,7 +151,12 @@ func (x MacroEngine) renderTimeTo(args []string) (string, error) {
 }
 
 func (x MacroEngine) renderTimeFrom(args []string) (string, error) {
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+	if len(args) < 1 {
+		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+	}
+	timeColumn := args[0]
+
+	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 	if err != nil {
 		return "", err
 	}
@@ -158,4 +169,32 @@ func (x MacroEngine) renderTimeAlias(_ []string) (string, error) {
 
 func (x MacroEngine) renderMetricAlias(_ []string) (string, error) {
 	return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
+}
+
+func (x MacroEngine) renderTimeFilterMillis(args []string) (string, error) {
+	if len(args) < 1 {
+		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+	}
+	timeColumn := args[0]
+	builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
+	if err != nil {
+		return "", err
+	}
+	return builder.TimeFilterExpr(x.TimeRange), nil
+}
+
+func (x MacroEngine) renderTimeToMillis(_ []string) (string, error) {
+	builder, err := NewTimeExpressionBuilder("", FormatMillisecondsEpoch)
+	if err != nil {
+		return "", err
+	}
+	return builder.TimeExpr(x.To), nil
+}
+
+func (x MacroEngine) renderTimeFromMillis(_ []string) (string, error) {
+	builder, err := NewTimeExpressionBuilder("", FormatMillisecondsEpoch)
+	if err != nil {
+		return "", err
+	}
+	return builder.TimeExpr(x.From), nil
 }
