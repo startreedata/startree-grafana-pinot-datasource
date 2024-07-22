@@ -2,8 +2,6 @@
 
 set -xe
 
-export GRAFANA_ACCESS_POLICY_TOKEN="glc_eyJvIjoiMTA4NzYxNCIsIm4iOiJwbHVnaW4tc2lnbmluZy1zdGFydHJlZS1wbHVnaW4tc2lnbmluZy10b2tlbi1zdGFydHJlZSIsImsiOiJTRktiRDZzTDg1VjlZUGVObzk3NDU3M0oiLCJtIjp7InIiOiJ1cyJ9fQ=="
-
 PLUGIN_NAME="startree-pinot-datasource"
 PLUGIN_SRC="dist"
 PLUGIN_ARCHIVE="${PLUGIN_NAME}.zip"
