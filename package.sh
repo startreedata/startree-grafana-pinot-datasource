@@ -4,7 +4,7 @@ set -xe
 
 PLUGIN_NAME="startree-pinot-datasource"
 PLUGIN_SRC="dist"
-PLUGIN_ARCHIVE="${PLUGIN_NAME}.zip"
+PLUGIN_ARCHIVE="${PLUGIN_NAME}-1.0.0.zip"
 
 npm run build
 mage -v
@@ -16,7 +16,7 @@ mv ".${PLUGIN_ARCHIVE}-next" "${PLUGIN_ARCHIVE}"
 mv "${PLUGIN_NAME}" "${PLUGIN_SRC}"
 
 ## deployment
-kubectl --namespace cell-9itmgf-default cp startree-pinot-datasource.zip pinot-grafana-demo-0:/var/lib/grafana/plugins
+kubectl --namespace cell-9itmgf-default cp startree-pinot-datasource-1.0.0.zip pinot-grafana-demo-0:/var/lib/grafana/plugins
 kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- rm -rf /var/lib/grafana/plugins/startree-pinot-datasource
-kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- unzip /var/lib/grafana/plugins/startree-pinot-datasource.zip -d /var/lib/grafana/plugins/
+kubectl --namespace cell-9itmgf-default exec pinot-grafana-demo-0 -- unzip /var/lib/grafana/plugins/startree-pinot-datasource-1.0.0.zip -d /var/lib/grafana/plugins/
 kubectl --namespace cell-9itmgf-default delete pod pinot-grafana-demo-0
