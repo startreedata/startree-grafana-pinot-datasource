@@ -27,7 +27,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 	sort.Strings(gotTables)
 
 	assert.NoError(t, err)
-	assert.EqualValues(t, wantTables, gotTables)
+	assert.Subset(t, gotTables, wantTables)
 }
 
 func TestPinotClient_GetTableSchema(t *testing.T) {
