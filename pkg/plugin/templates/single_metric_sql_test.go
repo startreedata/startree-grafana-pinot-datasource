@@ -6,8 +6,7 @@ import (
 )
 
 func TestRenderSingleMetricSql(t *testing.T) {
-	want := `
-SELECT
+	want := `SELECT
     "met" AS "metric",
     "ts" AS "time"
 FROM
@@ -18,8 +17,7 @@ WHERE
     AND ("dim1" = 'val1')
     AND ("dim2" = 'val2')
 ORDER BY "time" DESC
-LIMIT 1000
-`
+LIMIT 1000`
 
 	got, err := RenderSingleMetricSql(SingleMetricSqlParams{
 		TableName:            "my_table",

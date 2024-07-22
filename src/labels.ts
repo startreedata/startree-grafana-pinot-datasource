@@ -20,56 +20,56 @@ export default {
     },
     QueryEditor: {
       editorType: {
-        tooltip: 'Select query type',
+        tooltip: 'Select the query type.',
         label: 'Query Type',
       },
       limit: {
         label: 'Limit',
-        tooltip: 'Limit',
+        tooltip: 'Query limit. Defaults to 1,000,000.',
       },
       metricAlias: {
-        tooltip: 'Metric column alias.',
+        tooltip: 'The name of the metric column in the query result. Required for time series display.',
         label: 'Metric Alias',
         placeholder: 'metric',
       },
       timeAlias: {
-        tooltip: 'Time column alias.',
+        tooltip: 'The name of the time column in the query result. Required for date time conversions.',
         label: 'Time Alias',
       },
       timeFormat: {
-        tooltip: 'Pinot Time format.',
+        tooltip: 'The time format of the query result. Required for date time conversions.',
         label: 'Time Format',
       },
       granularity: {
-        tooltip: 'Select granularity.',
+        tooltip: 'Select the granularity of the aggregation. Defaults to the value in query options.',
         label: 'Granularity',
       },
       aggregation: {
-        tooltip: 'Select aggregation function',
+        tooltip: 'Select the aggregation function.',
         label: 'Aggregation',
       },
       filters: {
-        tooltip: 'Select group by filters',
+        tooltip: 'Add query filters.',
         label: 'Filters',
       },
       groupBy: {
-        tooltip: 'Select group by columns',
+        tooltip: 'Select group by columns.',
         label: 'Group By',
       },
       metricColumn: {
-        tooltip: 'Select metric column',
+        tooltip: 'Select the metric column. Required.',
         label: 'Metric Column',
       },
       database: {
-        tooltip: 'Select Pinot database',
+        tooltip: 'Select the Pinot database. Required.',
         label: 'Database',
       },
       table: {
-        tooltip: 'Select Pinot Table',
+        tooltip: 'Select the table. Required.',
         label: 'Table',
       },
       timeColumn: {
-        tooltip: 'Select time column',
+        tooltip: 'Select the time column for this query. Required.',
         label: 'Time Column',
       },
       sqlEditor: {
@@ -77,10 +77,14 @@ export default {
         label: 'Pinot Query',
       },
       sqlPreview: {
-        tooltip: 'Sql Preview',
+        tooltip: 'Preview of the generated sql sent to Pinot.',
         label: 'Sql Preview',
         copyTooltip: 'Copy SQL to clipboard.',
         copiedTooltip: 'Copied!',
+      },
+      display: {
+        tooltip: 'Choose display type.',
+        label: 'Display',
       },
     },
   },

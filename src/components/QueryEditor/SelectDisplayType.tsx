@@ -1,6 +1,7 @@
 import { RadioButtonGroup } from '@grafana/ui';
 import React from 'react';
 import { FormLabel } from './FormLabel';
+import allLabels from '../../labels';
 
 export const DisplayTypeTimeSeries = 'TIMESERIES';
 export const DisplayTypeTable = 'TABLE';
@@ -12,13 +13,15 @@ const DisplayTypes = [
 
 export function SelectDisplayType(props: { value: string | undefined; onChange: (val: string) => void }) {
   const { value, onChange } = props;
+  const labels = allLabels.components.QueryEditor.display;
+
   if (value === undefined) {
-    onChange('TABLE');
+    onChange(DisplayTypeTable);
   }
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={''} label={'Display'} />
+      <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <RadioButtonGroup options={DisplayTypes} onChange={onChange} value={value} />
     </div>
   );

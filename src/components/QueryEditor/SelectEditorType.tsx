@@ -6,6 +6,8 @@ import { DefaultEditorMode, EditorMode } from '../../types/EditorMode';
 import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 
+const SupportedQueryTypes = [QueryType.PinotQL];
+
 export function SelectEditorType(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
   const labels = allLabels.components.QueryEditor.editorType;
@@ -21,8 +23,9 @@ export function SelectEditorType(props: PinotQueryEditorProps) {
     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
       <div className={'gf-form'}>
         <FormLabel tooltip={labels.tooltip} label={labels.label} />
+
         <RadioButtonGroup
-          options={Object.keys(QueryType).map((name) => ({ label: name, value: name }))}
+          options={SupportedQueryTypes.map((name) => ({ label: name, value: name }))}
           onChange={(value) => {
             // Manually disable unimplemented options
             switch (value) {

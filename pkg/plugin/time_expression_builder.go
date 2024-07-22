@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-const TimeGroupExprOutputFormat = "1:MILLISECONDS:EPOCH"
+const FormatMillisecondsEpoch = "1:MILLISECONDS:EPOCH"
+const TimeGroupExprOutputFormat = FormatMillisecondsEpoch
 
 type TimeExpressionBuilder struct {
 	timeColumn       string
@@ -25,6 +26,10 @@ func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeE
 		return TimeExpressionBuilder{}, err
 	}
 
+	return NewTimeExpressionBuilder(timeColumn, timeColumnFormat)
+}
+
+func NewTimeExpressionBuilder(timeColumn string, timeColumnFormat string) (TimeExpressionBuilder, error) {
 	exprFormat, ok := NewTimeExprFormat(timeColumnFormat)
 	if !ok {
 		return TimeExpressionBuilder{}, fmt.Errorf("time column `%s` has unsupported format `%s`", timeColumn, timeColumnFormat)
