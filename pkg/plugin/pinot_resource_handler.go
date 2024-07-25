@@ -40,7 +40,14 @@ type GetDatabasesResponse struct {
 
 func (x *PinotResourceHandler) GetDatabases(w http.ResponseWriter, r *http.Request) {
 	databases, err := x.client.ListDatabases(r.Context())
+
 	if err != nil {
+		if controllerError, ok := err.(*ControllerStatusError); ok {
+			if controllerError.StatusCode == http.StatusForbidden {
+				writeJsonData(w, http.StatusOK, GetDatabasesResponse{Databases: []string{}})
+				return
+			}
+		}
 		writeError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -235,7 +242,7 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
 		ColumnName:           data.ColumnName,
-		TableName:            data.TableName,
+		TableNameExpr:        TableNameExpr(data.DatabaseName, data.TableName),
 		TimeFilterExpr:       exprBuilder.TimeFilterExpr(data.TimeRange),
 		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
 	})
