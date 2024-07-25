@@ -32,7 +32,6 @@ const FilterOperators = [
 const DefaultFilterOperator = FilterOperators[0];
 
 export function EditFilter(props: {
-  databaseName: string | undefined;
   datasource: DataSource;
   remainingFilters: DimensionFilter[];
   range: TimeRange | undefined;
@@ -45,7 +44,6 @@ export function EditFilter(props: {
   onDelete: () => void;
 }) {
   const {
-    databaseName,
     datasource,
     remainingFilters,
     range,
@@ -82,7 +80,6 @@ export function EditFilter(props: {
   const loadValueOptions = () => {
     setIsLoadingValues(true);
     fetchDistinctValues(datasource, {
-      databaseName: databaseName,
       tableName: tableName,
       columnName: thisFilter.columnName,
       timeColumn: timeColumn,

@@ -14,7 +14,7 @@ const DefaultMetricColumnAlias = "metric"
 const AggregationFunctionCount = "COUNT"
 const AggregationFunctionNone = "NONE"
 const GranularityAuto = "auto"
-const DefaultLimit = 1_000_000
+const DefaultLimit = 100_000
 
 type PinotQlBuilderDriver struct {
 	PinotQlBuilderParams

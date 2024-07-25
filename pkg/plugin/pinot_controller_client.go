@@ -59,7 +59,7 @@ func (p *PinotControllerClient) ListTables(ctx context.Context) ([]string, error
 	}
 
 	tables := make([]string, len(tablesResp.Tables))
-	databasePrefix := fmt.Sprintf("%s.", p.properties.Database)
+	databasePrefix := fmt.Sprintf("%s.", p.properties.DatabaseName)
 	for i := range tablesResp.Tables {
 		tables[i] = strings.TrimPrefix(tablesResp.Tables[i], databasePrefix)
 	}

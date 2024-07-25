@@ -25,7 +25,7 @@ type PinotClient struct {
 type PinotClientProperties struct {
 	ControllerUrl string
 	BrokerUrl     string
-	Database      string
+	DatabaseName  string
 	Authorization string
 
 	ControllerCacheTimeout time.Duration
@@ -63,8 +63,8 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 	if properties.Authorization != "" {
 		headers["Authorization"] = properties.Authorization
 	}
-	if properties.Database != "" && properties.Database != DefaultDatabase {
-		headers["Database"] = properties.Database
+	if properties.DatabaseName != "" && properties.DatabaseName != DefaultDatabase {
+		headers["Database"] = properties.DatabaseName
 	}
 
 	brokerConn, err := pinot.NewWithConfig(&pinot.ClientConfig{
