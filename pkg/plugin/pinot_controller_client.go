@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type PinotControllerClient struct {
@@ -55,7 +56,12 @@ func (p *PinotControllerClient) ListTables(ctx context.Context, database string)
 		return nil, err
 	}
 
-	return tablesResp.Tables, nil
+	tables := make([]string, len(tablesResp.Tables))
+	databasePrefix := fmt.Sprintf("%s.", database)
+	for i := range tablesResp.Tables {
+		tables[i] = strings.TrimPrefix(tablesResp.Tables[i], databasePrefix)
+	}
+	return tables, nil
 }
 
 func (p *PinotControllerClient) listTablesEndpoint(ctx context.Context, database string) string {
