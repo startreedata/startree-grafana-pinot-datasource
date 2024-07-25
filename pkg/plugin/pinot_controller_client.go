@@ -14,10 +14,12 @@ import (
 
 type PinotControllerClient struct {
 	properties PinotClientProperties
+	headers    map[string]string
+	httpClient *http.Client
 }
 
 func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, error) {
-	req, err := p.newGetRequest(ctx, "", "/databases")
+	req, err := p.newGetRequest(ctx, "/databases")
 	if err != nil {
 		return nil, err
 	}
@@ -42,9 +44,9 @@ func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, er
 	return databases, nil
 }
 
-func (p *PinotControllerClient) ListTables(ctx context.Context, database string) ([]string, error) {
-	endpoint := p.listTablesEndpoint(ctx, database)
-	req, err := p.newGetRequest(ctx, database, endpoint)
+func (p *PinotControllerClient) ListTables(ctx context.Context) ([]string, error) {
+	endpoint := p.listTablesEndpoint(ctx)
+	req, err := p.newGetRequest(ctx, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -57,15 +59,15 @@ func (p *PinotControllerClient) ListTables(ctx context.Context, database string)
 	}
 
 	tables := make([]string, len(tablesResp.Tables))
-	databasePrefix := fmt.Sprintf("%s.", database)
+	databasePrefix := fmt.Sprintf("%s.", p.properties.Database)
 	for i := range tablesResp.Tables {
 		tables[i] = strings.TrimPrefix(tablesResp.Tables[i], databasePrefix)
 	}
 	return tables, nil
 }
 
-func (p *PinotControllerClient) listTablesEndpoint(ctx context.Context, database string) string {
-	req, err := p.newHeadRequest(ctx, database, "/mytables")
+func (p *PinotControllerClient) listTablesEndpoint(ctx context.Context) string {
+	req, err := p.newHeadRequest(ctx, "/mytables")
 	if err != nil {
 		return "/tables"
 	}
@@ -77,8 +79,8 @@ func (p *PinotControllerClient) listTablesEndpoint(ctx context.Context, database
 	return "/mytables"
 }
 
-func (p *PinotControllerClient) GetTableSchema(ctx context.Context, database string, table string) (TableSchema, error) {
-	req, err := p.newGetRequest(ctx, database, "/tables/"+url.PathEscape(table)+"/schema")
+func (p *PinotControllerClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
+	req, err := p.newGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/schema")
 	if err != nil {
 		return TableSchema{}, err
 	}
@@ -90,30 +92,30 @@ func (p *PinotControllerClient) GetTableSchema(ctx context.Context, database str
 	return schema, nil
 }
 
-func (p *PinotControllerClient) newHeadRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
-	return p.newRequest(ctx, database, http.MethodHead, endpoint, nil)
+func (p *PinotControllerClient) newHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+	return p.newRequest(ctx, http.MethodHead, endpoint, nil)
 }
 
-func (p *PinotControllerClient) newGetRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
-	return p.newRequest(ctx, database, http.MethodGet, endpoint, nil)
+func (p *PinotControllerClient) newGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+	req, err := p.newRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+	return req, nil
 }
 
-func (p *PinotControllerClient) newRequest(ctx context.Context, database string, method string, endpoint string, body io.Reader) (*http.Request, error) {
+func (p *PinotControllerClient) newRequest(ctx context.Context, method string, endpoint string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, p.properties.ControllerUrl+endpoint, body)
 	if err != nil {
 		// Realistically, this should never throw an error, but pass it through anyway.
 		return nil, err
 	}
 
-	if p.properties.Authorization != "" {
-		req.Header.Set("Authorization", p.properties.Authorization)
+	for k, v := range p.headers {
+		req.Header.Set(k, v)
 	}
-	if database != "" {
-		req.Header.Set("Database", database)
-	}
-	req.Header.Set("Accept", "application/json")
-
-	return req, err
+	return req, nil
 }
 
 func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
@@ -131,7 +133,7 @@ func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, de
 }
 
 func (p *PinotControllerClient) doRequest(req *http.Request) (*http.Response, error) {
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := p.httpClient.Do(req)
 	Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
 	return resp, err
 }

@@ -14,7 +14,7 @@ func NewCheckHealthHandler(client *PinotClient) backend.CheckHealthHandler {
 		}
 
 		// Test connection to controller
-		if _, err := client.ListTables(ctx, ""); err != nil {
+		if _, err := client.ListTables(ctx); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),

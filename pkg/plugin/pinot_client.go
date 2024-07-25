@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"github.com/startree/pinot/pkg/plugin/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"net/http"
 	"strings"
 	"time"
 )
+
+const DefaultDatabase = "default"
 
 type PinotClient struct {
 	properties       PinotClientProperties
@@ -15,14 +18,17 @@ type PinotClient struct {
 	controllerClient PinotControllerClient
 
 	listDatabasesCache  *cache.ResourceCache[[]string]
-	listTablesCache     *cache.MultiResourceCache[string, []string]
+	listTablesCache     *cache.ResourceCache[[]string]
 	getTableSchemaCache *cache.MultiResourceCache[string, TableSchema]
 }
 
 type PinotClientProperties struct {
 	ControllerUrl string
 	BrokerUrl     string
+	Database      string
 	Authorization string
+
+	ControllerCacheTimeout time.Duration
 }
 
 type TableSchema struct {
@@ -57,6 +63,9 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 	if properties.Authorization != "" {
 		headers["Authorization"] = properties.Authorization
 	}
+	if properties.Database != "" && properties.Database != DefaultDatabase {
+		headers["Database"] = properties.Database
+	}
 
 	brokerConn, err := pinot.NewWithConfig(&pinot.ClientConfig{
 		BrokerList:      []string{properties.BrokerUrl},
@@ -67,12 +76,17 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 	}
 
 	return &PinotClient{
-		properties:          properties,
-		brokerConn:          brokerConn,
-		controllerClient:    PinotControllerClient{properties: properties},
-		listDatabasesCache:  cache.NewResourceCache[[]string](5 * time.Minute),
-		listTablesCache:     cache.NewMultiResourceCache[string, []string](5 * time.Minute),
-		getTableSchemaCache: cache.NewMultiResourceCache[string, TableSchema](5 * time.Minute),
+		properties: properties,
+		brokerConn: brokerConn,
+		controllerClient: PinotControllerClient{
+			properties: properties,
+			headers:    headers,
+			httpClient: http.DefaultClient,
+		},
+
+		listDatabasesCache:  cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
+		listTablesCache:     cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
+		getTableSchemaCache: cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
 	}, nil
 }
 
@@ -104,14 +118,14 @@ func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
 	})
 }
 
-func (p *PinotClient) ListTables(ctx context.Context, database string) ([]string, error) {
-	return p.listTablesCache.Get(database, func() ([]string, error) {
-		return p.controllerClient.ListTables(ctx, database)
+func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
+	return p.listTablesCache.Get(func() ([]string, error) {
+		return p.controllerClient.ListTables(ctx)
 	})
 }
 
-func (p *PinotClient) GetTableSchema(ctx context.Context, database string, table string) (TableSchema, error) {
-	return p.getTableSchemaCache.Get(database+"|"+table, func() (TableSchema, error) {
-		return p.controllerClient.GetTableSchema(ctx, database, table)
+func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
+	return p.getTableSchemaCache.Get(table, func() (TableSchema, error) {
+		return p.controllerClient.GetTableSchema(ctx, table)
 	})
 }

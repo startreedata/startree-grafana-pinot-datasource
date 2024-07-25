@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/gorilla/mux"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"net/http"
@@ -42,7 +43,8 @@ func (x *PinotResourceHandler) GetDatabases(w http.ResponseWriter, r *http.Reque
 	databases, err := x.client.ListDatabases(r.Context())
 
 	if err != nil {
-		if controllerError, ok := err.(*ControllerStatusError); ok {
+		var controllerError *ControllerStatusError
+		if errors.As(err, &controllerError) {
 			if controllerError.StatusCode == http.StatusForbidden {
 				writeJsonData(w, http.StatusOK, GetDatabasesResponse{Databases: []string{}})
 				return
@@ -60,10 +62,7 @@ type GetTablesResponse struct {
 }
 
 func (x *PinotResourceHandler) GetTables(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	database := params.Get("database")
-
-	tables, err := x.client.ListTables(r.Context(), database)
+	tables, err := x.client.ListTables(r.Context())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -77,12 +76,10 @@ type GetTableSchemaResponse struct {
 }
 
 func (x *PinotResourceHandler) GetTableSchema(w http.ResponseWriter, r *http.Request) {
-	database := x.databaseFrom(r)
-
 	vars := mux.Vars(r)
 	table := vars["table"]
 
-	schema, err := x.client.GetTableSchema(r.Context(), database, table)
+	schema, err := x.client.GetTableSchema(r.Context(), table)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -123,7 +120,7 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		return http.StatusOK, &SqlBuilderPreviewResponse{}, nil
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.DatabaseName, data.TableName)
+	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		// No need to surface this error in Grafana.
 		return http.StatusOK, nil, err
@@ -160,7 +157,6 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 type SqlCodePreviewRequest struct {
 	TimeRange         TimeRange `json:"timeRange"`
 	IntervalSize      string    `json:"intervalSize"`
-	DatabaseName      string    `json:"databaseName"`
 	TableName         string    `json:"tableName"`
 	TimeColumnAlias   string    `json:"timeColumnAlias"`
 	TimeColumnFormat  string    `json:"timeColumnFormat"`
@@ -178,14 +174,13 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 		return http.StatusOK, &SqlCodePreviewResponse{}, nil
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.DatabaseName, data.TableName)
+	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		// No need to surface this error in Grafana.
 		return http.StatusOK, nil, err
 	}
 
 	driver, err := NewPinotQlCodeDriver(PinotQlCodeDriverParams{
-		DatabaseName:      data.DatabaseName,
 		TableName:         data.TableName,
 		TimeRange:         data.TimeRange,
 		IntervalSize:      parseIntervalSize(data.IntervalSize),
@@ -213,7 +208,6 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 
 type DistinctValuesRequest struct {
 	TimeRange        TimeRange         `json:"timeRange"`
-	DatabaseName     string            `json:"databaseName"`
 	TableName        string            `json:"tableName"`
 	ColumnName       string            `json:"columnName"`
 	TimeColumn       string            `json:"timeColumn"`
@@ -230,7 +224,7 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 		return http.StatusOK, &DistinctValuesResponse{}, nil
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.DatabaseName, data.TableName)
+	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		return http.StatusInternalServerError, nil, err
 	}
@@ -242,7 +236,7 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
 		ColumnName:           data.ColumnName,
-		TableNameExpr:        TableNameExpr(data.DatabaseName, data.TableName),
+		TableName:            data.TableName,
 		TimeFilterExpr:       exprBuilder.TimeFilterExpr(data.TimeRange),
 		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
 	})
@@ -258,11 +252,6 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 	return http.StatusOK, &DistinctValuesResponse{
 		ValueExprs: ExtractColumnExpr(results.ResultTable, 0),
 	}, nil
-}
-
-func (x *PinotResourceHandler) databaseFrom(r *http.Request) string {
-	params := r.URL.Query()
-	return params.Get("database")
 }
 
 func adaptHandler[A any, B any](handler func(ctx context.Context, data A) (int, B, error)) http.HandlerFunc {
