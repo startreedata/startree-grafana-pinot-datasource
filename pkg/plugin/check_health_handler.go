@@ -13,6 +13,13 @@ func NewCheckHealthHandler(client *PinotClient) backend.CheckHealthHandler {
 		default:
 		}
 
+		if _, err := client.ListTables(ctx, ""); err != nil {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: err.Error(),
+			}, nil
+		}
+
 		if _, err := client.ExecuteSQL(ctx, "", "select 1"); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
