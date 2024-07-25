@@ -39,14 +39,17 @@ type PinotQlBuilderParams struct {
 	MaxDataPoints       int64
 }
 
-func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (Driver, error) {
-	if params.TimeColumn == "" {
-		return nil, errors.New("time column cannot be empty")
+func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
+	if params.TableName == "" {
+		return nil, errors.New("TableName is required")
+	} else if params.TimeColumn == "" {
+		return nil, errors.New("TimeColumn is required")
 	} else if params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount {
-		return nil, errors.New("metric column cannot be empty")
+		return nil, errors.New("MetricColumn is required")
 	} else if params.AggregationFunction == "" {
-		return nil, errors.New("aggregation function cannot be empty")
+		return nil, errors.New("AggregationFunction is required")
 	}
+
 	exprBuilder, err := TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
 	if err != nil {
 		return nil, err
