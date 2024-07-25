@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -15,7 +16,7 @@ type PinotControllerClient struct {
 }
 
 func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, error) {
-	req, err := p.newControllerGetRequest(ctx, "", "/databases")
+	req, err := p.newGetRequest(ctx, "", "/databases")
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +42,8 @@ func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, er
 }
 
 func (p *PinotControllerClient) ListTables(ctx context.Context, database string) ([]string, error) {
-	req, err := p.newControllerGetRequest(ctx, database, "/tables")
+	endpoint := p.listTablesEndpoint(ctx, database)
+	req, err := p.newGetRequest(ctx, database, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +58,21 @@ func (p *PinotControllerClient) ListTables(ctx context.Context, database string)
 	return tablesResp.Tables, nil
 }
 
+func (p *PinotControllerClient) listTablesEndpoint(ctx context.Context, database string) string {
+	req, err := p.newHeadRequest(ctx, database, "/mytables")
+	if err != nil {
+		return "/tables"
+	}
+
+	resp, err := p.doRequest(req)
+	if err != nil || resp.StatusCode == http.StatusNotFound {
+		return "/tables"
+	}
+	return "/mytables"
+}
+
 func (p *PinotControllerClient) GetTableSchema(ctx context.Context, database string, table string) (TableSchema, error) {
-	req, err := p.newControllerGetRequest(ctx, database, "/tables/"+url.PathEscape(table)+"/schema")
+	req, err := p.newGetRequest(ctx, database, "/tables/"+url.PathEscape(table)+"/schema")
 	if err != nil {
 		return TableSchema{}, err
 	}
@@ -69,8 +84,16 @@ func (p *PinotControllerClient) GetTableSchema(ctx context.Context, database str
 	return schema, nil
 }
 
-func (p *PinotControllerClient) newControllerGetRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.properties.ControllerUrl+endpoint, nil)
+func (p *PinotControllerClient) newHeadRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
+	return p.newRequest(ctx, database, http.MethodHead, endpoint, nil)
+}
+
+func (p *PinotControllerClient) newGetRequest(ctx context.Context, database string, endpoint string) (*http.Request, error) {
+	return p.newRequest(ctx, database, http.MethodGet, endpoint, nil)
+}
+
+func (p *PinotControllerClient) newRequest(ctx context.Context, database string, method string, endpoint string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, p.properties.ControllerUrl+endpoint, body)
 	if err != nil {
 		// Realistically, this should never throw an error, but pass it through anyway.
 		return nil, err

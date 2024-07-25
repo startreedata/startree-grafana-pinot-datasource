@@ -13,6 +13,7 @@ func NewCheckHealthHandler(client *PinotClient) backend.CheckHealthHandler {
 		default:
 		}
 
+		// Test connection to controller
 		if _, err := client.ListTables(ctx, ""); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
@@ -20,6 +21,7 @@ func NewCheckHealthHandler(client *PinotClient) backend.CheckHealthHandler {
 			}, nil
 		}
 
+		// Test connection to broker
 		if _, err := client.ExecuteSQL(ctx, "", "select 1"); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
