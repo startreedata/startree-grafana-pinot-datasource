@@ -17,6 +17,11 @@ export default {
         valueLabel: 'Token',
         valuePlaceholder: 'Token',
       },
+      database: {
+        label: 'Database',
+        placeholder: 'default',
+        tooltip: 'Optionally specify the database.',
+      },
     },
     QueryEditor: {
       editorType: {
