@@ -4,7 +4,6 @@ import { DataSource } from '../datasource';
 export interface SqlCodePreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string;
-  databaseName: string | undefined;
   tableName: string | undefined;
   timeColumnAlias: string | undefined;
   timeColumnFormat: string | undefined;
@@ -21,7 +20,6 @@ export async function fetchSqlCodePreview(datasource: DataSource, request: SqlCo
   if (
     request.intervalSize &&
     request.intervalSize !== '0' &&
-    request.databaseName &&
     request.tableName &&
     request.timeColumnAlias &&
     request.metricColumnAlias &&

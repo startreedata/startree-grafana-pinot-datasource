@@ -3,7 +3,6 @@ import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
 
 export interface DistinctValuesRequest {
-  databaseName?: string;
   tableName?: string;
   columnName?: string;
   timeColumn?: string;
@@ -17,13 +16,7 @@ interface DistinctValuesResponse {
 }
 
 export async function fetchDistinctValues(datasource: DataSource, request: DistinctValuesRequest): Promise<string[]> {
-  if (
-    request.databaseName &&
-    request.tableName &&
-    request.columnName &&
-    request.timeRange.to &&
-    request.timeRange.from
-  ) {
+  if (request.tableName && request.columnName && request.timeRange.to && request.timeRange.from) {
     return datasource
       .postResource<DistinctValuesResponse>('distinctValues', request)
       .then((resp) => resp.valueExprs || [])

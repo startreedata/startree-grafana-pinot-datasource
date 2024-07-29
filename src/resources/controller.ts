@@ -8,7 +8,7 @@ interface GetDatabasesResponse {
 }
 
 export function useDatabases(datasource: DataSource): string[] | undefined {
-  const resp = useControllerResource<GetDatabasesResponse>(datasource, undefined, 'databases');
+  const resp = useControllerResource<GetDatabasesResponse>(datasource, 'databases');
   return resp?.databases || undefined;
 }
 
@@ -17,8 +17,8 @@ interface GetTablesResponse {
   error: string | null;
 }
 
-export function useTables(datasource: DataSource, databaseName: string | undefined): string[] | undefined {
-  const resp = useControllerResource<GetTablesResponse>(datasource, databaseName, 'tables');
+export function useTables(datasource: DataSource): string[] | undefined {
+  const resp = useControllerResource<GetTablesResponse>(datasource, 'tables');
   return resp?.tables || undefined;
 }
 
@@ -27,42 +27,20 @@ interface GetTableSchemaResponse {
   error: string | null;
 }
 
-export function useTableSchema(
-  datasource: DataSource,
-  databaseName: string | undefined,
-  tableName: string | undefined
-): TableSchema | undefined {
+export function useTableSchema(datasource: DataSource, tableName: string | undefined): TableSchema | undefined {
   const noop = !tableName;
-  const resp = useControllerResource<GetTableSchemaResponse>(
-    datasource,
-    databaseName,
-    'tables/' + tableName + '/schema',
-    noop
-  );
+  const resp = useControllerResource<GetTableSchemaResponse>(datasource, 'tables/' + tableName + '/schema', noop);
   return resp?.schema || undefined;
 }
 
-function useControllerResource<T>(
-  datasource: DataSource,
-  databaseName: string | undefined,
-  endpoint: string,
-  noop?: boolean
-): T | undefined {
+function useControllerResource<T>(datasource: DataSource, endpoint: string, noop?: boolean): T | undefined {
   const [resp, setResp] = useState<T | undefined>(undefined);
 
-  const params = new URLSearchParams();
-  if (databaseName) {
-    params.set('database', databaseName);
-  }
-
-  const path = `${endpoint}?${params.toString()}`;
   useEffect(() => {
     if (noop) {
       return;
     }
-    datasource
-      .getResource<T>(path)
-      .then((resp) => setResp(resp))
-  }, [datasource, databaseName, path, noop]);
+    datasource.getResource<T>(endpoint).then((resp) => setResp(resp));
+  }, [datasource, endpoint, noop]);
   return resp;
 }

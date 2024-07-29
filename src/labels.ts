@@ -17,6 +17,11 @@ export default {
         valueLabel: 'Token',
         valuePlaceholder: 'Token',
       },
+      database: {
+        label: 'Database',
+        placeholder: 'default',
+        tooltip: 'Optionally specify the database.',
+      },
     },
     QueryEditor: {
       editorType: {
@@ -55,6 +60,10 @@ export default {
       groupBy: {
         tooltip: 'Select group by columns.',
         label: 'Group By',
+      },
+      orderBy: {
+        tooltip: 'Select order by columns',
+        label: 'Order By',
       },
       metricColumn: {
         tooltip: 'Select the metric column. Required.',

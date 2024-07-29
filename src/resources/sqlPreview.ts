@@ -5,7 +5,6 @@ import { DataSource } from '../datasource';
 export interface SqlPreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string;
-  databaseName: string | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
   metricColumn: string | undefined;
@@ -25,7 +24,6 @@ export async function fetchSqlPreview(datasource: DataSource, request: SqlPrevie
   if (
     request.intervalSize &&
     request.intervalSize !== '0' &&
-    request.databaseName &&
     request.tableName &&
     request.timeColumn &&
     (request.metricColumn || request.aggregationFunction === 'COUNT') &&

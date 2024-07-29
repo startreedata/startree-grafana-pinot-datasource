@@ -12,6 +12,7 @@ const TokenTypeNone = "None"
 type PinotDataSourceConfig struct {
 	ControllerUrl string
 	BrokerUrl     string
+	DatabaseName  string
 
 	// Secrets
 	Authorization string
@@ -21,6 +22,7 @@ func PinotDataSourceConfigFrom(settings backend.DataSourceInstanceSettings) (*Pi
 	var config struct {
 		ControllerUrl string `json:"controllerUrl"`
 		BrokerUrl     string `json:"brokerUrl"`
+		DatabaseName  string `json:"databaseName"`
 		TokenType     string `json:"tokenType"`
 	}
 
@@ -43,6 +45,7 @@ func PinotDataSourceConfigFrom(settings backend.DataSourceInstanceSettings) (*Pi
 	return &PinotDataSourceConfig{
 		ControllerUrl: config.ControllerUrl,
 		BrokerUrl:     config.BrokerUrl,
+		DatabaseName:  config.DatabaseName,
 		Authorization: authToken,
 	}, nil
 }

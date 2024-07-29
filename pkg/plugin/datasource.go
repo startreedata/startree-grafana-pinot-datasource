@@ -33,6 +33,7 @@ func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSetti
 	client, err := NewPinotClient(PinotClientProperties{
 		ControllerUrl: config.ControllerUrl,
 		BrokerUrl:     config.BrokerUrl,
+		DatabaseName:  config.DatabaseName,
 		Authorization: config.Authorization,
 	})
 	if err != nil {
