@@ -11,8 +11,6 @@ import (
 	"testing"
 )
 
-
-
 func TestPinotResourceHandler_SqlPreview(t *testing.T) {
 	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
 	defer server.Close()
@@ -28,7 +26,7 @@ WHERE
 GROUP BY
     DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES')
 ORDER BY "time" DESC
-LIMIT 1000000
+LIMIT 100000
 `)
 
 	var got map[string]interface{}
