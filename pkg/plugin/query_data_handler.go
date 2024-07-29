@@ -26,7 +26,7 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 
 	var tableSchema TableSchema
 	if pinotDataQuery.TableName != "" {
-		tableSchema, err = client.GetTableSchema(ctx, pinotDataQuery.DatabaseName, pinotDataQuery.TableName)
+		tableSchema, err = client.GetTableSchema(ctx, pinotDataQuery.TableName)
 		if err != nil {
 			return backend.ErrDataResponse(backend.StatusInternal, err.Error())
 		}

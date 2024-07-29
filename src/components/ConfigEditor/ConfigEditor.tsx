@@ -7,6 +7,7 @@ import { InputUrl } from './InputUrl';
 import allLabels from 'labels';
 import { useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
+import { InputDatabase } from './InputDatabase';
 
 interface ConfigEditorProps extends DataSourcePluginOptionsEditorProps<PinotConnectionConfig> {}
 
@@ -85,6 +86,10 @@ export function ConfigEditor(props: ConfigEditorProps) {
             setFormBrokerUrl(brokerUrl);
             onConfigChange({ ...jsonData, brokerUrl });
           }}
+        />
+        <InputDatabase
+          value={jsonData.databaseName}
+          onChange={(databaseName) => onConfigChange({ ...jsonData, databaseName })}
         />
       </div>
       <h3>Authentication</h3>

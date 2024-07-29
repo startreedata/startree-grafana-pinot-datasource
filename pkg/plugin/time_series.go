@@ -58,7 +58,7 @@ func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string
 	return metrics, nil
 }
 
-func PivotToDataFrame(name string, metrics []TimeSeriesMetric) *data.Frame {
+func PivotToDataFrame(metricName string, metrics []TimeSeriesMetric) *data.Frame {
 	timeCol := GetTimeColumn(metrics)
 
 	timestampToIdx := make(map[time.Time]int, len(timeCol))
@@ -68,7 +68,7 @@ func PivotToDataFrame(name string, metrics []TimeSeriesMetric) *data.Frame {
 
 	timeSeries := make(map[string][]*float64)
 	for _, met := range metrics {
-		tsName := GetSeriesName(name, met.Labels)
+		tsName := GetSeriesName(metricName, met.Labels)
 		if _, ok := timeSeries[tsName]; !ok {
 			timeSeries[tsName] = make([]*float64, len(timeCol))
 		}
@@ -77,9 +77,15 @@ func PivotToDataFrame(name string, metrics []TimeSeriesMetric) *data.Frame {
 		timeSeries[tsName][colIdx] = &value
 	}
 
+	seriesNames := make([]string, 0, len(timeSeries))
+	for name := range timeSeries {
+		seriesNames = append(seriesNames, name)
+	}
+	sort.Strings(seriesNames)
+
 	fields := make([]*data.Field, 0, len(timeSeries)+1)
-	for tsName, tsCol := range timeSeries {
-		fields = append(fields, data.NewField(tsName, nil, tsCol))
+	for _, seriesName := range seriesNames {
+		fields = append(fields, data.NewField(seriesName, nil, timeSeries[seriesName]))
 	}
 	fields = append(fields, data.NewField("time", nil, timeCol))
 	return data.NewFrame("response", fields...)

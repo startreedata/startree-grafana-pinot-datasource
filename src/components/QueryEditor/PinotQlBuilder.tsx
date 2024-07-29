@@ -9,10 +9,9 @@ import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlPreview } from '../../resources/sqlPreview';
-import { useDatabases, useTables, useTableSchema } from '../../resources/controller';
+import { useTables, useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
-import { SelectDatabase } from './SelectDatabase';
 import { SelectTable } from './SelectTable';
 
 const MetricColumnStar = '*';
@@ -22,9 +21,8 @@ const AggregationFunctionNone = 'NONE';
 export function PinotQlBuilder(props: PinotQueryEditorProps) {
   const { data, datasource, query, range, onChange, onRunQuery } = props;
 
-  const databases = useDatabases(datasource);
-  const tables = useTables(datasource, query.databaseName);
-  const tableSchema = useTableSchema(datasource, query.databaseName, query.tableName);
+  const tables = useTables(datasource);
+  const tableSchema = useTableSchema(datasource, query.tableName);
 
   const [sqlPreview, setSqlPreview] = useState('');
 
@@ -51,7 +49,6 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
     (dataQuery: PinotDataQuery) => {
       fetchSqlPreview(datasource, {
         aggregationFunction: dataQuery.aggregationFunction,
-        databaseName: dataQuery.databaseName,
         groupByColumns: dataQuery.groupByColumns,
         intervalSize: data?.request?.interval || '0',
         metricColumn: dataQuery.metricColumn,
@@ -93,11 +90,6 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div className={'gf-form'}>
-          <SelectDatabase
-            options={databases}
-            selected={query.databaseName}
-            onChange={(value: string | undefined) => onChange({ ...query, databaseName: value })}
-          />
           <SelectTable
             options={tables}
             selected={query.tableName}

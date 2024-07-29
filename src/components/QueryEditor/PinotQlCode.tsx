@@ -8,21 +8,18 @@ import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
 import { SqlPreview } from './SqlPreview';
 import { SelectDisplayType } from './SelectDisplayType';
-import { SelectDatabase } from './SelectDatabase';
 import { SelectTable } from './SelectTable';
-import { useDatabases, useTables } from '../../resources/controller';
+import { useTables } from '../../resources/controller';
 
 export function PinotQlCode(props: PinotQueryEditorProps) {
   const { query, data, datasource, onChange, onRunQuery } = props;
 
   const [sqlPreview, setSqlPreview] = useState('');
 
-  const databases = useDatabases(datasource);
-  const tables = useTables(datasource, query.databaseName);
+  const tables = useTables(datasource);
 
   const updateSqlPreview = (dataQuery: PinotDataQuery) => {
     fetchSqlCodePreview(datasource, {
-      databaseName: dataQuery.databaseName,
       intervalSize: data?.request?.interval || '0',
       tableName: dataQuery.tableName,
       timeRange: { to: props.data?.request?.range.to, from: props.data?.request?.range.from },
@@ -53,21 +50,6 @@ export function PinotQlCode(props: PinotQueryEditorProps) {
       />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <div className={'gf-form'}>
-          <SelectDatabase
-            options={databases}
-            selected={query.databaseName}
-            onChange={(value: string | undefined) =>
-              onChange({
-                ...query,
-                databaseName: value,
-                tableName: undefined,
-                timeColumn: undefined,
-                metricColumn: undefined,
-                groupByColumns: undefined,
-                filters: undefined,
-              })
-            }
-          />
           <SelectTable
             options={tables}
             selected={query.tableName}

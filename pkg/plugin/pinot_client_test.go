@@ -23,7 +23,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 	wantTables := []string{"airlineStats", "baseballStats", "billing",
 		"dimBaseballTeams", "githubComplexTypeEvents", "githubEvents", "starbucksStores"}
 
-	gotTables, err := client.ListTables(ctx, "")
+	gotTables, err := client.ListTables(ctx)
 	sort.Strings(gotTables)
 
 	assert.NoError(t, err)
@@ -61,7 +61,7 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 		},
 	}
 
-	got, err := client.GetTableSchema(ctx, "", "githubEvents")
+	got, err := client.GetTableSchema(ctx, "githubEvents")
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
 }
