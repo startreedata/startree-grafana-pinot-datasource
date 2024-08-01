@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release_name:
-        description: A single word description for this release. E.g. graphiant.
+        description: A single word description for this release, e.g. graphiant.
+        required: true
       root_urls:
-        description: Comma-separated root urls of the intended Grafana instance. E.g. https://grafana.envId.orgId.startree.cloud.
+        description: Comma-separated root urls of the intended Grafana instance, e.g. https://grafana.envId.orgId.startree.cloud.
         required: true
 
 jobs:
@@ -32,4 +33,3 @@ jobs:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
           RELEASE_NAME: ${{ inputs.release_name }}
-
