@@ -25,6 +25,7 @@ const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 
 var InternalUrls = []string{
+	// Wildcard urls supported per https://github.com/grafana/grafana/issues/50652.
 	"https://**.startree.cloud/",
 	"https://**.startree-staging.cloud/",
 	"https://**.startree-dev.cloud/",

@@ -14,7 +14,7 @@ CONTAINER_PLUGINS_PATH="/var/lib/grafana/plugins"
 build() {
   npm run build
   mage -v
-  npx @grafana/sign-plugin@latest --rootUrls https://**.startree.cloud
+  npx @grafana/sign-plugin@latest --rootUrls https://**.cp.s7e.startree.cloud
 
   mv "${PLUGIN_SRC}" "${PLUGIN_NAME}"
   zip -r ".${PLUGIN_ARCHIVE}-next" "${PLUGIN_NAME}"
@@ -30,5 +30,5 @@ deploy() {
   kubectl --namespace "${K8S_NAMESPACE}" delete pod "${K8S_POD}"
 }
 
-build
+#build
 deploy
