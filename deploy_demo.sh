@@ -12,9 +12,9 @@ K8S_POD="pinot-grafana-demo-0"
 CONTAINER_PLUGINS_PATH="/var/lib/grafana/plugins"
 
 build() {
-#  npm run build
-#  mage -v
-  npx @grafana/sign-plugin@latest --rootUrls https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud --signatureType private
+  npm run build
+  mage -v
+  npx @grafana/sign-plugin@latest --rootUrls https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud
 
   mv "${PLUGIN_SRC}" "${PLUGIN_NAME}"
   zip -r ".${PLUGIN_ARCHIVE}-next" "${PLUGIN_NAME}"
