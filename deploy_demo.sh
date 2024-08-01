@@ -14,7 +14,7 @@ CONTAINER_PLUGINS_PATH="/var/lib/grafana/plugins"
 build() {
   npm run build
   mage -v
-  npx @grafana/sign-plugin@latest --rootUrls https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud,https://grafana.gcstest.graphiant.startree.cloud,https://grafana.gcsproduction.graphiant.startree.cloud,https://grafana.la32x9.cp.s7e.startree-dev.cloud
+  npx @grafana/sign-plugin@latest --rootUrls https://**.startree.cloud
 
   mv "${PLUGIN_SRC}" "${PLUGIN_NAME}"
   zip -r ".${PLUGIN_ARCHIVE}-next" "${PLUGIN_NAME}"
