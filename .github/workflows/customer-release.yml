@@ -1,19 +1,17 @@
-# This GitHub Action automates the process of building Grafana plugins.
-# (For more information, see https://github.com/grafana/plugin-actions/blob/main/build-plugin/README.md)
-name: Release
+name: Customer Release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*' # Run workflow on version tags, e.g. v1.0.0.
-
-permissions: read-all
+    inputs:
+      release_name:
+        description: A single word description for this release. E.g. graphiant.
+      root_urls:
+        description: Comma-separated root urls of the intended Grafana instance. E.g. https://grafana.envId.orgId.startree.cloud.
+        required: true
 
 jobs:
-  release:
-    permissions:
-      contents: write
+  build:
+    name: Create Customer Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +27,9 @@ jobs:
         with:
           go-version: '1.21'
       - name: Sign release
-        run: go run cmd/release/main.go create
+        run: go run cmd/release/main.go resign ${{ inputs.root_urls }}
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+          RELEASE_NAME: ${{ inputs.release_name }}
+
