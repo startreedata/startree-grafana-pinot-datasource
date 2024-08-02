@@ -1,4 +1,4 @@
-name: Customer Release
+name: Create Customer Release
 
 on:
   workflow_dispatch:
@@ -9,6 +9,8 @@ on:
       root_urls:
         description: Comma-separated root urls of the intended Grafana instance, e.g. https://grafana.envId.orgId.startree.cloud.
         required: true
+
+run-name: Publish release for ${{ inputs.release_name }} triggered by @${{ github.actor }}
 
 jobs:
   build:
