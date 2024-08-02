@@ -3,11 +3,9 @@ name: CI
 on:
   push:
     branches:
-      - master
       - main
   pull_request:
     branches:
-      - master
       - main
 
 permissions: read-all
@@ -68,10 +66,6 @@ jobs:
           then
             echo "has-e2e=true" >> $GITHUB_OUTPUT
           fi
-
-      - name: Sign plugin
-        run: npm run sign
-        if: ${{ env.GRAFANA_ACCESS_POLICY_TOKEN != '' }}
 
       - name: Get plugin metadata
         id: metadata
