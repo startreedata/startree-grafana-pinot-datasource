@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,7 +20,6 @@ const PluginName = "startree-pinot-datasource"
 const ArtifactoryUrl = "https://repo.startreedata.io/artifactory"
 const ArtifactoryRepository = "startree-grafana-plugin"
 
-const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 
 var InternalUrls = []string{
@@ -296,17 +294,15 @@ func validateReleaseName(releaseName string) error {
 }
 
 func getCurrentVersion() (string, error) {
-	file, err := os.Open(PackageJsonFile)
-	if err != nil {
-		return "", fmt.Errorf("os.Open(`%s`) failed: %w", PackageJsonFile, err)
-	}
-	defer file.Close()
+	cmd := exec.Command("git", "tag", "--list", "--sort=v:refname")
 
-	var data map[string]interface{}
-	if err = json.NewDecoder(file).Decode(&data); err != nil {
-		return "", fmt.Errorf("json.Decode failed: %w", err)
+	var buf bytes.Buffer
+	cmd.Stdout = &buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("command failed: %w", err)
 	}
-	return data["version"].(string), nil
+	return strings.SplitN(buf.String(), "\n", 1)[0], nil
 }
 
 func execute(command string, args ...string) error {
