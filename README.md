@@ -1,23 +1,22 @@
 # Pinot Data Source plugin for Grafana
 
-## Getting started
+The Pinot Data Source Plugin for Grafana allows you to create visualizations in Grafana from data in your Pinot cluster.
+
+**System Requirements**
+
+Grafana version >= 9.1.1
+
+## Development
 
 ### Backend
 
-1. Update [Grafana plugin SDK for Go](https://grafana.com/docs/grafana/latest/developers/plugins/backend/grafana-plugin-sdk-for-go/) dependency to the latest minor version:
-
-```bash
-go get -u github.com/grafana/grafana-plugin-sdk-go
-go mod tidy
-```
-
-2. Build backend plugin binaries for Linux, Windows and Darwin:
+1. Build backend plugin binaries for Linux, Windows and Darwin:
 
 ```bash
 mage -v
 ```
 
-3. List all available Mage targets for additional commands:
+2. List all available Mage targets for additional commands:
 
 ```bash
 mage -l
@@ -55,34 +54,42 @@ npm run test:ci
 
 5. Spin up a Grafana instance and run the plugin inside it (using Docker)
 
-   ```bash
-   npm run server
-   ```
+```bash
+npm run server
+```
 
 6. Run the E2E tests (using Cypress)
 
-   ```bash
-   # Spins up a Grafana instance first that we tests against
-   npm run server
+```bash
+# Spins up a Grafana instance first that we tests against
+npm run server
 
-   # Starts the tests
-   npm run e2e
-   ```
+# Starts the tests
+npm run e2e
+```
 
 7. Run the linter
 
-   ```bash
-   npm run lint
+```bash
+npm run lint
 
-   # or
+# or
 
-   npm run lint:fix
-   ```
+npm run lint:fix
+```
 
+## Release
 
-#### Push a version tag
+New releases should be tested and approved by [#observability](https://startreedata.slack.com/archives/C06LUQ8UYD6).
 
-To trigger the workflow we need to push a version tag to github. This can be achieved with the following steps:
+Pushing a new version tag should automatically trigger a new unsigned release build.
+
+Due to plugin signing restrictions, we have to create a release artifact for each intended grafana instance. These _installable_ releases are signed copies of the unsigned release and only valid for the intended grafana instance.
+
+[Create new signed releases.](https://github.com/startreedata/startree-grafana-pinot-datasource/actions/workflows/customer-release.yml)
+
+### Push a version tag
 
 1. Run `npm version <major|minor|patch>`
 2. Run `git push origin main --follow-tags`
+
