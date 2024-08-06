@@ -25,7 +25,12 @@ GROUP BY{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
     {{.TimeGroupExpr}}
-ORDER BY "{{.TimeColumnAlias}}" DESC
+{{- $sep := ""}}
+ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
+    {{ $element }}{{$sep = ","}}
+{{- else }}
+    "{{.TimeColumnAlias}}" DESC
+{{- end }}
 LIMIT {{.Limit}}
 `))
 
@@ -40,6 +45,7 @@ type TimeSeriesSqlParams struct {
 	MetricColumnAlias    string
 	DimensionFilterExprs []string
 	Limit                int64
+	OrderByExprs         []string
 }
 
 func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {

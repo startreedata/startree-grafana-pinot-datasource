@@ -13,6 +13,7 @@ import { useTables, useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
+import { SelectOrderBy } from './SelectOrderBy';
 
 const MetricColumnStar = '*';
 const AggregationFunctionCount = 'COUNT';
@@ -30,19 +31,19 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
   const metricFieldSpecs = tableSchema?.metricFieldSpecs || [];
   const dimensionFieldSpecs = tableSchema?.dimensionFieldSpecs || [];
 
-  const timeColumns = tableSchema ? dateTimeFieldSpecs.map((spec) => spec.name) : undefined;
+  const timeColumns = tableSchema ? dateTimeFieldSpecs.map(({ name }) => name) : undefined;
   const metricColumns = tableSchema
     ? [...metricFieldSpecs, ...dimensionFieldSpecs]
-        .filter((spec) => !query.groupByColumns?.includes(spec.name))
+        .filter(({ name }) => !query.groupByColumns?.includes(name))
         // TODO: Is this filter necessary?
-        .filter((spec) => NumericPinotDataTypes.includes(spec.dataType))
-        .map((spec) => spec.name)
+        .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
+        .map(({ name }) => name)
     : undefined;
 
   const dimensionColumns = tableSchema
     ? [...dimensionFieldSpecs, ...metricFieldSpecs]
-        .filter((spec) => query.metricColumn !== spec.name)
-        .map((spec) => spec.name)
+        .filter(({ name }) => query.metricColumn !== name)
+        .map(({ name }) => name)
     : undefined;
 
   const updateSqlPreview = useCallback(
@@ -58,6 +59,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         filters: dataQuery.filters,
         limit: dataQuery.limit,
         granularity: dataQuery.granularity,
+        orderBy: dataQuery.orderBy,
       }).then((val) => val && setSqlPreview(val));
     },
     [datasource, data?.request?.interval, data?.request?.range.to, data?.request?.range.from]
@@ -140,6 +142,13 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
           dimensionColumns={dimensionColumns}
           dimensionFilters={query.filters || []}
           onChange={(val) => onChangeAndRun({ ...props.query, filters: val })}
+        />
+      </div>
+      <div>
+        <SelectOrderBy
+          selected={query.orderBy || []}
+          options={['time', 'metric', ...(query.groupByColumns || [])]}
+          onChange={(orderBy) => onChangeAndRun({ ...props.query, orderBy })}
         />
       </div>
       <div>

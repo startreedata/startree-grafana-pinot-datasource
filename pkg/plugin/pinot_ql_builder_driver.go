@@ -2,9 +2,11 @@ package plugin
 
 import (
 	"errors"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"strings"
 	"time"
 )
 
@@ -37,6 +39,7 @@ type PinotQlBuilderParams struct {
 	Limit               int64
 	Granularity         string
 	MaxDataPoints       int64
+	OrderByClauses      []OrderByClause
 }
 
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
@@ -74,6 +77,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
+			OrderByExprs:         p.orderByExprs(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
@@ -87,6 +91,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
+			OrderByExprs:         p.orderByExprs(),
 		})
 	}
 }
@@ -145,4 +150,23 @@ func (p PinotQlBuilderDriver) resolveMetricColumn() string {
 	} else {
 		return p.MetricColumn
 	}
+}
+
+func (p PinotQlBuilderDriver) orderByExprs() []string {
+	orderByExprs := make([]string, 0, len(p.OrderByClauses))
+	for _, o := range p.OrderByClauses {
+		if o.ColumnName == "" {
+			continue
+		}
+
+		var direction string
+		if strings.ToUpper(o.Direction) == "DESC" {
+			direction = "DESC"
+		} else {
+			direction = "ASC"
+		}
+
+		orderByExprs = append(orderByExprs, fmt.Sprintf(`"%s" %s`, o.ColumnName, direction))
+	}
+	return orderByExprs[:]
 }
