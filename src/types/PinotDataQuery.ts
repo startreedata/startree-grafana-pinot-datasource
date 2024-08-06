@@ -2,6 +2,7 @@ import { QueryType } from './QueryType';
 import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
 import { DimensionFilter } from './DimensionFilter';
+import { OrderByClause } from './OrderByClause';
 
 // TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
@@ -26,7 +27,7 @@ FROM $__table()
 WHERE $__timeFilter("timestamp")
 GROUP BY $__timeGroup("timestamp")
 ORDER BY $__timeAlias() DESC
-LIMIT 1000000
+LIMIT 100000
 `.trim(),
 });
 
@@ -44,6 +45,7 @@ export interface PinotDataQuery extends DataQuery {
   aggregationFunction?: string;
   limit?: number;
   filters?: DimensionFilter[];
+  orderBy?: OrderByClause[];
 
   // PinotQl Code
   pinotQlCode?: string;

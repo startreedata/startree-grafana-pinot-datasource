@@ -100,6 +100,7 @@ type SqlBuilderPreviewRequest struct {
 	DimensionFilters    []DimensionFilter `json:"filters"`
 	Limit               int64             `json:"limit"`
 	Granularity         string            `json:"granularity"`
+	OrderByClauses      []OrderByClause   `json:"orderBy"`
 }
 
 type SqlBuilderPreviewResponse struct {
@@ -139,6 +140,7 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		DimensionFilters:    data.DimensionFilters,
 		Limit:               data.Limit,
 		Granularity:         data.Granularity,
+		OrderByClauses:      data.OrderByClauses,
 	})
 	if err != nil {
 		// No need to surface this error in Grafana.
