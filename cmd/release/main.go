@@ -302,7 +302,11 @@ func getCurrentVersion() (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("command failed: %w", err)
 	}
-	return strings.SplitN(buf.String(), "\n", 1)[0], nil
+	version := strings.SplitN(buf.String(), "\n", 2)[0]
+	if version == "" {
+		return "", fmt.Errorf("no version found in git tags")
+	}
+	return version, nil
 }
 
 func execute(command string, args ...string) error {
