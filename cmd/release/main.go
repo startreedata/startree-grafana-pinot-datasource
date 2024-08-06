@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,6 +21,7 @@ const PluginName = "startree-pinot-datasource"
 const ArtifactoryUrl = "https://repo.startreedata.io/artifactory"
 const ArtifactoryRepository = "startree-grafana-plugin"
 
+const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 
 var InternalUrls = []string{
@@ -79,7 +81,7 @@ type ReleaseManager struct {
 }
 
 func (r *ReleaseManager) CreateInternalRelease() {
-	version, err := getCurrentVersion()
+	version, err := getPackageVersion()
 	handleError(err)
 
 	releaseArchive := fmt.Sprintf("%s-%s.zip", PluginName, version)
@@ -104,7 +106,7 @@ func (r *ReleaseManager) ResignRelease(releaseName string, rootUrls []string) {
 		os.Exit(1)
 	}
 
-	version, err := getCurrentVersion()
+	version, err := getLatestReleaseVersion()
 	handleError(err)
 
 	internalRelease := fmt.Sprintf("%s-%s.zip", PluginName, version)
@@ -293,7 +295,21 @@ func validateReleaseName(releaseName string) error {
 	return nil
 }
 
-func getCurrentVersion() (string, error) {
+func getPackageVersion() (string, error) {
+	file, err := os.Open(PackageJsonFile)
+	if err != nil {
+		return "", fmt.Errorf("os.Open(`%s`) failed: %w", PackageJsonFile, err)
+	}
+	defer file.Close()
+
+	var data map[string]interface{}
+	if err = json.NewDecoder(file).Decode(&data); err != nil {
+		return "", fmt.Errorf("json.Decode failed: %w", err)
+	}
+	return data["version"].(string), nil
+}
+
+func getLatestReleaseVersion() (string, error) {
 	cmd := exec.Command("git", "tag", "--list", "--sort=v:refname")
 
 	var buf bytes.Buffer
