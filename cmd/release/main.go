@@ -143,6 +143,7 @@ func (r *ReleaseManager) downloadArchive(archive string) error {
 		return err
 	}
 
+	fmt.Println("HTTP GET", req.URL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download plugin archive: %w", err)
@@ -192,6 +193,7 @@ func (r *ReleaseManager) uploadArchive(archive string) error {
 	req.Header.Add("X-Checksum-Sha1", fmt.Sprintf("%x", sha1sum))
 	req.Header.Add("X-Checksum-Md5", fmt.Sprintf("%x", md5sum))
 
+	fmt.Println("HTTP PUT", req.URL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to upload plugin archive: %w", err)
@@ -228,8 +230,11 @@ func (r *ReleaseManager) unzipPlugin(src string) error {
 	if err := execute("unzip", src); err != nil {
 		return err
 	}
+	if err := os.RemoveAll(BuildArtifactsDir); err != nil {
+		return fmt.Errorf("os.RemoveAll(`%s`) failed: %w", BuildArtifactsDir, err)
+	}
 	if err := os.Rename(PluginName, BuildArtifactsDir); err != nil {
-		return fmt.Errorf("os.Rename(`%s`, `%s`) failed: %w", BuildArtifactsDir, PluginName, err)
+		return fmt.Errorf("os.Rename(`%s`, `%s`) failed: %w", PluginName, BuildArtifactsDir, err)
 	}
 	return nil
 }
@@ -313,7 +318,7 @@ func getLatestReleaseVersion() (string, error) {
 	cmd := exec.Command("git", "tag", "--list", "--sort=v:refname")
 
 	var buf bytes.Buffer
-	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
+	cmd.Stdout = &buf
 	cmd.Stderr = os.Stderr
 	fmt.Println("Executing:", cmd.String())
 	if err := cmd.Run(); err != nil {
@@ -323,6 +328,7 @@ func getLatestReleaseVersion() (string, error) {
 	if version == "" {
 		return "", fmt.Errorf("no version found in git tags")
 	}
+	version = strings.TrimPrefix(version, "v")
 	return version, nil
 }
 
