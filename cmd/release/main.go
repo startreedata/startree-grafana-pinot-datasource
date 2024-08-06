@@ -297,8 +297,9 @@ func getCurrentVersion() (string, error) {
 	cmd := exec.Command("git", "tag", "--list", "--sort=v:refname")
 
 	var buf bytes.Buffer
-	cmd.Stdout = &buf
+	cmd.Stdout = io.MultiWriter(&buf, os.Stdout)
 	cmd.Stderr = os.Stderr
+	fmt.Println("Executing:", cmd.String())
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("command failed: %w", err)
 	}
