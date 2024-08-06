@@ -25,7 +25,9 @@ WHERE
     "ts" >= 1388328628931 AND "ts" <= 1391280266214
 GROUP BY
     DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES')
-ORDER BY "time" DESC
+ORDER BY
+    "time" DESC,
+    "metric" DESC
 LIMIT 100000
 `)
 
@@ -41,7 +43,11 @@ LIMIT 100000
     "to": "2014-02-01T18:44:26.214Z",
     "from": "2013-12-29T14:50:28.931Z"
   },
-  "limit": -1
+  "limit": -1,
+  "orderBy": [
+    {"columnName": "time", "direction": "DESC"},
+    {"columnName": "metric", "direction": "DESC"}
+  ]
 }`, &got)
 
 	assert.Equal(t, want, got["sql"])

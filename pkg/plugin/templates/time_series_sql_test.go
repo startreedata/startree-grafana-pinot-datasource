@@ -21,7 +21,9 @@ GROUP BY
     "dim1",
     "dim2",
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')
-ORDER BY "time" DESC
+ORDER BY
+    "time" DESC,
+    "metric" ASC
 LIMIT 10000`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
@@ -35,6 +37,7 @@ LIMIT 10000`
 		MetricColumnAlias:    "metric",
 		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
 		Limit:                10000,
+		OrderByExprs:         []string{`"time" DESC`, `"metric" ASC`},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)

@@ -16,7 +16,9 @@ WHERE
     AND "ts" >= 10 AND "ts" <= 20
     AND ("dim1" = 'val1')
     AND ("dim2" = 'val2')
-ORDER BY "time" DESC
+ORDER BY
+    "time" DESC,
+    "metric" ASC
 LIMIT 1000`
 
 	got, err := RenderSingleMetricSql(SingleMetricSqlParams{
@@ -28,6 +30,7 @@ LIMIT 1000`
 		TimeFilterExpr:       `"ts" >= 10 AND "ts" <= 20`,
 		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
 		Limit:                1000,
+		OrderByExprs:         []string{`"time" DESC`, `"metric" ASC`},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)

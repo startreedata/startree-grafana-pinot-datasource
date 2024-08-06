@@ -20,7 +20,12 @@ WHERE
     AND {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
-ORDER BY "{{.TimeColumnAlias}}" DESC
+{{- $sep := ""}}
+ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
+    {{ $element }}{{$sep = ","}}
+{{- else }}
+    "{{.TimeColumnAlias}}" DESC
+{{- end }}
 LIMIT {{.Limit}}
 `))
 
@@ -33,6 +38,7 @@ type SingleMetricSqlParams struct {
 	TimeFilterExpr       string
 	DimensionFilterExprs []string
 	Limit                int64
+	OrderByExprs         []string
 }
 
 func RenderSingleMetricSql(params SingleMetricSqlParams) (string, error) {

@@ -21,6 +21,7 @@ type PinotDataQuery struct {
 	Limit               int64             `json:"limit"`
 	DimensionFilters    []DimensionFilter `json:"filters"`
 	Granularity         string            `json:"granularity"`
+	OrderByClauses      []OrderByClause   `json:"orderBy"`
 
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`
@@ -38,6 +39,11 @@ type DimensionFilter struct {
 	ColumnName string   `json:"columnName"`
 	ValueExprs []string `json:"valueExprs"`
 	Operator   string   `json:"operator"`
+}
+
+type OrderByClause struct {
+	ColumnName string `json:"columnName"`
+	Direction  string `json:"direction"`
 }
 
 func PinotDataQueryFrom(query backend.DataQuery) (PinotDataQuery, error) {
