@@ -28,7 +28,7 @@ GROUP BY
 ORDER BY
     "time" DESC,
     "metric" DESC
-LIMIT 100000
+LIMIT 100000;
 `)
 
 	var got map[string]interface{}

@@ -14,6 +14,7 @@ import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
 import { SelectOrderBy } from './SelectOrderBy';
+import { SelectQueryOptions } from './SelectQueryOptions';
 
 const MetricColumnStar = '*';
 const AggregationFunctionCount = 'COUNT';
@@ -60,6 +61,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         limit: dataQuery.limit,
         granularity: dataQuery.granularity,
         orderBy: dataQuery.orderBy,
+        queryOptions: dataQuery.queryOptions,
       }).then((val) => val && setSqlPreview(val));
     },
     [datasource, data?.request?.interval, data?.request?.range.to, data?.request?.range.from]
@@ -123,14 +125,21 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
           onChange={(aggregationFunction) => onChangeAndRun({ ...query, aggregationFunction })}
         />
       </div>
-      <div>
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
           selected={query.groupByColumns}
           options={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunctionNone}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
         />
+        <SelectOrderBy
+          selected={query.orderBy}
+          columnNames={['time', 'metric', ...(query.groupByColumns || [])]}
+          disabled={query.aggregationFunction === AggregationFunctionNone}
+          onChange={(orderBy) => onChangeAndRun({ ...query, orderBy })}
+        />
       </div>
+
       <div>
         <SelectFilters
           datasource={datasource}
@@ -145,14 +154,13 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         />
       </div>
       <div>
-        <SelectOrderBy
-          selected={query.orderBy || []}
-          options={['time', 'metric', ...(query.groupByColumns || [])]}
-          onChange={(orderBy) => onChangeAndRun({ ...props.query, orderBy })}
+        <SelectQueryOptions
+          selected={query.queryOptions || []}
+          onChange={(queryOptions) => onChangeAndRun({ ...query, queryOptions })}
         />
       </div>
       <div>
-        <InputLimit current={query.limit} onChange={(val) => onChangeAndRun({ ...props.query, limit: val })} />
+        <InputLimit current={query.limit} onChange={(val) => onChangeAndRun({ ...query, limit: val })} />
       </div>
       <div>
         <SqlPreview sql={sqlPreview} />

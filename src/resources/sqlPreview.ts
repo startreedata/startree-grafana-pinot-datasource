@@ -2,6 +2,7 @@ import { DateTime } from '@grafana/data';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
 import { OrderByClause } from '../types/OrderByClause';
+import { QueryOption } from '../types/QueryOption';
 
 export interface SqlPreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
@@ -15,6 +16,7 @@ export interface SqlPreviewRequest {
   limit: number | undefined;
   granularity: string | undefined;
   orderBy: OrderByClause[] | undefined;
+  queryOptions: QueryOption[] | undefined;
 }
 
 interface SqlPreviewResponse {

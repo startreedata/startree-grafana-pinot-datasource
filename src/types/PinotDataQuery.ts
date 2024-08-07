@@ -3,6 +3,7 @@ import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
 import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
+import { QueryOption } from './QueryOption';
 
 // TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
@@ -46,6 +47,8 @@ export interface PinotDataQuery extends DataQuery {
   limit?: number;
   filters?: DimensionFilter[];
   orderBy?: OrderByClause[];
+  rawQueryOptions?: string;
+  queryOptions?: QueryOption[];
 
   // PinotQl Code
   pinotQlCode?: string;
