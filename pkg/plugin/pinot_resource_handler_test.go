@@ -16,6 +16,8 @@ func TestPinotResourceHandler_SqlPreview(t *testing.T) {
 	defer server.Close()
 
 	want := strings.TrimSpace(`
+SET timeoutMs=1;
+
 SELECT
     DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
     MAX("AirTime") AS "metric"
@@ -47,7 +49,8 @@ LIMIT 100000;
   "orderBy": [
     {"columnName": "time", "direction": "DESC"},
     {"columnName": "metric", "direction": "DESC"}
-  ]
+  ],
+  "queryOptions": [{"name":"timeoutMs", "value":"1"}]
 }`, &got)
 
 	assert.Equal(t, want, got["sql"])

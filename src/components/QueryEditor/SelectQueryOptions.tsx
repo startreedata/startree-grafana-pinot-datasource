@@ -1,12 +1,12 @@
-import React, { ChangeEvent, useEffect, useState } from 'react';
+import React from 'react';
 import { FormLabel } from './FormLabel';
-import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { Input, Select } from '@grafana/ui';
-import { styles } from '../../styles';
+import { AccessoryButton } from '@grafana/experimental';
 import allLabels from '../../labels';
-import { QueryOption } from '../../types/QueryOption'; // I'm currently trying to decide between different experience for query options
+import { QueryOption } from '../../types/QueryOption';
+import { EditQueryOption } from './EditQueryOption';
 
 // ref https://docs.pinot.apache.org/users/user-guide-query/query-options
+// TODO: Is there a pinot api that provides this list?
 
 const QueryOptionChoices = [
   { name: 'timeoutMs' },
@@ -73,46 +73,5 @@ export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (
         </div>
       </div>
     </div>
-  );
-}
-
-function EditQueryOption(props: {
-  queryOption: QueryOption;
-  unused: Set<string>;
-  onDelete: () => void;
-  onChange: (val: QueryOption) => void;
-}) {
-  const { queryOption, unused, onChange, onDelete } = props;
-
-  const [value, setValue] = useState(queryOption.value);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => queryOption.value !== value && onChange({ ...queryOption, value }), 500);
-    return () => clearTimeout(timeoutId);
-  }, [value]);
-
-  const selectableNames = queryOption.name ? [queryOption.name, ...unused] : [...unused];
-  return (
-    <InputGroup>
-      <div style={{ padding: 6 }}>
-        <span>SET</span>
-      </div>
-      <Select
-        width="auto"
-        value={queryOption.name}
-        allowCustomValue
-        options={selectableNames.map((name) => ({ label: name, value: name }))}
-        onChange={(change) => onChange({ ...queryOption, name: change.value })}
-      />
-      <div style={{ padding: 6 }}>
-        <span>=</span>
-      </div>
-      <Input
-        className={`${styles.QueryEditor.inputForm}`}
-        value={value}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
-      />
-      <AccessoryButton icon="times" variant="secondary" onClick={onDelete} />
-    </InputGroup>
   );
 }

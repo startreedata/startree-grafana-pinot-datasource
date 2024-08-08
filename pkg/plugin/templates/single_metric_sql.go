@@ -10,7 +10,7 @@ import (
 const SingleMetricSqlTemplateName = "pinot/single-metric-sql"
 
 var singleMetricSqlTemplate = template.Must(template.New(SingleMetricSqlTemplateName).Parse(`
-{{.QueryOptions}}
+{{.QueryOptionsExpr}}
 
 SELECT
     "{{.MetricColumn}}" AS "{{.MetricColumnAlias}}",
@@ -35,7 +35,7 @@ type SingleMetricSqlParams struct {
 	TimeFilterExpr       string
 	DimensionFilterExprs []string
 	Limit                int64
-	QueryOptions         string
+	QueryOptionsExpr     string
 }
 
 func RenderSingleMetricSql(params SingleMetricSqlParams) (string, error) {

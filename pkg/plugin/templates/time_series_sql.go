@@ -10,7 +10,7 @@ import (
 const TimeSeriesSqlTemplateName = "pinot/time-series-sql"
 
 var timeSeriesSqlTemplate = template.Must(template.New(TimeSeriesSqlTemplateName).Parse(`
-{{ .QueryOptions }}
+{{ .QueryOptionsExpr }}
 
 SELECT{{ range .GroupByColumns }}
     "{{ . }}",
@@ -48,7 +48,7 @@ type TimeSeriesSqlParams struct {
 	DimensionFilterExprs []string
 	Limit                int64
 	OrderByExprs         []string
-	QueryOptions         string
+	QueryOptionsExpr     string
 }
 
 func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {

@@ -150,7 +150,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
           range={range}
           dimensionColumns={dimensionColumns}
           dimensionFilters={query.filters || []}
-          onChange={(val) => onChangeAndRun({ ...props.query, filters: val })}
+          onChange={(val) => onChangeAndRun({ ...query, filters: val })}
         />
       </div>
       <div>
@@ -160,7 +160,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         />
       </div>
       <div>
-        <InputLimit current={query.limit} onChange={(val) => onChangeAndRun({ ...query, limit: val })} />
+        <InputLimit current={query.limit} onChange={(limit) => onChangeAndRun({ ...query, limit: limit })} />
       </div>
       <div>
         <SqlPreview sql={sqlPreview} />

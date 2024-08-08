@@ -78,7 +78,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
-			QueryOptions:         p.queryOptionsExpr(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
@@ -93,7 +93,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
 			OrderByExprs:         p.orderByExprs(),
-			QueryOptions:         p.queryOptionsExpr(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
 		})
 	}
 }
