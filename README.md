@@ -8,38 +8,69 @@ Grafana version >= 9.1.1
 
 ## Development
 
+I typically use two terminal for development: one to run the grafana container and one to run the ui hotloader
+
+Build the frontend and backend and launch the grafana container:
+
+```shell
+ npm run build && mage -v && npm run server
+```
+
+Launch the hotloader:
+
+```shell
+npm run dev
+```
+
+### Dev Dependencies
+
+1. Install Docker | [Installation instructions](https://docs.docker.com/desktop/install/mac-install/).
+
+2. Install Mage
+
+```shell
+brew install mage
+```
+
+3. Install nvm
+
+```shell
+brew install nvm
+```
+
+4. Install node
+
+```shell
+nvm install 20
+```
+
 ### Backend
 
-1. Build backend plugin binaries for Linux, Windows and Darwin:
+Build backend plugin binaries for Linux, Windows and Darwin:
 
 ```bash
 mage -v
 ```
 
-2. List all available Mage targets for additional commands:
+Run backend tests:
 
 ```bash
-mage -l
+docker compose up pinot --detach --wait --wait-timeout 500
+go test ./... -v
 ```
 
 ### Frontend
 
-1. Install dependencies
+Install dependencies:
 
 ```bash
 yarn install
 ```
 
-2. Build plugin in development mode and run in watch mode
+Build plugin in development mode and run in watch mode:
 
 ```bash
 npm run dev
-```
-
-3. Build plugin in production mode
-
-```bash
-npm run build
 ```
 
 4. Run the tests (using Jest)
@@ -52,7 +83,7 @@ npm run test
 npm run test:ci
 ```
 
-5. Spin up a Grafana instance and run the plugin inside it (using Docker)
+Spin up a Grafana instance and run the plugin inside it (using Docker):
 
 ```bash
 npm run server
