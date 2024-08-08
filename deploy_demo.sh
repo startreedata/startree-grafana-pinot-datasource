@@ -4,7 +4,7 @@ set -xe
 
 PLUGIN_NAME="startree-pinot-datasource"
 PLUGIN_SRC="dist"
-PLUGIN_VER="1.0.1"
+PLUGIN_VER="1.0.1-SNAPSHOT"
 PLUGIN_ARCHIVE="${PLUGIN_NAME}-${PLUGIN_VER}.zip"
 
 K8S_NAMESPACE="cell-9itmgf-default"

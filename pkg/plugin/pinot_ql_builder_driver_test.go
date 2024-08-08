@@ -35,6 +35,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 				ValueExprs: []string{},
 				Operator:   FilterOpEquals,
 			}},
+			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
 	}
 
@@ -77,4 +78,3 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 		assert.Error(t, gotErr)
 	})
 }
-

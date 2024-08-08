@@ -40,6 +40,7 @@ type PinotQlBuilderParams struct {
 	Granularity         string
 	MaxDataPoints       int64
 	OrderByClauses      []OrderByClause
+	QueryOptions        []QueryOption
 }
 
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
@@ -77,7 +78,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
-			OrderByExprs:         p.orderByExprs(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
@@ -92,6 +93,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
 			OrderByExprs:         p.orderByExprs(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
 		})
 	}
 }
@@ -169,4 +171,14 @@ func (p PinotQlBuilderDriver) orderByExprs() []string {
 		orderByExprs = append(orderByExprs, fmt.Sprintf(`"%s" %s`, o.ColumnName, direction))
 	}
 	return orderByExprs[:]
+}
+
+func (p PinotQlBuilderDriver) queryOptionsExpr() string {
+	exprs := make([]string, 0, len(p.QueryOptions))
+	for _, o := range p.QueryOptions {
+		if o.Name != "" && o.Value != "" {
+			exprs = append(exprs, fmt.Sprintf(`SET %s=%s;`, o.Name, o.Value))
+		}
+	}
+	return strings.Join(exprs, "\n")
 }
