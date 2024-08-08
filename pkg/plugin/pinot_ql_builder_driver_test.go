@@ -78,5 +78,3 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 		assert.Error(t, gotErr)
 	})
 }
-
-

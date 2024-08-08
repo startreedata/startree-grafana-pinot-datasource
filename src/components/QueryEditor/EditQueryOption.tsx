@@ -17,7 +17,7 @@ export function EditQueryOption(props: {
   useEffect(() => {
     const timeoutId = setTimeout(() => queryOption.value !== value && onChange({ ...queryOption, value }), 500);
     return () => clearTimeout(timeoutId);
-  }, [value]);
+  }, [value, queryOption, onChange]);
 
   const selectableNames = queryOption.name ? [queryOption.name, ...unused] : [...unused];
   return (
