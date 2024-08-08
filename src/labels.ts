@@ -62,7 +62,7 @@ export default {
         label: 'Group By',
       },
       orderBy: {
-        tooltip: 'Select order by columns',
+        tooltip: 'Select order by columns.',
         label: 'Order By',
       },
       metricColumn: {
@@ -94,6 +94,11 @@ export default {
       display: {
         tooltip: 'Choose display type.',
         label: 'Display',
+      },
+      queryOptions: {
+        help: 'https://docs.pinot.apache.org/users/user-guide-query/query-options',
+        tooltip: 'Add query options.',
+        label: 'Query Options',
       },
     },
   },

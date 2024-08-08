@@ -101,6 +101,7 @@ type SqlBuilderPreviewRequest struct {
 	Limit               int64             `json:"limit"`
 	Granularity         string            `json:"granularity"`
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
+	QueryOptions        []QueryOption     `json:"queryOptions"`
 }
 
 type SqlBuilderPreviewResponse struct {
@@ -141,6 +142,7 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		Limit:               data.Limit,
 		Granularity:         data.Granularity,
 		OrderByClauses:      data.OrderByClauses,
+		QueryOptions:        data.QueryOptions,
 	})
 	if err != nil {
 		// No need to surface this error in Grafana.

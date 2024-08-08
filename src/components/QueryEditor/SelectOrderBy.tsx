@@ -1,101 +1,59 @@
 import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
-import { Select } from '@grafana/ui';
+import { MultiSelect } from '@grafana/ui';
 import React from 'react';
-import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { DimensionFilter } from '../../types/DimensionFilter';
 import { OrderByClause } from '../../types/OrderByClause';
-
-const directionOptions = [
-  { label: 'ASC', value: 'ASC' },
-  { label: 'DESC', value: 'DESC' },
-];
+import { styles } from '../../styles';
+import { SelectableValue } from '@grafana/data';
 
 export function SelectOrderBy(props: {
-  selected: OrderByClause[];
-  options: string[] | undefined;
+  selected: OrderByClause[] | undefined;
+  columnNames: string[] | undefined;
+  disabled: boolean;
   onChange: (val: OrderByClause[] | undefined) => void;
 }) {
-  const { options, selected, onChange } = props;
+  const { columnNames, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.orderBy;
 
-  const selectedColumns = (selected || [])
-    .map(({ columnName }) => columnName || '')
-    .filter((columnName) => columnName)
-    .reduce((collector, val) => collector.add(val), new Set<string>());
+  const clauseToLabel = ({ columnName, direction }: OrderByClause) => `${columnName} ${direction.toLowerCase()}`;
 
-  const unused = (options || []).filter((val) => !selectedColumns.has(val));
+  const usedOptions = (selected || []).map((clause) => ({
+    label: clauseToLabel(clause),
+    value: clauseToLabel(clause),
+    clause,
+  }));
 
-  const onChangeClause = (val: DimensionFilter, idx: number) => {
-    onChange(selected.map((existing, i) => (i === idx ? val : existing)));
-  };
-  const onDeleteClause = (idx: number) => {
-    onChange(selected.filter((val, i) => i !== idx));
-  };
+  const usedColumns = new Set((selected || []).map(({ columnName }) => columnName));
+  const unusedOptions = (columnNames || [])
+    .filter((columnNames) => !usedColumns.has(columnNames))
+    .flatMap((val) => [
+      { columnName: val, direction: 'ASC' },
+      { columnName: val, direction: 'DESC' },
+    ])
+    .map((clause) => ({
+      label: clauseToLabel(clause),
+      value: clauseToLabel(clause),
+      clause,
+    }));
+
+  const options = [...usedOptions, ...unusedOptions];
 
   return (
     <div className={'gf-form'}>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {selected?.map((clause, idx) => (
-          <EditOrderBy
-            key={idx}
-            clause={clause}
-            options={clause.columnName ? [clause.columnName, ...unused] : unused}
-            onChange={(val: OrderByClause) => onChangeClause(val, idx)}
-            onDelete={() => onDeleteClause(idx)}
-          />
-        ))}
-        <div>
-          <AccessoryButton
-            icon="plus"
-            variant="secondary"
-            fullWidth={false}
-            onClick={() => {
-              onChange([...(selected || []), { direction: 'ASC' }]);
-            }}
-          />
-        </div>
-      </div>
+      <MultiSelect
+        className={`${styles.QueryEditor.inputForm}`}
+        disabled={disabled}
+        options={options}
+        value={usedOptions}
+        onChange={(item: Array<SelectableValue<string>>) => {
+          onChange(
+            item
+              .map(({ value }) => options.find((opt) => opt.value === value)?.clause)
+              .filter((clause) => clause !== undefined) as OrderByClause[]
+          );
+        }}
+      />
     </div>
-  );
-}
-
-function EditOrderBy(props: {
-  clause: OrderByClause;
-  options: string[];
-  onChange: (val: OrderByClause) => void;
-  onDelete: () => void;
-}) {
-  const { clause, options, onChange, onDelete } = props;
-  return (
-    <InputGroup>
-      <Select
-        width="auto"
-        value={clause.columnName}
-        allowCustomValue
-        options={options.map((k) => ({ label: k, value: k }))}
-        onChange={(change) => {
-          onChange({
-            ...clause,
-            columnName: change.value,
-          });
-        }}
-      />
-
-      <Select
-        value={clause.direction}
-        options={directionOptions}
-        width="auto"
-        onChange={(change) => {
-          onChange({
-            ...clause,
-            direction: change.value,
-          });
-        }}
-      />
-
-      <AccessoryButton icon="times" variant="secondary" onClick={onDelete} />
-    </InputGroup>
   );
 }

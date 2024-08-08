@@ -24,7 +24,7 @@ GROUP BY
 ORDER BY
     "time" DESC,
     "metric" ASC
-LIMIT 10000`
+LIMIT 10000;`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
 		TableName:            "my_table",
