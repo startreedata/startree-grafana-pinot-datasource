@@ -2,29 +2,47 @@ package plugin
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
 
-func TestTimeExpressionBuilder_GranularityExpr(t *testing.T) {
-	tests := []struct {
-		bucketSize time.Duration
-		want       string
-	}{
-		{bucketSize: 75 * time.Hour, want: "75:HOURS"},
-		{bucketSize: 3 * time.Hour, want: "3:HOURS"},
-		{bucketSize: 5 * time.Minute, want: "5:MINUTES"},
-		{bucketSize: 1 * time.Second, want: "1:SECONDS"},
-		{bucketSize: 1 * time.Millisecond, want: "1:MILLISECONDS"},
-		{bucketSize: 1 * time.Microsecond, want: "1:MICROSECONDS"},
-		{bucketSize: 1 * time.Nanosecond, want: "1:NANOSECONDS"},
-	}
+func TestNewTimeExpressionBuilder(t *testing.T) {
+	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
+	assert.NoError(t, err)
+	assert.NotNil(t, exprBuilder)
+	assert.Equal(t, "1:SECONDS:EPOCH", exprBuilder.timeColumnFormat)
+	assert.Equal(t, "time", exprBuilder.timeColumn)
+}
 
-	builder := TimeExpressionBuilder{}
-	for _, tt := range tests {
-		t.Run(tt.bucketSize.String(), func(t *testing.T) {
-			got := builder.GranularityExpr(tt.bucketSize)
-			assert.Equal(t, tt.want, got)
-		})
-	}
+func TestTimeExpressionBuilder_TimeFilterExpr(t *testing.T) {
+	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
+	require.NoError(t, err)
+
+	got := exprBuilder.TimeFilterExpr(TimeRange{From: time.Unix(1, 0), To: time.Unix(3601, 0)})
+	assert.Equal(t, `"time" >= 1 AND "time" <= 3601`, got)
+}
+
+func TestTimeExpressionBuilder_TimeFilterBucketAlignedExpr(t *testing.T) {
+	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
+	require.NoError(t, err)
+
+	got := exprBuilder.TimeFilterBucketAlignedExpr(TimeRange{From: time.Unix(1, 0), To: time.Unix(3601, 0)}, time.Minute)
+	assert.Equal(t, `"time" >= 0 AND "time" <= 3660`, got)
+}
+
+func TestTimeExpressionBuilder_TimeExpr(t *testing.T) {
+	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
+	require.NoError(t, err)
+
+	got := exprBuilder.TimeExpr(time.Unix(3600, 0))
+	assert.Equal(t, `3600`, got)
+}
+
+func TestTimeExpressionBuilder_TimeGroupExpr(t *testing.T) {
+	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
+	require.NoError(t, err)
+
+	got := exprBuilder.TimeGroupExpr("1:MINUTES")
+	assert.Equal(t, `DATETIMECONVERT("time", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`, got)
 }
