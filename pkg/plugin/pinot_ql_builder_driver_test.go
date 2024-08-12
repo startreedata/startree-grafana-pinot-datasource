@@ -28,7 +28,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 			GroupByColumns:      []string{"dim"},
 			AggregationFunction: "SUM",
 			Limit:               -1,
-			Granularity:         "1s",
+			Granularity:         "1:SECONDS",
 			MaxDataPoints:       1000,
 			DimensionFilters: []DimensionFilter{{
 				ColumnName: "",

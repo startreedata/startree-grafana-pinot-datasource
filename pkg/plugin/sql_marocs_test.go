@@ -17,7 +17,7 @@ func TestExpandMacros(t *testing.T) {
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
-				Granularity: "1:MILLISECONDS",
+				Granularity: "30:SECONDS", // Unused
 			}},
 		},
 		TimeRange:    TimeRange{From: time.Unix(1, 0), To: time.Unix(86401, 0)},
@@ -51,6 +51,7 @@ func TestExpandMacros(t *testing.T) {
 		{expr: `$__granularityMillis`, want: `3600000`},
 		{expr: `$__granularityMillis('1:MINUTES')`, want: `60000`},
 		{expr: `$__panelMillis`, want: `86400000`},
+		{expr: `not a macro`, want: `not a macro`},
 	}
 
 	for _, tt := range testArgs {
@@ -79,7 +80,7 @@ WITH data AS (
   FROM
      "CleanLogisticData" 
   WHERE
-     "timestamp" >= 1523714551 AND "timestamp" <= 1512238653 
+     "timestamp" >= 1523714400 AND "timestamp" <= 1512241200 
 )
 
 SELECT 
