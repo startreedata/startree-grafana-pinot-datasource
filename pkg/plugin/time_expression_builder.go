@@ -46,6 +46,13 @@ func (x TimeExpressionBuilder) TimeColumnFormat() string {
 	return x.timeColumnFormat
 }
 
+func (x TimeExpressionBuilder) TimeFilterBucketAlignedExpr(timeRange TimeRange, bucketSize time.Duration) string {
+	return x.TimeFilterExpr(TimeRange{
+		From: timeRange.From.Truncate(bucketSize),
+		To:   timeRange.To.Truncate(bucketSize).Add(bucketSize),
+	})
+}
+
 func (x TimeExpressionBuilder) TimeFilterExpr(timeRange TimeRange) string {
 	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
 		x.timeColumn, x.TimeExpr(timeRange.From),
@@ -57,24 +64,7 @@ func (x TimeExpressionBuilder) TimeExpr(ts time.Time) string {
 	return x.timeExprFormat.encodeTime(ts)
 }
 
-func (x TimeExpressionBuilder) GranularityExpr(bucketSize time.Duration) string {
-	switch {
-	case bucketSize.Hours() >= 1:
-		return fmt.Sprintf("%d:HOURS", int(bucketSize.Hours()))
-	case bucketSize.Minutes() >= 1:
-		return fmt.Sprintf("%d:MINUTES", int(bucketSize.Minutes()))
-	case bucketSize.Seconds() >= 1:
-		return fmt.Sprintf("%d:SECONDS", int(bucketSize.Seconds()))
-	case bucketSize.Milliseconds() >= 1:
-		return fmt.Sprintf("%d:MILLISECONDS", int(bucketSize.Milliseconds()))
-	case bucketSize.Microseconds() >= 1:
-		return fmt.Sprintf("%d:MICROSECONDS", int(bucketSize.Microseconds()))
-	default:
-		return fmt.Sprintf("%d:NANOSECONDS", int(bucketSize.Nanoseconds()))
-	}
-}
-
-func (x TimeExpressionBuilder) BuildTimeGroupExpr(granularity string) string {
+func (x TimeExpressionBuilder) TimeGroupExpr(granularity string) string {
 	return fmt.Sprintf(`DATETIMECONVERT("%s", '%s', '%s', '%s')`,
 		x.timeColumn, x.timeExprFormat.inputFormat, TimeGroupExprOutputFormat, granularity)
 }
