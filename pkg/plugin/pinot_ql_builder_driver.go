@@ -15,7 +15,6 @@ const DefaultMetricColumnAlias = "metric"
 
 const AggregationFunctionCount = "COUNT"
 const AggregationFunctionNone = "NONE"
-const GranularityAuto = "auto"
 const DefaultLimit = 100_000
 
 type PinotQlBuilderDriver struct {
@@ -23,6 +22,7 @@ type PinotQlBuilderDriver struct {
 	TimeExpressionBuilder
 	TimeColumnAlias   string
 	MetricColumnAlias string
+	TimeGranularity   TimeGranularity
 }
 
 type PinotQlBuilderParams struct {
@@ -59,11 +59,17 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, err
 	}
 
+	timeGranularity, err := TimeGranularityFrom(params.Granularity, params.IntervalSize)
+	if err != nil {
+		return nil, err
+	}
+
 	return &PinotQlBuilderDriver{
 		PinotQlBuilderParams:  params,
 		TimeColumnAlias:       DefaultTimeColumnAlias,
 		MetricColumnAlias:     DefaultMetricColumnAlias,
 		TimeExpressionBuilder: exprBuilder,
+		TimeGranularity:       timeGranularity,
 	}, nil
 }
 
@@ -83,13 +89,13 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
 			TableName:            p.TableName,
-			TimeGroupExpr:        p.BuildTimeGroupExpr(p.resolveGranularity()),
+			TimeGroupExpr:        p.TimeGroupExpr(p.TimeGranularity.Expr),
 			TimeColumnAlias:      p.TimeColumnAlias,
 			AggregationFunction:  p.AggregationFunction,
 			MetricColumn:         p.resolveMetricColumn(),
 			MetricColumnAlias:    p.MetricColumnAlias,
 			GroupByColumns:       p.GroupByColumns,
-			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
+			TimeFilterExpr:       p.TimeFilterBucketAlignedExpr(p.TimeRange, p.TimeGranularity.Size),
 			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
 			Limit:                p.resolveLimit(),
 			OrderByExprs:         p.orderByExprs(),
@@ -137,13 +143,6 @@ func (p PinotQlBuilderDriver) resolveLimit() int64 {
 	default:
 		return DefaultLimit
 	}
-}
-
-func (p PinotQlBuilderDriver) resolveGranularity() string {
-	if p.Granularity != "" && p.Granularity != GranularityAuto {
-		return p.Granularity
-	}
-	return p.GranularityExpr(p.IntervalSize)
 }
 
 func (p PinotQlBuilderDriver) resolveMetricColumn() string {

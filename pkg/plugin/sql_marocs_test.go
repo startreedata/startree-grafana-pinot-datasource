@@ -8,6 +8,67 @@ import (
 )
 
 func TestExpandMacros(t *testing.T) {
+	engine := MacroEngine{
+		TableName:   "CleanLogisticData",
+		TimeAlias:   "time",
+		MetricAlias: "metric",
+		TableSchema: TableSchema{
+			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+				Name:        "timestamp",
+				DataType:    "LONG",
+				Format:      "1:SECONDS:EPOCH",
+				Granularity: "30:SECONDS", // Unused
+			}},
+		},
+		TimeRange:    TimeRange{From: time.Unix(1, 0), To: time.Unix(86401, 0)},
+		IntervalSize: 1 * time.Hour,
+	}
+
+	testArgs := []struct {
+		expr    string
+		want    string
+		wantErr string
+	}{
+		{expr: `$__table`, want: `"CleanLogisticData"`},
+		{expr: `$__table()`, want: `"CleanLogisticData"`},
+		{expr: `$__timeFilter`, wantErr: "failed to expand macro `timeFilter` (line 1, col 1): expected 1 required argument, got 0"},
+		{expr: `$__timeFilter("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" <= 90000`},
+		{expr: `$__timeFilter("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" <= 86460`},
+		{expr: `$__timeGroup`, wantErr: "failed to expand macro `timeGroup` (line 1, col 1): expected 1 required argument, got 0"},
+		{expr: `$__timeGroup("timestamp")`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')`},
+		{expr: `$__timeGroup("timestamp", '1:MINUTES')`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{expr: `$__timeTo`, wantErr: "failed to expand macro `timeTo` (line 1, col 1): expected 1 argument, got 0"},
+		{expr: `$__timeTo("timestamp")`, want: `86401`},
+		{expr: `$__timeFrom`, wantErr: "failed to expand macro `timeFrom` (line 1, col 1): expected 1 argument, got 0"},
+		{expr: `$__timeFrom("timestamp")`, want: `1`},
+		{expr: `$__timeAlias`, want: `"time"`},
+		{expr: `$__metricAlias`, want: `"metric"`},
+		{expr: `$__timeFilterMillis`, wantErr: "failed to expand macro `timeFilterMillis` (line 1, col 1): expected 1 required argument, got 0"},
+		{expr: `$__timeFilterMillis("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" <= 90000000`},
+		{expr: `$__timeFilterMillis("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" <= 86460000`},
+		{expr: `$__timeToMillis`, want: `86401000`},
+		{expr: `$__timeFromMillis`, want: `1000`},
+		{expr: `$__granularityMillis`, want: `3600000`},
+		{expr: `$__granularityMillis('1:MINUTES')`, want: `60000`},
+		{expr: `$__panelMillis`, want: `86400000`},
+		{expr: `not a macro`, want: `not a macro`},
+	}
+
+	for _, tt := range testArgs {
+		t.Run(tt.expr, func(t *testing.T) {
+			got, err := engine.ExpandMacros(tt.expr)
+			if tt.wantErr != "" {
+				assert.EqualError(t, err, tt.wantErr)
+				assert.Equal(t, "", got)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+func TestExpandMacrosExampleQuery(t *testing.T) {
 	want := strings.TrimSpace(`
 SET useMultistageEngine=true;
 
@@ -19,7 +80,7 @@ WITH data AS (
   FROM
      "CleanLogisticData" 
   WHERE
-     "timestamp" >= 1523714551 AND "timestamp" <= 1512238653 
+     "timestamp" >= 1523714400 AND "timestamp" <= 1512241200 
 )
 
 SELECT 

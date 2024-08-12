@@ -32,9 +32,14 @@ var timeAliasRegex = regexp.MustCompile(`\$__timeAlias(\([^)]*\))?`)
 var timeFilterMillisRegex = regexp.MustCompile(`\$__timeFilterMillis(\([^)]*\))?`)
 var timeToMillisRegex = regexp.MustCompile(`\$__timeToMillis(\([^)]*\))?`)
 var timeFromMillisRegex = regexp.MustCompile(`\$__timeFromMillis(\([^)]*\))?`)
+var granularityMillisRegex = regexp.MustCompile(`\$__granularityMillis(\([^)]*\))?`)
+var panelMillisRegex = regexp.MustCompile(`\$__panelMillis(\([^)]*\))?`)
 
 func (x MacroEngine) ExpandMacros(query string) (string, error) {
 	macros := []Macro{
+		{"timeFilterMillis", timeFilterMillisRegex, x.renderTimeFilterMillis},
+		{"timeFromMillis", timeFromMillisRegex, x.renderTimeFromMillis},
+		{"timeToMillis", timeToMillisRegex, x.renderTimeToMillis},
 		{"table", tableNameRegex, x.renderTable},
 		{"timeFilter", timeFilterRegex, x.renderTimeFilter},
 		{"timeGroup", timeGroupRegex, x.renderTimeGroup},
@@ -42,9 +47,8 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 		{"timeFrom", timeFromRegex, x.renderTimeFrom},
 		{"timeAlias", timeAliasRegex, x.renderTimeAlias},
 		{"metricAlias", metricAliasRegex, x.renderMetricAlias},
-		{"timeFilterMillis", timeFilterMillisRegex, x.renderTimeFilterMillis},
-		{"timeToMillis", timeToMillisRegex, x.renderTimeToMillis},
-		{"timeFromMillis", timeFromMillisRegex, x.renderTimeFromMillis},
+		{"granularityMillis", granularityMillisRegex, x.renderGranularityMillis},
+		{"panelMillis", panelMillisRegex, x.renderPanelMillis},
 	}
 
 	var err error
@@ -108,19 +112,30 @@ func (x MacroEngine) renderTable(_ []string) (string, error) {
 }
 
 func (x MacroEngine) renderTimeFilter(args []string) (string, error) {
-	if len(args) != 1 {
-		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+	if len(args) < 1 {
+		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 	}
 	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
 	if err != nil {
 		return "", err
 	}
-	return builder.TimeFilterExpr(x.TimeRange), nil
+
+	var granularityExpr string
+	if len(args) > 1 {
+		granularityExpr = unquoteLiteralString(args[1])
+	}
+
+	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+	if err != nil {
+		return "", err
+	}
+
+	return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
 }
 
 func (x MacroEngine) renderTimeGroup(args []string) (string, error) {
 	if len(args) < 1 || len(args) > 2 {
-		return "", fmt.Errorf("expected 1-2 arguments, got %d", len(args))
+		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 	}
 	timeColumn := args[0]
 
@@ -129,12 +144,17 @@ func (x MacroEngine) renderTimeGroup(args []string) (string, error) {
 		return "", err
 	}
 
-	granularity := builder.GranularityExpr(x.IntervalSize)
-	if len(args) == 2 {
-		granularity = args[1]
+	var granularityExpr string
+	if len(args) > 1 {
+		granularityExpr = unquoteLiteralString(args[1])
 	}
 
-	return builder.BuildTimeGroupExpr(granularity), nil
+	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+	if err != nil {
+		return "", err
+	}
+
+	return builder.TimeGroupExpr(granularity.Expr), nil
 }
 
 func (x MacroEngine) renderTimeTo(args []string) (string, error) {
@@ -173,28 +193,65 @@ func (x MacroEngine) renderMetricAlias(_ []string) (string, error) {
 
 func (x MacroEngine) renderTimeFilterMillis(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 	}
-	timeColumn := args[0]
+	timeColumn := unquoteLiteralName(args[0])
 	builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
 	if err != nil {
 		return "", err
 	}
-	return builder.TimeFilterExpr(x.TimeRange), nil
+
+	var granularityExpr string
+	if len(args) > 1 {
+		granularityExpr = unquoteLiteralString(args[1])
+	}
+
+	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+	if err != nil {
+		return "", err
+	}
+
+	return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
 }
 
 func (x MacroEngine) renderTimeToMillis(_ []string) (string, error) {
-	builder, err := NewTimeExpressionBuilder("", FormatMillisecondsEpoch)
-	if err != nil {
-		return "", err
-	}
-	return builder.TimeExpr(x.To), nil
+	return fmt.Sprintf("%d", x.To.UnixMilli()), nil
+
 }
 
 func (x MacroEngine) renderTimeFromMillis(_ []string) (string, error) {
-	builder, err := NewTimeExpressionBuilder("", FormatMillisecondsEpoch)
+	return fmt.Sprintf("%d", x.From.UnixMilli()), nil
+}
+
+func (x MacroEngine) renderGranularityMillis(args []string) (string, error) {
+	if len(args) < 1 {
+		return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
+	}
+
+	duration, err := ParseGranularityExpr(unquoteLiteralString(args[0]))
 	if err != nil {
 		return "", err
 	}
-	return builder.TimeExpr(x.From), nil
+	return fmt.Sprintf("%d", duration.Milliseconds()), nil
+}
+
+func (x MacroEngine) renderPanelMillis(_ []string) (string, error) {
+	return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
+}
+
+func unquoteLiteralName(s string) string {
+	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
+		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
+}
+
+func unquoteLiteralString(s string) string {
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
 }
