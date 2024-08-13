@@ -315,7 +315,7 @@ func getPackageVersion() (string, error) {
 }
 
 func getLatestReleaseVersion() (string, error) {
-	cmd := exec.Command("git", "tag", "--list", "--sort=v:refname")
+	cmd := exec.Command("git", "tag", "--list", "--sort=-v:refname")
 
 	var buf bytes.Buffer
 	cmd.Stdout = &buf
