@@ -1,42 +1,66 @@
-import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { SqlEditor } from './SqlEditor';
 import React, { useState } from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
-import { InputTimeColumnFormat } from './InputTimeColumnFormat';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
 import { SqlPreview } from './SqlPreview';
-import { SelectDisplayType } from './SelectDisplayType';
+import { DisplayTypeTable, SelectDisplayType } from './SelectDisplayType';
 import { SelectTable } from './SelectTable';
-import { useTables } from '../../resources/controller';
+import { DateTime } from '@grafana/data';
+import { DataSource } from '../../datasource';
 
-export function PinotQlCode(props: PinotQueryEditorProps) {
-  const { query, data, datasource, onChange, onRunQuery } = props;
+export function PinotQlCode(props: {
+  query: PinotDataQuery;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  intervalSize: string | undefined;
+  datasource: DataSource;
+  tables: string[] | undefined;
+  onChange: (value: PinotDataQuery) => void;
+  onRunQuery: () => void;
+}) {
+  const { query, tables, timeRange, intervalSize, datasource, onChange, onRunQuery } = props;
 
   const [sqlPreview, setSqlPreview] = useState('');
 
-  const tables = useTables(datasource);
-
-  const updateSqlPreview = (dataQuery: PinotDataQuery) => {
-    fetchSqlCodePreview(datasource, {
-      intervalSize: data?.request?.interval || '0',
-      tableName: dataQuery.tableName,
-      timeRange: { to: props.data?.request?.range.to, from: props.data?.request?.range.from },
-      timeColumnAlias: dataQuery.timeColumnAlias,
-      timeColumnFormat: dataQuery.timeColumnFormat,
-      metricColumnAlias: dataQuery.metricColumnAlias,
-      code: dataQuery.pinotQlCode,
-    }).then((val) => val && setSqlPreview(val));
-  };
-
   const onChangeAndUpdatePreview = (newQuery: PinotDataQuery) => {
+    fetchSqlCodePreview(datasource, {
+      intervalSize: intervalSize || '0',
+      tableName: newQuery.tableName,
+      timeRange: timeRange,
+      timeColumnAlias: newQuery.timeColumnAlias,
+      timeColumnFormat: newQuery.timeColumnFormat,
+      metricColumnAlias: newQuery.metricColumnAlias,
+      code: newQuery.pinotQlCode,
+    }).then((val) => val && setSqlPreview(val));
     onChange(newQuery);
-    updateSqlPreview(newQuery);
   };
 
-  if (!sqlPreview) {
-    updateSqlPreview(query);
+  if (
+    query.displayType === undefined ||
+    query.metricColumnAlias === undefined ||
+    query.timeColumnAlias === undefined ||
+    query.pinotQlCode === undefined
+  ) {
+    onChangeAndUpdatePreview({
+      ...query,
+      displayType: DisplayTypeTable,
+      metricColumnAlias: query.metricColumnAlias || 'metric',
+      timeColumnAlias: query.timeColumnAlias || 'time',
+      pinotQlCode:
+        query.pinotQlCode ||
+        `
+SELECT
+  $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(),
+  SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
+GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
+ORDER BY $__timeAlias() DESC
+LIMIT 100000
+`.trim(),
+    });
+    onRunQuery()
   }
 
   return (
@@ -72,28 +96,15 @@ export function PinotQlCode(props: PinotQueryEditorProps) {
           current={query.timeColumnAlias}
           onChange={(val) => onChangeAndUpdatePreview({ ...query, timeColumnAlias: val })}
         />
-        <InputTimeColumnFormat
-          current={query.timeColumnFormat}
-          onChange={(val) => onChangeAndUpdatePreview({ ...query, timeColumnFormat: val })}
+        <InputMetricColumnAlias
+          current={query.metricColumnAlias}
+          onChange={(val) => onChange({ ...query, metricColumnAlias: val })}
         />
       </div>
-      <InputMetricColumnAlias
-        current={query.metricColumnAlias}
-        onChange={(val) => onChange({ ...query, metricColumnAlias: val })}
-      />
+
       <SqlEditor
         current={query.pinotQlCode}
-        placeholder={`
-SELECT
-  $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(),
-  SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
-GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000
-`.trim()}
-        onChange={(val) => onChangeAndUpdatePreview({ ...props.query, pinotQlCode: val })}
+        onChange={(pinotQlCode) => onChangeAndUpdatePreview({ ...query, pinotQlCode })}
       />
       <SqlPreview sql={sqlPreview} />
     </div>

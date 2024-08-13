@@ -35,6 +35,9 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				QueryOptions:        query.QueryOptions,
 			})
 		default:
+			if query.PinotQlCode == "" {
+				return &NoOpDriver{}, nil
+			}
 			return NewPinotQlCodeDriver(PinotQlCodeDriverParams{
 				Code:              query.PinotQlCode,
 				DatabaseName:      query.DatabaseName,

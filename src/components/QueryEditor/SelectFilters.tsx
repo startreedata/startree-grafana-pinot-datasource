@@ -1,7 +1,7 @@
 import React from 'react';
 import { AccessoryButton } from '@grafana/experimental';
 import { DataSource } from '../../datasource';
-import { TimeRange } from '@grafana/data';
+import { DateTime } from '@grafana/data';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { EditFilter } from './EditFilter';
@@ -14,7 +14,7 @@ export function SelectFilters(props: {
   tableSchema: TableSchema | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
-  range: TimeRange | undefined;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   dimensionColumns: string[] | undefined;
   dimensionFilters: DimensionFilter[];
   onChange: (val: DimensionFilter[]) => void;

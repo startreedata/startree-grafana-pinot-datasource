@@ -12,11 +12,12 @@ export function SelectEditorType(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
   const labels = allLabels.components.QueryEditor.editorType;
 
-  if (query.queryType === undefined) {
-    onChange({ ...query, queryType: DefaultEditorType });
-  }
-  if (query.editorMode === undefined) {
-    onChange({ ...query, editorMode: DefaultEditorMode });
+  if (query.queryType === undefined || query.editorMode === undefined) {
+    onChange({
+      ...query,
+      queryType: query.queryType || DefaultEditorType,
+      editorMode: query.editorMode || DefaultEditorMode,
+    });
   }
 
   return (

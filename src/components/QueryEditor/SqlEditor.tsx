@@ -3,17 +3,9 @@ import { SQLEditor as GrafanaSqlEditor } from '@grafana/experimental';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
-export function SqlEditor(props: {
-  current: string | undefined;
-  placeholder: string;
-  onChange: (val: string) => void;
-}) {
-  const { current, placeholder, onChange } = props;
+export function SqlEditor(props: { current: string | undefined; onChange: (val: string) => void }) {
+  const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.sqlEditor;
-
-  if (current === undefined) {
-    onChange(placeholder);
-  }
 
   return (
     <div className={'gf-form'}>
