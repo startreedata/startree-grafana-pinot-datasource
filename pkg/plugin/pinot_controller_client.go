@@ -26,7 +26,7 @@ func (p *PinotControllerClient) ListDatabases(ctx context.Context) ([]string, er
 
 	resp, err := p.doRequest(req)
 	if err != nil {
-		return nil, fmt.Errorf("pinot/http request failed: %w", err)
+		return nil, err
 	}
 	defer p.closeResponseBody(resp)
 
@@ -121,7 +121,7 @@ func (p *PinotControllerClient) newRequest(ctx context.Context, method string, e
 func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
 	resp, err := p.doRequest(req)
 	if err != nil {
-		return fmt.Errorf("pinot/http request failed: %w", err)
+		return err
 	}
 	defer p.closeResponseBody(resp)
 
@@ -134,6 +134,9 @@ func (p *PinotControllerClient) doRequestAndDecodeResponse(req *http.Request, de
 
 func (p *PinotControllerClient) doRequest(req *http.Request) (*http.Response, error) {
 	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("pinot/http request failed: %s %s %w", req.Method, req.URL.String(), err)
+	}
 	Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
 	return resp, err
 }

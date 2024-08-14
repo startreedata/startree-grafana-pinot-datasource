@@ -1,4 +1,3 @@
-import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { SelectMetricColumn } from './SelectMetricColumn';
 import { SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
@@ -9,21 +8,30 @@ import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlPreview } from '../../resources/sqlPreview';
-import { useTables, useTableSchema } from '../../resources/controller';
+import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
 import { SelectOrderBy } from './SelectOrderBy';
 import { SelectQueryOptions } from './SelectQueryOptions';
+import { DateTime } from '@grafana/data';
+import { DataSource } from '../../datasource';
 
 const MetricColumnStar = '*';
 const AggregationFunctionCount = 'COUNT';
 const AggregationFunctionNone = 'NONE';
 
-export function PinotQlBuilder(props: PinotQueryEditorProps) {
-  const { data, datasource, query, range, onChange, onRunQuery } = props;
+export function PinotQlBuilder(props: {
+  query: PinotDataQuery;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  intervalSize: string | undefined;
+  datasource: DataSource;
+  tables: string[] | undefined;
+  onChange: (value: PinotDataQuery) => void;
+  onRunQuery: () => void;
+}) {
+  const { timeRange, tables, intervalSize, datasource, query, onChange, onRunQuery } = props;
 
-  const tables = useTables(datasource);
   const tableSchema = useTableSchema(datasource, query.tableName);
 
   const [sqlPreview, setSqlPreview] = useState('');
@@ -32,31 +40,27 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
   const metricFieldSpecs = tableSchema?.metricFieldSpecs || [];
   const dimensionFieldSpecs = tableSchema?.dimensionFieldSpecs || [];
 
-  const timeColumns = tableSchema ? dateTimeFieldSpecs.map(({ name }) => name) : undefined;
-  const metricColumns = tableSchema
-    ? [...metricFieldSpecs, ...dimensionFieldSpecs]
-        .filter(({ name }) => !query.groupByColumns?.includes(name))
-        // TODO: Is this filter necessary?
-        .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
-        .map(({ name }) => name)
-    : undefined;
+  const timeColumns = dateTimeFieldSpecs.map(({ name }) => name);
+  const metricColumns = [...metricFieldSpecs, ...dimensionFieldSpecs]
+    .filter(({ name }) => !query.groupByColumns?.includes(name))
+    // TODO: Is this filter necessary?
+    .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
+    .map(({ name }) => name);
 
-  const dimensionColumns = tableSchema
-    ? [...dimensionFieldSpecs, ...metricFieldSpecs]
-        .filter(({ name }) => query.metricColumn !== name)
-        .map(({ name }) => name)
-    : undefined;
+  const dimensionColumns = [...dimensionFieldSpecs, ...metricFieldSpecs]
+    .filter(({ name }) => query.metricColumn !== name)
+    .map(({ name }) => name);
 
   const updateSqlPreview = useCallback(
     (dataQuery: PinotDataQuery) => {
       fetchSqlPreview(datasource, {
         aggregationFunction: dataQuery.aggregationFunction,
         groupByColumns: dataQuery.groupByColumns,
-        intervalSize: data?.request?.interval || '0',
+        intervalSize: intervalSize || '0',
         metricColumn: dataQuery.metricColumn,
         tableName: dataQuery.tableName,
         timeColumn: dataQuery.timeColumn,
-        timeRange: { to: data?.request?.range.to, from: data?.request?.range.from },
+        timeRange: timeRange,
         filters: dataQuery.filters,
         limit: dataQuery.limit,
         granularity: dataQuery.granularity,
@@ -64,7 +68,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         queryOptions: dataQuery.queryOptions,
       }).then((val) => val && setSqlPreview(val));
     },
-    [datasource, data?.request?.interval, data?.request?.range.to, data?.request?.range.from]
+    [datasource, intervalSize, timeRange]
   );
 
   useEffect(() => {
@@ -105,6 +109,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         <SelectTimeColumn
           selected={query.timeColumn}
           options={timeColumns}
+          isLoading={tableSchema === undefined}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
@@ -117,6 +122,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
         <SelectMetricColumn
           selected={query.aggregationFunction === AggregationFunctionCount ? MetricColumnStar : query.metricColumn}
           options={query.aggregationFunction === AggregationFunctionCount ? [MetricColumnStar] : metricColumns}
+          isLoading={tableSchema === undefined}
           disabled={query.aggregationFunction === AggregationFunctionCount}
           onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
         />
@@ -130,6 +136,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
           selected={query.groupByColumns}
           options={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunctionNone}
+          isLoading={tableSchema === undefined}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
         />
         <SelectOrderBy
@@ -147,7 +154,7 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
           tableSchema={tableSchema}
           tableName={query.tableName}
           timeColumn={query.timeColumn}
-          range={range}
+          timeRange={timeRange}
           dimensionColumns={dimensionColumns}
           dimensionFilters={query.filters || []}
           onChange={(val) => onChangeAndRun({ ...query, filters: val })}

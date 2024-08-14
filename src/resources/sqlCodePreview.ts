@@ -23,7 +23,6 @@ export async function fetchSqlCodePreview(datasource: DataSource, request: SqlCo
     request.tableName &&
     request.timeColumnAlias &&
     request.metricColumnAlias &&
-    request.timeColumnFormat &&
     request.code
   ) {
     return datasource
