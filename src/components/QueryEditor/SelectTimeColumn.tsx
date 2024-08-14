@@ -5,16 +5,17 @@ import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
 export function SelectTimeColumn(props: {
-  selected?: string;
-  options?: string[] | undefined;
+  selected: string | undefined;
+  options: string[];
+  isLoading: boolean;
   onChange: (val: string | undefined) => void;
 }) {
-  const { selected, options, onChange } = props;
+  const { selected, options, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeColumn;
 
-  if (options && options?.length === 1 && selected !== options[0]) {
+  if (options.length === 1 && selected !== options[0]) {
     onChange(options[0]);
-  } else if (options && selected && !options.includes(selected)) {
+  } else if (selected && !options.includes(selected)) {
     onChange(undefined);
   }
 
@@ -24,7 +25,8 @@ export function SelectTimeColumn(props: {
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
-        options={options?.map((name) => ({ label: name, value: name }))}
+        isLoading={isLoading}
+        options={options.map((name) => ({ label: name, value: name }))}
         value={selected || null}
         onChange={(change) => {
           onChange(change.value);

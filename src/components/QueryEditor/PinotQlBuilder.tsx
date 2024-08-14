@@ -40,20 +40,16 @@ export function PinotQlBuilder(props: {
   const metricFieldSpecs = tableSchema?.metricFieldSpecs || [];
   const dimensionFieldSpecs = tableSchema?.dimensionFieldSpecs || [];
 
-  const timeColumns = tableSchema ? dateTimeFieldSpecs.map(({ name }) => name) : undefined;
-  const metricColumns = tableSchema
-    ? [...metricFieldSpecs, ...dimensionFieldSpecs]
-        .filter(({ name }) => !query.groupByColumns?.includes(name))
-        // TODO: Is this filter necessary?
-        .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
-        .map(({ name }) => name)
-    : undefined;
+  const timeColumns = dateTimeFieldSpecs.map(({ name }) => name);
+  const metricColumns = [...metricFieldSpecs, ...dimensionFieldSpecs]
+    .filter(({ name }) => !query.groupByColumns?.includes(name))
+    // TODO: Is this filter necessary?
+    .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
+    .map(({ name }) => name);
 
-  const dimensionColumns = tableSchema
-    ? [...dimensionFieldSpecs, ...metricFieldSpecs]
-        .filter(({ name }) => query.metricColumn !== name)
-        .map(({ name }) => name)
-    : undefined;
+  const dimensionColumns = [...dimensionFieldSpecs, ...metricFieldSpecs]
+    .filter(({ name }) => query.metricColumn !== name)
+    .map(({ name }) => name);
 
   const updateSqlPreview = useCallback(
     (dataQuery: PinotDataQuery) => {
@@ -113,6 +109,7 @@ export function PinotQlBuilder(props: {
         <SelectTimeColumn
           selected={query.timeColumn}
           options={timeColumns}
+          isLoading={tableSchema === undefined}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
@@ -125,6 +122,7 @@ export function PinotQlBuilder(props: {
         <SelectMetricColumn
           selected={query.aggregationFunction === AggregationFunctionCount ? MetricColumnStar : query.metricColumn}
           options={query.aggregationFunction === AggregationFunctionCount ? [MetricColumnStar] : metricColumns}
+          isLoading={tableSchema === undefined}
           disabled={query.aggregationFunction === AggregationFunctionCount}
           onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
         />
@@ -138,6 +136,7 @@ export function PinotQlBuilder(props: {
           selected={query.groupByColumns}
           options={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunctionNone}
+          isLoading={tableSchema === undefined}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
         />
         <SelectOrderBy
