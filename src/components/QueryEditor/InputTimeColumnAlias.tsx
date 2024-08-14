@@ -4,15 +4,9 @@ import { styles } from '../../styles';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
-const DefaultTimeColumnAlias = 'time';
-
 export function InputTimeColumnAlias(props: { current: string | undefined; onChange: (val: string) => void }) {
   const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeAlias;
-
-  if (current === undefined) {
-    onChange(DefaultTimeColumnAlias);
-  }
 
   return (
     <div className={'gf-form'}>

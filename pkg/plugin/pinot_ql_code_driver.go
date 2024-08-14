@@ -37,7 +37,6 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 		return nil, errors.New("Code is required")
 	}
 
-	Logger.Info("pinot code", params)
 	if params.TimeColumnAlias == "" {
 		params.TimeColumnAlias = DefaultTimeColumnAlias
 	}

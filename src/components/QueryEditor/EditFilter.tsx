@@ -1,5 +1,5 @@
 import { DataSource } from '../../datasource';
-import { SelectableValue, TimeRange } from '@grafana/data';
+import { DateTime, SelectableValue } from '@grafana/data';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { MultiSelect, Select } from '@grafana/ui';
 import React, { useState } from 'react';
@@ -34,7 +34,7 @@ const DefaultFilterOperator = FilterOperators[0];
 export function EditFilter(props: {
   datasource: DataSource;
   remainingFilters: DimensionFilter[];
-  range: TimeRange | undefined;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   tableName: string | undefined;
   tableSchema: TableSchema | undefined;
   thisFilter: DimensionFilter;
@@ -46,7 +46,7 @@ export function EditFilter(props: {
   const {
     datasource,
     remainingFilters,
-    range,
+    timeRange,
     tableName,
     tableSchema,
     timeColumn,
@@ -83,7 +83,7 @@ export function EditFilter(props: {
       tableName: tableName,
       columnName: thisFilter.columnName,
       timeColumn: timeColumn,
-      timeRange: { from: range?.from, to: range?.to },
+      timeRange: timeRange,
       filters: remainingFilters,
     })
       .then((vals) => vals?.map((val) => ({ label: val, value: val })))
