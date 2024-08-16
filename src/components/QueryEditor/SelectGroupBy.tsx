@@ -24,6 +24,7 @@ export function SelectGroupBy(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}
+        allowCustomValue
         options={options.map((name) => ({ label: name, value: name }))}
         value={selected}
         disabled={disabled}

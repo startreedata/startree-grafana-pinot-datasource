@@ -15,7 +15,6 @@ export const AggregationFunction = Object.freeze({
 
 const DefaultAggregationFunction = AggregationFunction.SUM;
 
-
 export function SelectAggregation(props: {
   selected: string | undefined;
   onChange: (val: string | undefined) => void;
@@ -34,6 +33,7 @@ export function SelectAggregation(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
+        allowCustomValue
         invalid={!selected}
         options={Object.values(AggregationFunction).map((val) => ({ label: val, value: val }))}
         value={selected}
