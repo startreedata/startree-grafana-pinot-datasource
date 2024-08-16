@@ -107,5 +107,17 @@ export default {
         label: 'Legend',
       },
     },
+    VariableQueryEditor: {
+      sqlEditor: {
+        tooltip: 'Enter your pinot query.',
+        label: 'Pinot Query',
+      },
+      variableType: {
+        tooltip: 'Choose variable query type.',
+        label: 'Type',
+      },
+      column: { tooltip: 'The column to use.', label: 'Column' },
+      columnType: { tooltip: 'Select a specific column type.', label: 'Column Type' },
+    },
   },
 };

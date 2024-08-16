@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { PinotDataType, PinotDataTypes } from '../../types/PinotDataType';
 import { DimensionFilter } from '../../types/DimensionFilter';
 import { TableSchema } from '../../types/TableSchema';
-import { fetchDistinctValues } from '../../resources/distinctValues';
+import { fetchDistinctValuesForFilters } from '../../resources/distinctValues';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -79,7 +79,7 @@ export function EditFilter(props: {
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const loadValueOptions = () => {
     setIsLoadingValues(true);
-    fetchDistinctValues(datasource, {
+    fetchDistinctValuesForFilters(datasource, {
       tableName: tableName,
       columnName: thisFilter.columnName,
       timeColumn: timeColumn,

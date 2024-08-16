@@ -6,8 +6,10 @@ import (
 	"time"
 )
 
-const FormatMillisecondsEpoch = "1:MILLISECONDS:EPOCH"
-const TimeGroupExprOutputFormat = FormatMillisecondsEpoch
+const (
+	FormatMillisecondsEpoch   = "1:MILLISECONDS:EPOCH"
+	TimeGroupExprOutputFormat = FormatMillisecondsEpoch
+)
 
 type TimeExpressionBuilder struct {
 	timeColumn       string

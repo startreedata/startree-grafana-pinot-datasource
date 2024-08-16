@@ -1,15 +1,10 @@
 package templates
 
 import (
-	"bytes"
-	"fmt"
-	"strings"
 	"text/template"
 )
 
-const TimeSeriesSqlTemplateName = "pinot/time-series-sql"
-
-var timeSeriesSqlTemplate = template.Must(template.New(TimeSeriesSqlTemplateName).Parse(`
+var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").Parse(`
 {{ .QueryOptionsExpr }}
 
 SELECT{{ range .GroupByColumns }}
@@ -52,9 +47,5 @@ type TimeSeriesSqlParams struct {
 }
 
 func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {
-	var buf bytes.Buffer
-	if err := timeSeriesSqlTemplate.Execute(&buf, params); err != nil {
-		return "", fmt.Errorf("failed execute template: %w", err)
-	}
-	return strings.TrimSpace(buf.String()), nil
+	return render(timeSeriesSqlTemplate, params)
 }

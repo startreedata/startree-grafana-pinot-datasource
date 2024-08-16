@@ -69,8 +69,9 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 		"columnName":   "type"
 	}`, &got)
 
-	want := `{"valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'", "'GollumEvent'", 
-				"'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'", "'PullRequestEvent'"]}`
+	want := `{"valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'", "'GollumEvent'",
+				"'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'", "'PullRequestEvent'",
+				"'PullRequestReviewCommentEvent'", "'PushEvent'", "'ReleaseEvent'", "'WatchEvent'"]}`
 
 	assert.JSONEq(t, want, string(got))
 }

@@ -1,15 +1,10 @@
 package templates
 
 import (
-	"bytes"
-	"fmt"
-	"strings"
 	"text/template"
 )
 
-const SingleMetricSqlTemplateName = "pinot/single-metric-sql"
-
-var singleMetricSqlTemplate = template.Must(template.New(SingleMetricSqlTemplateName).Parse(`
+var singleMetricSqlTemplate = template.Must(template.New("pinot/single-metric-sql").Parse(`
 {{.QueryOptionsExpr}}
 
 SELECT
@@ -39,9 +34,5 @@ type SingleMetricSqlParams struct {
 }
 
 func RenderSingleMetricSql(params SingleMetricSqlParams) (string, error) {
-	var buf bytes.Buffer
-	if err := singleMetricSqlTemplate.Execute(&buf, params); err != nil {
-		return "", fmt.Errorf("failed execute template: %w", err)
-	}
-	return strings.TrimSpace(buf.String()), nil
+	return render(singleMetricSqlTemplate, params)
 }

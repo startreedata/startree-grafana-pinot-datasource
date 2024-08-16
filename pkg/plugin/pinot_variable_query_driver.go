@@ -1,0 +1,147 @@
+package plugin
+
+import (
+	"context"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startree/pinot/pkg/plugin/templates"
+	"strings"
+)
+
+const (
+	VariableQueryTypeTableList      = "TABLE_LIST"
+	VariableQueryTypeColumnList     = "COLUMN_LIST"
+	VariableQueryTypeDistinctValues = "DISTINCT_VALUES"
+	VariableQueryTypePinotQlCode    = "PINOT_QL_CODE"
+
+	ColumnTypeDateTime  = "DATETIME"
+	ColumnTypeMetric    = "METRIC"
+	ColumnTypeDimension = "DIMENSION"
+	ColumnTypeAll       = "ALL"
+)
+
+type PinotVariableQueryParams struct {
+	*PinotClient
+	VariableType string
+	TableName    string
+	ColumnName   string
+	ColumnType   string
+	PinotQlCode  string
+}
+
+type PinotVariableQueryDriver struct {
+	params PinotVariableQueryParams
+}
+
+func NewPinotVariableQueryDriver(params PinotVariableQueryParams) *PinotVariableQueryDriver {
+	if params.ColumnType == "" {
+		params.ColumnType = ColumnTypeAll
+	}
+
+	return &PinotVariableQueryDriver{params: params}
+}
+
+func (d *PinotVariableQueryDriver) Execute(ctx context.Context) (*data.Frame, error) {
+	switch d.params.VariableType {
+	case VariableQueryTypeTableList:
+		return d.getTableList(ctx)
+	case VariableQueryTypeColumnList:
+		return d.getColumnList(ctx)
+	case VariableQueryTypeDistinctValues:
+		return d.getDistinctValues(ctx)
+	case VariableQueryTypePinotQlCode:
+		return d.getSqlResults(ctx)
+	default:
+		return data.NewFrame("result", data.NewField("unsure", nil, []string{})), nil
+	}
+}
+
+func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) (*data.Frame, error) {
+	sqlCode := strings.TrimSpace(d.params.PinotQlCode)
+	if sqlCode == "" {
+		return data.NewFrame("result", data.NewField("codeValues", nil, []string{})), nil
+	}
+
+	macroEngine := MacroEngine{
+		TableName: d.params.TableName,
+	}
+	sqlCode, err := macroEngine.ExpandTableName(sqlCode)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sqlCode)
+	if err != nil {
+		return nil, err
+	}
+
+	result := resp.ResultTable
+	values := make([]string, result.GetRowCount()*result.GetColumnCount())
+	for colId := 0; colId < result.GetColumnCount(); colId++ {
+		for rowId, val := range ExtractStringColumn(result, colId) {
+			// Extract values in table order.
+			values[rowId*result.GetColumnCount()+colId] = val
+		}
+	}
+	values = GetDistinctValues(values)
+
+	return data.NewFrame("result", data.NewField("codeValues", nil, values)), nil
+}
+
+func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) (*data.Frame, error) {
+	if d.params.TableName == "" || d.params.ColumnName == "" {
+		return data.NewFrame("result", data.NewField("distinctValues", nil, []string{})), nil
+	}
+
+	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+		ColumnName: d.params.ColumnName,
+		TableName:  d.params.TableName,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sql)
+	if err != nil {
+		return nil, err
+	}
+
+	values := ExtractStringColumn(result.ResultTable, 0)
+	return data.NewFrame("result", data.NewField("distinctValues", nil, values)), nil
+}
+
+func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) (*data.Frame, error) {
+	if d.params.TableName == "" {
+		return data.NewFrame("result", data.NewField("columns", nil, []string{})), nil
+	}
+	schema, err := d.params.PinotClient.GetTableSchema(ctx, d.params.TableName)
+	if err != nil {
+		return nil, err
+	}
+
+	var columns []string
+	if d.params.ColumnType == ColumnTypeAll || d.params.ColumnType == ColumnTypeDateTime {
+		for _, spec := range schema.DateTimeFieldSpecs {
+			columns = append(columns, spec.Name)
+		}
+	}
+	if d.params.ColumnType == ColumnTypeAll || d.params.ColumnType == ColumnTypeMetric {
+		for _, spec := range schema.MetricFieldSpecs {
+			columns = append(columns, spec.Name)
+		}
+	}
+	if d.params.ColumnType == ColumnTypeAll || d.params.ColumnType == ColumnTypeDimension {
+		for _, spec := range schema.DimensionFieldSpecs {
+			columns = append(columns, spec.Name)
+		}
+	}
+
+	return data.NewFrame("result", data.NewField("columns", nil, columns)), nil
+}
+
+func (d *PinotVariableQueryDriver) getTableList(ctx context.Context) (*data.Frame, error) {
+	tables, err := d.params.PinotClient.ListTables(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return data.NewFrame("result", data.NewField("tables", nil, tables)), nil
+}

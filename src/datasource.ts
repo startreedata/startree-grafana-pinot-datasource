@@ -3,10 +3,13 @@ import { DataSourceWithBackend } from '@grafana/runtime';
 
 import { GetDefaultPinotDataQuery, interpolateVariables, PinotDataQuery } from './types/PinotDataQuery';
 import { PinotConnectionConfig } from './types/PinotConnectionConfig';
+import { PinotVariableSupport } from './variables';
 
 export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConnectionConfig> {
   constructor(instanceSettings: DataSourceInstanceSettings<PinotConnectionConfig>) {
     super(instanceSettings);
+
+    this.variables = new PinotVariableSupport(this);
   }
 
   getDefaultQuery(_: CoreApp): Partial<PinotDataQuery> {
