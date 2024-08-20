@@ -4,16 +4,17 @@ import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
-const DefaultAggregationFunction = 'SUM';
+export const AggregationFunction = Object.freeze({
+  COUNT: 'COUNT',
+  SUM: 'SUM',
+  AVG: 'AVG',
+  MAX: 'MAX',
+  MIN: 'MIN',
+  NONE: 'NONE',
+});
 
-const AggregationOptions = [
-  { label: 'COUNT', value: 'COUNT' },
-  { label: 'SUM', value: 'SUM' },
-  { label: 'AVG', value: 'AVG' },
-  { label: 'MAX', value: 'MAX' },
-  { label: 'MIN', value: 'MIN' },
-  { label: 'NONE', value: 'NONE' },
-];
+const DefaultAggregationFunction = AggregationFunction.SUM;
+
 
 export function SelectAggregation(props: {
   selected: string | undefined;
@@ -34,7 +35,7 @@ export function SelectAggregation(props: {
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
-        options={AggregationOptions}
+        options={Object.values(AggregationFunction).map((val) => ({ label: val, value: val }))}
         value={selected}
         onChange={(change) => onChange(change.value)}
       />

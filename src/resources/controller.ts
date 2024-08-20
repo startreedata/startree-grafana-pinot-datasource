@@ -2,24 +2,23 @@ import { DataSource } from '../datasource';
 import { TableSchema } from '../types/TableSchema';
 import { useEffect, useState } from 'react';
 
-interface GetDatabasesResponse {
-  databases: string[] | null;
-  error: string | null;
-}
-
-export function useDatabases(datasource: DataSource): string[] | undefined {
-  const resp = useControllerResource<GetDatabasesResponse>(datasource, 'databases');
-  return resp?.databases || undefined;
-}
-
 interface GetTablesResponse {
   tables: string[] | null;
   error: string | null;
 }
 
 export function useTables(datasource: DataSource): string[] | undefined {
-  const resp = useControllerResource<GetTablesResponse>(datasource, 'tables');
-  return resp?.tables || undefined;
+  const [tables, setTables] = useState<string[] | undefined>();
+
+  useEffect(() => {
+    fetchTables(datasource).then((resp) => setTables(resp.tables || undefined));
+  }, [datasource]);
+
+  return tables;
+}
+
+export async function fetchTables(datasource: DataSource): Promise<GetTablesResponse> {
+  return fetchControllerResource<GetTablesResponse>(datasource, 'tables');
 }
 
 interface GetTableSchemaResponse {
@@ -28,19 +27,21 @@ interface GetTableSchemaResponse {
 }
 
 export function useTableSchema(datasource: DataSource, tableName: string | undefined): TableSchema | undefined {
-  const noop = !tableName;
-  const resp = useControllerResource<GetTableSchemaResponse>(datasource, 'tables/' + tableName + '/schema', noop);
-  return resp?.schema || undefined;
-}
-
-function useControllerResource<T>(datasource: DataSource, endpoint: string, noop?: boolean): T | undefined {
-  const [resp, setResp] = useState<T | undefined>(undefined);
+  const [tableSchema, setTableSchema] = useState<TableSchema | undefined>(undefined);
 
   useEffect(() => {
-    if (noop) {
-      return;
+    if (tableName) {
+      fetchTableSchema(datasource, tableName).then((resp) => setTableSchema(resp.schema || undefined));
     }
-    datasource.getResource<T>(endpoint).then((resp) => setResp(resp));
-  }, [datasource, endpoint, noop]);
-  return resp;
+  }, [datasource, tableName]);
+
+  return tableSchema;
+}
+
+export async function fetchTableSchema(datasource: DataSource, tableName: string): Promise<GetTableSchemaResponse> {
+  return fetchControllerResource<GetTableSchemaResponse>(datasource, 'tables/' + tableName + '/schema');
+}
+
+async function fetchControllerResource<T>(datasource: DataSource, endpoint: string): Promise<T> {
+  return datasource.getResource<T>(endpoint);
 }

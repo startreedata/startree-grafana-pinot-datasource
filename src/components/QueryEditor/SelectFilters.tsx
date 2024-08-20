@@ -10,7 +10,6 @@ import { DimensionFilter } from '../../types/DimensionFilter';
 
 export function SelectFilters(props: {
   datasource: DataSource;
-  databaseName: string | undefined;
   tableSchema: TableSchema | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
