@@ -9,7 +9,6 @@ import { QueryOption } from './QueryOption';
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
   queryType: QueryType.PinotQL,
   editorMode: EditorMode.Builder,
-  databaseName: 'default',
 
   // PinotQl Builder
 
@@ -35,7 +34,6 @@ LIMIT 100000
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
   editorMode?: string;
-  databaseName?: string;
   tableName?: string;
 
   // PinotQl Builder

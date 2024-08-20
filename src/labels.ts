@@ -38,7 +38,7 @@ export default {
         placeholder: 'metric',
       },
       timeAlias: {
-        tooltip: 'The name of the time column in the query result. Required for date time conversions.',
+        tooltip: 'The name of the time column in the query result. The time column should be in 1:MILLISECONDS:EPOCH format. Required for time series display.',
         label: 'Time Alias',
       },
       timeFormat: {

@@ -16,6 +16,7 @@ import { SelectOrderBy } from './SelectOrderBy';
 import { SelectQueryOptions } from './SelectQueryOptions';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
+import {TableSchema} from "../../types/TableSchema";
 
 const MetricColumnStar = '*';
 const AggregationFunctionCount = 'COUNT';
@@ -35,21 +36,6 @@ export function PinotQlBuilder(props: {
   const tableSchema = useTableSchema(datasource, query.tableName);
 
   const [sqlPreview, setSqlPreview] = useState('');
-
-  const dateTimeFieldSpecs = tableSchema?.dateTimeFieldSpecs || [];
-  const metricFieldSpecs = tableSchema?.metricFieldSpecs || [];
-  const dimensionFieldSpecs = tableSchema?.dimensionFieldSpecs || [];
-
-  const timeColumns = dateTimeFieldSpecs.map(({ name }) => name);
-  const metricColumns = [...metricFieldSpecs, ...dimensionFieldSpecs]
-    .filter(({ name }) => !query.groupByColumns?.includes(name))
-    // TODO: Is this filter necessary?
-    .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
-    .map(({ name }) => name);
-
-  const dimensionColumns = [...dimensionFieldSpecs, ...metricFieldSpecs]
-    .filter(({ name }) => query.metricColumn !== name)
-    .map(({ name }) => name);
 
   const updateSqlPreview = useCallback(
     (dataQuery: PinotDataQuery) => {
@@ -94,6 +80,13 @@ export function PinotQlBuilder(props: {
     }
   };
 
+
+  const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
+  const timeColumns = getTimeColumns(tableSchema);
+  const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
+  const dimensionColumns = getGroupByColumns(tableSchema, query.metricColumn || '');
+
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -109,7 +102,7 @@ export function PinotQlBuilder(props: {
         <SelectTimeColumn
           selected={query.timeColumn}
           options={timeColumns}
-          isLoading={tableSchema === undefined}
+          isLoading={isSchemaLoading}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
@@ -122,7 +115,7 @@ export function PinotQlBuilder(props: {
         <SelectMetricColumn
           selected={query.aggregationFunction === AggregationFunctionCount ? MetricColumnStar : query.metricColumn}
           options={query.aggregationFunction === AggregationFunctionCount ? [MetricColumnStar] : metricColumns}
-          isLoading={tableSchema === undefined}
+          isLoading={isSchemaLoading}
           disabled={query.aggregationFunction === AggregationFunctionCount}
           onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
         />
@@ -136,7 +129,7 @@ export function PinotQlBuilder(props: {
           selected={query.groupByColumns}
           options={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunctionNone}
-          isLoading={tableSchema === undefined}
+          isLoading={isSchemaLoading}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
         />
         <SelectOrderBy
@@ -150,7 +143,6 @@ export function PinotQlBuilder(props: {
       <div>
         <SelectFilters
           datasource={datasource}
-          databaseName={query.databaseName}
           tableSchema={tableSchema}
           tableName={query.tableName}
           timeColumn={query.timeColumn}
@@ -174,4 +166,23 @@ export function PinotQlBuilder(props: {
       </div>
     </>
   );
+}
+
+
+function getTimeColumns(tableSchema: TableSchema | undefined): string[] {
+  return (tableSchema?.dateTimeFieldSpecs || []).map(({ name }) => name).sort();
+}
+
+function getMetricColumns(tableSchema: TableSchema | undefined, groupByColumns: string[]): string[] {
+  return [...(tableSchema?.metricFieldSpecs || []), ...(tableSchema?.dimensionFieldSpecs || [])]
+  .filter(({ name }) => name && !groupByColumns.includes(name))
+  .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
+  .map(({ name }) => name)
+  .sort();
+}
+
+function getGroupByColumns(tableSchema: TableSchema | undefined, metricColumn: string): string[] {
+  return [...(tableSchema?.dimensionFieldSpecs || []), ...(tableSchema?.metricFieldSpecs || [])]
+  .filter(({ name }) => name && metricColumn !== name)
+  .map(({ name }) => name);
 }
