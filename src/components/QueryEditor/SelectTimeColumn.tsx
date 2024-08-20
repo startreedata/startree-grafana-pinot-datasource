@@ -6,18 +6,21 @@ import allLabels from '../../labels';
 
 export function SelectTimeColumn(props: {
   selected: string | undefined;
-  options: string[];
+  timeColumns: string[];
   isLoading: boolean;
   onChange: (val: string | undefined) => void;
 }) {
-  const { selected, options, isLoading, onChange } = props;
+  const { selected, timeColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeColumn;
 
-  if (options.length === 1 && selected !== options[0]) {
-    onChange(options[0]);
-  } else if (selected && !options.includes(selected)) {
-    onChange(undefined);
+  if (!selected && timeColumns.length > 0 && selected !== timeColumns[0]) {
+    onChange(timeColumns[0]);
   }
+
+  const options = [selected, ...timeColumns]
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .map((name) => ({ label: name, value: name }))
+    .sort();
 
   return (
     <div className={'gf-form'}>
@@ -26,7 +29,7 @@ export function SelectTimeColumn(props: {
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
         isLoading={isLoading}
-        options={options.map((name) => ({ label: name, value: name }))}
+        options={options}
         value={selected || null}
         onChange={(change) => {
           onChange(change.value);

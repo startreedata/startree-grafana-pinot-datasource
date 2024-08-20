@@ -6,19 +6,22 @@ import allLabels from '../../labels';
 
 export function SelectMetricColumn(props: {
   selected: string | undefined;
-  options: string[];
+  metricColumns: string[];
   isLoading: boolean;
   onChange: (val: string | undefined) => void;
   disabled: boolean;
 }) {
-  const { disabled, selected, options, isLoading, onChange } = props;
+  const { disabled, selected, metricColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricColumn;
 
-  if (options.length === 1 && selected !== options[0]) {
-    onChange(options[0]);
-  } else if (selected && !options.includes(selected)) {
-    onChange(undefined);
+  if (!selected && metricColumns.length > 0 && selected !== metricColumns[0]) {
+    onChange(metricColumns[0]);
   }
+
+  const options = [selected, ...metricColumns]
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .map((name) => ({ label: name, value: name }))
+    .sort();
 
   return (
     <div className={'gf-form'}>
@@ -27,7 +30,7 @@ export function SelectMetricColumn(props: {
         className={`${styles.QueryEditor.inputForm}`}
         invalid={!selected}
         isLoading={isLoading}
-        options={options.map((name) => ({ label: name, value: name }))}
+        options={options}
         value={selected || null}
         disabled={disabled}
         onChange={(change) => {

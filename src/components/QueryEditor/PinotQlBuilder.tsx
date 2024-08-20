@@ -1,5 +1,5 @@
 import { SelectMetricColumn } from './SelectMetricColumn';
-import { SelectAggregation } from './SelectAggregation';
+import {AggregationFunction, SelectAggregation} from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -19,8 +19,6 @@ import { DataSource } from '../../datasource';
 import {TableSchema} from "../../types/TableSchema";
 
 const MetricColumnStar = '*';
-const AggregationFunctionCount = 'COUNT';
-const AggregationFunctionNone = 'NONE';
 
 export function PinotQlBuilder(props: {
   query: PinotDataQuery;
@@ -101,22 +99,22 @@ export function PinotQlBuilder(props: {
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectTimeColumn
           selected={query.timeColumn}
-          options={timeColumns}
+          timeColumns={timeColumns}
           isLoading={isSchemaLoading}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
           selected={query.granularity}
-          disabled={query.aggregationFunction === AggregationFunctionNone}
+          disabled={query.aggregationFunction === AggregationFunction.NONE}
           onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectMetricColumn
-          selected={query.aggregationFunction === AggregationFunctionCount ? MetricColumnStar : query.metricColumn}
-          options={query.aggregationFunction === AggregationFunctionCount ? [MetricColumnStar] : metricColumns}
+          selected={query.aggregationFunction === AggregationFunction.COUNT ? MetricColumnStar : query.metricColumn}
+          metricColumns={query.aggregationFunction === AggregationFunction.COUNT ? [MetricColumnStar] : metricColumns}
           isLoading={isSchemaLoading}
-          disabled={query.aggregationFunction === AggregationFunctionCount}
+          disabled={query.aggregationFunction === AggregationFunction.COUNT}
           onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
         />
         <SelectAggregation
@@ -128,14 +126,14 @@ export function PinotQlBuilder(props: {
         <SelectGroupBy
           selected={query.groupByColumns}
           options={dimensionColumns}
-          disabled={query.aggregationFunction === AggregationFunctionNone}
+          disabled={query.aggregationFunction === AggregationFunction.NONE}
           isLoading={isSchemaLoading}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
         />
         <SelectOrderBy
           selected={query.orderBy}
           columnNames={['time', 'metric', ...(query.groupByColumns || [])]}
-          disabled={query.aggregationFunction === AggregationFunctionNone}
+          disabled={query.aggregationFunction === AggregationFunction.NONE}
           onChange={(orderBy) => onChangeAndRun({ ...query, orderBy })}
         />
       </div>
