@@ -1,6 +1,6 @@
 {
   "name": "pinot",
-  "version": "1.0.1",
+  "version": "1.0.2-SNAPSHOT",
   "description": "Pinot connector for Grafana.",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
@@ -75,7 +75,7 @@
     "react": "^17.0.0",
     "react-dom": "^17.0.0",
     "react-use": "^17.3.1",
-    "react-select":"^5.2.1",
+    "react-select": "^5.2.1",
     "rxjs": "7.8.0",
     "react-virtualized-auto-sizer": "^1.0.6",
     "tslib": "2.5.3"

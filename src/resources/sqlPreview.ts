@@ -1,11 +1,10 @@
-import { DateTime } from '@grafana/data';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
 import { OrderByClause } from '../types/OrderByClause';
 import { QueryOption } from '../types/QueryOption';
 
 export interface SqlPreviewRequest {
-  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  timeRange: { to: string | undefined; from: string | undefined };
   intervalSize: string;
   tableName: string | undefined;
   timeColumn: string | undefined;

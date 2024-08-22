@@ -15,7 +15,7 @@ export function SelectGroupBy(props: {
   const { options, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
-  if (selected && selected.filter((val) => options.includes(val)).length !== selected.length) {
+  if (selected && options.length && selected.filter((val) => options.includes(val)).length !== selected.length) {
     onChange(selected.filter((val) => options.includes(val)));
   }
 
@@ -24,6 +24,7 @@ export function SelectGroupBy(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}
+        allowCustomValue
         options={options.map((name) => ({ label: name, value: name }))}
         value={selected}
         disabled={disabled}

@@ -1,12 +1,12 @@
 import { SelectMetricColumn } from './SelectMetricColumn';
-import {AggregationFunction, SelectAggregation} from './SelectAggregation';
+import { AggregationFunction, SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
-import { PinotDataQuery } from '../../types/PinotDataQuery';
+import { interpolatePinotQlBuilderVars, interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlPreview } from '../../resources/sqlPreview';
 import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
@@ -14,9 +14,9 @@ import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
 import { SelectOrderBy } from './SelectOrderBy';
 import { SelectQueryOptions } from './SelectQueryOptions';
-import { DateTime } from '@grafana/data';
+import { DateTime, ScopedVars } from '@grafana/data';
 import { DataSource } from '../../datasource';
-import {TableSchema} from "../../types/TableSchema";
+import { TableSchema } from '../../types/TableSchema';
 
 const MetricColumnStar = '*';
 
@@ -26,64 +26,36 @@ export function PinotQlBuilder(props: {
   intervalSize: string | undefined;
   datasource: DataSource;
   tables: string[] | undefined;
+  scopedVars: ScopedVars;
   onChange: (value: PinotDataQuery) => void;
   onRunQuery: () => void;
 }) {
-  const { timeRange, tables, intervalSize, datasource, query, onChange, onRunQuery } = props;
+  const { timeRange, tables, intervalSize, datasource, query, scopedVars, onChange, onRunQuery } = props;
 
   const tableSchema = useTableSchema(datasource, query.tableName);
+  const sqlPreview = useSqlPreview(datasource, intervalSize || '0', timeRange, query, scopedVars);
 
-  const [sqlPreview, setSqlPreview] = useState('');
-
-  const updateSqlPreview = useCallback(
-    (dataQuery: PinotDataQuery) => {
-      fetchSqlPreview(datasource, {
-        aggregationFunction: dataQuery.aggregationFunction,
-        groupByColumns: dataQuery.groupByColumns,
-        intervalSize: intervalSize || '0',
-        metricColumn: dataQuery.metricColumn,
-        tableName: dataQuery.tableName,
-        timeColumn: dataQuery.timeColumn,
-        timeRange: timeRange,
-        filters: dataQuery.filters,
-        limit: dataQuery.limit,
-        granularity: dataQuery.granularity,
-        orderBy: dataQuery.orderBy,
-        queryOptions: dataQuery.queryOptions,
-      }).then((val) => val && setSqlPreview(val));
-    },
-    [datasource, intervalSize, timeRange]
-  );
-
-  useEffect(() => {
-    if (!sqlPreview) {
-      updateSqlPreview(query);
-    }
-  }, [sqlPreview, query, updateSqlPreview]);
-
-  const canRunQuery = (newQuery: PinotDataQuery) => {
+  function canRunQuery(query: PinotDataQuery) {
     return !!(
-      newQuery.tableName &&
-      newQuery.timeColumn &&
-      newQuery.aggregationFunction &&
-      (newQuery.metricColumn || newQuery.aggregationFunction === 'COUNT')
+      query.tableName &&
+      query.timeColumn &&
+      query.aggregationFunction &&
+      (query.metricColumn || query.aggregationFunction === AggregationFunction.COUNT)
     );
-  };
+  }
 
   const onChangeAndRun = (newQuery: PinotDataQuery) => {
     onChange(newQuery);
-    if (canRunQuery(newQuery)) {
-      updateSqlPreview(newQuery);
+    const interpolated = interpolateVariables(newQuery, scopedVars);
+    if (canRunQuery(interpolated)) {
       onRunQuery();
     }
   };
-
 
   const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
   const timeColumns = getTimeColumns(tableSchema);
   const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
   const dimensionColumns = getGroupByColumns(tableSchema, query.metricColumn || '');
-
 
   return (
     <>
@@ -166,21 +138,89 @@ export function PinotQlBuilder(props: {
   );
 }
 
-
 function getTimeColumns(tableSchema: TableSchema | undefined): string[] {
   return (tableSchema?.dateTimeFieldSpecs || []).map(({ name }) => name).sort();
 }
 
 function getMetricColumns(tableSchema: TableSchema | undefined, groupByColumns: string[]): string[] {
   return [...(tableSchema?.metricFieldSpecs || []), ...(tableSchema?.dimensionFieldSpecs || [])]
-  .filter(({ name }) => name && !groupByColumns.includes(name))
-  .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
-  .map(({ name }) => name)
-  .sort();
+    .filter(({ name }) => name && !groupByColumns.includes(name))
+    .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
+    .map(({ name }) => name)
+    .sort();
 }
 
 function getGroupByColumns(tableSchema: TableSchema | undefined, metricColumn: string): string[] {
   return [...(tableSchema?.dimensionFieldSpecs || []), ...(tableSchema?.metricFieldSpecs || [])]
-  .filter(({ name }) => name && metricColumn !== name)
-  .map(({ name }) => name);
+    .filter(({ name }) => name && metricColumn !== name)
+    .map(({ name }) => name);
+}
+
+function useSqlPreview(
+  datasource: DataSource,
+  intervalSize: string,
+  timeRange: {
+    to: DateTime | undefined;
+    from: DateTime | undefined;
+  },
+  query: PinotDataQuery,
+  scopedVars: ScopedVars
+): string {
+  const [sqlPreview, setSqlPreview] = useState('');
+
+  const to = timeRange.to?.toISOString();
+  const from = timeRange.from?.toISOString();
+
+  // TODO: scopedVars is rebuilt whenever the query is run, but not when dashboard variables are changed.
+  //  This means that changing dashboard variables will not trigger a refresh of the sql preview.
+  //  Ideally, we have a mechanism to refresh the sql preview whenever dashboard variables are changed.
+  useEffect(() => {
+    const interpolated = interpolatePinotQlBuilderVars(
+      {
+        aggregationFunction: query.aggregationFunction,
+        groupByColumns: query.groupByColumns,
+        metricColumn: query.metricColumn,
+        timeColumn: query.timeColumn,
+        filters: query.filters,
+        limit: query.limit,
+        granularity: query.granularity,
+        orderBy: query.orderBy,
+        queryOptions: query.queryOptions,
+      },
+      scopedVars
+    );
+
+    fetchSqlPreview(datasource, {
+      aggregationFunction: interpolated.aggregationFunction,
+      groupByColumns: interpolated.groupByColumns,
+      intervalSize: intervalSize,
+      metricColumn: interpolated.metricColumn,
+      tableName: query.tableName,
+      timeColumn: interpolated.timeColumn,
+      timeRange: { to, from },
+      filters: interpolated.filters,
+      limit: interpolated.limit,
+      granularity: interpolated.granularity,
+      orderBy: interpolated.orderBy,
+      queryOptions: interpolated.queryOptions,
+    }).then((val) => val && setSqlPreview(val));
+  }, [
+    datasource,
+    intervalSize,
+    scopedVars,
+    to,
+    from,
+    query.tableName,
+    query.groupByColumns,
+    query.metricColumn,
+    query.timeColumn,
+    query.filters,
+    query.limit,
+    query.orderBy,
+    query.queryOptions,
+    query.granularity,
+    query.aggregationFunction,
+  ]);
+
+  return sqlPreview;
 }

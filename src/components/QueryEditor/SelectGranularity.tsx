@@ -34,6 +34,7 @@ export function SelectGranularity(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
+        allowCustomValue
         placeholder={'auto'}
         options={options}
         value={selected||null}

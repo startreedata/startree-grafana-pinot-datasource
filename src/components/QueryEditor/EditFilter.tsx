@@ -75,7 +75,7 @@ export function EditFilter(props: {
 
   const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
 
-  const [valueOptions, setValueOptions] = useState<Array<SelectableValue<string>>>();
+  const [distinctValues, setDistinctValues] = useState<string[]>();
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const loadValueOptions = () => {
     setIsLoadingValues(true);
@@ -86,10 +86,13 @@ export function EditFilter(props: {
       timeRange: timeRange,
       filters: remainingFilters,
     })
-      .then((vals) => vals?.map((val) => ({ label: val, value: val })))
-      .then((vals) => setValueOptions(vals))
+      .then((vals) => setDistinctValues(vals))
       .then(() => setIsLoadingValues(false));
   };
+
+  const valueOptions = [...(thisFilter.valueExprs || []), ...(distinctValues || [])]
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .map((val) => ({ label: val, value: val }));
 
   return (
     <InputGroup>

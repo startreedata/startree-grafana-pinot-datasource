@@ -27,6 +27,7 @@ export function SelectTimeColumn(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
+        allowCustomValue
         invalid={!selected}
         isLoading={isLoading}
         options={options}
