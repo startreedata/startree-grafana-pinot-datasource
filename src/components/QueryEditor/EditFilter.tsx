@@ -75,7 +75,7 @@ export function EditFilter(props: {
 
   const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
 
-  const [distinctValues, setDistinctValues] = useState<Array<string>>();
+  const [distinctValues, setDistinctValues] = useState<string[]>();
   const [isLoadingValues, setIsLoadingValues] = useState(false);
   const loadValueOptions = () => {
     setIsLoadingValues(true);
