@@ -15,7 +15,7 @@ export function SelectGroupBy(props: {
   const { options, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
-  if (selected && selected.filter((val) => options.includes(val)).length !== selected.length) {
+  if (selected && options.length && selected.filter((val) => options.includes(val)).length !== selected.length) {
     onChange(selected.filter((val) => options.includes(val)));
   }
 
