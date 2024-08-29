@@ -32,6 +32,7 @@ const DemoK8sNamespace = "cell-9itmgf-default"
 const DemoK8sPod = "pinot-grafana-demo-0"
 const DemoContainerPluginPath = "/var/lib/grafana/plugins"
 const DemoGrafanaUrl = "https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud"
+const DemoK8sContext = "scp-acc-2j9kjvzye-2j9itmj9e:Apps_Team:startree-apps"
 
 const ZipCmd = "zip"
 const UnzipCmd = "unzip"
@@ -41,7 +42,7 @@ const CloudVersionV1 = "v1"
 const CloudVersionV2 = "v2"
 
 func printUsage() {
-	fmt.Printf("Usage: %s create|resign|install [ROOT_URLS...]\n", os.Args[0])
+	fmt.Printf("Usage: %s create|resign|install|demo [ROOT_URLS...]\n", os.Args[0])
 }
 
 func main() {
@@ -68,6 +69,9 @@ func main() {
 
 	case "install":
 		releaseManager.InstallPluginIntoDataPlane()
+
+	case "demo":
+		releaseManager.DeployDemo()
 
 	default:
 		printUsage()
@@ -121,6 +125,13 @@ func (x *ReleaseManager) ResignRelease(rootUrls []string) {
 }
 
 func (x *ReleaseManager) DeployDemo() {
+	fmt.Println("Preparing demo...")
+
+	if x.getK8sContext() != DemoK8sContext {
+		fmt.Println("Please set k8s context from https://admin-portal.startree.cloud/accounts/acct_2X0clUhn6jdER10iW0YFZuEbnvt/organizations/org-2j9iooe5zcog/environments/env-2j9itlsbtdax/account")
+		os.Exit(1)
+	}
+
 	localArchive := fmt.Sprintf("%s.zip", PluginName)
 	containerArchive := path.Join(DemoContainerPluginPath, localArchive)
 
@@ -128,15 +139,16 @@ func (x *ReleaseManager) DeployDemo() {
 	x.signPlugin([]string{DemoGrafanaUrl})
 	x.zipPlugin(localArchive)
 
-	runCmd(nil, nil,
-		KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
 		"cp", localArchive, DemoK8sPod+":"+containerArchive)
-	runCmd(nil, nil,
-		KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
 		"exec", DemoK8sPod, "--", "rm", "-rf", path.Join(DemoContainerPluginPath, PluginName))
-	runCmd(nil, nil,
-		KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
 		"exec", DemoK8sPod, "--", "unzip", containerArchive, "-d", DemoContainerPluginPath)
+	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
+		"delete", "pod", DemoK8sPod)
+
+	fmt.Println("Demo deployed.")
 }
 
 func (x *ReleaseManager) InstallPluginIntoDataPlane() {
