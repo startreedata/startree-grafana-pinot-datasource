@@ -1,18 +1,14 @@
+import { FormLabel } from './FormLabel';
 import { Input } from '@grafana/ui';
 import { styles } from '../../styles';
 import React, { ChangeEvent } from 'react';
-import allLabels from '../../labels';
-import { FormLabel } from './FormLabel';
 
-const DefaultTimeColumnFormat = '1:MILLISECONDS:EPOCH';
-
-export function InputTimeColumnFormat(props: { current: string | undefined; onChange: (val: string) => void }) {
-  const { current, onChange } = props;
-  const labels = allLabels.components.QueryEditor.timeFormat;
-
-  if (current === undefined) {
-    onChange(DefaultTimeColumnFormat);
-  }
+export function InputTextField(props: {
+  current: string | undefined;
+  labels: { label: string; tooltip: string };
+  onChange: (val: string) => void;
+}) {
+  const { current, labels, onChange } = props;
 
   return (
     <div className={'gf-form'}>

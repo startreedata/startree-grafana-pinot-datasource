@@ -44,7 +44,11 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 
 	fields := make([]*data.Field, 0, len(metricSeries)+1)
 	for _, series := range metricSeries {
-		fields = append(fields, data.NewField(series.name, series.labels, series.values))
+		field := data.NewField(params.MetricName, series.labels, series.values)
+		field.SetConfig(&data.FieldConfig{
+			DisplayNameFromDS: series.name,
+		})
+		fields = append(fields, field)
 	}
 	fields = append(fields, data.NewField("time", nil, timeCol))
 
@@ -104,10 +108,10 @@ func PivotToTimeSeries(metrics []Metric, metricName string, legend string) ([]ti
 
 	timeSeriesMap := make(map[string]MetricSeries)
 	for _, met := range metrics {
-		tsKey := GetSeriesKey(metricName, met.Labels)
+		tsKey := GetSeriesKey(met.Labels)
 		if _, ok := timeSeriesMap[tsKey]; !ok {
 			timeSeriesMap[tsKey] = MetricSeries{
-				name:   FormatSeriesName(tsKey, legend, met.Labels),
+				name:   FormatSeriesName(legend, met.Labels),
 				values: make([]*float64, len(timeCol)),
 				labels: met.Labels,
 			}
@@ -137,11 +141,9 @@ func GetTimeColumn(metrics []Metric) []time.Time {
 	return result[:]
 }
 
-func FormatSeriesName(defaultName string, legend string, labels map[string]string) string {
+func FormatSeriesName(legend string, labels map[string]string) string {
 	legend = strings.TrimSpace(legend)
-	if legend == "" {
-		return defaultName
-	} else if !strings.Contains(legend, "{{") {
+	if !strings.Contains(legend, "{{") {
 		return legend
 	}
 
@@ -158,15 +160,20 @@ func FormatSeriesName(defaultName string, legend string, labels map[string]strin
 }
 
 // GetSeriesKey returns a unique string for the set of labels.
-func GetSeriesKey(name string, labels map[string]string) string {
+func GetSeriesKey(labels map[string]string) string {
 	if len(labels) == 0 {
-		return name
+		return ""
 	}
 
-	formattedLabels := make([]string, 0, len(labels))
-	for key, value := range labels {
-		formattedLabels = append(formattedLabels, fmt.Sprintf("%s=%s", key, value))
+	keys := make([]string, 0, len(labels))
+	for key := range labels {
+		keys = append(keys, key)
 	}
-	sort.Strings(formattedLabels)
-	return fmt.Sprintf(`%s{%s}`, name, strings.Join(formattedLabels, ","))
+	sort.Strings(keys)
+
+	formatted := make([]string, 0, len(labels))
+	for _, key := range keys {
+		formatted = append(formatted, fmt.Sprintf("%s=%s", key, labels[key]))
+	}
+	return strings.Join(formatted, "&")
 }

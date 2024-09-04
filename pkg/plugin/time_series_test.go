@@ -22,11 +22,6 @@ func TestFormatSeriesName(t *testing.T) {
 		want string
 	}{
 		{
-			name: "no legend",
-			args: Args{defaultName: "default"},
-			want: "default",
-		},
-		{
 			name: "legend={{city }}-{{ state}}-{{ dim.Region&&*##@name }}",
 			args: Args{
 				legend: "{{city }}-{{ state}}-{{ dim.Region&&*##@name }}",
@@ -52,7 +47,7 @@ func TestFormatSeriesName(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FormatSeriesName(tt.args.defaultName, tt.args.legend, tt.args.labels)
+			got := FormatSeriesName(tt.args.legend, tt.args.labels)
 			assert.Equal(t, tt.want, got)
 		})
 	}
