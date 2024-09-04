@@ -2,11 +2,11 @@ import React from 'react';
 import labels from '../../labels';
 import { InputTextField } from './InputTextField';
 
-export function InputTimeColumnAlias(props: { current: string | undefined; onChange: (val: string) => void }) {
+export function InputMetricLegend(props: { current: string | undefined; onChange: (val: string) => void }) {
   return (
     <InputTextField
       current={props.current}
-      labels={labels.components.QueryEditor.timeAlias}
+      labels={labels.components.QueryEditor.metricLegend}
       onChange={props.onChange}
     />
   );

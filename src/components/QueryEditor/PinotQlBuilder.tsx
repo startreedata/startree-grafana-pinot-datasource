@@ -17,6 +17,7 @@ import { SelectQueryOptions } from './SelectQueryOptions';
 import { DateTime, ScopedVars } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { TableSchema } from '../../types/TableSchema';
+import { InputMetricLegend } from './InputMetricLegend';
 
 const MetricColumnStar = '*';
 
@@ -129,10 +130,14 @@ export function PinotQlBuilder(props: {
         />
       </div>
       <div>
-        <InputLimit current={query.limit} onChange={(limit) => onChangeAndRun({ ...query, limit: limit })} />
+        <InputLimit current={query.limit} onChange={(limit) => onChangeAndRun({ ...query, limit })} />
       </div>
+
       <div>
         <SqlPreview sql={sqlPreview} />
+      </div>
+      <div>
+        <InputMetricLegend current={query.legend} onChange={(legend) => onChangeAndRun({ ...query, legend })} />
       </div>
     </>
   );
