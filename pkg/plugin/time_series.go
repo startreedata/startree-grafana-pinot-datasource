@@ -4,18 +4,54 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 )
 
-type TimeSeriesMetric struct {
+type TimeSeriesExtractorParams struct {
+	MetricName        string
+	Legend            string
+	TimeColumnAlias   string
+	TimeColumnFormat  string
+	MetricColumnAlias string
+}
+
+type Metric struct {
 	Timestamp time.Time
 	Value     float64
 	Labels    map[string]string
 }
 
-func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]TimeSeriesMetric, error) {
+type MetricSeries struct {
+	name   string
+	values []*float64
+	labels map[string]string
+}
+
+func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot.ResultTable) (*data.Frame, error) {
+	metrics, err := ExtractMetrics(results, params.TimeColumnAlias, params.TimeColumnFormat, params.MetricColumnAlias)
+	if err != nil {
+		return nil, err
+	}
+
+	timeCol, metricSeries := PivotToTimeSeries(metrics, params.MetricName, params.Legend)
+	slices.SortFunc(metricSeries, func(a, b MetricSeries) int {
+		return strings.Compare(a.name, b.name)
+	})
+
+	fields := make([]*data.Field, 0, len(metricSeries)+1)
+	for _, series := range metricSeries {
+		fields = append(fields, data.NewField(series.name, series.labels, series.values))
+	}
+	fields = append(fields, data.NewField("time", nil, timeCol))
+
+	return data.NewFrame("response", fields...), nil
+}
+
+func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
 	timeColIdx, err := GetColumnIdx(results, timeColumnAlias)
 	if err != nil {
 		return nil, err
@@ -41,14 +77,14 @@ func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string
 		dimensions[name] = ExtractStringColumn(results, colIdx)
 	}
 
-	metrics := make([]TimeSeriesMetric, results.GetRowCount())
+	metrics := make([]Metric, results.GetRowCount())
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
 		labels := make(map[string]string, len(dimensions))
 		for name, col := range dimensions {
 			labels[name] = col[rowIdx]
 		}
 
-		metrics[rowIdx] = TimeSeriesMetric{
+		metrics[rowIdx] = Metric{
 			Timestamp: timeCol[rowIdx],
 			Value:     metCol[rowIdx],
 			Labels:    labels,
@@ -58,7 +94,7 @@ func ExtractTimeSeriesMetrics(results *pinot.ResultTable, timeColumnAlias string
 	return metrics, nil
 }
 
-func PivotToDataFrame(metricName string, metrics []TimeSeriesMetric) *data.Frame {
+func PivotToTimeSeries(metrics []Metric, metricName string, legend string) ([]time.Time, []MetricSeries) {
 	timeCol := GetTimeColumn(metrics)
 
 	timestampToIdx := make(map[time.Time]int, len(timeCol))
@@ -66,32 +102,29 @@ func PivotToDataFrame(metricName string, metrics []TimeSeriesMetric) *data.Frame
 		timestampToIdx[val] = i
 	}
 
-	timeSeries := make(map[string][]*float64)
+	timeSeriesMap := make(map[string]MetricSeries)
 	for _, met := range metrics {
-		tsName := GetSeriesName(metricName, met.Labels)
-		if _, ok := timeSeries[tsName]; !ok {
-			timeSeries[tsName] = make([]*float64, len(timeCol))
+		tsKey := GetSeriesKey(metricName, met.Labels)
+		if _, ok := timeSeriesMap[tsKey]; !ok {
+			timeSeriesMap[tsKey] = MetricSeries{
+				name:   FormatSeriesName(tsKey, legend, met.Labels),
+				values: make([]*float64, len(timeCol)),
+				labels: met.Labels,
+			}
 		}
 		colIdx := timestampToIdx[met.Timestamp]
 		value := met.Value
-		timeSeries[tsName][colIdx] = &value
+		timeSeriesMap[tsKey].values[colIdx] = &value
 	}
 
-	seriesNames := make([]string, 0, len(timeSeries))
-	for name := range timeSeries {
-		seriesNames = append(seriesNames, name)
+	metricSeries := make([]MetricSeries, 0, len(timeSeriesMap))
+	for _, ts := range timeSeriesMap {
+		metricSeries = append(metricSeries, ts)
 	}
-	sort.Strings(seriesNames)
-
-	fields := make([]*data.Field, 0, len(timeSeries)+1)
-	for _, seriesName := range seriesNames {
-		fields = append(fields, data.NewField(seriesName, nil, timeSeries[seriesName]))
-	}
-	fields = append(fields, data.NewField("time", nil, timeCol))
-	return data.NewFrame("response", fields...)
+	return timeCol, metricSeries
 }
 
-func GetTimeColumn(metrics []TimeSeriesMetric) []time.Time {
+func GetTimeColumn(metrics []Metric) []time.Time {
 	observed := make(map[time.Time]bool)
 	result := make([]time.Time, 0, len(metrics))
 	for _, metric := range metrics {
@@ -104,7 +137,28 @@ func GetTimeColumn(metrics []TimeSeriesMetric) []time.Time {
 	return result[:]
 }
 
-func GetSeriesName(name string, labels map[string]string) string {
+func FormatSeriesName(defaultName string, legend string, labels map[string]string) string {
+	legend = strings.TrimSpace(legend)
+	if legend == "" {
+		return defaultName
+	} else if !strings.Contains(legend, "{{") {
+		return legend
+	}
+
+	for key, val := range labels {
+		pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
+		r, err := regexp.Compile(pattern)
+		if err != nil {
+			Logger.Info("Error compiling legend regex", err)
+			continue
+		}
+		legend = r.ReplaceAllString(legend, val)
+	}
+	return legend
+}
+
+// GetSeriesKey returns a unique string for the set of labels.
+func GetSeriesKey(name string, labels map[string]string) string {
 	if len(labels) == 0 {
 		return name
 	}
