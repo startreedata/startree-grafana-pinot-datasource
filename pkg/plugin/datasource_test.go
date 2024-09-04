@@ -1,29 +1,25 @@
 package plugin
 
 import (
-	"fmt"
+	"context"
+	"encoding/json"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"regexp"
 	"testing"
 )
 
 func TestDatasource(t *testing.T) {
-	got := formatString(t, "{{city }}, {{ state}} {{ dim.My_Val&&*##@name }}", map[string]string{
-		"city":                 "Albany",
-		"state":                "New York",
-		"dim.My_Val&&*##@name": "is very nice",
+	datasource, err := NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+		JSONData: json.RawMessage(
+			`{"brokerUrl":"http://localhost:8000","controllerUrl":"http://localhost:9000","tokenType":"bearer"}`),
+		DecryptedSecureJSONData: map[string]string{},
 	})
+	require.NoError(t, err)
 
-	assert.Equal(t, "Albany, New York is very nice", got)
-}
-
-func formatString(t *testing.T, legend string, data map[string]string) string {
-	for key := range data {
-		pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
-		r, err := regexp.Compile(pattern)
-		require.NoError(t, err)
-		legend = r.ReplaceAllString(legend, data[key])
-	}
-	return legend
+	require.NotNil(t, datasource)
+	pinotDatasource := datasource.(*Datasource)
+	assert.NotNil(t, pinotDatasource.CallResourceHandler)
+	assert.NotNil(t, pinotDatasource.CheckHealthHandler)
+	assert.NotNil(t, pinotDatasource.QueryDataHandler)
 }
