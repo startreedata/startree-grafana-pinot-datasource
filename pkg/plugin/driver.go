@@ -33,6 +33,7 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				Granularity:         query.Granularity,
 				OrderByClauses:      query.OrderByClauses,
 				QueryOptions:        query.QueryOptions,
+				Legend:              query.Legend,
 			})
 		default:
 			if query.PinotQlCode == "" {
@@ -49,6 +50,7 @@ func NewDriver(query PinotDataQuery, tableSchema TableSchema, timeRange backend.
 				IntervalSize:      query.IntervalSize,
 				TableSchema:       tableSchema,
 				DisplayType:       query.DisplayType,
+				Legend:            query.Legend,
 			})
 		}
 	}

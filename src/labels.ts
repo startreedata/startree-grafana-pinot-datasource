@@ -38,7 +38,8 @@ export default {
         placeholder: 'metric',
       },
       timeAlias: {
-        tooltip: 'The name of the time column in the query result. The time column should be in 1:MILLISECONDS:EPOCH format. Required for time series display.',
+        tooltip:
+          'The name of the time column in the query result. The time column should be in 1:MILLISECONDS:EPOCH format. Required for time series display.',
         label: 'Time Alias',
       },
       timeFormat: {
@@ -99,6 +100,11 @@ export default {
         help: 'https://docs.pinot.apache.org/users/user-guide-query/query-options',
         tooltip: 'Add query options.',
         label: 'Query Options',
+      },
+      metricLegend: {
+        tooltip:
+          'Series name override or template. Ex. {{hostname}} will be replaced with the label value for hostname.',
+        label: 'Legend',
       },
     },
   },

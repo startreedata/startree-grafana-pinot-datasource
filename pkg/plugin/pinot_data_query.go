@@ -23,6 +23,7 @@ type PinotDataQuery struct {
 	Granularity         string            `json:"granularity"`
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
 	QueryOptions        []QueryOption     `json:"queryOptions"`
+	Legend              string            `json:"legend"`
 
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`

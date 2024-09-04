@@ -48,6 +48,7 @@ export interface PinotDataQuery extends DataQuery {
   filters?: DimensionFilter[];
   orderBy?: OrderByClause[];
   queryOptions?: QueryOption[];
+  legend?: string;
 
   // PinotQl Code
   pinotQlCode?: string;

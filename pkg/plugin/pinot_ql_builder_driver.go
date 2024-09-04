@@ -41,6 +41,7 @@ type PinotQlBuilderParams struct {
 	MaxDataPoints       int64
 	OrderByClauses      []OrderByClause
 	QueryOptions        []QueryOption
+	Legend              string
 }
 
 func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
@@ -105,11 +106,13 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 }
 
 func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.resolveTimeColumnFormat(), p.MetricColumnAlias)
-	if err != nil {
-		return nil, err
-	}
-	return PivotToDataFrame(p.resolveMetricName(), metrics), nil
+	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
+		MetricName:        p.resolveMetricName(),
+		Legend:            p.Legend,
+		TimeColumnAlias:   p.TimeColumnAlias,
+		TimeColumnFormat:  p.resolveTimeColumnFormat(),
+		MetricColumnAlias: p.MetricColumnAlias,
+	}, results)
 }
 
 func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {

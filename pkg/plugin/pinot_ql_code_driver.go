@@ -21,6 +21,7 @@ type PinotQlCodeDriverParams struct {
 	IntervalSize      time.Duration
 	TableSchema       TableSchema
 	DisplayType       string
+	Legend            string
 }
 
 type PinotQlCodeDriver struct {
@@ -79,11 +80,13 @@ func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Fr
 }
 
 func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable) (*data.Frame, error) {
-	metrics, err := ExtractTimeSeriesMetrics(results, p.TimeColumnAlias, p.TimeColumnFormat, p.MetricColumnAlias)
-	if err != nil {
-		return nil, err
-	}
-	return PivotToDataFrame(p.MetricColumnAlias, metrics), nil
+	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
+		MetricName:        p.MetricColumnAlias,
+		Legend:            p.Legend,
+		TimeColumnAlias:   p.TimeColumnAlias,
+		TimeColumnFormat:  p.TimeColumnFormat,
+		MetricColumnAlias: p.MetricColumnAlias,
+	}, results)
 }
 
 func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*data.Frame, error) {
