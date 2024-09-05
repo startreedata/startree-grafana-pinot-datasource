@@ -11,7 +11,7 @@ func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		response := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
-			backend.Logger.Info(fmt.Sprintf("received query: %s", string(query.JSON)))
+			backend.Logger.Debug(fmt.Sprintf("received query: %s", string(query.JSON)))
 			response.Responses[query.RefID] = fetchData(client, ctx, query)
 		}
 		return response, nil
