@@ -6,12 +6,17 @@
   "metrics": true,
   "backend": true,
   "executable": "gpx_pinot",
+  "alerting": true,
   "info": {
     "description": "Pinot",
     "author": {
       "name": "Startree"
     },
-    "keywords": ["datasource"],
+    "keywords": [
+      "pinot",
+      "startree",
+      "datasource"
+    ],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
