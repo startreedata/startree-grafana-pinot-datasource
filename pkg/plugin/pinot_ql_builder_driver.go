@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
@@ -10,12 +11,15 @@ import (
 	"time"
 )
 
-const DefaultTimeColumnAlias = "time"
-const DefaultMetricColumnAlias = "metric"
+const (
+	DefaultTimeColumnAlias   = "time"
+	DefaultMetricColumnAlias = "metric"
 
-const AggregationFunctionCount = "COUNT"
-const AggregationFunctionNone = "NONE"
-const DefaultLimit = 100_000
+	AggregationFunctionCount = "COUNT"
+	AggregationFunctionNone  = "NONE"
+
+	DefaultLimit = 100_000
+)
 
 type PinotQlBuilderDriver struct {
 	PinotQlBuilderParams
@@ -26,6 +30,7 @@ type PinotQlBuilderDriver struct {
 }
 
 type PinotQlBuilderParams struct {
+	*PinotClient
 	TableSchema
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
@@ -72,6 +77,19 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		TimeExpressionBuilder: exprBuilder,
 		TimeGranularity:       timeGranularity,
 	}, nil
+}
+
+func (p *PinotQlBuilderDriver) Execute(ctx context.Context) (*data.Frame, error) {
+	sql, err := p.RenderPinotSql()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.ExecuteSQL(ctx, p.TableName, sql)
+	if err != nil {
+		return nil, err
+	}
+	return p.ExtractResults(resp.ResultTable)
 }
 
 func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {

@@ -5,7 +5,8 @@ import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
-import { ScopedVars } from '@grafana/data'; // TODO: It's not entirely clear to me how these defaults are populated.
+import { ScopedVars } from '@grafana/data';
+import { PinotVariableQuery } from './PinotVariableQuery'; // TODO: It's not entirely clear to me how these defaults are populated.
 
 // TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
@@ -56,6 +57,9 @@ export interface PinotDataQuery extends DataQuery {
   timeColumnFormat?: string;
   metricColumnAlias?: string;
   displayType?: string;
+
+  // Pinot Variable Query
+  variableQuery?: PinotVariableQuery;
 }
 
 export function interpolatePinotQlBuilderVars(

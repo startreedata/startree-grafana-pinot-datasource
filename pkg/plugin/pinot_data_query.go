@@ -14,6 +14,7 @@ type PinotDataQuery struct {
 	TableName    string        `json:"tableName"`
 	IntervalSize time.Duration `json:"intervalSize"`
 
+	// Builder query
 	TimeColumn          string            `json:"timeColumn"`
 	MetricColumn        string            `json:"metricColumn"`
 	GroupByColumns      []string          `json:"groupByColumns"`
@@ -25,11 +26,20 @@ type PinotDataQuery struct {
 	QueryOptions        []QueryOption     `json:"queryOptions"`
 	Legend              string            `json:"legend"`
 
+	// Code query
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`
 	TimeColumnFormat  string `json:"timeColumnFormat"`
 	MetricColumnAlias string `json:"metricColumnAlias"`
 	DisplayType       string `json:"displayType"`
+
+	// Variable query
+	VariableQuery struct {
+		VariableType string `json:"variableType"`
+		PinotQlCode  string `json:"pinotQlCode"`
+		ColumnName   string `json:"columnName"`
+		ColumnType   string `json:"columnType"`
+	} `json:"variableQuery"`
 }
 
 type TimeRange struct {

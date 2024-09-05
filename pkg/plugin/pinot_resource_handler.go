@@ -27,6 +27,7 @@ func NewPinotResourceHandler(client *PinotClient) *PinotResourceHandler {
 	router.HandleFunc("/preview", adaptHandler(handler.SqlBuilderPreview))
 	router.HandleFunc("/codePreview", adaptHandler(handler.SqlCodePreview))
 	router.HandleFunc("/distinctValues", adaptHandler(handler.DistinctValues))
+	router.HandleFunc("/distinctValuesSqlPreview", adaptHandler(handler.DistinctValuesSqlPreview))
 
 	return &handler
 }
@@ -211,9 +212,9 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 }
 
 type DistinctValuesRequest struct {
-	TimeRange        TimeRange         `json:"timeRange"`
 	TableName        string            `json:"tableName"`
 	ColumnName       string            `json:"columnName"`
+	TimeRange        *TimeRange        `json:"timeRange"`
 	TimeColumn       string            `json:"timeColumn"`
 	DimensionFilters []DimensionFilter `json:"filters"`
 }
@@ -223,29 +224,12 @@ type DistinctValuesResponse struct {
 }
 
 func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) (int, *DistinctValuesResponse, error) {
-	if data.TableName == "" || data.ColumnName == "" {
-		// Nothing to do.
+	sql, err := x.getDistinctValuesSql(ctx, data)
+	if err != nil {
+		return http.StatusInternalServerError, nil, err
+	}
+	if sql == "" {
 		return http.StatusOK, &DistinctValuesResponse{}, nil
-	}
-
-	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-	if err != nil {
-		return http.StatusInternalServerError, nil, err
-	}
-
-	exprBuilder, err := TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
-	if err != nil {
-		return http.StatusInternalServerError, nil, err
-	}
-
-	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName:           data.ColumnName,
-		TableName:            data.TableName,
-		TimeFilterExpr:       exprBuilder.TimeFilterExpr(data.TimeRange),
-		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
-	})
-	if err != nil {
-		return http.StatusInternalServerError, nil, err
 	}
 
 	results, err := x.client.ExecuteSQL(ctx, data.TableName, sql)
@@ -256,6 +240,46 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 	return http.StatusOK, &DistinctValuesResponse{
 		ValueExprs: ExtractColumnExpr(results.ResultTable, 0),
 	}, nil
+}
+
+type DistinctValuesSqlPreviewResponse struct {
+	Sql string `json:"sql"`
+}
+
+func (x *PinotResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) (int, *DistinctValuesSqlPreviewResponse, error) {
+	sql, err := x.getDistinctValuesSql(ctx, data)
+	if err != nil {
+		return http.StatusInternalServerError, nil, err
+	}
+	return http.StatusOK, &DistinctValuesSqlPreviewResponse{Sql: sql}, nil
+}
+
+func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data DistinctValuesRequest) (string, error) {
+	if data.TableName == "" || data.ColumnName == "" {
+		return "", nil
+	}
+
+	var timeFilterExpr string
+	if data.TimeRange != nil {
+		tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
+		if err != nil {
+			return "", err
+		}
+
+		exprBuilder, err := TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
+		if err != nil {
+			return "", err
+		}
+
+		timeFilterExpr = exprBuilder.TimeFilterExpr(*data.TimeRange)
+	}
+
+	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+		ColumnName:           data.ColumnName,
+		TableName:            data.TableName,
+		TimeFilterExpr:       timeFilterExpr,
+		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
+	})
 }
 
 func adaptHandler[A any, B any](handler func(ctx context.Context, data A) (int, B, error)) http.HandlerFunc {

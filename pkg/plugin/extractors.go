@@ -164,7 +164,7 @@ func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, boo
 
 func GetDistinctValues[T comparable](vals []T) []T {
 	observed := make(map[T]interface{})
-	result := make([]T, 0, len(vals))
+	var result []T
 	for _, val := range vals {
 		if _, ok := observed[val]; !ok {
 			result = append(result, val)

@@ -7,7 +7,7 @@ import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { interpolatePinotQlBuilderVars, interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
-import { fetchSqlPreview } from '../../resources/sqlPreview';
+import { fetchSqlBuilderPreview } from '../../resources/sqlPreview';
 import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
@@ -195,7 +195,7 @@ function useSqlPreview(
       scopedVars
     );
 
-    fetchSqlPreview(datasource, {
+    fetchSqlBuilderPreview(datasource, {
       aggregationFunction: interpolated.aggregationFunction,
       groupByColumns: interpolated.groupByColumns,
       intervalSize: intervalSize,

@@ -1,16 +1,20 @@
 package plugin
 
 import (
+	"context"
 	"errors"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"time"
 )
 
-const DisplayTypeTable = "TABLE"
-const DisplayTypeTimeSeries = "TIMESERIES"
+const (
+	DisplayTypeTable      = "TABLE"
+	DisplayTypeTimeSeries = "TIMESERIES"
+)
 
 type PinotQlCodeDriverParams struct {
+	*PinotClient
 	Code              string
 	DatabaseName      string
 	TableName         string
@@ -25,8 +29,8 @@ type PinotQlCodeDriverParams struct {
 }
 
 type PinotQlCodeDriver struct {
-	PinotQlCodeDriverParams
-	MacroEngine
+	params      PinotQlCodeDriverParams
+	macroEngine MacroEngine
 }
 
 func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, error) {
@@ -48,20 +52,36 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 		params.MetricColumnAlias = DefaultMetricColumnAlias
 	}
 
+	macroEngine := MacroEngine{
+		TableName:    params.TableName,
+		TableSchema:  params.TableSchema,
+		TimeRange:    params.TimeRange,
+		IntervalSize: params.IntervalSize,
+		TimeAlias:    params.TimeColumnAlias,
+		MetricAlias:  params.MetricColumnAlias,
+	}
+
 	return &PinotQlCodeDriver{
-		PinotQlCodeDriverParams: params,
-		MacroEngine: MacroEngine{
-			TableName:    params.TableName,
-			TableSchema:  params.TableSchema,
-			TimeRange:    params.TimeRange,
-			IntervalSize: params.IntervalSize,
-			TimeAlias:    params.TimeColumnAlias,
-			MetricAlias:  params.MetricColumnAlias,
-		}}, nil
+		params:      params,
+		macroEngine: macroEngine,
+	}, nil
+}
+
+func (p *PinotQlCodeDriver) Execute(ctx context.Context) (*data.Frame, error) {
+	sql, err := p.RenderPinotSql()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.params.PinotClient.ExecuteSQL(ctx, p.params.TableName, sql)
+	if err != nil {
+		return nil, err
+	}
+	return p.ExtractResults(resp.ResultTable)
 }
 
 func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {
-	rendered, err := p.MacroEngine.ExpandMacros(p.Code)
+	rendered, err := p.macroEngine.ExpandMacros(p.params.Code)
 	if err != nil {
 		return "", err
 	}
@@ -69,7 +89,7 @@ func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {
 }
 
 func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
-	switch p.DisplayType {
+	switch p.params.DisplayType {
 	case DisplayTypeTable:
 		return p.ExtractTableResults(results)
 	case DisplayTypeTimeSeries:
@@ -81,11 +101,11 @@ func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Fr
 
 func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
-		MetricName:        p.MetricColumnAlias,
-		Legend:            p.Legend,
-		TimeColumnAlias:   p.TimeColumnAlias,
-		TimeColumnFormat:  p.TimeColumnFormat,
-		MetricColumnAlias: p.MetricColumnAlias,
+		MetricName:        p.params.MetricColumnAlias,
+		Legend:            p.params.Legend,
+		TimeColumnAlias:   p.params.TimeColumnAlias,
+		TimeColumnFormat:  p.params.TimeColumnFormat,
+		MetricColumnAlias: p.params.MetricColumnAlias,
 	}, results)
 }
 
@@ -107,15 +127,15 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*da
 }
 
 func (p *PinotQlCodeDriver) extractTableTime(results *pinot.ResultTable) (int, *data.Field) {
-	timeIdx, err := GetColumnIdx(results, p.TimeColumnAlias)
+	timeIdx, err := GetColumnIdx(results, p.params.TimeColumnAlias)
 	if err != nil {
 		return -1, nil
 	}
 
-	timeCol, err := ExtractTimeColumn(results, timeIdx, p.TimeColumnFormat)
+	timeCol, err := ExtractTimeColumn(results, timeIdx, p.params.TimeColumnFormat)
 	if err != nil {
 		return -1, nil
 	}
 
-	return timeIdx, data.NewField(p.TimeColumnAlias, nil, timeCol)
+	return timeIdx, data.NewField(p.params.TimeColumnAlias, nil, timeCol)
 }

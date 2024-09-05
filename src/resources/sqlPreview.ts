@@ -23,7 +23,7 @@ interface SqlPreviewResponse {
   error: string | null;
 }
 
-export async function fetchSqlPreview(datasource: DataSource, request: SqlPreviewRequest): Promise<string> {
+export async function fetchSqlBuilderPreview(datasource: DataSource, request: SqlPreviewRequest): Promise<string> {
   if (
     request.intervalSize &&
     request.intervalSize !== '0' &&
