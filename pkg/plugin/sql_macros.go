@@ -16,44 +16,25 @@ type MacroEngine struct {
 	IntervalSize time.Duration
 }
 
-type Macro struct {
-	name   string
-	re     *regexp.Regexp
-	render func(args []string) (string, error)
-}
-
-var tableNameRegex = regexp.MustCompile(`\$__table(\([^)]*\))?`)
-var timeFilterRegex = regexp.MustCompile(`\$__timeFilter(\([^)]*\))?`)
-var timeGroupRegex = regexp.MustCompile(`\$__timeGroup(\([^)]*\))?`)
-var timeToRegex = regexp.MustCompile(`\$__timeTo(\([^)]*\))?`)
-var timeFromRegex = regexp.MustCompile(`\$__timeFrom(\([^)]*\))?`)
-var metricAliasRegex = regexp.MustCompile(`\$__metricAlias(\([^)]*\))?`)
-var timeAliasRegex = regexp.MustCompile(`\$__timeAlias(\([^)]*\))?`)
-var timeFilterMillisRegex = regexp.MustCompile(`\$__timeFilterMillis(\([^)]*\))?`)
-var timeToMillisRegex = regexp.MustCompile(`\$__timeToMillis(\([^)]*\))?`)
-var timeFromMillisRegex = regexp.MustCompile(`\$__timeFromMillis(\([^)]*\))?`)
-var granularityMillisRegex = regexp.MustCompile(`\$__granularityMillis(\([^)]*\))?`)
-var panelMillisRegex = regexp.MustCompile(`\$__panelMillis(\([^)]*\))?`)
-
 func (x MacroEngine) ExpandMacros(query string) (string, error) {
-	macros := []Macro{
-		{"timeFilterMillis", timeFilterMillisRegex, x.renderTimeFilterMillis},
-		{"timeFromMillis", timeFromMillisRegex, x.renderTimeFromMillis},
-		{"timeToMillis", timeToMillisRegex, x.renderTimeToMillis},
-		{"table", tableNameRegex, x.renderTable},
-		{"timeFilter", timeFilterRegex, x.renderTimeFilter},
-		{"timeGroup", timeGroupRegex, x.renderTimeGroup},
-		{"timeTo", timeToRegex, x.renderTimeTo},
-		{"timeFrom", timeFromRegex, x.renderTimeFrom},
-		{"timeAlias", timeAliasRegex, x.renderTimeAlias},
-		{"metricAlias", metricAliasRegex, x.renderMetricAlias},
-		{"granularityMillis", granularityMillisRegex, x.renderGranularityMillis},
-		{"panelMillis", panelMillisRegex, x.renderPanelMillis},
-	}
-
 	var err error
-	for _, macro := range macros {
-		query, err = expandSingleMacro(query, macro)
+	for _, macro := range []func(query string) (string, error){
+		// These have to come first because the regex for TimeTo/From/Filter macros also matches.
+		x.ExpandTimeFilterMillis,
+		x.ExpandTimeFromMillis,
+		x.ExpandTimeToMillis,
+
+		x.ExpandTableName,
+		x.ExpandTimeFilter,
+		x.ExpandTimeGroup,
+		x.ExpandTimeTo,
+		x.ExpandTimeAlias,
+		x.ExpandMetricAlias,
+		x.ExpandTimeFrom,
+		x.ExpandGranularityMillis,
+		x.ExpandPanelMillis,
+	} {
+		query, err = macro(query)
 		if err != nil {
 			return "", err
 		}
@@ -61,13 +42,169 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 	return strings.TrimSpace(query), nil
 }
 
-func expandSingleMacro(query string, macro Macro) (string, error) {
-	for _, matches := range macro.re.FindAllStringSubmatch(query, -1) {
+func (x MacroEngine) ExpandTableName(query string) (string, error) {
+	return expandMacro(query, "table", func(_ []string) (string, error) {
+		return fmt.Sprintf(`"%s"`, x.TableName), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
+	return expandMacro(query, "timeFilter", func(args []string) (string, error) {
+		if len(args) < 1 {
+			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		}
+		builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+		if err != nil {
+			return "", err
+		}
+
+		var granularityExpr string
+		if len(args) > 1 {
+			granularityExpr = unquoteLiteralString(args[1])
+		}
+
+		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+		if err != nil {
+			return "", err
+		}
+
+		return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
+	return expandMacro(query, "timeGroup", func(args []string) (string, error) {
+		if len(args) < 1 || len(args) > 2 {
+			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		}
+		timeColumn := args[0]
+
+		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		if err != nil {
+			return "", err
+		}
+
+		var granularityExpr string
+		if len(args) > 1 {
+			granularityExpr = unquoteLiteralString(args[1])
+		}
+
+		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+		if err != nil {
+			return "", err
+		}
+
+		return builder.TimeGroupExpr(granularity.Expr), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
+	return expandMacro(query, "timeTo", func(args []string) (string, error) {
+		if len(args) < 1 {
+			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+		}
+		timeColumn := args[0]
+
+		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		if err != nil {
+			return "", err
+		}
+		return builder.TimeExpr(x.To), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
+	return expandMacro(query, "timeFrom", func(args []string) (string, error) {
+		if len(args) < 1 {
+			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+		}
+		timeColumn := args[0]
+
+		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		if err != nil {
+			return "", err
+		}
+		return builder.TimeExpr(x.From), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeAlias(query string) (string, error) {
+	return expandMacro(query, "timeAlias", func(_ []string) (string, error) {
+		return fmt.Sprintf(`"%s"`, x.TimeAlias), nil
+	})
+}
+
+func (x MacroEngine) ExpandMetricAlias(query string) (string, error) {
+	return expandMacro(query, "metricAlias", func(_ []string) (string, error) {
+		return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
+	return expandMacro(query, "timeFilterMillis", func(args []string) (string, error) {
+		if len(args) < 1 {
+			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		}
+		timeColumn := unquoteLiteralName(args[0])
+		builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
+		if err != nil {
+			return "", err
+		}
+
+		var granularityExpr string
+		if len(args) > 1 {
+			granularityExpr = unquoteLiteralString(args[1])
+		}
+
+		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
+		if err != nil {
+			return "", err
+		}
+
+		return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeToMillis(query string) (string, error) {
+	return expandMacro(query, "timeToMillis", func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", x.To.UnixMilli()), nil
+	})
+}
+
+func (x MacroEngine) ExpandTimeFromMillis(query string) (string, error) {
+	return expandMacro(query, "timeFromMillis", func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", x.From.UnixMilli()), nil
+	})
+}
+
+func (x MacroEngine) ExpandGranularityMillis(query string) (string, error) {
+	return expandMacro(query, "granularityMillis", func(args []string) (string, error) {
+		if len(args) < 1 {
+			return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
+		}
+
+		duration, err := ParseGranularityExpr(unquoteLiteralString(args[0]))
+		if err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%d", duration.Milliseconds()), nil
+	})
+}
+
+func (x MacroEngine) ExpandPanelMillis(query string) (string, error) {
+	return expandMacro(query, "panelMillis", func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
+	})
+}
+
+func expandMacro(query string, macroName string, render func(args []string) (string, error)) (string, error) {
+	re := regexp.MustCompile(fmt.Sprintf(`\$__%s(\([^)]*\))?`, macroName))
+	for _, matches := range re.FindAllStringSubmatch(query, -1) {
 		invocation, args := parseArgs(matches)
-		result, err := macro.render(args)
+		result, err := render(args)
 		if err != nil {
 			line, col := invocationCoords(query, invocation)
-			return "", fmt.Errorf("failed to expand macro `%s` (line %d, col %d): %w", macro.name, line, col, err)
+			return "", fmt.Errorf("failed to expand macro `%s` (line %d, col %d): %w", macroName, line, col, err)
 		}
 		query = strings.Replace(query, invocation, " "+result+" ", 1)
 	}
@@ -105,138 +242,6 @@ func parseArgs(matches []string) (string, []string) {
 		args[i] = strings.TrimSpace(rawArgs[i])
 	}
 	return matches[0], args
-}
-
-func (x MacroEngine) renderTable(_ []string) (string, error) {
-	return fmt.Sprintf(`"%s"`, x.TableName), nil
-}
-
-func (x MacroEngine) renderTimeFilter(args []string) (string, error) {
-	if len(args) < 1 {
-		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
-	}
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
-	if err != nil {
-		return "", err
-	}
-
-	var granularityExpr string
-	if len(args) > 1 {
-		granularityExpr = unquoteLiteralString(args[1])
-	}
-
-	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
-	if err != nil {
-		return "", err
-	}
-
-	return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
-}
-
-func (x MacroEngine) renderTimeGroup(args []string) (string, error) {
-	if len(args) < 1 || len(args) > 2 {
-		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
-	}
-	timeColumn := args[0]
-
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-	if err != nil {
-		return "", err
-	}
-
-	var granularityExpr string
-	if len(args) > 1 {
-		granularityExpr = unquoteLiteralString(args[1])
-	}
-
-	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
-	if err != nil {
-		return "", err
-	}
-
-	return builder.TimeGroupExpr(granularity.Expr), nil
-}
-
-func (x MacroEngine) renderTimeTo(args []string) (string, error) {
-	if len(args) < 1 {
-		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
-	}
-	timeColumn := args[0]
-
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-	if err != nil {
-		return "", err
-	}
-	return builder.TimeExpr(x.To), nil
-}
-
-func (x MacroEngine) renderTimeFrom(args []string) (string, error) {
-	if len(args) < 1 {
-		return "", fmt.Errorf("expected 1 argument, got %d", len(args))
-	}
-	timeColumn := args[0]
-
-	builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-	if err != nil {
-		return "", err
-	}
-	return builder.TimeExpr(x.From), nil
-}
-
-func (x MacroEngine) renderTimeAlias(_ []string) (string, error) {
-	return fmt.Sprintf(`"%s"`, x.TimeAlias), nil
-}
-
-func (x MacroEngine) renderMetricAlias(_ []string) (string, error) {
-	return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
-}
-
-func (x MacroEngine) renderTimeFilterMillis(args []string) (string, error) {
-	if len(args) < 1 {
-		return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
-	}
-	timeColumn := unquoteLiteralName(args[0])
-	builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
-	if err != nil {
-		return "", err
-	}
-
-	var granularityExpr string
-	if len(args) > 1 {
-		granularityExpr = unquoteLiteralString(args[1])
-	}
-
-	granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
-	if err != nil {
-		return "", err
-	}
-
-	return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
-}
-
-func (x MacroEngine) renderTimeToMillis(_ []string) (string, error) {
-	return fmt.Sprintf("%d", x.To.UnixMilli()), nil
-
-}
-
-func (x MacroEngine) renderTimeFromMillis(_ []string) (string, error) {
-	return fmt.Sprintf("%d", x.From.UnixMilli()), nil
-}
-
-func (x MacroEngine) renderGranularityMillis(args []string) (string, error) {
-	if len(args) < 1 {
-		return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
-	}
-
-	duration, err := ParseGranularityExpr(unquoteLiteralString(args[0]))
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%d", duration.Milliseconds()), nil
-}
-
-func (x MacroEngine) renderPanelMillis(_ []string) (string, error) {
-	return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
 }
 
 func unquoteLiteralName(s string) string {

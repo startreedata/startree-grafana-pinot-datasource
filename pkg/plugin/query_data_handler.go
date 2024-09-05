@@ -36,21 +36,12 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 		return fmt.Sprintf("Error: %s.", err.Error())
 	}
 
-	driver, err := NewDriver(pinotDataQuery, tableSchema, query.TimeRange)
+	driver, err := NewDriver(client, pinotDataQuery, tableSchema, query.TimeRange)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
 	}
-	sql, err := driver.RenderPinotSql()
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
-	}
+	results, err := driver.Execute(ctx)
 
-	resp, err := client.ExecuteSQL(ctx, pinotDataQuery.TableName, sql)
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
-	}
-
-	results, err := driver.ExtractResults(resp.ResultTable)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
 	}
