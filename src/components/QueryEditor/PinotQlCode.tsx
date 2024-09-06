@@ -5,7 +5,7 @@ import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
 import { SqlPreview } from './SqlPreview';
-import { DisplayTypeTable, SelectDisplayType } from './SelectDisplayType';
+import { DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
 import { SelectTable } from './SelectTable';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
@@ -44,7 +44,7 @@ export function PinotQlCode(props: {
   ) {
     onChangeAndUpdatePreview({
       ...query,
-      displayType: DisplayTypeTable,
+      displayType: query.displayType || DisplayTypeTimeSeries,
       metricColumnAlias: query.metricColumnAlias || 'metric',
       timeColumnAlias: query.timeColumnAlias || 'time',
       pinotQlCode:
@@ -60,7 +60,7 @@ ORDER BY $__timeAlias() DESC
 LIMIT 100000
 `.trim(),
     });
-    onRunQuery()
+    onRunQuery();
   }
 
   return (

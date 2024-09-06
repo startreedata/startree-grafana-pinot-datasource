@@ -4,5 +4,3 @@ export enum QueryType {
   LogQL = 'LogQL',
   PinotVariableQuery = 'PinotVariableQuery',
 }
-
-export const DefaultEditorType = QueryType.PinotQL;
