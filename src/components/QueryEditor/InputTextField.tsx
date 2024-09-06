@@ -23,7 +23,10 @@ export function InputTextField({
   const [value, setValue] = useState<string | undefined>(current);
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => value && current !== value && onChange(value), delayMs || DefaultDelayMs);
+    const timeoutId = setTimeout(
+      () => value !== undefined && current !== value && onChange(value),
+      delayMs || DefaultDelayMs
+    );
     return () => clearTimeout(timeoutId);
   }, [value, current, onChange, delayMs]);
 
