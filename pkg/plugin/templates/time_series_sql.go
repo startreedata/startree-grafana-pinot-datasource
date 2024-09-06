@@ -10,10 +10,10 @@ var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").
 SELECT{{ range .GroupByColumns }}
     "{{ . }}",
     {{- end }}
-    {{.TimeGroupExpr}} AS "{{.TimeColumnAlias}}",
-    {{.AggregationFunction}}("{{.MetricColumn}}") AS "{{.MetricColumnAlias}}"
+    {{.TimeGroupExpr}} AS {{.TimeColumnAliasExpr}},
+    {{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAliasExpr}}
 FROM
-    "{{.TableName}}"
+    {{.TableNameExpr}}
 WHERE
     {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
@@ -26,24 +26,24 @@ GROUP BY{{ range .GroupByColumns }}
 ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
     {{ $element }}{{$sep = ","}}
 {{- else }}
-    "{{.TimeColumnAlias}}" DESC
+    {{.TimeColumnAliasExpr}} DESC
 {{- end }}
 LIMIT {{.Limit}};
 `))
 
 type TimeSeriesSqlParams struct {
-	TableName            string
-	GroupByColumns       []string
-	MetricColumn         string
-	AggregationFunction  string
-	TimeFilterExpr       string
-	TimeGroupExpr        string
-	TimeColumnAlias      string
-	MetricColumnAlias    string
-	DimensionFilterExprs []string
-	Limit                int64
-	OrderByExprs         []string
-	QueryOptionsExpr     string
+	TableNameExpr         string
+	GroupByColumns        []string
+	MetricColumn          string
+	AggregationFunction   string
+	TimeFilterExpr        string
+	TimeGroupExpr         string
+	TimeColumnAliasExpr   string
+	MetricColumnAliasExpr string
+	DimensionFilterExprs  []string
+	Limit                 int64
+	OrderByExprs          []string
+	QueryOptionsExpr      string
 }
 
 func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {

@@ -15,10 +15,6 @@ export function SelectDisplayType(props: { value: string | undefined; onChange: 
   const { value, onChange } = props;
   const labels = allLabels.components.QueryEditor.display;
 
-  if (value === undefined) {
-    onChange(DisplayTypeTable);
-  }
-
   return (
     <div className={'gf-form'}>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />

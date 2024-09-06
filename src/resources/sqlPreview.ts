@@ -2,6 +2,7 @@ import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
 import { OrderByClause } from '../types/OrderByClause';
 import { QueryOption } from '../types/QueryOption';
+import { SqlPreviewResponse } from './PinotResourceResponse';
 
 export interface SqlPreviewRequest {
   timeRange: { to: string | undefined; from: string | undefined };
@@ -16,11 +17,7 @@ export interface SqlPreviewRequest {
   granularity: string | undefined;
   orderBy: OrderByClause[] | undefined;
   queryOptions: QueryOption[] | undefined;
-}
-
-interface SqlPreviewResponse {
-  sql: string | null;
-  error: string | null;
+  expandMacros: boolean;
 }
 
 export async function fetchSqlBuilderPreview(datasource: DataSource, request: SqlPreviewRequest): Promise<string> {

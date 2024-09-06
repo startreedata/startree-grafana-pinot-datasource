@@ -1,10 +1,10 @@
 import { DataSource } from '../datasource';
 import { TableSchema } from '../types/TableSchema';
 import { useEffect, useState } from 'react';
+import { PinotResourceResponse } from './PinotResourceResponse';
 
-interface GetTablesResponse {
+interface GetTablesResponse extends PinotResourceResponse {
   tables: string[] | null;
-  error: string | null;
 }
 
 export function useTables(datasource: DataSource): string[] | undefined {
@@ -21,9 +21,8 @@ export async function fetchTables(datasource: DataSource): Promise<GetTablesResp
   return fetchControllerResource<GetTablesResponse>(datasource, 'tables');
 }
 
-interface GetTableSchemaResponse {
+interface GetTableSchemaResponse extends PinotResourceResponse {
   schema: TableSchema | null;
-  error: string | null;
 }
 
 export function useTableSchema(datasource: DataSource, tableName: string | undefined): TableSchema | undefined {

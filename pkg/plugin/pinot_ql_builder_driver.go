@@ -92,38 +92,69 @@ func (p *PinotQlBuilderDriver) Execute(ctx context.Context) (*data.Frame, error)
 	return p.ExtractResults(resp.ResultTable)
 }
 
-func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
+func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
-			TableName:            p.TableName,
-			TimeColumn:           p.TimeColumn,
-			TimeColumnAlias:      p.TimeColumnAlias,
-			MetricColumn:         p.MetricColumn,
-			MetricColumnAlias:    p.MetricColumnAlias,
-			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeColumn:            p.TimeColumn,
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			MetricColumn:          p.MetricColumn,
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-			TableName:            p.TableName,
-			TimeGroupExpr:        p.TimeGroupExpr(p.TimeGranularity.Expr),
-			TimeColumnAlias:      p.TimeColumnAlias,
-			AggregationFunction:  p.AggregationFunction,
-			MetricColumn:         p.resolveMetricColumn(),
-			MetricColumnAlias:    p.MetricColumnAlias,
-			GroupByColumns:       p.GroupByColumns,
-			TimeFilterExpr:       p.TimeFilterBucketAlignedExpr(p.TimeRange, p.TimeGranularity.Size),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			OrderByExprs:         p.orderByExprs(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, SqlObjectExpr(p.TimeColumn)),
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			AggregationFunction:   p.AggregationFunction,
+			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			GroupByColumns:        p.GroupByColumns,
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, SqlObjectExpr(p.TimeColumn)),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			OrderByExprs:          p.orderByExprs(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	}
 }
 
-func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlBuilderDriver) RenderPinotSql() (string, error) {
+	if p.AggregationFunction == AggregationFunctionNone {
+		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+			TableNameExpr:         SqlObjectExpr(p.TableName),
+			TimeColumn:            p.TimeColumn,
+			TimeColumnAliasExpr:   SqlObjectExpr(p.TimeColumnAlias),
+			MetricColumn:          p.MetricColumn,
+			MetricColumnAliasExpr: SqlObjectExpr(p.MetricColumnAlias),
+			TimeFilterExpr:        p.TimeFilterExpr(p.TimeRange),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
+		})
+	} else {
+		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableNameExpr:         SqlObjectExpr(p.TableName),
+			TimeGroupExpr:         p.TimeGroupExpr(p.TimeGranularity.Expr),
+			TimeColumnAliasExpr:   SqlObjectExpr(p.TimeColumnAlias),
+			AggregationFunction:   p.AggregationFunction,
+			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnAliasExpr: SqlObjectExpr(p.MetricColumnAlias),
+			GroupByColumns:        p.GroupByColumns,
+			TimeFilterExpr:        p.TimeFilterBucketAlignedExpr(p.TimeRange, p.TimeGranularity.Size),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			OrderByExprs:          p.orderByExprs(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
+		})
+	}
+}
+
+func (p *PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
 		MetricName:        p.resolveMetricName(),
 		Legend:            p.Legend,
@@ -133,7 +164,7 @@ func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.
 	}, results)
 }
 
-func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
+func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return p.TimeExpressionBuilder.TimeColumnFormat()
 	} else {
@@ -141,7 +172,7 @@ func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveMetricName() string {
+func (p *PinotQlBuilderDriver) resolveMetricName() string {
 	if p.AggregationFunction == AggregationFunctionCount {
 		return "count"
 	} else {
@@ -149,7 +180,7 @@ func (p PinotQlBuilderDriver) resolveMetricName() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveLimit() int64 {
+func (p *PinotQlBuilderDriver) resolveLimit() int64 {
 	switch true {
 	case p.Limit >= 1:
 		// Use provided limit if present
@@ -166,7 +197,7 @@ func (p PinotQlBuilderDriver) resolveLimit() int64 {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveMetricColumn() string {
+func (p *PinotQlBuilderDriver) resolveMetricColumn() string {
 	if p.AggregationFunction == AggregationFunctionCount {
 		return "*"
 	} else {
@@ -174,7 +205,7 @@ func (p PinotQlBuilderDriver) resolveMetricColumn() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) orderByExprs() []string {
+func (p *PinotQlBuilderDriver) orderByExprs() []string {
 	orderByExprs := make([]string, 0, len(p.OrderByClauses))
 	for _, o := range p.OrderByClauses {
 		if o.ColumnName == "" {
@@ -193,7 +224,7 @@ func (p PinotQlBuilderDriver) orderByExprs() []string {
 	return orderByExprs[:]
 }
 
-func (p PinotQlBuilderDriver) queryOptionsExpr() string {
+func (p *PinotQlBuilderDriver) queryOptionsExpr() string {
 	exprs := make([]string, 0, len(p.QueryOptions))
 	for _, o := range p.QueryOptions {
 		if o.Name != "" && o.Value != "" {
