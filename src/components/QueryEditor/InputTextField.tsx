@@ -5,7 +5,14 @@ import React, { ChangeEvent, useEffect, useState } from 'react';
 
 const DefaultDelayMs = 300;
 
-export function InputTextField(props: {
+export function InputTextField({
+  current,
+  delayMs,
+  invalid,
+  labels: { label, tooltip },
+  onChange,
+  placeholder,
+}: {
   current: string | undefined;
   labels: { label: string; tooltip: string };
   delayMs?: number;
@@ -13,24 +20,21 @@ export function InputTextField(props: {
   placeholder?: string;
   onChange: (val: string) => void;
 }) {
-  const [value, setValue] = useState<string|undefined>(props.current);
+  const [value, setValue] = useState<string | undefined>(current);
 
   useEffect(() => {
-    const timeoutId = setTimeout(
-      () => value && props.current !== value && props.onChange(value),
-      props.delayMs || DefaultDelayMs
-    );
+    const timeoutId = setTimeout(() => value && current !== value && onChange(value), delayMs || DefaultDelayMs);
     return () => clearTimeout(timeoutId);
-  }, [value, props.current, props.onChange]);
+  }, [value, current, onChange, delayMs]);
 
   return (
     <div className={'gf-form'}>
-      <FormLabel tooltip={props.labels.tooltip} label={props.labels.label} />
+      <FormLabel tooltip={tooltip} label={label} />
       <Input
         className={`${styles.QueryEditor.inputForm}`}
         onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
-        invalid={props.invalid}
-        placeholder={props.placeholder}
+        invalid={invalid}
+        placeholder={placeholder}
         value={value}
       />
     </div>
