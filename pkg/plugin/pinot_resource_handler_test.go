@@ -50,7 +50,8 @@ LIMIT 100000;
     {"columnName": "time", "direction": "DESC"},
     {"columnName": "metric", "direction": "DESC"}
   ],
-  "queryOptions": [{"name":"timeoutMs", "value":"1"}]
+  "queryOptions": [{"name":"timeoutMs", "value":"1"}],
+  "expandMacros": true
 }`, &got)
 
 	assert.Equal(t, want, got["sql"])
@@ -69,9 +70,10 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 		"columnName":   "type"
 	}`, &got)
 
-	want := `{"valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'", "'GollumEvent'",
-				"'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'", "'PullRequestEvent'",
-				"'PullRequestReviewCommentEvent'", "'PushEvent'", "'ReleaseEvent'", "'WatchEvent'"]}`
+	want := `{"code":200, "valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'",
+				"'GollumEvent'", "'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'",
+				"'PullRequestEvent'", "'PullRequestReviewCommentEvent'", "'PushEvent'", "'ReleaseEvent'",
+				"'WatchEvent'"]}`
 
 	assert.JSONEq(t, want, string(got))
 }

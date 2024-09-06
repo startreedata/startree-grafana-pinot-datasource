@@ -20,14 +20,14 @@ ORDER BY "time" DESC
 LIMIT 1000;`
 
 	got, err := RenderSingleMetricSql(SingleMetricSqlParams{
-		TableName:            "my_table",
-		TimeColumn:           "ts",
-		TimeColumnAlias:      "time",
-		MetricColumn:         "met",
-		MetricColumnAlias:    "metric",
-		TimeFilterExpr:       `"ts" >= 10 AND "ts" <= 20`,
-		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
-		Limit:                1000,
+		TableNameExpr:         `"my_table"`,
+		TimeColumn:            "ts",
+		TimeColumnAliasExpr:   `"time"`,
+		MetricColumn:          "met",
+		MetricColumnAliasExpr: `"metric"`,
+		TimeFilterExpr:        `"ts" >= 10 AND "ts" <= 20`,
+		DimensionFilterExprs:  []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
+		Limit:                 1000,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)

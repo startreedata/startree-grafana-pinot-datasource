@@ -24,7 +24,7 @@ export default {
       },
     },
     QueryEditor: {
-      editorType: {
+      queryType: {
         tooltip: 'Select the query type.',
         label: 'Query Type',
       },

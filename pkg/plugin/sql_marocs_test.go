@@ -68,6 +68,42 @@ func TestExpandMacros(t *testing.T) {
 	}
 }
 
+func TestMacroExprFor(t *testing.T) {
+	engine := MacroEngine{
+		TableName:   "CleanLogisticData",
+		TimeAlias:   "time",
+		MetricAlias: "metric",
+		TableSchema: TableSchema{
+			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+				Name:        "timestamp",
+				DataType:    "LONG",
+				Format:      "1:SECONDS:EPOCH",
+				Granularity: "30:SECONDS", // Unused
+			}},
+		},
+		TimeRange:    TimeRange{From: time.Unix(1, 0), To: time.Unix(86401, 0)},
+		IntervalSize: 1 * time.Hour,
+	}
+
+	t.Run(MacroTable, func(t *testing.T) {
+		gotExpr := MacroExprFor(MacroTable)
+		assert.Equal(t, "$__table()", gotExpr)
+		res, err := engine.ExpandTableName(gotExpr)
+		assert.NoError(t, err)
+		assert.Equal(t, `"CleanLogisticData"`, strings.TrimSpace(res))
+	})
+
+	t.Run(MacroTimeGroup, func(t *testing.T) {
+		gotExpr := MacroExprFor(MacroTimeGroup, `"timestamp"`, "'1:MINUTES'")
+		assert.Equal(t, `$__timeGroup("timestamp", '1:MINUTES')`, gotExpr)
+		res, err := engine.ExpandTimeGroup(gotExpr)
+		assert.NoError(t, err)
+		assert.Equal(t,
+			`DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
+			strings.TrimSpace(res))
+	})
+}
+
 func TestExpandMacrosExampleQuery(t *testing.T) {
 	want := strings.TrimSpace(`
 SET useMultistageEngine=true;

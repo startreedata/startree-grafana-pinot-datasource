@@ -170,10 +170,16 @@ type ControllerStatusError struct {
 
 func (x *ControllerStatusError) Error() string { return x.Err.Error() }
 
-func IsControllerStatus(err error, statusCode int) bool {
-	var u *ControllerStatusError
-	ok := errors.As(err, &u)
-	return ok && u.StatusCode == statusCode
+func IsControllerStatusError(err error, statusCode int) bool {
+	if err == nil {
+		return false
+	}
+
+	var controllerErr *ControllerStatusError
+	if errors.As(err, &controllerErr) {
+		return controllerErr.StatusCode == statusCode
+	}
+	return false
 }
 
 func newControllerStatusError(statusCode int, body string) *ControllerStatusError {
