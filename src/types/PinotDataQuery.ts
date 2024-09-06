@@ -69,22 +69,19 @@ export function interpolatePinotQlBuilderVars(
     metricColumn?: string;
     groupByColumns?: string[];
     aggregationFunction?: string;
-    limit?: number;
     filters?: DimensionFilter[];
     orderBy?: OrderByClause[];
     queryOptions?: QueryOption[];
   },
   scopedVars: ScopedVars
 ): {
-  timeColumn?: string;
-  granularity?: string;
-  metricColumn?: string;
-  groupByColumns?: string[];
-  aggregationFunction?: string;
-  limit?: number;
-  filters?: DimensionFilter[];
-  orderBy?: OrderByClause[];
-  queryOptions?: QueryOption[];
+  timeColumn: string | undefined;
+  granularity: string | undefined;
+  metricColumn: string | undefined;
+  groupByColumns: string[] | undefined;
+  aggregationFunction: string | undefined;
+  filters: DimensionFilter[] | undefined;
+  queryOptions: QueryOption[] | undefined;
 } {
   const templateSrv = getTemplateSrv();
 

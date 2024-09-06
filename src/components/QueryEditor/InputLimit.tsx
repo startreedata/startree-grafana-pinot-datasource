@@ -1,8 +1,6 @@
-import { Input } from '@grafana/ui';
-import React, { ChangeEvent, useState } from 'react';
-import { FormLabel } from './FormLabel';
-import { styles } from '../../styles';
+import React, { useState } from 'react';
 import allLabels from '../../labels';
+import { InputTextField } from './InputTextField';
 
 const LimitAuto = -1;
 
@@ -10,24 +8,22 @@ export function InputLimit(props: { current: number | undefined; onChange: (val:
   const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.limit;
 
-  const [inputData, setInputData] = useState<string | undefined>(
-    current && current >= 1 ? current.toString(10) : undefined
-  );
+  const [isValid, setIsValid] = useState<boolean>(true);
 
   return (
     <div className={'gf-form'} style={{ display: 'flex', flexDirection: 'row' }}>
-      <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <Input
-        className={`${styles.QueryEditor.inputForm}`}
-        value={inputData}
-        invalid={parseLimit(inputData) === undefined}
+      <InputTextField
+        current={current && current >= 1 ? current.toString(10) : undefined}
+        labels={labels}
+        invalid={!isValid}
         placeholder={'auto'}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => {
-          const value = event.target.value;
-          setInputData(value);
+        onChange={(value) => {
           const newLimit = parseLimit(value);
           if (newLimit !== undefined) {
+            setIsValid(true);
             onChange(newLimit);
+          } else {
+            setIsValid(false);
           }
         }}
       />
