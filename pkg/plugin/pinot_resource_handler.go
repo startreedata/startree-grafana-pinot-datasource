@@ -3,11 +3,9 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"github.com/gorilla/mux"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -16,18 +14,49 @@ type PinotResourceHandler struct {
 	router *mux.Router
 }
 
+type PinotResourceResponse struct {
+	Code  int    `json:"code"`
+	Error string `json:"error,omitempty"`
+
+	*GetDatabasesResponse
+	*GetTablesResponse
+	*GetTableSchemaResponse
+	*DistinctValuesResponse
+	*SqlPreviewResponse
+}
+
+type GetDatabasesResponse struct {
+	Databases []string `json:"databases"`
+}
+
+type GetTablesResponse struct {
+	Tables []string `json:"tables"`
+}
+
+type GetTableSchemaResponse struct {
+	Schema TableSchema `json:"schema"`
+}
+
+type SqlPreviewResponse struct {
+	Sql string `json:"sql"`
+}
+
+type DistinctValuesResponse struct {
+	ValueExprs []string `json:"valueExprs"`
+}
+
 func NewPinotResourceHandler(client *PinotClient) *PinotResourceHandler {
 	router := mux.NewRouter()
 
 	handler := PinotResourceHandler{client: client, router: router}
 
-	router.HandleFunc("/databases", handler.GetDatabases)
-	router.HandleFunc("/tables/{table}/schema", handler.GetTableSchema)
-	router.HandleFunc("/tables", handler.GetTables)
-	router.HandleFunc("/preview", adaptHandler(handler.SqlBuilderPreview))
-	router.HandleFunc("/codePreview", adaptHandler(handler.SqlCodePreview))
-	router.HandleFunc("/distinctValues", adaptHandler(handler.DistinctValues))
-	router.HandleFunc("/distinctValuesSqlPreview", adaptHandler(handler.DistinctValuesSqlPreview))
+	router.HandleFunc("/databases", adaptHandler(handler.GetDatabases))
+	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
+	router.HandleFunc("/tables", adaptHandler(handler.GetTables))
+	router.HandleFunc("/preview", adaptHandlerWithBody(handler.SqlBuilderPreview))
+	router.HandleFunc("/codePreview", adaptHandlerWithBody(handler.SqlCodePreview))
+	router.HandleFunc("/distinctValues", adaptHandlerWithBody(handler.DistinctValues))
+	router.HandleFunc("/distinctValuesSqlPreview", adaptHandlerWithBody(handler.DistinctValuesSqlPreview))
 
 	return &handler
 }
@@ -36,57 +65,35 @@ func (x *PinotResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	x.router.ServeHTTP(w, r)
 }
 
-type GetDatabasesResponse struct {
-	Databases []string `json:"databases"`
-}
-
-func (x *PinotResourceHandler) GetDatabases(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetDatabases(r *http.Request) *PinotResourceResponse {
 	databases, err := x.client.ListDatabases(r.Context())
 
-	if err != nil {
-		var controllerError *ControllerStatusError
-		if errors.As(err, &controllerError) {
-			if controllerError.StatusCode == http.StatusForbidden {
-				writeJsonData(w, http.StatusOK, GetDatabasesResponse{Databases: []string{}})
-				return
-			}
-		}
-		writeError(w, http.StatusInternalServerError, err)
-		return
+	if ErrorIsControllerStatus(err, http.StatusForbidden) {
+		Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
+		return newEmptyResponse(http.StatusOK)
+	} else if err != nil {
+		return newInternalServerErrorResponse(err)
 	}
-
-	writeJsonData(w, http.StatusOK, GetDatabasesResponse{Databases: databases})
+	return &PinotResourceResponse{Code: http.StatusOK, GetDatabasesResponse: &GetDatabasesResponse{Databases: databases}}
 }
 
-type GetTablesResponse struct {
-	Tables []string `json:"tables"`
-}
-
-func (x *PinotResourceHandler) GetTables(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetTables(r *http.Request) *PinotResourceResponse {
 	tables, err := x.client.ListTables(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		return newInternalServerErrorResponse(err)
 	}
-
-	writeJsonData(w, http.StatusOK, GetTablesResponse{Tables: tables})
+	return &PinotResourceResponse{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
 }
 
-type GetTableSchemaResponse struct {
-	Schema TableSchema `json:"schema"`
-}
-
-func (x *PinotResourceHandler) GetTableSchema(w http.ResponseWriter, r *http.Request) {
+func (x *PinotResourceHandler) GetTableSchema(r *http.Request) *PinotResourceResponse {
 	vars := mux.Vars(r)
 	table := vars["table"]
 
 	schema, err := x.client.GetTableSchema(r.Context(), table)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
-		return
+		return newInternalServerErrorResponse(err)
 	}
-
-	writeJsonData(w, http.StatusOK, GetTableSchemaResponse{Schema: schema})
+	return &PinotResourceResponse{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
 }
 
 type SqlBuilderPreviewRequest struct {
@@ -103,30 +110,19 @@ type SqlBuilderPreviewRequest struct {
 	Granularity         string            `json:"granularity"`
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
 	QueryOptions        []QueryOption     `json:"queryOptions"`
+	ExpandMacros        bool              `json:"expandMacros"`
 }
 
-type SqlBuilderPreviewResponse struct {
-	Sql string `json:"sql"`
-}
-
-func parseIntervalSize(intervalSize string) time.Duration {
-	if intervalSize == "1d" {
-		return time.Second * 24 * 3600
-	}
-	interval, _ := time.ParseDuration(intervalSize)
-	return interval
-}
-
-func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilderPreviewRequest) (int, *SqlBuilderPreviewResponse, error) {
+func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilderPreviewRequest) *PinotResourceResponse {
 	if data.TableName == "" {
-		// Nothing to do.
-		return http.StatusOK, &SqlBuilderPreviewResponse{}, nil
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
@@ -146,17 +142,25 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		QueryOptions:        data.QueryOptions,
 	})
 	if err != nil {
+		Logger.Error("newPinotDriver() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		return newEmptyResponse(http.StatusOK)
 	}
 
-	sql, err := driver.RenderPinotSql()
+	var sql string
+	if data.ExpandMacros {
+		sql, err = driver.RenderPinotSql()
+	} else {
+		sql, err = driver.RenderPinotSqlWithMacros()
+	}
+
 	if err != nil {
+		Logger.Error("pinotDriver.RenderSql() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		return newEmptyResponse(http.StatusOK)
 	}
 
-	return http.StatusOK, &SqlBuilderPreviewResponse{Sql: sql}, nil
+	return newSqlPreviewResponse(sql)
 }
 
 type SqlCodePreviewRequest struct {
@@ -169,20 +173,18 @@ type SqlCodePreviewRequest struct {
 	Code              string    `json:"code"`
 }
 
-type SqlCodePreviewResponse struct {
-	Sql string `json:"sql"`
-}
-
-func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePreviewRequest) (int, *SqlCodePreviewResponse, error) {
+func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePreviewRequest) *PinotResourceResponse {
 	if data.TableName == "" {
-		// Nothing to do.
-		return http.StatusOK, &SqlCodePreviewResponse{}, nil
+		Logger.Info("received code preview request without table selection.")
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
+		Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		// TODO: This doesn't make sense.
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		return newErrorResponse(http.StatusOK, err)
 	}
 
 	driver, err := NewPinotQlCodeDriver(PinotQlCodeDriverParams{
@@ -196,19 +198,20 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 		Code:              data.Code,
 	})
 	if err != nil {
+		Logger.Error("NewPinotQlCodeDriver() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		return newErrorResponse(http.StatusOK, err)
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
+		Logger.Error("RenderPinotSql() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return http.StatusOK, nil, err
+		return newErrorResponse(http.StatusOK, err)
+
 	}
 
-	return http.StatusOK, &SqlCodePreviewResponse{
-		Sql: strings.TrimSpace(sql),
-	}, nil
+	return newSqlPreviewResponse(sql)
 }
 
 type DistinctValuesRequest struct {
@@ -219,39 +222,32 @@ type DistinctValuesRequest struct {
 	DimensionFilters []DimensionFilter `json:"filters"`
 }
 
-type DistinctValuesResponse struct {
-	ValueExprs []string `json:"valueExprs"`
-}
-
-func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) (int, *DistinctValuesResponse, error) {
+func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) *PinotResourceResponse {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		return newInternalServerErrorResponse(err)
 	}
 	if sql == "" {
-		return http.StatusOK, &DistinctValuesResponse{}, nil
+		return &PinotResourceResponse{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{}}
 	}
 
 	results, err := x.client.ExecuteSQL(ctx, data.TableName, sql)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		return newInternalServerErrorResponse(err)
 	}
 
-	return http.StatusOK, &DistinctValuesResponse{
+	return &PinotResourceResponse{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
 		ValueExprs: ExtractColumnExpr(results.ResultTable, 0),
-	}, nil
+	}}
 }
 
-type DistinctValuesSqlPreviewResponse struct {
-	Sql string `json:"sql"`
-}
-
-func (x *PinotResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) (int, *DistinctValuesSqlPreviewResponse, error) {
+func (x *PinotResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) *PinotResourceResponse {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
-		return http.StatusInternalServerError, nil, err
+		return newErrorResponse(http.StatusInternalServerError, err)
 	}
-	return http.StatusOK, &DistinctValuesSqlPreviewResponse{Sql: sql}, nil
+
+	return newSqlPreviewResponse(sql)
 }
 
 func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data DistinctValuesRequest) (string, error) {
@@ -282,36 +278,55 @@ func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data Di
 	})
 }
 
-func adaptHandler[A any, B any](handler func(ctx context.Context, data A) (int, B, error)) http.HandlerFunc {
+func newSqlPreviewResponse(sql string) *PinotResourceResponse {
+	return &PinotResourceResponse{Code: http.StatusOK, SqlPreviewResponse: &SqlPreviewResponse{Sql: sql}}
+}
+
+func newEmptyResponse(code int) *PinotResourceResponse {
+	return &PinotResourceResponse{Code: code}
+}
+
+func newBadRequestResponse(err error) *PinotResourceResponse {
+	return newErrorResponse(http.StatusBadRequest, err)
+}
+
+func newInternalServerErrorResponse(err error) *PinotResourceResponse {
+	return newErrorResponse(http.StatusInternalServerError, err)
+}
+
+func newErrorResponse(code int, err error) *PinotResourceResponse {
+	return &PinotResourceResponse{Code: code, Error: err.Error()}
+}
+
+func adaptHandler(handler func(r *http.Request) *PinotResourceResponse) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var data A
-		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			writeError(w, http.StatusBadRequest, err)
-			return
-		}
-		code, respData, err := handler(r.Context(), data)
-		if err != nil {
-			writeError(w, code, err)
-			return
-		}
-		writeJsonData(w, code, respData)
+		writeResponse(w, handler(r))
 	}
 }
 
-type ErrorResponse struct {
-	Code  int    `json:"code"`
-	Error string `json:"error"`
+func adaptHandlerWithBody[A any](handler func(ctx context.Context, data A) *PinotResourceResponse) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var data A
+		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+			writeResponse(w, newBadRequestResponse(err))
+			return
+		}
+		writeResponse(w, handler(r.Context(), data))
+	}
 }
 
-func writeError(w http.ResponseWriter, code int, err error) {
-	Logger.Error(err.Error())
-	writeJsonData(w, code, ErrorResponse{Error: err.Error()})
+func parseIntervalSize(intervalSize string) time.Duration {
+	if intervalSize == "1d" {
+		return time.Second * 24 * 3600
+	}
+	interval, _ := time.ParseDuration(intervalSize)
+	return interval
 }
 
-func writeJsonData(w http.ResponseWriter, code int, data interface{}) {
+func writeResponse(w http.ResponseWriter, resp *PinotResourceResponse) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
+	w.WriteHeader(resp.Code)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		Logger.Error("failed to write http response: ", err)
 	}
 }

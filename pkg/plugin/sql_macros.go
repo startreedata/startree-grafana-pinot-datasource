@@ -7,6 +7,21 @@ import (
 	"time"
 )
 
+const (
+	MacroTable             = "table"
+	MacroTimeFilter        = "timeFilter"
+	MacroTimeGroup         = "timeGroup"
+	MacroTimeTo            = "timeTo"
+	MacroTimeFrom          = "timeFrom"
+	MacroTimeAlias         = "timeAlias"
+	MacroMetricAlias       = "metricAlias"
+	MacroTimeFilterMillis  = "timeFilterMillis"
+	MacroPanelMillis       = "panelMillis"
+	MacroGranularityMillis = "granularityMillis"
+	MacroTimeFromMillis    = "timeFromMillis"
+	MacroTimeToMillis      = "timeToMillis"
+)
+
 type MacroEngine struct {
 	TableName   string
 	TimeAlias   string
@@ -14,6 +29,10 @@ type MacroEngine struct {
 	TableSchema
 	TimeRange
 	IntervalSize time.Duration
+}
+
+func MacroExprFor(macroName string, args ...string) string {
+	return fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", "))
 }
 
 func (x MacroEngine) ExpandMacros(query string) (string, error) {
@@ -43,13 +62,13 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTableName(query string) (string, error) {
-	return expandMacro(query, "table", func(_ []string) (string, error) {
+	return expandMacro(query, MacroTable, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.TableName), nil
 	})
 }
 
 func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
-	return expandMacro(query, "timeFilter", func(args []string) (string, error) {
+	return expandMacro(query, MacroTimeFilter, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
@@ -60,7 +79,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = unquoteLiteralString(args[1])
+			granularityExpr = unquoteStringLiteral(args[1])
 		}
 
 		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
@@ -73,7 +92,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
-	return expandMacro(query, "timeGroup", func(args []string) (string, error) {
+	return expandMacro(query, MacroTimeGroup, func(args []string) (string, error) {
 		if len(args) < 1 || len(args) > 2 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
@@ -86,7 +105,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = unquoteLiteralString(args[1])
+			granularityExpr = unquoteStringLiteral(args[1])
 		}
 
 		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
@@ -99,7 +118,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
-	return expandMacro(query, "timeTo", func(args []string) (string, error) {
+	return expandMacro(query, MacroTimeTo, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
@@ -114,7 +133,7 @@ func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
-	return expandMacro(query, "timeFrom", func(args []string) (string, error) {
+	return expandMacro(query, MacroTimeFrom, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
@@ -129,23 +148,23 @@ func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTimeAlias(query string) (string, error) {
-	return expandMacro(query, "timeAlias", func(_ []string) (string, error) {
+	return expandMacro(query, MacroTimeAlias, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.TimeAlias), nil
 	})
 }
 
 func (x MacroEngine) ExpandMetricAlias(query string) (string, error) {
-	return expandMacro(query, "metricAlias", func(_ []string) (string, error) {
+	return expandMacro(query, MacroMetricAlias, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
 	})
 }
 
 func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
-	return expandMacro(query, "timeFilterMillis", func(args []string) (string, error) {
+	return expandMacro(query, MacroTimeFilterMillis, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		timeColumn := unquoteLiteralName(args[0])
+		timeColumn := unquoteObjectName(args[0])
 		builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
 		if err != nil {
 			return "", err
@@ -153,7 +172,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = unquoteLiteralString(args[1])
+			granularityExpr = unquoteStringLiteral(args[1])
 		}
 
 		granularity, err := TimeGranularityFrom(granularityExpr, x.IntervalSize)
@@ -166,24 +185,24 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandTimeToMillis(query string) (string, error) {
-	return expandMacro(query, "timeToMillis", func(_ []string) (string, error) {
+	return expandMacro(query, MacroTimeToMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()), nil
 	})
 }
 
 func (x MacroEngine) ExpandTimeFromMillis(query string) (string, error) {
-	return expandMacro(query, "timeFromMillis", func(_ []string) (string, error) {
+	return expandMacro(query, MacroTimeFromMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.From.UnixMilli()), nil
 	})
 }
 
 func (x MacroEngine) ExpandGranularityMillis(query string) (string, error) {
-	return expandMacro(query, "granularityMillis", func(args []string) (string, error) {
+	return expandMacro(query, MacroGranularityMillis, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
 		}
 
-		duration, err := ParseGranularityExpr(unquoteLiteralString(args[0]))
+		duration, err := ParseGranularityExpr(unquoteStringLiteral(args[0]))
 		if err != nil {
 			return "", err
 		}
@@ -192,7 +211,7 @@ func (x MacroEngine) ExpandGranularityMillis(query string) (string, error) {
 }
 
 func (x MacroEngine) ExpandPanelMillis(query string) (string, error) {
-	return expandMacro(query, "panelMillis", func(_ []string) (string, error) {
+	return expandMacro(query, MacroPanelMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
 	})
 }
@@ -244,7 +263,7 @@ func parseArgs(matches []string) (string, []string) {
 	return matches[0], args
 }
 
-func unquoteLiteralName(s string) string {
+func unquoteObjectName(s string) string {
 	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
 		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
 		return s[1 : len(s)-1]
@@ -253,7 +272,7 @@ func unquoteLiteralName(s string) string {
 	}
 }
 
-func unquoteLiteralString(s string) string {
+func unquoteStringLiteral(s string) string {
 	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
 		return s[1 : len(s)-1]
 	} else {

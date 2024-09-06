@@ -1,6 +1,7 @@
 import { DateTime } from '@grafana/data';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { DataSource } from '../datasource';
+import {PinotResourceResponse, SqlPreviewResponse} from './PinotResourceResponse';
 
 export interface DistinctValuesRequest {
   tableName: string | undefined;
@@ -10,13 +11,8 @@ export interface DistinctValuesRequest {
   filters?: DimensionFilter[];
 }
 
-interface DistinctValuesResponse {
+interface DistinctValuesResponse extends PinotResourceResponse {
   valueExprs: string[] | null;
-  error: string | null;
-}
-
-interface DistinctValuesSqlPreviewResponse {
-  sql: string;
 }
 
 export async function fetchDistinctValuesForFilters(
@@ -53,7 +49,7 @@ export async function fetchDistinctValuesSqlPreview(
 ): Promise<string> {
   if (request.tableName && request.columnName) {
     return datasource
-      .postResource<DistinctValuesSqlPreviewResponse>('distinctValuesSqlPreview', request)
+      .postResource<SqlPreviewResponse>('distinctValuesSqlPreview', request)
       .then((resp) => resp.sql || '')
       .catch(() => '');
   } else {

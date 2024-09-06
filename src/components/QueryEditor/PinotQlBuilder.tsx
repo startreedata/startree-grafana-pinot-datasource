@@ -208,6 +208,7 @@ function useSqlPreview(
       granularity: interpolated.granularity,
       orderBy: interpolated.orderBy,
       queryOptions: interpolated.queryOptions,
+      expandMacros: false,
     }).then((val) => val && setSqlPreview(val));
   }, [
     datasource,

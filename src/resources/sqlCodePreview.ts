@@ -1,5 +1,6 @@
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../datasource';
+import { SqlPreviewResponse } from './PinotResourceResponse';
 
 export interface SqlCodePreviewRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
@@ -9,11 +10,6 @@ export interface SqlCodePreviewRequest {
   timeColumnFormat: string | undefined;
   metricColumnAlias: string | undefined;
   code: string | undefined;
-}
-
-interface SqlCodePreviewResponse {
-  sql: string | null;
-  error: string | null;
 }
 
 export async function fetchSqlCodePreview(datasource: DataSource, request: SqlCodePreviewRequest): Promise<string> {
@@ -26,7 +22,7 @@ export async function fetchSqlCodePreview(datasource: DataSource, request: SqlCo
     request.code
   ) {
     return datasource
-      .postResource<SqlCodePreviewResponse>('codePreview', request)
+      .postResource<SqlPreviewResponse>('codePreview', request)
       .then((resp) => resp.sql || '')
       .catch(() => '');
   } else {

@@ -92,7 +92,38 @@ func (p *PinotQlBuilderDriver) Execute(ctx context.Context) (*data.Frame, error)
 	return p.ExtractResults(resp.ResultTable)
 }
 
-func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
+func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {
+	if p.AggregationFunction == AggregationFunctionNone {
+		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+			TableName:            MacroExprFor(MacroTable),
+			TimeColumn:           p.TimeColumn,
+			TimeColumnAlias:      MacroExprFor(MacroTimeAlias),
+			MetricColumn:         p.MetricColumn,
+			MetricColumnAlias:    MacroExprFor(MacroMetricAlias),
+			TimeFilterExpr:       MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
+			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
+			Limit:                p.resolveLimit(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
+		})
+	} else {
+		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableName:            MacroExprFor(MacroTable),
+			TimeGroupExpr:        MacroExprFor(MacroTimeGroup, fmt.Sprintf(`"%s"`, p.TimeColumn)),
+			TimeColumnAlias:      MacroExprFor(MacroTimeAlias),
+			AggregationFunction:  p.AggregationFunction,
+			MetricColumn:         p.resolveMetricColumn(),
+			MetricColumnAlias:    MacroExprFor(MacroMetricAlias),
+			GroupByColumns:       p.GroupByColumns,
+			TimeFilterExpr:       MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
+			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
+			Limit:                p.resolveLimit(),
+			OrderByExprs:         p.orderByExprs(),
+			QueryOptionsExpr:     p.queryOptionsExpr(),
+		})
+	}
+}
+
+func (p *PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
 			TableName:            p.TableName,
@@ -123,7 +154,7 @@ func (p PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	}
 }
 
-func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
 		MetricName:        p.resolveMetricName(),
 		Legend:            p.Legend,
@@ -133,7 +164,7 @@ func (p PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.
 	}, results)
 }
 
-func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
+func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return p.TimeExpressionBuilder.TimeColumnFormat()
 	} else {
@@ -141,7 +172,7 @@ func (p PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveMetricName() string {
+func (p *PinotQlBuilderDriver) resolveMetricName() string {
 	if p.AggregationFunction == AggregationFunctionCount {
 		return "count"
 	} else {
@@ -149,7 +180,7 @@ func (p PinotQlBuilderDriver) resolveMetricName() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveLimit() int64 {
+func (p *PinotQlBuilderDriver) resolveLimit() int64 {
 	switch true {
 	case p.Limit >= 1:
 		// Use provided limit if present
@@ -166,7 +197,7 @@ func (p PinotQlBuilderDriver) resolveLimit() int64 {
 	}
 }
 
-func (p PinotQlBuilderDriver) resolveMetricColumn() string {
+func (p *PinotQlBuilderDriver) resolveMetricColumn() string {
 	if p.AggregationFunction == AggregationFunctionCount {
 		return "*"
 	} else {
@@ -174,7 +205,7 @@ func (p PinotQlBuilderDriver) resolveMetricColumn() string {
 	}
 }
 
-func (p PinotQlBuilderDriver) orderByExprs() []string {
+func (p *PinotQlBuilderDriver) orderByExprs() []string {
 	orderByExprs := make([]string, 0, len(p.OrderByClauses))
 	for _, o := range p.OrderByClauses {
 		if o.ColumnName == "" {
@@ -193,7 +224,7 @@ func (p PinotQlBuilderDriver) orderByExprs() []string {
 	return orderByExprs[:]
 }
 
-func (p PinotQlBuilderDriver) queryOptionsExpr() string {
+func (p *PinotQlBuilderDriver) queryOptionsExpr() string {
 	exprs := make([]string, 0, len(p.QueryOptions))
 	for _, o := range p.QueryOptions {
 		if o.Name != "" && o.Value != "" {
