@@ -9,6 +9,7 @@ import { DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
 import { SelectTable } from './SelectTable';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
+import { InputMetricLegend } from './InputMetricLegend';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -106,7 +107,15 @@ LIMIT 100000
         current={query.pinotQlCode}
         onChange={(pinotQlCode) => onChangeAndUpdatePreview({ ...query, pinotQlCode })}
       />
-      <SqlPreview sql={sqlPreview} />
+      <div>
+        <SqlPreview sql={sqlPreview} />
+      </div>
+      <div>
+        <InputMetricLegend
+          current={query.legend}
+          onChange={(legend) => onChangeAndUpdatePreview({ ...query, legend })}
+        />
+      </div>
     </div>
   );
 }
