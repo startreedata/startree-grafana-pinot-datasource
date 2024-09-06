@@ -95,30 +95,30 @@ func (p *PinotQlBuilderDriver) Execute(ctx context.Context) (*data.Frame, error)
 func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
-			TableName:            MacroExprFor(MacroTable),
-			TimeColumn:           p.TimeColumn,
-			TimeColumnAlias:      MacroExprFor(MacroTimeAlias),
-			MetricColumn:         p.MetricColumn,
-			MetricColumnAlias:    MacroExprFor(MacroMetricAlias),
-			TimeFilterExpr:       MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeColumn:            p.TimeColumn,
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			MetricColumn:          p.MetricColumn,
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-			TableName:            MacroExprFor(MacroTable),
-			TimeGroupExpr:        MacroExprFor(MacroTimeGroup, fmt.Sprintf(`"%s"`, p.TimeColumn)),
-			TimeColumnAlias:      MacroExprFor(MacroTimeAlias),
-			AggregationFunction:  p.AggregationFunction,
-			MetricColumn:         p.resolveMetricColumn(),
-			MetricColumnAlias:    MacroExprFor(MacroMetricAlias),
-			GroupByColumns:       p.GroupByColumns,
-			TimeFilterExpr:       MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.TimeColumn)),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			OrderByExprs:         p.orderByExprs(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, SqlObjectExpr(p.TimeColumn)),
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			AggregationFunction:   p.AggregationFunction,
+			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			GroupByColumns:        p.GroupByColumns,
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, SqlObjectExpr(p.TimeColumn)),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			OrderByExprs:          p.orderByExprs(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	}
 }
@@ -126,30 +126,30 @@ func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {
 func (p *PinotQlBuilderDriver) RenderPinotSql() (string, error) {
 	if p.AggregationFunction == AggregationFunctionNone {
 		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
-			TableName:            p.TableName,
-			TimeColumn:           p.TimeColumn,
-			TimeColumnAlias:      p.TimeColumnAlias,
-			MetricColumn:         p.MetricColumn,
-			MetricColumnAlias:    p.MetricColumnAlias,
-			TimeFilterExpr:       p.TimeFilterExpr(p.TimeRange),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         SqlObjectExpr(p.TableName),
+			TimeColumn:            p.TimeColumn,
+			TimeColumnAliasExpr:   SqlObjectExpr(p.TimeColumnAlias),
+			MetricColumn:          p.MetricColumn,
+			MetricColumnAliasExpr: SqlObjectExpr(p.MetricColumnAlias),
+			TimeFilterExpr:        p.TimeFilterExpr(p.TimeRange),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-			TableName:            p.TableName,
-			TimeGroupExpr:        p.TimeGroupExpr(p.TimeGranularity.Expr),
-			TimeColumnAlias:      p.TimeColumnAlias,
-			AggregationFunction:  p.AggregationFunction,
-			MetricColumn:         p.resolveMetricColumn(),
-			MetricColumnAlias:    p.MetricColumnAlias,
-			GroupByColumns:       p.GroupByColumns,
-			TimeFilterExpr:       p.TimeFilterBucketAlignedExpr(p.TimeRange, p.TimeGranularity.Size),
-			DimensionFilterExprs: FilterExprsFrom(p.DimensionFilters),
-			Limit:                p.resolveLimit(),
-			OrderByExprs:         p.orderByExprs(),
-			QueryOptionsExpr:     p.queryOptionsExpr(),
+			TableNameExpr:         SqlObjectExpr(p.TableName),
+			TimeGroupExpr:         p.TimeGroupExpr(p.TimeGranularity.Expr),
+			TimeColumnAliasExpr:   SqlObjectExpr(p.TimeColumnAlias),
+			AggregationFunction:   p.AggregationFunction,
+			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnAliasExpr: SqlObjectExpr(p.MetricColumnAlias),
+			GroupByColumns:        p.GroupByColumns,
+			TimeFilterExpr:        p.TimeFilterBucketAlignedExpr(p.TimeRange, p.TimeGranularity.Size),
+			DimensionFilterExprs:  FilterExprsFrom(p.DimensionFilters),
+			Limit:                 p.resolveLimit(),
+			OrderByExprs:          p.orderByExprs(),
+			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	}
 }

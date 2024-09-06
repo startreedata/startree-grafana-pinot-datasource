@@ -35,7 +35,7 @@ type PinotQlCodeDriver struct {
 
 func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, error) {
 	if params.TableName == "" {
-		return nil, errors.New("TableName is required")
+		return nil, errors.New("TableNameExpr is required")
 	} else if params.IntervalSize == 0 {
 		return nil, errors.New("IntervalSize is required")
 	} else if params.Code == "" {

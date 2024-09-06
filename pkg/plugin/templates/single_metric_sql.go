@@ -8,29 +8,29 @@ var singleMetricSqlTemplate = template.Must(template.New("pinot/single-metric-sq
 {{.QueryOptionsExpr}}
 
 SELECT
-    "{{.MetricColumn}}" AS "{{.MetricColumnAlias}}",
-    "{{.TimeColumn}}" AS "{{.TimeColumnAlias}}"
+    "{{.MetricColumn}}" AS {{.MetricColumnAliasExpr}},
+    "{{.TimeColumn}}" AS {{.TimeColumnAliasExpr}}
 FROM
-    "{{.TableName}}"
+    {{.TableNameExpr}}
 WHERE
     "{{.MetricColumn}}" IS NOT NULL
     AND {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
-ORDER BY "{{.TimeColumnAlias}}" DESC
+ORDER BY {{.TimeColumnAliasExpr}} DESC
 LIMIT {{.Limit}};
 `))
 
 type SingleMetricSqlParams struct {
-	TableName            string
-	TimeColumn           string
-	TimeColumnAlias      string
-	MetricColumn         string
-	MetricColumnAlias    string
-	TimeFilterExpr       string
-	DimensionFilterExprs []string
-	Limit                int64
-	QueryOptionsExpr     string
+	TableNameExpr         string
+	TimeColumn            string
+	TimeColumnAliasExpr   string
+	MetricColumn          string
+	MetricColumnAliasExpr string
+	TimeFilterExpr        string
+	DimensionFilterExprs  []string
+	Limit                 int64
+	QueryOptionsExpr      string
 }
 
 func RenderSingleMetricSql(params SingleMetricSqlParams) (string, error) {

@@ -27,17 +27,17 @@ ORDER BY
 LIMIT 10000;`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
-		TableName:            "my_table",
-		GroupByColumns:       []string{"dim1", "dim2"},
-		MetricColumn:         "met",
-		AggregationFunction:  "sum",
-		TimeFilterExpr:       `"ts" >= 10 AND "ts" <= 20`,
-		TimeGroupExpr:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,
-		TimeColumnAlias:      "time",
-		MetricColumnAlias:    "metric",
-		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
-		Limit:                10000,
-		OrderByExprs:         []string{`"time" DESC`, `"metric" ASC`},
+		TableNameExpr:         `"my_table"`,
+		GroupByColumns:        []string{"dim1", "dim2"},
+		MetricColumn:          "met",
+		AggregationFunction:   "sum",
+		TimeFilterExpr:        `"ts" >= 10 AND "ts" <= 20`,
+		TimeGroupExpr:         `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,
+		TimeColumnAliasExpr:   `"time"`,
+		MetricColumnAliasExpr: `"metric"`,
+		DimensionFilterExprs:  []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
+		Limit:                 10000,
+		OrderByExprs:          []string{`"time" DESC`, `"metric" ASC`},
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
