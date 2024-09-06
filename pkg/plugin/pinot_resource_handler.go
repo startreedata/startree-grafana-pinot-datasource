@@ -68,7 +68,7 @@ func (x *PinotResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 func (x *PinotResourceHandler) GetDatabases(r *http.Request) *PinotResourceResponse {
 	databases, err := x.client.ListDatabases(r.Context())
 
-	if ErrorIsControllerStatus(err, http.StatusForbidden) {
+	if IsControllerStatusError(err, http.StatusForbidden) {
 		Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
 		return newEmptyResponse(http.StatusOK)
 	} else if err != nil {
@@ -182,9 +182,8 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
-		// TODO: This doesn't make sense.
 		// No need to surface this error in Grafana.
-		return newErrorResponse(http.StatusOK, err)
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	driver, err := NewPinotQlCodeDriver(PinotQlCodeDriverParams{
@@ -200,15 +199,14 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 	if err != nil {
 		Logger.Error("NewPinotQlCodeDriver() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return newErrorResponse(http.StatusOK, err)
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
 		Logger.Error("RenderPinotSql() failed:", err.Error())
 		// No need to surface this error in Grafana.
-		return newErrorResponse(http.StatusOK, err)
-
+		return newEmptyResponse(http.StatusOK)
 	}
 
 	return newSqlPreviewResponse(sql)
