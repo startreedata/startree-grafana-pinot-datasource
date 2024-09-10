@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/magefile/mage/mage"
 	"io"
 	"net/http"
 	"net/url"
@@ -391,10 +392,9 @@ func (x *ReleaseManager) getRepoFileUrl(fileName string) string {
 
 func (x *ReleaseManager) buildPlugin() {
 	fmt.Println("Building plugin...")
-
 	removeAll(BuildArtifactsDir)
-	runCmd(nil, nil, "mage", "-v")
-	runCmd(nil, nil, "npm", "run", "build")
+	mage.Invoke(mage.Invocation{Verbose: true, Stdout: os.Stdout, Stderr: os.Stderr})
+	runCmd(nil, os.Stdout, "npm", "run", "build")
 }
 
 func (x *ReleaseManager) unzipPlugin(src string) {
