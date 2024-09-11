@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/startree/pinot/pkg/plugin/logger"
 	"io"
 	"net/http"
 	"net/url"
@@ -137,20 +138,20 @@ func (p *PinotControllerClient) doRequest(req *http.Request) (*http.Response, er
 	if err != nil {
 		return nil, fmt.Errorf("pinot/http request failed: %s %s %w", req.Method, req.URL.String(), err)
 	}
-	Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
+	logger.Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
 	return resp, err
 }
 
 func (p *PinotControllerClient) closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		Logger.Error("pinot/http failed to close response body: ", err.Error())
+		logger.Logger.Error("pinot/http failed to close response body: ", err.Error())
 	}
 }
 
 func (p *PinotControllerClient) newErrorFromResponseBody(resp *http.Response) error {
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(resp.Body); err != nil {
-		Logger.Error("pinot/http failed to read response body: ", err.Error())
+		logger.Logger.Error("pinot/http failed to read response body: ", err.Error())
 	}
 	return newControllerStatusError(resp.StatusCode, body.String())
 }

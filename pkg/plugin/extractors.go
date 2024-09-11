@@ -3,6 +3,7 @@ package plugin
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startree/pinot/pkg/plugin/logger"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"strings"
 	"time"
@@ -68,7 +69,7 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	case "STRING":
 		return ExtractStringColumn(results, colIdx)
 	default:
-		Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
+		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
 		return make([]int64, results.GetRowCount())
 	}
 }
