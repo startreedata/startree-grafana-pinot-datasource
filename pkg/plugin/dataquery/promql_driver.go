@@ -1,22 +1,23 @@
-package plugin
+package dataquery
 
 import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana/pkg/promlib/converter"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 )
 
 var _ Driver = &PromQlDriver{}
 
 type PromQlDriver struct {
-	client *PinotPromQlClient
+	client *pinotlib.PinotPromQlClient
 }
 
 func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
-	resp, err := p.client.Query(ctx, new(PinotPromQlRequest))
+	resp, err := p.client.Query(ctx, new(pinotlib.PinotPromQlRequest))
 	if err != nil {
-		return newDataInternalErrorResponse(err)
+		return NewDataInternalErrorResponse(err)
 	}
 
 	iter := jsoniter.Parse(jsoniter.ConfigDefault, resp.Body, 1024)

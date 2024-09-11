@@ -1,7 +1,8 @@
-package plugin
+package dataquery
 
 import (
 	"fmt"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 	"regexp"
 	"strings"
 	"time"
@@ -26,7 +27,7 @@ type MacroEngine struct {
 	TableName   string
 	TimeAlias   string
 	MetricAlias string
-	TableSchema
+	pinotlib.TableSchema
 	TimeRange
 	IntervalSize time.Duration
 }

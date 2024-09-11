@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startree/pinot/pkg/plugin/dataquery"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 )
 
-func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
+func NewQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		response := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
@@ -18,28 +19,16 @@ func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
 	})
 }
 
-func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
-	pinotDataQuery, err := PinotDataQueryFrom(query)
+func fetchData(client *pinotlib.PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
+	pinotDataQuery, err := dataquery.PinotDataQueryFrom(query)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
 
-	driver, err := NewDriver(ctx, client, pinotDataQuery, query.TimeRange)
+	driver, err := dataquery.NewDriver(ctx, client, pinotDataQuery, query.TimeRange)
 	if err != nil {
-		return newDataInternalErrorResponse(err)
+		return dataquery.NewDataInternalErrorResponse(err)
 	}
 
 	return driver.Execute(ctx)
-}
-
-func newDataResponse(frames ...*data.Frame) backend.DataResponse {
-	return backend.DataResponse{Frames: frames}
-}
-
-func newDataInternalErrorResponse(err error) backend.DataResponse {
-	return newDataErrorResponse(backend.StatusInternal, err)
-}
-
-func newDataErrorResponse(status backend.Status, err error) backend.DataResponse {
-	return backend.ErrDataResponse(status, fmt.Sprintf("Error: %s.", err.Error()))
 }

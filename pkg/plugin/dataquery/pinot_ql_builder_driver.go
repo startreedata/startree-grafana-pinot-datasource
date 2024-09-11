@@ -1,4 +1,4 @@
-package plugin
+package dataquery
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"strings"
@@ -31,8 +32,8 @@ type PinotQlBuilderDriver struct {
 }
 
 type PinotQlBuilderParams struct {
-	*PinotClient
-	TableSchema
+	*pinotlib.PinotClient
+	pinotlib.TableSchema
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
 	DatabaseName        string
@@ -83,19 +84,19 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 func (p *PinotQlBuilderDriver) Execute(ctx context.Context) backend.DataResponse {
 	sql, err := p.RenderPinotSql()
 	if err != nil {
-		return newDataInternalErrorResponse(err)
+		return NewDataInternalErrorResponse(err)
 	}
 
 	resp, err := p.ExecuteSQL(ctx, p.TableName, sql)
 	if err != nil {
-		return newDataInternalErrorResponse(err)
+		return NewDataInternalErrorResponse(err)
 	}
 
 	frame, err := p.ExtractResults(resp.ResultTable)
 	if err != nil {
-		return newDataInternalErrorResponse(err)
+		return NewDataInternalErrorResponse(err)
 	}
-	return newDataResponse(frame)
+	return NewDataResponse(frame)
 }
 
 func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {

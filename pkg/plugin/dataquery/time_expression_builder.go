@@ -1,7 +1,8 @@
-package plugin
+package dataquery
 
 import (
 	"fmt"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 	"strings"
 	"time"
 )
@@ -21,7 +22,7 @@ type TimeExpressionBuilder struct {
 	timeExprFormat   TimeExprFormat
 }
 
-func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
+func TimeExpressionBuilderFor(tableSchema pinotlib.TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
 	timeColumn = strings.Trim(timeColumn, "\"`")
 	if len(timeColumn) == 0 {
 		return TimeExpressionBuilder{}, fmt.Errorf("time column cannot be empty")

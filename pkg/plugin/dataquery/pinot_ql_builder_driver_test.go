@@ -1,6 +1,7 @@
-package plugin
+package dataquery
 
 import (
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -9,8 +10,8 @@ import (
 func TestNewPinotQlBuilderDriver(t *testing.T) {
 	newParams := func() PinotQlBuilderParams {
 		return PinotQlBuilderParams{
-			TableSchema: TableSchema{
-				DateTimeFieldSpecs: []DateTimeFieldSpec{{
+			TableSchema: pinotlib.TableSchema{
+				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
 					Format:   FormatMillisecondsEpoch,

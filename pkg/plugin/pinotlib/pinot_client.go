@@ -1,12 +1,12 @@
-package plugin
+package pinotlib
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/cache"
 	"github.com/startree/pinot/pkg/plugin/logger"
+	"github.com/startree/pinot/pkg/plugin/resources/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"net/http"
 	"strconv"

@@ -1,9 +1,10 @@
-package plugin
+package dataquery
 
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startree/pinot/pkg/plugin/logger"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"strings"
 	"time"
@@ -18,7 +19,7 @@ func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, error) {
 	return -1, fmt.Errorf("column %s not found", colName)
 }
 
-func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, error) {
+func GetTimeColumnFormat(tableSchema pinotlib.TableSchema, timeColumn string) (string, error) {
 	for _, dtField := range tableSchema.DateTimeFieldSpecs {
 		if dtField.Name == timeColumn {
 			return dtField.Format, nil

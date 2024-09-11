@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/startree/pinot/pkg/plugin"
 	"os"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/datasource"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
-	"github.com/startree/pinot/pkg/plugin"
 )
 
 func main() {

@@ -1,8 +1,11 @@
-package plugin
+package dataquery
 
 import (
 	"context"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startree/pinot/pkg/plugin/pinotlib"
 )
 
 const (
@@ -17,7 +20,7 @@ type Driver interface {
 	Execute(ctx context.Context) backend.DataResponse
 }
 
-func NewDriver(ctx context.Context, pinotClient *PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
+func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
 	switch query.QueryType {
 	case QueryTypePinotQl:
 		return newPinotQlDriver(pinotClient, query, timeRange)
@@ -35,7 +38,7 @@ func NewDriver(ctx context.Context, pinotClient *PinotClient, query PinotDataQue
 	}
 }
 
-func newPinotQlDriver(pinotClient *PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
+func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
 	if query.TableName == "" {
 		// Don't return an error when a user first lands on the query editor.
 		return new(NoOpDriver), nil
@@ -95,4 +98,16 @@ type NoOpDriver struct{}
 
 func (d *NoOpDriver) Execute(ctx context.Context) backend.DataResponse {
 	return backend.DataResponse{}
+}
+
+func NewDataResponse(frames ...*data.Frame) backend.DataResponse {
+	return backend.DataResponse{Frames: frames}
+}
+
+func NewDataInternalErrorResponse(err error) backend.DataResponse {
+	return NewDataErrorResponse(backend.StatusInternal, err)
+}
+
+func NewDataErrorResponse(status backend.Status, err error) backend.DataResponse {
+	return backend.ErrDataResponse(status, fmt.Sprintf("Error: %s.", err.Error()))
 }
