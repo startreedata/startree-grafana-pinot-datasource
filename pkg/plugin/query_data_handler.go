@@ -24,27 +24,22 @@ func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
 
-	var tableSchema TableSchema
-	if pinotDataQuery.TableName != "" {
-		tableSchema, err = client.GetTableSchema(ctx, pinotDataQuery.TableName)
-		if err != nil {
-			return backend.ErrDataResponse(backend.StatusInternal, err.Error())
-		}
-	}
-
-	errorMessageFor := func(err error) string {
-		return fmt.Sprintf("Error: %s.", err.Error())
-	}
-
-	driver, err := NewDriver(client, pinotDataQuery, tableSchema, query.TimeRange)
+	driver, err := NewDriver(ctx, client, pinotDataQuery, query.TimeRange)
 	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
-	}
-	results, err := driver.Execute(ctx)
-
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
+		return newDataInternalErrorResponse(err)
 	}
 
-	return backend.DataResponse{Frames: data.Frames{results}}
+	return driver.Execute(ctx)
+}
+
+func newDataResponse(frames ...*data.Frame) backend.DataResponse {
+	return backend.DataResponse{Frames: frames}
+}
+
+func newDataInternalErrorResponse(err error) backend.DataResponse {
+	return newDataErrorResponse(backend.StatusInternal, err)
+}
+
+func newDataErrorResponse(status backend.Status, err error) backend.DataResponse {
+	return backend.ErrDataResponse(status, fmt.Sprintf("Error: %s.", err.Error()))
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startree/pinot/pkg/plugin/templates"
 	"github.com/startreedata/pinot-client-go/pinot"
@@ -79,17 +80,22 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 	}, nil
 }
 
-func (p *PinotQlBuilderDriver) Execute(ctx context.Context) (*data.Frame, error) {
+func (p *PinotQlBuilderDriver) Execute(ctx context.Context) backend.DataResponse {
 	sql, err := p.RenderPinotSql()
 	if err != nil {
-		return nil, err
+		return newDataInternalErrorResponse(err)
 	}
 
 	resp, err := p.ExecuteSQL(ctx, p.TableName, sql)
 	if err != nil {
-		return nil, err
+		return newDataInternalErrorResponse(err)
 	}
-	return p.ExtractResults(resp.ResultTable)
+
+	frame, err := p.ExtractResults(resp.ResultTable)
+	if err != nil {
+		return newDataInternalErrorResponse(err)
+	}
+	return newDataResponse(frame)
 }
 
 func (p *PinotQlBuilderDriver) RenderPinotSqlWithMacros() (string, error) {
