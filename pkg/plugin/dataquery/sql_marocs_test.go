@@ -1,6 +1,7 @@
-package plugin
+package dataquery
 
 import (
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -12,8 +13,8 @@ func TestExpandMacros(t *testing.T) {
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: TableSchema{
-			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+		TableSchema: pinotlib.TableSchema{
+			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
@@ -73,8 +74,8 @@ func TestMacroExprFor(t *testing.T) {
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: TableSchema{
-			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+		TableSchema: pinotlib.TableSchema{
+			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
@@ -140,8 +141,8 @@ LIMIT 1000000
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: TableSchema{
-			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+		TableSchema: pinotlib.TableSchema{
+			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",

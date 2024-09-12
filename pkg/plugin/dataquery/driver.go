@@ -1,9 +1,11 @@
-package plugin
+package dataquery
 
 import (
 	"context"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 )
 
 const (
@@ -15,13 +17,13 @@ const (
 )
 
 type Driver interface {
-	Execute(ctx context.Context) (*data.Frame, error)
+	Execute(ctx context.Context) backend.DataResponse
 }
 
-func NewDriver(pinotClient *PinotClient, query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) (Driver, error) {
+func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
 	switch query.QueryType {
 	case QueryTypePinotQl:
-		return newPinotQlDriver(pinotClient, query, tableSchema, timeRange)
+		return newPinotQlDriver(pinotClient, query, timeRange)
 	case QueryTypePinotVariableQuery:
 		return NewPinotVariableQueryDriver(PinotVariableQueryParams{
 			PinotClient:  pinotClient,
@@ -36,10 +38,15 @@ func NewDriver(pinotClient *PinotClient, query PinotDataQuery, tableSchema Table
 	}
 }
 
-func newPinotQlDriver(pinotClient *PinotClient, query PinotDataQuery, tableSchema TableSchema, timeRange backend.TimeRange) (Driver, error) {
+func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
 	if query.TableName == "" {
 		// Don't return an error when a user first lands on the query editor.
 		return new(NoOpDriver), nil
+	}
+
+	tableSchema, err := pinotClient.GetTableSchema(context.Background(), query.TableName)
+	if err != nil {
+		return nil, err
 	}
 
 	switch query.EditorMode {
@@ -89,6 +96,18 @@ var _ Driver = &NoOpDriver{}
 
 type NoOpDriver struct{}
 
-func (d *NoOpDriver) Execute(ctx context.Context) (*data.Frame, error) {
-	return data.NewFrame("results"), nil
+func (d *NoOpDriver) Execute(ctx context.Context) backend.DataResponse {
+	return backend.DataResponse{}
+}
+
+func NewDataResponse(frames ...*data.Frame) backend.DataResponse {
+	return backend.DataResponse{Frames: frames}
+}
+
+func NewDataInternalErrorResponse(err error) backend.DataResponse {
+	return NewDataErrorResponse(backend.StatusInternal, err)
+}
+
+func NewDataErrorResponse(status backend.Status, err error) backend.DataResponse {
+	return backend.ErrDataResponse(status, fmt.Sprintf("Error: %s.", err.Error()))
 }

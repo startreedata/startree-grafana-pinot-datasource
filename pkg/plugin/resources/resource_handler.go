@@ -1,20 +1,23 @@
-package plugin
+package resources
 
 import (
 	"context"
 	"encoding/json"
 	"github.com/gorilla/mux"
-	"github.com/startree/pinot/pkg/plugin/templates"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"net/http"
 	"time"
 )
 
-type PinotResourceHandler struct {
-	client *PinotClient
+type ResourceHandler struct {
+	client *pinotlib.PinotClient
 	router *mux.Router
 }
 
-type PinotResourceResponse struct {
+type Response struct {
 	Code  int    `json:"code"`
 	Error string `json:"error,omitempty"`
 
@@ -34,7 +37,7 @@ type GetTablesResponse struct {
 }
 
 type GetTableSchemaResponse struct {
-	Schema TableSchema `json:"schema"`
+	Schema pinotlib.TableSchema `json:"schema"`
 }
 
 type SqlPreviewResponse struct {
@@ -45,10 +48,10 @@ type DistinctValuesResponse struct {
 	ValueExprs []string `json:"valueExprs"`
 }
 
-func NewPinotResourceHandler(client *PinotClient) *PinotResourceHandler {
+func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router := mux.NewRouter()
 
-	handler := PinotResourceHandler{client: client, router: router}
+	handler := ResourceHandler{client: client, router: router}
 
 	router.HandleFunc("/databases", adaptHandler(handler.GetDatabases))
 	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
@@ -61,31 +64,31 @@ func NewPinotResourceHandler(client *PinotClient) *PinotResourceHandler {
 	return &handler
 }
 
-func (x *PinotResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (x *ResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	x.router.ServeHTTP(w, r)
 }
 
-func (x *PinotResourceHandler) GetDatabases(r *http.Request) *PinotResourceResponse {
+func (x *ResourceHandler) GetDatabases(r *http.Request) *Response {
 	databases, err := x.client.ListDatabases(r.Context())
 
-	if IsControllerStatusError(err, http.StatusForbidden) {
-		Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
+	if pinotlib.IsControllerStatusError(err, http.StatusForbidden) {
+		logger.Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
 		return newEmptyResponse(http.StatusOK)
 	} else if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
-	return &PinotResourceResponse{Code: http.StatusOK, GetDatabasesResponse: &GetDatabasesResponse{Databases: databases}}
+	return &Response{Code: http.StatusOK, GetDatabasesResponse: &GetDatabasesResponse{Databases: databases}}
 }
 
-func (x *PinotResourceHandler) GetTables(r *http.Request) *PinotResourceResponse {
+func (x *ResourceHandler) GetTables(r *http.Request) *Response {
 	tables, err := x.client.ListTables(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
-	return &PinotResourceResponse{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
+	return &Response{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
 }
 
-func (x *PinotResourceHandler) GetTableSchema(r *http.Request) *PinotResourceResponse {
+func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response {
 	vars := mux.Vars(r)
 	table := vars["table"]
 
@@ -93,27 +96,27 @@ func (x *PinotResourceHandler) GetTableSchema(r *http.Request) *PinotResourceRes
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
-	return &PinotResourceResponse{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
+	return &Response{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
 }
 
 type SqlBuilderPreviewRequest struct {
-	TimeRange           TimeRange         `json:"timeRange"`
-	IntervalSize        string            `json:"intervalSize"`
-	DatabaseName        string            `json:"databaseName"`
-	TableName           string            `json:"tableName"`
-	TimeColumn          string            `json:"timeColumn"`
-	MetricColumn        string            `json:"metricColumn"`
-	GroupByColumns      []string          `json:"groupByColumns"`
-	AggregationFunction string            `json:"aggregationFunction"`
-	DimensionFilters    []DimensionFilter `json:"filters"`
-	Limit               int64             `json:"limit"`
-	Granularity         string            `json:"granularity"`
-	OrderByClauses      []OrderByClause   `json:"orderBy"`
-	QueryOptions        []QueryOption     `json:"queryOptions"`
-	ExpandMacros        bool              `json:"expandMacros"`
+	TimeRange           dataquery.TimeRange         `json:"timeRange"`
+	IntervalSize        string                      `json:"intervalSize"`
+	DatabaseName        string                      `json:"databaseName"`
+	TableName           string                      `json:"tableName"`
+	TimeColumn          string                      `json:"timeColumn"`
+	MetricColumn        string                      `json:"metricColumn"`
+	GroupByColumns      []string                    `json:"groupByColumns"`
+	AggregationFunction string                      `json:"aggregationFunction"`
+	DimensionFilters    []dataquery.DimensionFilter `json:"filters"`
+	Limit               int64                       `json:"limit"`
+	Granularity         string                      `json:"granularity"`
+	OrderByClauses      []dataquery.OrderByClause   `json:"orderBy"`
+	QueryOptions        []dataquery.QueryOption     `json:"queryOptions"`
+	ExpandMacros        bool                        `json:"expandMacros"`
 }
 
-func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilderPreviewRequest) *PinotResourceResponse {
+func (x *ResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilderPreviewRequest) *Response {
 	if data.TableName == "" {
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -121,11 +124,11 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		// No need to surface this error in Grafana.
-		Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		logger.Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
+	driver, err := dataquery.NewPinotQlBuilderDriver(dataquery.PinotQlBuilderParams{
 		TableSchema:         tableSchema,
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
@@ -142,20 +145,14 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 		QueryOptions:        data.QueryOptions,
 	})
 	if err != nil {
-		Logger.Error("newPinotDriver() failed:", err.Error())
+		logger.Logger.Error("newPinotDriver() failed:", err.Error())
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	var sql string
-	if data.ExpandMacros {
-		sql, err = driver.RenderPinotSql()
-	} else {
-		sql, err = driver.RenderPinotSqlWithMacros()
-	}
-
+	sql, err := driver.RenderPinotSql(data.ExpandMacros)
 	if err != nil {
-		Logger.Error("pinotDriver.RenderSql() failed:", err.Error())
+		logger.Logger.Error("pinotDriver.RenderSql() failed:", err.Error())
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -164,29 +161,29 @@ func (x *PinotResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBu
 }
 
 type SqlCodePreviewRequest struct {
-	TimeRange         TimeRange `json:"timeRange"`
-	IntervalSize      string    `json:"intervalSize"`
-	TableName         string    `json:"tableName"`
-	TimeColumnAlias   string    `json:"timeColumnAlias"`
-	TimeColumnFormat  string    `json:"timeColumnFormat"`
-	MetricColumnAlias string    `json:"metricColumnAlias"`
-	Code              string    `json:"code"`
+	TimeRange         dataquery.TimeRange `json:"timeRange"`
+	IntervalSize      string              `json:"intervalSize"`
+	TableName         string              `json:"tableName"`
+	TimeColumnAlias   string              `json:"timeColumnAlias"`
+	TimeColumnFormat  string              `json:"timeColumnFormat"`
+	MetricColumnAlias string              `json:"metricColumnAlias"`
+	Code              string              `json:"code"`
 }
 
-func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePreviewRequest) *PinotResourceResponse {
+func (x *ResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePreviewRequest) *Response {
 	if data.TableName == "" {
-		Logger.Info("received code preview request without table selection.")
+		logger.Logger.Info("received code preview request without table selection.")
 		return newEmptyResponse(http.StatusOK)
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
-		Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		logger.Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	driver, err := NewPinotQlCodeDriver(PinotQlCodeDriverParams{
+	driver, err := dataquery.NewPinotQlCodeDriver(dataquery.PinotQlCodeDriverParams{
 		TableName:         data.TableName,
 		TimeRange:         data.TimeRange,
 		IntervalSize:      parseIntervalSize(data.IntervalSize),
@@ -197,14 +194,14 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 		Code:              data.Code,
 	})
 	if err != nil {
-		Logger.Error("NewPinotQlCodeDriver() failed:", err.Error())
+		logger.Logger.Error("NewPinotQlCodeDriver() failed:", err.Error())
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		Logger.Error("RenderPinotSql() failed:", err.Error())
+		logger.Logger.Error("RenderPinotSql() failed:", err.Error())
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -213,20 +210,20 @@ func (x *PinotResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodeP
 }
 
 type DistinctValuesRequest struct {
-	TableName        string            `json:"tableName"`
-	ColumnName       string            `json:"columnName"`
-	TimeRange        *TimeRange        `json:"timeRange"`
-	TimeColumn       string            `json:"timeColumn"`
-	DimensionFilters []DimensionFilter `json:"filters"`
+	TableName        string                      `json:"tableName"`
+	ColumnName       string                      `json:"columnName"`
+	TimeRange        *dataquery.TimeRange        `json:"timeRange"`
+	TimeColumn       string                      `json:"timeColumn"`
+	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) *PinotResourceResponse {
+func (x *ResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) *Response {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
 	if sql == "" {
-		return &PinotResourceResponse{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{}}
+		return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{}}
 	}
 
 	results, err := x.client.ExecuteSQL(ctx, data.TableName, sql)
@@ -234,12 +231,12 @@ func (x *PinotResourceHandler) DistinctValues(ctx context.Context, data Distinct
 		return newInternalServerErrorResponse(err)
 	}
 
-	return &PinotResourceResponse{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
-		ValueExprs: ExtractColumnExpr(results.ResultTable, 0),
+	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
+		ValueExprs: dataquery.ExtractColumnExpr(results.ResultTable, 0),
 	}}
 }
 
-func (x *PinotResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) *PinotResourceResponse {
+func (x *ResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) *Response {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
 		return newErrorResponse(http.StatusInternalServerError, err)
@@ -248,7 +245,7 @@ func (x *PinotResourceHandler) DistinctValuesSqlPreview(ctx context.Context, dat
 	return newSqlPreviewResponse(sql)
 }
 
-func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data DistinctValuesRequest) (string, error) {
+func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data DistinctValuesRequest) (string, error) {
 	if data.TableName == "" || data.ColumnName == "" {
 		return "", nil
 	}
@@ -260,7 +257,7 @@ func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data Di
 			return "", err
 		}
 
-		exprBuilder, err := TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
+		exprBuilder, err := dataquery.TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
 		if err != nil {
 			return "", err
 		}
@@ -272,37 +269,37 @@ func (x *PinotResourceHandler) getDistinctValuesSql(ctx context.Context, data Di
 		ColumnName:           data.ColumnName,
 		TableName:            data.TableName,
 		TimeFilterExpr:       timeFilterExpr,
-		DimensionFilterExprs: FilterExprsFrom(data.DimensionFilters),
+		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),
 	})
 }
 
-func newSqlPreviewResponse(sql string) *PinotResourceResponse {
-	return &PinotResourceResponse{Code: http.StatusOK, SqlPreviewResponse: &SqlPreviewResponse{Sql: sql}}
+func newSqlPreviewResponse(sql string) *Response {
+	return &Response{Code: http.StatusOK, SqlPreviewResponse: &SqlPreviewResponse{Sql: sql}}
 }
 
-func newEmptyResponse(code int) *PinotResourceResponse {
-	return &PinotResourceResponse{Code: code}
+func newEmptyResponse(code int) *Response {
+	return &Response{Code: code}
 }
 
-func newBadRequestResponse(err error) *PinotResourceResponse {
+func newBadRequestResponse(err error) *Response {
 	return newErrorResponse(http.StatusBadRequest, err)
 }
 
-func newInternalServerErrorResponse(err error) *PinotResourceResponse {
+func newInternalServerErrorResponse(err error) *Response {
 	return newErrorResponse(http.StatusInternalServerError, err)
 }
 
-func newErrorResponse(code int, err error) *PinotResourceResponse {
-	return &PinotResourceResponse{Code: code, Error: err.Error()}
+func newErrorResponse(code int, err error) *Response {
+	return &Response{Code: code, Error: err.Error()}
 }
 
-func adaptHandler(handler func(r *http.Request) *PinotResourceResponse) http.HandlerFunc {
+func adaptHandler(handler func(r *http.Request) *Response) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, handler(r))
 	}
 }
 
-func adaptHandlerWithBody[A any](handler func(ctx context.Context, data A) *PinotResourceResponse) http.HandlerFunc {
+func adaptHandlerWithBody[A any](handler func(ctx context.Context, data A) *Response) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data A
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
@@ -321,10 +318,10 @@ func parseIntervalSize(intervalSize string) time.Duration {
 	return interval
 }
 
-func writeResponse(w http.ResponseWriter, resp *PinotResourceResponse) {
+func writeResponse(w http.ResponseWriter, resp *Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.Code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		Logger.Error("failed to write http response: ", err)
+		logger.Logger.Error("failed to write http response: ", err)
 	}
 }

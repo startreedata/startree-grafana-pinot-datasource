@@ -1,4 +1,4 @@
-package plugin
+package pinotlib
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 func TestPinotClient_Query(t *testing.T) {
 	ctx := context.Background()
-	client := newPinotTestClient(t)
+	client := NewPinotTestClient(t)
 	sql := `select * from githubEvents limit 10`
 	_, err := client.ExecuteSQL(ctx, "githubEvents", sql)
 	assert.NoError(t, err)
@@ -21,14 +21,14 @@ func TestPinotClient_ListTables(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := newPinotTestClient(t)
+		client := NewPinotTestClient(t)
 		_, err := client.ListTables(ctx)
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
 	t.Run("happy path", func(t *testing.T) {
 		ctx := context.Background()
-		client := newPinotTestClient(t)
+		client := NewPinotTestClient(t)
 
 		wantTables := []string{"airlineStats", "baseballStats", "billing",
 			"dimBaseballTeams", "githubComplexTypeEvents", "githubEvents", "starbucksStores"}
@@ -46,14 +46,14 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := newPinotTestClient(t)
+		client := NewPinotTestClient(t)
 		_, err := client.ListTables(ctx)
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
 	t.Run("happy path", func(t *testing.T) {
 		ctx := context.Background()
-		client := newPinotTestClient(t)
+		client := NewPinotTestClient(t)
 
 		want := TableSchema{
 			SchemaName: "githubEvents",
@@ -88,7 +88,7 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 	})
 }
 
-func newPinotTestClient(t *testing.T) *PinotClient {
+func NewPinotTestClient(t *testing.T) *PinotClient {
 	pinotClient, err := NewPinotClient(PinotClientProperties{
 		ControllerUrl: "http://localhost:9000",
 		BrokerUrl:     "http://localhost:8000",

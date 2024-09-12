@@ -1,9 +1,11 @@
-package plugin
+package dataquery
 
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strings"
 	"time"
 )
@@ -17,7 +19,7 @@ func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, error) {
 	return -1, fmt.Errorf("column %s not found", colName)
 }
 
-func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, error) {
+func GetTimeColumnFormat(tableSchema pinotlib.TableSchema, timeColumn string) (string, error) {
 	for _, dtField := range tableSchema.DateTimeFieldSpecs {
 		if dtField.Name == timeColumn {
 			return dtField.Format, nil
@@ -68,7 +70,7 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	case "STRING":
 		return ExtractStringColumn(results, colIdx)
 	default:
-		Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
+		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
 		return make([]int64, results.GetRowCount())
 	}
 }
