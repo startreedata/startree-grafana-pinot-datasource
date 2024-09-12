@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ type Datasource struct {
 	instancemgmt.InstanceDisposer
 }
 
-func NewDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	config, err := DatasourceConfigFrom(settings)
 	if err != nil {
 		return nil, err
