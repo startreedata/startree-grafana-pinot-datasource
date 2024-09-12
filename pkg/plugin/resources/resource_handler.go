@@ -150,13 +150,7 @@ func (x *ResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilder
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	var sql string
-	if data.ExpandMacros {
-		sql, err = driver.RenderPinotSql()
-	} else {
-		sql, err = driver.RenderPinotSqlWithMacros()
-	}
-
+	sql, err := driver.RenderPinotSql(data.ExpandMacros)
 	if err != nil {
 		logger.Logger.Error("pinotDriver.RenderSql() failed:", err.Error())
 		// No need to surface this error in Grafana.

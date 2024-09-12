@@ -1,7 +1,6 @@
 package plugin
 
 import (
-	"context"
 	"encoding/json"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/stretchr/testify/assert"
@@ -10,7 +9,7 @@ import (
 )
 
 func TestDatasource(t *testing.T) {
-	datasource, err := NewDatasource(context.Background(), backend.DataSourceInstanceSettings{
+	datasource, err := NewDatasource(backend.DataSourceInstanceSettings{
 		JSONData: json.RawMessage(
 			`{"brokerUrl":"http://localhost:8000","controllerUrl":"http://localhost:9000","tokenType":"bearer"}`),
 		DecryptedSecureJSONData: map[string]string{},
