@@ -35,3 +35,12 @@ e2e-results/
 .eslintcache
 *.zip
 .DS_Store
+
+# env files
+.env
+
+# Cypress
+cypress/downloads/
+cypress/screenshots/
+cypress/videos/
+cypress/coverage/
