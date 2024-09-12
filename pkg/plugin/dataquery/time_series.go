@@ -1,9 +1,10 @@
-package plugin
+package dataquery
 
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"regexp"
 	"slices"
 	"sort"
@@ -151,7 +152,7 @@ func FormatSeriesName(legend string, labels map[string]string) string {
 		pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
 		r, err := regexp.Compile(pattern)
 		if err != nil {
-			Logger.Info("Error compiling legend regex", err)
+			logger.Logger.Info("Error compiling legend regex", err)
 			continue
 		}
 		legend = r.ReplaceAllString(legend, val)

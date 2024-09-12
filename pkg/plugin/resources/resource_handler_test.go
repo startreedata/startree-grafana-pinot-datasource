@@ -1,8 +1,9 @@
-package plugin
+package resources
 
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestPinotResourceHandler_SqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	want := strings.TrimSpace(`
@@ -58,7 +59,7 @@ LIMIT 100000;
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	var got json.RawMessage
@@ -79,7 +80,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 }
 
 func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	var want = `SELECT 
