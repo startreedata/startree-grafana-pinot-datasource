@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"io"
 	"net/http"
 	"net/url"

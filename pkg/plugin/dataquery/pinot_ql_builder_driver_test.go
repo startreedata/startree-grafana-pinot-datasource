@@ -1,7 +1,7 @@
 package dataquery
 
 import (
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -45,7 +45,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 		params := newParams()
 		got, gotErr := NewPinotQlBuilderDriver(newParams())
 		assert.NoError(t, gotErr)
-		assert.Equal(t, params, got.PinotQlBuilderParams)
+		assert.Equal(t, params, got.params)
 		assert.NotNil(t, got.timeExprBuilder)
 		assert.Equal(t, DefaultMetricColumnAlias, got.MetricColumnAlias)
 		assert.Equal(t, DefaultTimeColumnAlias, got.TimeColumnAlias)

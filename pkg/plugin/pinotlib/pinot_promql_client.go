@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"net/http"
 	"strconv"
 	"time"

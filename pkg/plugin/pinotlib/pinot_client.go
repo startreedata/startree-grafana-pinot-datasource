@@ -3,9 +3,9 @@ package pinotlib
 import (
 	"context"
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/logger"
-	"github.com/startree/pinot/pkg/plugin/resources/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources/cache"
 	"net/http"
 	"strings"
 	"time"

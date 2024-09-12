@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
-	"github.com/startree/pinot/pkg/plugin/templates"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
 )
 

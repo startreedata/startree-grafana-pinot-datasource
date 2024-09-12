@@ -3,8 +3,8 @@ package plugin
 import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
-	"github.com/startree/pinot/pkg/plugin/resources"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
 )
 
 func NewCallResourceHandler(client *pinotlib.PinotClient) backend.CallResourceHandler {

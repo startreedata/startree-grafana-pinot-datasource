@@ -1,7 +1,7 @@
 package test_helpers
 
 import (
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/require"
 	"testing"
 )

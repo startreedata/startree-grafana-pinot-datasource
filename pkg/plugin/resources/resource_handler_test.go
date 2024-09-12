@@ -3,7 +3,7 @@ package resources
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/startree/pinot/pkg/plugin/test_helpers"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"

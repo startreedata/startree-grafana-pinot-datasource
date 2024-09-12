@@ -2,7 +2,7 @@ package dataquery
 
 import (
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strings"
 	"time"
 )

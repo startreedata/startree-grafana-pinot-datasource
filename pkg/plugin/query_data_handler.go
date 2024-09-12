@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startree/pinot/pkg/plugin/dataquery"
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 )
 
 func NewQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {

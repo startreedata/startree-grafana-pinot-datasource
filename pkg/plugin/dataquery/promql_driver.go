@@ -5,7 +5,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana/pkg/promlib/converter"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/startree/pinot/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"time"
 )
 
