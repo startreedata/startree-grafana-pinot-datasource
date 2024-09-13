@@ -3,6 +3,12 @@ export type EndToEndEnvVariables = {
   authUsername: string;
   authPassword: string;
   authAccessToken: string;
+
+  // Pinot connection credentials
+  pinotConnectionControllerUrl: string;
+  pinotConnectionBrokerUrl: string;
+  pinotConnectionDatabase: string;
+  pinotConnectionAuthToken: string;
 };
 
 type EndToEnd = Override<

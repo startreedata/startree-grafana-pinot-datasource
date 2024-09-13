@@ -13,6 +13,7 @@ export function InputDatabase(props: { value: string | undefined; onChange: (val
         onChange={(event) => onChange(event.currentTarget.value || undefined)}
         value={value}
         placeholder={labels.placeholder}
+        data-testid={labels.label.toLowerCase().replace(' ', '_')}
       />
     </InlineField>
   );

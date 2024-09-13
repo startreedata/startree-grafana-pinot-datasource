@@ -16,6 +16,12 @@ const config: CypressConfigOptions = {
       authUsername: process.env.AUTH_USERNAME,
       authPassword: process.env.AUTH_PASSWORD,
       authAccessToken: process.env.AUTH_ACCESS_TOKEN,
+
+      // Pinot connection credentials
+      pinotConnectionControllerUrl: process.env.PINOT_CONNECTION_CONTROLLER_URL,
+      pinotConnectionBrokerUrl: process.env.PINOT_CONNECTION_BROKER_URL,
+      pinotConnectionDatabase: process.env.PINOT_CONNECTION_DATABASE,
+      pinotConnectionAuthToken: process.env.PINOT_CONNECTION_AUTH_TOKEN,
     },
     setupNodeEvents(on, config) {
       // It's IMPORTANT to return the config object
