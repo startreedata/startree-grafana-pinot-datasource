@@ -5,4 +5,10 @@ export const EnvVariables: EndToEndEnvVariables = {
   authUsername: 'authUsername',
   authPassword: 'authPassword',
   authAccessToken: 'authAccessToken',
+
+  // Pinot connection credentials
+  pinotConnectionControllerUrl: 'pinotConnectionControllerUrl',
+  pinotConnectionBrokerUrl: 'pinotConnectionBrokerUrl',
+  pinotConnectionDatabase: 'pinotConnectionDatabase',
+  pinotConnectionAuthToken: 'pinotConnectionAuthToken',
 };
