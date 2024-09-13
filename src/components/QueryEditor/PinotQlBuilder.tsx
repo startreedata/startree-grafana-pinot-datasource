@@ -7,7 +7,6 @@ import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { interpolatePinotQlBuilderVars, interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
-import { fetchSqlBuilderPreview } from '../../resources/sqlPreview';
 import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
@@ -18,6 +17,7 @@ import { DateTime, ScopedVars } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { TableSchema } from '../../types/TableSchema';
 import { InputMetricLegend } from './InputMetricLegend';
+import { previewSqlBuilder } from '../../resources/previewSql';
 
 const MetricColumnStar = '*';
 
@@ -194,7 +194,7 @@ function useSqlPreview(
       scopedVars
     );
 
-    fetchSqlBuilderPreview(datasource, {
+    previewSqlBuilder(datasource, {
       aggregationFunction: interpolated.aggregationFunction,
       groupByColumns: interpolated.groupByColumns,
       intervalSize: intervalSize,

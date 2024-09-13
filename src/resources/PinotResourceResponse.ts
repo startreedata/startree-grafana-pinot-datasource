@@ -3,6 +3,4 @@ export interface PinotResourceResponse {
   error: string | null;
 }
 
-export interface SqlPreviewResponse extends PinotResourceResponse {
-  sql: string | null;
-}
+
