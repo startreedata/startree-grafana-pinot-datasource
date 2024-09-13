@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
-import { fetchSqlCodePreview } from '../../resources/sqlCodePreview';
 import { SqlPreview } from './SqlPreview';
 import { DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
 import { SelectTable } from './SelectTable';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
+import { previewSqlCode } from '../../resources/previewSql';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -25,7 +25,7 @@ export function PinotQlCode(props: {
   const [sqlPreview, setSqlPreview] = useState('');
 
   const onChangeAndUpdatePreview = (newQuery: PinotDataQuery) => {
-    fetchSqlCodePreview(datasource, {
+    previewSqlCode(datasource, {
       intervalSize: intervalSize || '0',
       tableName: newQuery.tableName,
       timeRange: timeRange,

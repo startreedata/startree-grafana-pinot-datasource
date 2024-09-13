@@ -25,7 +25,7 @@ type Response struct {
 	*GetTablesResponse
 	*GetTableSchemaResponse
 	*DistinctValuesResponse
-	*SqlPreviewResponse
+	*PreviewSqlResponse
 }
 
 type GetDatabasesResponse struct {
@@ -40,7 +40,7 @@ type GetTableSchemaResponse struct {
 	Schema pinotlib.TableSchema `json:"schema"`
 }
 
-type SqlPreviewResponse struct {
+type PreviewSqlResponse struct {
 	Sql string `json:"sql"`
 }
 
@@ -53,13 +53,13 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 
 	handler := ResourceHandler{client: client, router: router}
 
-	router.HandleFunc("/databases", adaptHandler(handler.GetDatabases))
+	router.HandleFunc("/databases", adaptHandler(handler.ListDatabases))
+	router.HandleFunc("/tables", adaptHandler(handler.ListTables))
 	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
-	router.HandleFunc("/tables", adaptHandler(handler.GetTables))
-	router.HandleFunc("/preview", adaptHandlerWithBody(handler.SqlBuilderPreview))
-	router.HandleFunc("/codePreview", adaptHandlerWithBody(handler.SqlCodePreview))
-	router.HandleFunc("/distinctValues", adaptHandlerWithBody(handler.DistinctValues))
-	router.HandleFunc("/distinctValuesSqlPreview", adaptHandlerWithBody(handler.DistinctValuesSqlPreview))
+	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(handler.PreviewSqlBuilder))
+	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(handler.PreviewSqlCode))
+	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(handler.PreviewSqlDistinctValues))
+	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
 
 	return &handler
 }
@@ -68,7 +68,7 @@ func (x *ResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	x.router.ServeHTTP(w, r)
 }
 
-func (x *ResourceHandler) GetDatabases(r *http.Request) *Response {
+func (x *ResourceHandler) ListDatabases(r *http.Request) *Response {
 	databases, err := x.client.ListDatabases(r.Context())
 
 	if pinotlib.IsControllerStatusError(err, http.StatusForbidden) {
@@ -80,7 +80,7 @@ func (x *ResourceHandler) GetDatabases(r *http.Request) *Response {
 	return &Response{Code: http.StatusOK, GetDatabasesResponse: &GetDatabasesResponse{Databases: databases}}
 }
 
-func (x *ResourceHandler) GetTables(r *http.Request) *Response {
+func (x *ResourceHandler) ListTables(r *http.Request) *Response {
 	tables, err := x.client.ListTables(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse(err)
@@ -99,7 +99,7 @@ func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response {
 	return &Response{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
 }
 
-type SqlBuilderPreviewRequest struct {
+type PreviewSqlBuilderRequest struct {
 	TimeRange           dataquery.TimeRange         `json:"timeRange"`
 	IntervalSize        string                      `json:"intervalSize"`
 	DatabaseName        string                      `json:"databaseName"`
@@ -116,7 +116,7 @@ type SqlBuilderPreviewRequest struct {
 	ExpandMacros        bool                        `json:"expandMacros"`
 }
 
-func (x *ResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilderPreviewRequest) *Response {
+func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSqlBuilderRequest) *Response {
 	if data.TableName == "" {
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -157,10 +157,10 @@ func (x *ResourceHandler) SqlBuilderPreview(ctx context.Context, data SqlBuilder
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	return newSqlPreviewResponse(sql)
+	return newPreviewSqlResponse(sql)
 }
 
-type SqlCodePreviewRequest struct {
+type PreviewSqlCodeRequest struct {
 	TimeRange         dataquery.TimeRange `json:"timeRange"`
 	IntervalSize      string              `json:"intervalSize"`
 	TableName         string              `json:"tableName"`
@@ -170,7 +170,7 @@ type SqlCodePreviewRequest struct {
 	Code              string              `json:"code"`
 }
 
-func (x *ResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePreviewRequest) *Response {
+func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCodeRequest) *Response {
 	if data.TableName == "" {
 		logger.Logger.Info("received code preview request without table selection.")
 		return newEmptyResponse(http.StatusOK)
@@ -206,10 +206,10 @@ func (x *ResourceHandler) SqlCodePreview(ctx context.Context, data SqlCodePrevie
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	return newSqlPreviewResponse(sql)
+	return newPreviewSqlResponse(sql)
 }
 
-type DistinctValuesRequest struct {
+type QueryDistinctValuesRequest struct {
 	TableName        string                      `json:"tableName"`
 	ColumnName       string                      `json:"columnName"`
 	TimeRange        *dataquery.TimeRange        `json:"timeRange"`
@@ -217,7 +217,7 @@ type DistinctValuesRequest struct {
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-func (x *ResourceHandler) DistinctValues(ctx context.Context, data DistinctValuesRequest) *Response {
+func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDistinctValuesRequest) *Response {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
 		return newInternalServerErrorResponse(err)
@@ -236,16 +236,18 @@ func (x *ResourceHandler) DistinctValues(ctx context.Context, data DistinctValue
 	}}
 }
 
-func (x *ResourceHandler) DistinctValuesSqlPreview(ctx context.Context, data DistinctValuesRequest) *Response {
-	sql, err := x.getDistinctValuesSql(ctx, data)
+type PreviewSqlDistinctValues QueryDistinctValuesRequest
+
+func (x *ResourceHandler) PreviewSqlDistinctValues(ctx context.Context, data PreviewSqlDistinctValues) *Response {
+	sql, err := x.getDistinctValuesSql(ctx, QueryDistinctValuesRequest(data))
 	if err != nil {
 		return newErrorResponse(http.StatusInternalServerError, err)
 	}
 
-	return newSqlPreviewResponse(sql)
+	return newPreviewSqlResponse(sql)
 }
 
-func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data DistinctValuesRequest) (string, error) {
+func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDistinctValuesRequest) (string, error) {
 	if data.TableName == "" || data.ColumnName == "" {
 		return "", nil
 	}
@@ -273,8 +275,8 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data Distinc
 	})
 }
 
-func newSqlPreviewResponse(sql string) *Response {
-	return &Response{Code: http.StatusOK, SqlPreviewResponse: &SqlPreviewResponse{Sql: sql}}
+func newPreviewSqlResponse(sql string) *Response {
+	return &Response{Code: http.StatusOK, PreviewSqlResponse: &PreviewSqlResponse{Sql: sql}}
 }
 
 func newEmptyResponse(code int) *Response {
