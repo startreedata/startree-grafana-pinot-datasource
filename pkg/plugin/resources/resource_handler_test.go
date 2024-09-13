@@ -35,7 +35,7 @@ LIMIT 100000;
 `)
 
 	var got map[string]interface{}
-	doPostRequest(t, server.URL+"/preview", `{
+	doPostRequest(t, server.URL+"/preview/sql/builder", `{
   "aggregationFunction": "MAX",
   "databaseName": "default",
   "intervalSize": "30m",
@@ -63,7 +63,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 	defer server.Close()
 
 	var got json.RawMessage
-	doPostRequest(t, server.URL+"/distinctValues", `{
+	doPostRequest(t, server.URL+"/query/distinctValues", `{
 		"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2018-02-01T00:00:00Z"},
 		"databaseName": "default",
 		"tableName":    "githubEvents",
@@ -117,7 +117,7 @@ LIMIT 1000000`
 	}))
 
 	var got map[string]interface{}
-	doPostRequest(t, server.URL+"/codePreview", data.String(), &got)
+	doPostRequest(t, server.URL+"/preview/sql/code", data.String(), &got)
 	assert.Equal(t, want, got["sql"])
 }
 

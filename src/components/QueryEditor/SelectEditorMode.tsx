@@ -1,12 +1,12 @@
 import { ConfirmModal } from './ConfirmModal';
 import { EditorMode } from '../../types/EditorMode';
 import { RadioButtonGroup } from '@grafana/ui';
-import { fetchSqlBuilderPreview } from '../../resources/sqlPreview';
 import React, { useState } from 'react';
 import { PinotDataQuery } from '../../types/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { DisplayTypeTimeSeries } from './SelectDisplayType';
+import { previewSqlBuilder } from '../../resources/previewSql';
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
@@ -50,7 +50,7 @@ export function SelectEditorMode(props: {
           }
 
           if (value === EditorMode.Code) {
-            fetchSqlBuilderPreview(datasource, {
+            previewSqlBuilder(datasource, {
               aggregationFunction: query.aggregationFunction,
               groupByColumns: query.groupByColumns,
               intervalSize: props.intervalSize || '0',

@@ -10,9 +10,9 @@ import { SelectVariableType, VariableType } from './SelectVariableType';
 import { PinotVariableQuery } from '../../types/PinotVariableQuery';
 import { DistinctValuesVariableEditor } from './DistinctValuesVariableEditor';
 import { SqlVariableEditor } from './SqlVariableEditor';
-import { fetchDistinctValuesSqlPreview } from '../../resources/distinctValues';
 import { ColumnTypes } from './SelectColumnType';
 import { ColumnVariableEditor } from './ColumnVariableEditor';
+import { previewSqlDistinctValues } from '../../resources/previewSql';
 
 type VariableQueryEditorProps = QueryEditorProps<DataSource, PinotDataQuery, PinotConnectionConfig, PinotDataQuery>;
 
@@ -51,7 +51,7 @@ export function VariableQueryEditor({ datasource, onChange, query }: VariableQue
   const [distinctValuesSqlPreview, setDistinctValuesSqlPreview] = useState<string>('');
   useEffect(() => {
     if (query.variableQuery?.variableType === VariableType.DistinctValues) {
-      fetchDistinctValuesSqlPreview(datasource, {
+      previewSqlDistinctValues(datasource, {
         tableName: query.tableName,
         columnName: query.variableQuery?.columnName,
       }).then((sqlPreview) => setDistinctValuesSqlPreview(sqlPreview));
