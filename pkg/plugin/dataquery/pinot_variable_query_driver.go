@@ -1,9 +1,11 @@
-package plugin
+package dataquery
 
 import (
 	"context"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startree/pinot/pkg/plugin/templates"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
 )
 
@@ -20,7 +22,7 @@ const (
 )
 
 type PinotVariableQueryParams struct {
-	*PinotClient
+	*pinotlib.PinotClient
 	VariableType string
 	TableName    string
 	ColumnName   string
@@ -40,7 +42,7 @@ func NewPinotVariableQueryDriver(params PinotVariableQueryParams) *PinotVariable
 	return &PinotVariableQueryDriver{params: params}
 }
 
-func (d *PinotVariableQueryDriver) Execute(ctx context.Context) (*data.Frame, error) {
+func (d *PinotVariableQueryDriver) Execute(ctx context.Context) backend.DataResponse {
 	switch d.params.VariableType {
 	case VariableQueryTypeTableList:
 		return d.getTableList(ctx)
@@ -51,14 +53,14 @@ func (d *PinotVariableQueryDriver) Execute(ctx context.Context) (*data.Frame, er
 	case VariableQueryTypePinotQlCode:
 		return d.getSqlResults(ctx)
 	default:
-		return data.NewFrame("result", data.NewField("unsure", nil, []string{})), nil
+		return NewDataResponse()
 	}
 }
 
-func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) (*data.Frame, error) {
+func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) backend.DataResponse {
 	sqlCode := strings.TrimSpace(d.params.PinotQlCode)
 	if sqlCode == "" {
-		return data.NewFrame("result", data.NewField("codeValues", nil, []string{})), nil
+		return NewDataResponse()
 	}
 
 	macroEngine := MacroEngine{
@@ -66,12 +68,12 @@ func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) (*data.Fra
 	}
 	sqlCode, err := macroEngine.ExpandTableName(sqlCode)
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
 
 	resp, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sqlCode)
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
 
 	result := resp.ResultTable
@@ -83,13 +85,13 @@ func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) (*data.Fra
 		}
 	}
 	values = GetDistinctValues(values)
-
-	return data.NewFrame("result", data.NewField("codeValues", nil, values)), nil
+	frame := data.NewFrame("result", data.NewField("codeValues", nil, values))
+	return NewDataResponse(frame)
 }
 
-func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) (*data.Frame, error) {
+func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backend.DataResponse {
 	if d.params.TableName == "" || d.params.ColumnName == "" {
-		return data.NewFrame("result", data.NewField("distinctValues", nil, []string{})), nil
+		return NewDataResponse()
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
@@ -97,25 +99,26 @@ func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) (*data
 		TableName:  d.params.TableName,
 	})
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
 
 	result, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sql)
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
 
 	values := ExtractStringColumn(result.ResultTable, 0)
-	return data.NewFrame("result", data.NewField("distinctValues", nil, values)), nil
+	frame := data.NewFrame("result", data.NewField("distinctValues", nil, values))
+	return NewDataResponse(frame)
 }
 
-func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) (*data.Frame, error) {
+func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) backend.DataResponse {
 	if d.params.TableName == "" {
-		return data.NewFrame("result", data.NewField("columns", nil, []string{})), nil
+		return NewDataResponse()
 	}
 	schema, err := d.params.PinotClient.GetTableSchema(ctx, d.params.TableName)
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
 
 	var columns []string
@@ -135,13 +138,15 @@ func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) (*data.Fra
 		}
 	}
 
-	return data.NewFrame("result", data.NewField("columns", nil, columns)), nil
+	frame := data.NewFrame("result", data.NewField("columns", nil, columns))
+	return NewDataResponse(frame)
 }
 
-func (d *PinotVariableQueryDriver) getTableList(ctx context.Context) (*data.Frame, error) {
+func (d *PinotVariableQueryDriver) getTableList(ctx context.Context) backend.DataResponse {
 	tables, err := d.params.PinotClient.ListTables(ctx)
 	if err != nil {
-		return nil, err
+		return NewDataInternalErrorResponse(err)
 	}
-	return data.NewFrame("result", data.NewField("tables", nil, tables)), nil
+	frame := data.NewFrame("result", data.NewField("tables", nil, tables))
+	return NewDataResponse(frame)
 }

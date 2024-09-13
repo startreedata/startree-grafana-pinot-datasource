@@ -1,4 +1,4 @@
-package plugin
+package dataquery
 
 import (
 	"github.com/stretchr/testify/assert"

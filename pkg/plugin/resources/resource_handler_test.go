@@ -1,8 +1,9 @@
-package plugin
+package resources
 
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestPinotResourceHandler_SqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	want := strings.TrimSpace(`
@@ -34,7 +35,7 @@ LIMIT 100000;
 `)
 
 	var got map[string]interface{}
-	doPostRequest(t, server.URL+"/preview", `{
+	doPostRequest(t, server.URL+"/preview/sql/builder", `{
   "aggregationFunction": "MAX",
   "databaseName": "default",
   "intervalSize": "30m",
@@ -58,11 +59,11 @@ LIMIT 100000;
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	var got json.RawMessage
-	doPostRequest(t, server.URL+"/distinctValues", `{
+	doPostRequest(t, server.URL+"/query/distinctValues", `{
 		"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2018-02-01T00:00:00Z"},
 		"databaseName": "default",
 		"tableName":    "githubEvents",
@@ -79,7 +80,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 }
 
 func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(newPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
 	defer server.Close()
 
 	var want = `SELECT 
@@ -116,7 +117,7 @@ LIMIT 1000000`
 	}))
 
 	var got map[string]interface{}
-	doPostRequest(t, server.URL+"/codePreview", data.String(), &got)
+	doPostRequest(t, server.URL+"/preview/sql/code", data.String(), &got)
 	assert.Equal(t, want, got["sql"])
 }
 

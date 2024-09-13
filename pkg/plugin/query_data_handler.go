@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 )
 
-func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
+func NewQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		response := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
@@ -18,33 +19,16 @@ func NewQueryDataHandler(client *PinotClient) backend.QueryDataHandler {
 	})
 }
 
-func fetchData(client *PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
-	pinotDataQuery, err := PinotDataQueryFrom(query)
+func fetchData(client *pinotlib.PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
+	pinotDataQuery, err := dataquery.PinotDataQueryFrom(query)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
 
-	var tableSchema TableSchema
-	if pinotDataQuery.TableName != "" {
-		tableSchema, err = client.GetTableSchema(ctx, pinotDataQuery.TableName)
-		if err != nil {
-			return backend.ErrDataResponse(backend.StatusInternal, err.Error())
-		}
-	}
-
-	errorMessageFor := func(err error) string {
-		return fmt.Sprintf("Error: %s.", err.Error())
-	}
-
-	driver, err := NewDriver(client, pinotDataQuery, tableSchema, query.TimeRange)
+	driver, err := dataquery.NewDriver(ctx, client, pinotDataQuery, query.TimeRange)
 	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
-	}
-	results, err := driver.Execute(ctx)
-
-	if err != nil {
-		return backend.ErrDataResponse(backend.StatusInternal, errorMessageFor(err))
+		return dataquery.NewDataInternalErrorResponse(err)
 	}
 
-	return backend.DataResponse{Frames: data.Frames{results}}
+	return driver.Execute(ctx)
 }

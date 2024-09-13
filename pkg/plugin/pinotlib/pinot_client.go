@@ -1,10 +1,11 @@
-package plugin
+package pinotlib
 
 import (
 	"context"
 	"fmt"
-	"github.com/startree/pinot/pkg/plugin/cache"
 	"github.com/startreedata/pinot-client-go/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources/cache"
 	"net/http"
 	"strings"
 	"time"
@@ -99,7 +100,7 @@ func (p *PinotClient) ExecuteSQL(ctx context.Context, table string, query string
 	default:
 	}
 
-	Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query))
+	logger.Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query))
 	res, err := p.brokerConn.ExecuteSQL(table, query)
 	if err != nil {
 		return nil, err
