@@ -16,7 +16,7 @@ const (
 )
 
 type PinotQlCodeDriverParams struct {
-	*pinotlib.PinotClient
+	PinotClient       *pinotlib.PinotClient
 	Code              string
 	DatabaseName      string
 	TableName         string

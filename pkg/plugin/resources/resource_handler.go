@@ -60,6 +60,10 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(handler.PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(handler.PreviewSqlDistinctValues))
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
+	router.HandleFunc("/timeseries/tables", adaptHandler(handler.ListTimeSeriesTables))
+	router.HandleFunc("/timeseries/tables/{table}/metrics", adaptHandler(handler.ListTimeSeriesLabels))
+	router.HandleFunc("/timeseries/tables/{table}/labels", adaptHandler(handler.ListTimeSeriesLabels))
+	router.HandleFunc("/timeseries/tables/{table}/labels/{label}/values", adaptHandler(handler.ListTimeSeriesLabelValues))
 
 	return &handler
 }
@@ -274,6 +278,23 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),
 	})
 }
+
+func (x *ResourceHandler) ListTimeSeriesTables(r *http.Request) *Response {
+	tables, err := x.client.ListPromQlTables(r.Context())
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	return &Response{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
+}
+
+type ListTimeSeriesMetricsRequest struct {
+	TableName string `json:"tableName"`
+}
+
+func (x *ResourceHandler) ListTimeSeriesMetrics(r *http.Request) *Response     { return nil }
+func (x *ResourceHandler) ListTimeSeriesLabels(r *http.Request) *Response      { return nil }
+func (x *ResourceHandler) ListTimeSeriesLabelValues(r *http.Request) *Response { return nil }
+
 
 func newPreviewSqlResponse(sql string) *Response {
 	return &Response{Code: http.StatusOK, PreviewSqlResponse: &PreviewSqlResponse{Sql: sql}}

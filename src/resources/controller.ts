@@ -21,6 +21,20 @@ export async function listTables(datasource: DataSource): Promise<ListTablesResp
   return fetchControllerResource<ListTablesResponse>(datasource, 'tables');
 }
 
+export function usePromQlTables(datasource: DataSource): string[] | undefined {
+  const [tables, setTables] = useState<string[] | undefined>();
+
+  useEffect(() => {
+    fetchPromQlTables(datasource).then((resp) => setTables(resp.tables || undefined));
+  }, [datasource]);
+
+  return tables;
+}
+
+export async function fetchPromQlTables(datasource: DataSource): Promise<GetTablesResponse> {
+  return fetchControllerResource<GetTablesResponse>(datasource, 'promqlTables');
+}
+
 interface GetTableSchemaResponse extends PinotResourceResponse {
   schema: TableSchema | null;
 }
