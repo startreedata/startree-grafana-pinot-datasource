@@ -7,13 +7,19 @@ export function InputDatabase(props: { value: string | undefined; onChange: (val
   const labels = allLabels.components.ConfigEditor.database;
 
   return (
-    <InlineField label={labels.label} labelWidth={24} tooltip={labels.tooltip} grow interactive>
+    <InlineField
+      label={labels.label}
+      labelWidth={24}
+      tooltip={labels.tooltip}
+      grow
+      interactive
+      data-testid={`${labels.label.toLowerCase().replace(' ', '-')}-inline-field`}
+    >
       <Input
         width={40}
         onChange={(event) => onChange(event.currentTarget.value || undefined)}
         value={value}
         placeholder={labels.placeholder}
-        data-testid={labels.label.toLowerCase().replace(' ', '_')}
       />
     </InlineField>
   );
