@@ -1,5 +1,5 @@
-import {InlineField, Input, PopoverContent} from "@grafana/ui";
-import React from "react";
+import { InlineField, Input, PopoverContent } from '@grafana/ui';
+import React from 'react';
 
 export function InputUrl(props: {
   label: string;
@@ -16,22 +16,23 @@ export function InputUrl(props: {
   const isValid = isValidUrl(value);
 
   return (
-      <InlineField
-          label={label}
-          labelWidth={24}
-          tooltip={tooltip}
-          grow
-          required
-          invalid={!isValid}
-          error={isValid ? '' : 'Please enter a valid URL'}
-          interactive
-      >
-        <Input
-            width={40}
-            onChange={(event) => onChange(event.currentTarget.value)}
-            value={value}
-            placeholder={placeholder}
-        />
-      </InlineField>
+    <InlineField
+      label={label}
+      labelWidth={24}
+      tooltip={tooltip}
+      grow
+      required
+      invalid={!isValid}
+      error={isValid ? '' : 'Please enter a valid URL'}
+      interactive
+    >
+      <Input
+        width={40}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        value={value}
+        placeholder={placeholder}
+        data-testid={label.toLowerCase().replace(' ', '_')}
+      />
+    </InlineField>
   );
 }
