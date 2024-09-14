@@ -253,7 +253,7 @@ describe('Create a Pinot Data Source', () => {
     cy.location('pathname').should('eq', '/datasources');
   });
 
-  it.only('Saved pinot connection should usable in explore and panel editor', () => {
+  it('Saved pinot connection should usable in explore and panel editor', () => {
     /**
      * All Intercepts
      */
