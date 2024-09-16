@@ -6,7 +6,9 @@ import (
 	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources/cache"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -33,9 +35,10 @@ type PinotClient struct {
 	controllerClient PinotControllerClient
 	PinotTimeSeriesClient
 
-	listDatabasesCache  *cache.ResourceCache[[]string]
-	listTablesCache     *cache.ResourceCache[[]string]
-	getTableSchemaCache *cache.MultiResourceCache[string, TableSchema]
+	listDatabasesCache    *cache.ResourceCache[[]string]
+	listTablesCache       *cache.ResourceCache[[]string]
+	getTableSchemaCache   *cache.MultiResourceCache[string, TableSchema]
+	timeseriesLabelsCache *cache.MultiResourceCache[string, LabelsCollection]
 }
 
 type PinotClientProperties struct {
@@ -106,9 +109,10 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 			httpClient: httpClient,
 		},
 
-		listDatabasesCache:  cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
-		listTablesCache:     cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
-		getTableSchemaCache: cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
+		listDatabasesCache:    cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
+		listTablesCache:       cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
+		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
+		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
 	}, nil
 }
 
@@ -144,8 +148,14 @@ func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
 	})
 }
 
-func (p *PinotClient) ListPromQlTables(ctx context.Context) ([]string, error) {
-	// TODO: Eventually this functionality will be replaced with a pinot api
+func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
+	return p.getTableSchemaCache.Get(table, func() (TableSchema, error) {
+		return p.controllerClient.GetTableSchema(ctx, table)
+	})
+}
+
+func (p *PinotClient) ListTimeSeriesTables(ctx context.Context) ([]string, error) {
+	// TODO: Replace with pinot api call when implemented.
 
 	allTables, err := p.ListTables(ctx)
 	if err != nil {
@@ -167,7 +177,7 @@ func (p *PinotClient) ListPromQlTables(ctx context.Context) ([]string, error) {
 			if err != nil {
 				cancel()
 				errCh <- err
-			} else if p.IsPromQlTableSchema(schema) {
+			} else if IsTimeSeriesTableSchema(schema) {
 				resultCh <- table
 			}
 			wg.Done()
@@ -188,61 +198,114 @@ func (p *PinotClient) ListPromQlTables(ctx context.Context) ([]string, error) {
 	}
 }
 
-func (p *PinotClient) IsPromQlTableSchema(schema TableSchema) bool {
-	type FieldSpec struct {
-		Name     string `json:"name"`
-		DataType string `json:"dataType"`
+func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName string) ([]string, error) {
+	// TODO: Should this method accept time range?
+	// TODO: Replace with pinot api call when implemented.
+
+	if err := p.assertTimeSeriesTable(ctx, tableName); err != nil {
+		return nil, err
 	}
 
-	var hasMetricField bool
-	for _, fieldSpec := range schema.DimensionFieldSpecs {
-		if fieldSpec.Name == "metric" && fieldSpec.DataType == "STRING" {
-			hasMetricField = true
-			break
-		}
-	}
-	if !hasMetricField {
-		return false
+	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+		ColumnName: TimeSeriesTableColumnMetricName,
+		TableName:  tableName,
+		Limit:      templates.DistinctValuesLimit,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	var hasLabelsField bool
-	for _, fieldSpec := range schema.DimensionFieldSpecs {
-		if fieldSpec.Name == "labels" && fieldSpec.DataType == "JSON" {
-			hasLabelsField = true
-			break
-		}
-	}
-	if !hasLabelsField {
-		return false
-	}
-
-	var hasValueField bool
-	for _, fieldSpec := range schema.MetricFieldSpecs {
-		if fieldSpec.Name == "metric" && fieldSpec.DataType == "DOUBLE" {
-			hasValueField = true
-			break
-		}
-	}
-	if !hasValueField {
-		return false
-	}
-
-	var hasTsField bool
-	for _, fieldSpec := range schema.DateTimeFieldSpecs {
-		if fieldSpec.Name == "ts" && fieldSpec.DataType == "TIMESTAMP" {
-			hasTsField = true
-			break
-		}
-	}
-	if !hasTsField {
-		return false
-	}
-
-	return true
+	resp, err := p.ExecuteSQL(ctx, tableName, sql)
+	metrics := ExtractStringColumn(resp.ResultTable, 0)
+	return metrics, nil
 }
 
-func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
-	return p.getTableSchemaCache.Get(table, func() (TableSchema, error) {
-		return p.controllerClient.GetTableSchema(ctx, table)
+func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string) ([]string, error) {
+	collection, err := p.fetchTimeSeriesLabels(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+	return collection.Names(), nil
+}
+
+func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, labelName string) ([]string, error) {
+	collection, err := p.fetchTimeSeriesLabels(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
+	return collection.Values(labelName), nil
+}
+
+// TODO: Is set really necessary here?
+
+type LabelsCollection map[string]Set[string]
+
+func (x LabelsCollection) Names() []string {
+	names := make([]string, 0, len(x))
+	for key := range x {
+		names = append(names, key)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func (x LabelsCollection) Values(name string) []string {
+	values := x[name].Values()
+	sort.Strings(values)
+	return values
+}
+
+func (x LabelsCollection) Add(name, value string) {
+	if _, ok := x[name]; !ok {
+		x[name] = NewSet[string](1)
+	}
+	x[name].Add(value)
+}
+
+func (p *PinotClient) fetchTimeSeriesLabels(ctx context.Context, tableName string) (LabelsCollection, error) {
+	// TODO: This code can be removed once the pinot api is implemented.
+	return p.timeseriesLabelsCache.Get(tableName, func() (LabelsCollection, error) {
+		if err := p.assertTimeSeriesTable(ctx, tableName); err != nil {
+			return nil, err
+		}
+
+		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+			ColumnName: TimeSeriesTableColumnLabels,
+			TableName:  tableName,
+			Limit:      templates.DistinctValuesLimit,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		resp, err := p.ExecuteSQL(ctx, tableName, sql)
+		if err != nil {
+			return nil, err
+		}
+
+		labelRecords, err := ExtractJsonColumn[map[string]string](resp.ResultTable, 0)
+		if err != nil {
+			return nil, err
+		}
+
+		collection := make(LabelsCollection, len(labelRecords))
+		for _, label := range labelRecords {
+			for k, v := range label {
+				collection.Add(k, v)
+			}
+		}
+		return collection, nil
 	})
+}
+
+func (p *PinotClient) assertTimeSeriesTable(ctx context.Context, tableName string) error {
+	schema, err := p.GetTableSchema(ctx, tableName)
+	if err != nil {
+		return err
+	}
+
+	if !IsTimeSeriesTableSchema(schema) {
+		return fmt.Errorf("table `%s` is not a time series table", tableName)
+	}
+	return nil
 }

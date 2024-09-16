@@ -10,6 +10,13 @@ import (
 	"time"
 )
 
+const (
+	TimeSeriesTableColumnMetricName  = "metric"
+	TimeSeriesTableColumnLabels      = "labels"
+	TimeSeriesTableColumnMetricValue = "value"
+	TimeSeriesTableColumnTimestamp   = "ts"
+)
+
 type PinotTimeSeriesClient struct {
 	properties PinotClientProperties
 	headers    map[string]string
@@ -65,4 +72,52 @@ func (p *PinotTimeSeriesClient) ExecuteTimeSeriesQuery(ctx context.Context, req 
 
 	logger.Logger.Info(fmt.Sprintf("pinot/http: executing promql query: %s", req.Query))
 	return p.httpClient.Do(httpReq)
+}
+
+func IsTimeSeriesTableSchema(schema TableSchema) bool {
+	var hasMetricField bool
+	for _, fieldSpec := range schema.DimensionFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnMetricName && fieldSpec.DataType == DataTypeString {
+			hasMetricField = true
+			break
+		}
+	}
+	if !hasMetricField {
+		return false
+	}
+
+	var hasLabelsField bool
+	for _, fieldSpec := range schema.DimensionFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeJson {
+			hasLabelsField = true
+			break
+		}
+	}
+	if !hasLabelsField {
+		return false
+	}
+
+	var hasValueField bool
+	for _, fieldSpec := range schema.MetricFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnMetricValue && fieldSpec.DataType == DataTypeDouble {
+			hasValueField = true
+			break
+		}
+	}
+	if !hasValueField {
+		return false
+	}
+
+	var hasTsField bool
+	for _, fieldSpec := range schema.DateTimeFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeTimestamp {
+			hasTsField = true
+			break
+		}
+	}
+	if !hasTsField {
+		return false
+	}
+
+	return true
 }

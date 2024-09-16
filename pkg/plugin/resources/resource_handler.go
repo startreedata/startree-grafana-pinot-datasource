@@ -26,6 +26,7 @@ type Response struct {
 	*GetTableSchemaResponse
 	*DistinctValuesResponse
 	*PreviewSqlResponse
+	*ListTimeSeriesMetricsResponse
 }
 
 type GetDatabasesResponse struct {
@@ -46,6 +47,10 @@ type PreviewSqlResponse struct {
 
 type DistinctValuesResponse struct {
 	ValueExprs []string `json:"valueExprs"`
+}
+
+type ListTimeSeriesMetricsResponse struct {
+	Metrics []string `json:"metrics"`
 }
 
 func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
@@ -280,7 +285,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 }
 
 func (x *ResourceHandler) ListTimeSeriesTables(r *http.Request) *Response {
-	tables, err := x.client.ListPromQlTables(r.Context())
+	tables, err := x.client.ListTimeSeriesTables(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
@@ -291,10 +296,28 @@ type ListTimeSeriesMetricsRequest struct {
 	TableName string `json:"tableName"`
 }
 
-func (x *ResourceHandler) ListTimeSeriesMetrics(r *http.Request) *Response     { return nil }
-func (x *ResourceHandler) ListTimeSeriesLabels(r *http.Request) *Response      { return nil }
-func (x *ResourceHandler) ListTimeSeriesLabelValues(r *http.Request) *Response { return nil }
+func (x *ResourceHandler) ListTimeSeriesMetrics(r *http.Request) *Response {
+	vars := mux.Vars(r)
+	table := vars["table"]
 
+	metrics, err := x.client.ListTimeSeriesMetrics(r.Context(), table)
+	if err != nil {
+		// TODO: Return bad request if the table is not a time series table?
+		return newInternalServerErrorResponse(err)
+	}
+
+	return &Response{Code: http.StatusOK, ListTimeSeriesMetricsResponse: &ListTimeSeriesMetricsResponse{
+		Metrics: metrics,
+	}}
+}
+
+func (x *ResourceHandler) ListTimeSeriesLabels(r *http.Request) *Response {
+
+}
+
+func (x *ResourceHandler) ListTimeSeriesLabelValues(r *http.Request) *Response {
+
+}
 
 func newPreviewSqlResponse(sql string) *Response {
 	return &Response{Code: http.StatusOK, PreviewSqlResponse: &PreviewSqlResponse{Sql: sql}}
