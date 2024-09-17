@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	TimeSeriesTableColumnMetricName  = "metric"
+	TimeSeriesTableColumnMetricName  = "name" // "metric"
 	TimeSeriesTableColumnLabels      = "labels"
 	TimeSeriesTableColumnMetricValue = "value"
-	TimeSeriesTableColumnTimestamp   = "ts"
+	TimeSeriesTableColumnTimestamp   = "timestampRoundedSeconds" // "ts"
+	TimeSeriesTimestampFormat        = "1:MILLISECONDS:EPOCH"
 )
 
 type PinotTimeSeriesClient struct {
@@ -110,7 +111,7 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 
 	var hasTsField bool
 	for _, fieldSpec := range schema.DateTimeFieldSpecs {
-		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeTimestamp {
+		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeLong {
 			hasTsField = true
 			break
 		}

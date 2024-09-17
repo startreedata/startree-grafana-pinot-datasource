@@ -1,8 +1,7 @@
-package dataquery
+package pinotlib
 
 import (
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strings"
 	"time"
 )
@@ -22,13 +21,13 @@ type TimeExpressionBuilder struct {
 	timeExprFormat   TimeExprFormat
 }
 
-func TimeExpressionBuilderFor(tableSchema pinotlib.TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
+func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
 	timeColumn = strings.Trim(timeColumn, "\"`")
 	if len(timeColumn) == 0 {
 		return TimeExpressionBuilder{}, fmt.Errorf("time column cannot be empty")
 	}
 
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, timeColumn)
+	timeColumnFormat, err := GetTimeColumnFormat(tableSchema, timeColumn)
 	if err != nil {
 		return TimeExpressionBuilder{}, err
 	}
@@ -53,17 +52,14 @@ func (x TimeExpressionBuilder) TimeColumnFormat() string {
 	return x.timeColumnFormat
 }
 
-func (x TimeExpressionBuilder) TimeFilterBucketAlignedExpr(timeRange TimeRange, bucketSize time.Duration) string {
-	return x.TimeFilterExpr(TimeRange{
-		From: timeRange.From.Truncate(bucketSize),
-		To:   timeRange.To.Truncate(bucketSize).Add(bucketSize),
-	})
+func (x TimeExpressionBuilder) TimeFilterBucketAlignedExpr(from time.Time, to time.Time, bucketSize time.Duration) string {
+	return x.TimeFilterExpr(from.Truncate(bucketSize), to.Truncate(bucketSize).Add(bucketSize))
 }
 
-func (x TimeExpressionBuilder) TimeFilterExpr(timeRange TimeRange) string {
-	return fmt.Sprintf(`"%s" >= %s AND "%s" <= %s`,
-		x.timeColumn, x.TimeExpr(timeRange.From),
-		x.timeColumn, x.TimeExpr(timeRange.To),
+func (x TimeExpressionBuilder) TimeFilterExpr(from time.Time, to time.Time) string {
+	return fmt.Sprintf(`%s >= %s AND %s <= %s`,
+		SqlObjectExpr(x.timeColumn), x.TimeExpr(from),
+		SqlObjectExpr(x.timeColumn), x.TimeExpr(to),
 	)
 }
 

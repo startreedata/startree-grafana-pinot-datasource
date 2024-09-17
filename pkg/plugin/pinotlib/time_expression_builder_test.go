@@ -1,4 +1,4 @@
-package dataquery
+package pinotlib
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -19,7 +19,7 @@ func TestTimeExpressionBuilder_TimeFilterExpr(t *testing.T) {
 	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
 	require.NoError(t, err)
 
-	got := exprBuilder.TimeFilterExpr(TimeRange{From: time.Unix(1, 0), To: time.Unix(3601, 0)})
+	got := exprBuilder.TimeFilterExpr(time.Unix(1, 0), time.Unix(3601, 0))
 	assert.Equal(t, `"time" >= 1 AND "time" <= 3601`, got)
 }
 
@@ -27,7 +27,7 @@ func TestTimeExpressionBuilder_TimeFilterBucketAlignedExpr(t *testing.T) {
 	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
 	require.NoError(t, err)
 
-	got := exprBuilder.TimeFilterBucketAlignedExpr(TimeRange{From: time.Unix(1, 0), To: time.Unix(3601, 0)}, time.Minute)
+	got := exprBuilder.TimeFilterBucketAlignedExpr(time.Unix(1, 0), time.Unix(3601, 0), time.Minute)
 	assert.Equal(t, `"time" >= 0 AND "time" <= 3660`, got)
 }
 

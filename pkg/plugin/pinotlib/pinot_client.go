@@ -198,18 +198,17 @@ func (p *PinotClient) ListTimeSeriesTables(ctx context.Context) ([]string, error
 	}
 }
 
-func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName string) ([]string, error) {
-	// TODO: Should this method accept time range?
-	// TODO: Replace with pinot api call when implemented.
-
-	if err := p.assertTimeSeriesTable(ctx, tableName); err != nil {
+func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName string, from time.Time, to time.Time) ([]string, error) {
+	timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
+	if err != nil {
 		return nil, err
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName: TimeSeriesTableColumnMetricName,
-		TableName:  tableName,
-		Limit:      templates.DistinctValuesLimit,
+		ColumnName:     TimeSeriesTableColumnMetricName,
+		TableName:      tableName,
+		TimeFilterExpr: timeExprBuilder.TimeFilterExpr(from, to),
+		Limit:          templates.DistinctValuesLimit,
 	})
 	if err != nil {
 		return nil, err
@@ -220,16 +219,16 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName strin
 	return metrics, nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string) ([]string, error) {
-	collection, err := p.fetchTimeSeriesLabels(ctx, tableName)
+func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string, from time.Time, to time.Time) ([]string, error) {
+	collection, err := p.fetchTimeSeriesLabels(ctx, tableName, from, to)
 	if err != nil {
 		return nil, err
 	}
 	return collection.Names(), nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, labelName string) ([]string, error) {
-	collection, err := p.fetchTimeSeriesLabels(ctx, tableName)
+func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, labelName string, from time.Time, to time.Time) ([]string, error) {
+	collection, err := p.fetchTimeSeriesLabels(ctx, tableName, from, to)
 	if err != nil {
 		return nil, err
 	}
@@ -262,17 +261,20 @@ func (x LabelsCollection) Add(name, value string) {
 	x[name].Add(value)
 }
 
-func (p *PinotClient) fetchTimeSeriesLabels(ctx context.Context, tableName string) (LabelsCollection, error) {
+func (p *PinotClient) fetchTimeSeriesLabels(ctx context.Context, tableName string, from time.Time, to time.Time) (LabelsCollection, error) {
 	// TODO: This code can be removed once the pinot api is implemented.
-	return p.timeseriesLabelsCache.Get(tableName, func() (LabelsCollection, error) {
-		if err := p.assertTimeSeriesTable(ctx, tableName); err != nil {
+	cacheKey := fmt.Sprintf("table=%s&from=%s&to=%s", tableName, from.Format(time.RFC3339), to.Format(time.RFC3339))
+	return p.timeseriesLabelsCache.Get(cacheKey, func() (LabelsCollection, error) {
+		timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
+		if err != nil {
 			return nil, err
 		}
 
 		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-			ColumnName: TimeSeriesTableColumnLabels,
-			TableName:  tableName,
-			Limit:      templates.DistinctValuesLimit,
+			ColumnName:     TimeSeriesTableColumnLabels,
+			TableName:      tableName,
+			TimeFilterExpr: timeExprBuilder.TimeFilterExpr(from, to),
+			Limit:          templates.DistinctValuesLimit,
 		})
 		if err != nil {
 			return nil, err
@@ -298,14 +300,11 @@ func (p *PinotClient) fetchTimeSeriesLabels(ctx context.Context, tableName strin
 	})
 }
 
-func (p *PinotClient) assertTimeSeriesTable(ctx context.Context, tableName string) error {
+func (p *PinotClient) IsTimeSeriesTable(ctx context.Context, tableName string) (bool, error) {
 	schema, err := p.GetTableSchema(ctx, tableName)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if !IsTimeSeriesTableSchema(schema) {
-		return fmt.Errorf("table `%s` is not a time series table", tableName)
-	}
-	return nil
+	return IsTimeSeriesTableSchema(schema), nil
 }

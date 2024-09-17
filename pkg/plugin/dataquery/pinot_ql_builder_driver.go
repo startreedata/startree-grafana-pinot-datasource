@@ -25,7 +25,7 @@ const (
 
 type PinotQlBuilderDriver struct {
 	params            PinotQlBuilderParams
-	timeExprBuilder   TimeExpressionBuilder
+	timeExprBuilder   pinotlib.TimeExpressionBuilder
 	TimeColumnAlias   string
 	MetricColumnAlias string
 	TimeGranularity   TimeGranularity
@@ -62,7 +62,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, errors.New("AggregationFunction is required")
 	}
 
-	exprBuilder, err := TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
+	exprBuilder, err := pinotlib.TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (p *PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data
 
 func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
 	if expandMacros {
-		return SqlObjectExpr(p.params.TableName)
+		return pinotlib.SqlObjectExpr(p.params.TableName)
 	} else {
 		return MacroExprFor(MacroTable)
 	}
@@ -150,7 +150,7 @@ func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
-		return SqlObjectExpr(p.TimeColumnAlias)
+		return pinotlib.SqlObjectExpr(p.TimeColumnAlias)
 	} else {
 		return MacroExprFor(MacroTimeAlias)
 	}
@@ -158,7 +158,7 @@ func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
-		return SqlObjectExpr(p.MetricColumnAlias)
+		return pinotlib.SqlObjectExpr(p.MetricColumnAlias)
 	} else {
 		return MacroExprFor(MacroMetricAlias)
 	}
@@ -166,7 +166,7 @@ func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
 	if expandMacros {
-		return p.timeExprBuilder.TimeFilterBucketAlignedExpr(p.params.TimeRange, p.TimeGranularity.Size)
+		return p.timeExprBuilder.TimeFilterBucketAlignedExpr(p.params.TimeRange.From, p.params.TimeRange.To, p.TimeGranularity.Size)
 	} else {
 		return MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.params.TimeColumn))
 	}
@@ -176,7 +176,7 @@ func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
 	if expandMacros {
 		return p.timeExprBuilder.TimeGroupExpr(p.TimeGranularity.Expr)
 	} else {
-		return MacroExprFor(MacroTimeGroup, SqlObjectExpr(p.params.TimeColumn))
+		return MacroExprFor(MacroTimeGroup, pinotlib.SqlObjectExpr(p.params.TimeColumn))
 	}
 }
 
@@ -184,7 +184,7 @@ func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() string {
 	if p.params.AggregationFunction == AggregationFunctionNone {
 		return p.timeExprBuilder.TimeColumnFormat()
 	} else {
-		return TimeGroupExprOutputFormat
+		return pinotlib.TimeGroupExprOutputFormat
 	}
 }
 
