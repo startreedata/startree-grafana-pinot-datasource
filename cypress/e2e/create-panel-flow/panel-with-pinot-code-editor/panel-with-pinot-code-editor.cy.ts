@@ -49,7 +49,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('POST', '/api/frontend-metrics').as('frontendMetrics');
 
     const formData = {
       displayType: 'Time Series',
@@ -337,7 +336,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
      * Finally Run Query and check results
      */
     cy.get('@runQueryBtn').click();
-    cy.wait(['@dsQuery', '@frontendMetrics'], { timeout: 5000 });
+    cy.wait('@dsQuery', { timeout: 5000 });
 
     // Check the UPlot chart
     cy.get('.panel-content').should('not.contain', 'No data');
