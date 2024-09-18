@@ -19,7 +19,7 @@ export function SelectEditorMode(props: {
   const [showConfirm, setShowConfirm] = useState(false);
 
   return (
-    <>
+    <div data-testid="select-editor-mode">
       <ConfirmModal
         isOpen={showConfirm}
         onCopy={() => {
@@ -79,6 +79,6 @@ export function SelectEditorMode(props: {
         }}
         value={query.editorMode}
       />
-    </>
+    </div>
   );
 }

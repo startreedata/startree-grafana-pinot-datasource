@@ -8,7 +8,7 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
   const labels = allLabels.components.QueryEditor.sqlEditor;
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="sql-editor-container">
       <div>
         <FormLabel tooltip={labels.tooltip} label={labels.label} />
       </div>
