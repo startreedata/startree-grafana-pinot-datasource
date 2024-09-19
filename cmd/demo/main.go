@@ -11,10 +11,24 @@ import (
 const OutputFile = "data.jsonl"
 
 type TimeSeriesRow struct {
-	Metric    string            `json:"metric"`
-	Value     float64           `json:"value"`
-	Labels    map[string]string `json:"labels"`
-	Timestamp int64             `json:"ts"`
+	Metric    string
+	Value     float64
+	Labels    map[string]string
+	Timestamp int64
+}
+
+func (x *TimeSeriesRow) MarshalJSON() ([]byte, error) {
+	labelsEncoded, err := json.Marshal(x.Labels)
+	if err != nil {
+		return nil, err
+	}
+	data := map[string]interface{}{
+		"metric": x.Metric,
+		"value":  x.Value,
+		"labels": string(labelsEncoded),
+		"ts":     x.Timestamp,
+	}
+	return json.Marshal(data)
 }
 
 func genCounterValues(curve func(i int) float64, count int) []float64 {
@@ -27,8 +41,8 @@ func genCounterValues(curve func(i int) float64, count int) []float64 {
 }
 
 func main() {
-	startTime := time.Date(2024, 8, 1, 0, 0, 0, 0, time.UTC)
-	endTime := time.Date(2024, 8, 8, 0, 0, 0, 0, time.UTC)
+	startTime := time.Date(2024, 9, 18, 0, 0, 0, 0, time.UTC)
+	endTime := startTime.Add(24 * time.Hour)
 	step := 15 * time.Second
 	recordCount := int(endTime.Sub(startTime)/step) + 1
 	recordCount = 10
@@ -158,7 +172,7 @@ func main() {
 	defer file.Close()
 
 	for _, row := range rows {
-		if err := json.NewEncoder(file).Encode(row); err != nil {
+		if err := json.NewEncoder(file).Encode(&row); err != nil {
 			panic(err)
 		}
 	}
