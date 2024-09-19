@@ -79,12 +79,12 @@ func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) backend.Da
 	result := resp.ResultTable
 	values := make([]string, result.GetRowCount()*result.GetColumnCount())
 	for colId := 0; colId < result.GetColumnCount(); colId++ {
-		for rowId, val := range ExtractStringColumn(result, colId) {
+		for rowId, val := range pinotlib.ExtractStringColumn(result, colId) {
 			// Extract values in table order.
 			values[rowId*result.GetColumnCount()+colId] = val
 		}
 	}
-	values = GetDistinctValues(values)
+	values = pinotlib.GetDistinctValues(values)
 	frame := data.NewFrame("result", data.NewField("codeValues", nil, values))
 	return NewDataResponse(frame)
 }
@@ -107,7 +107,7 @@ func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backen
 		return NewDataInternalErrorResponse(err)
 	}
 
-	values := ExtractStringColumn(result.ResultTable, 0)
+	values := pinotlib.ExtractStringColumn(result.ResultTable, 0)
 	frame := data.NewFrame("result", data.NewField("distinctValues", nil, values))
 	return NewDataResponse(frame)
 }
