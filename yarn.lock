@@ -2301,7 +2301,7 @@
   dependencies:
     state-local "^1.0.6"
 
-"@monaco-editor/react@4.6.0":
+"@monaco-editor/react@4.6.0", "@monaco-editor/react@^4.6.0":
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/@monaco-editor/react/-/react-4.6.0.tgz#bcc68671e358a21c3814566b865a54b191e24119"
   integrity sha512-RFkU9/i7cN2bsq/iTkurMWOEErmYcY6JiQI3Jn+WeR/FGISH8JbHERjpS9oRuSOPvDMJI0Z8nJeKkbOs9sBYQw==
@@ -8317,7 +8317,12 @@ monaco-editor@0.34.0:
   resolved "https://registry.yarnpkg.com/monaco-editor/-/monaco-editor-0.34.0.tgz#b1749870a1f795dbfc4dc03d8e9b646ddcbeefa7"
   integrity sha512-VF+S5zG8wxfinLKLrWcl4WUizMx+LeJrG4PM/M78OhcwocpV0jiyhX/pG6Q9jIOhrb/ckYi6nHnaR5OojlOZCQ==
 
-monaco-promql@1.7.4:
+monaco-editor@^0.51.0:
+  version "0.51.0"
+  resolved "https://registry.yarnpkg.com/monaco-editor/-/monaco-editor-0.51.0.tgz#922a6103f6742b5a62fbb097276c5a6619d879db"
+  integrity sha512-xaGwVV1fq343cM7aOYB6lVE4Ugf0UyimdD/x5PWcWBMKENwectaEu77FAN7c5sFiyumqeJdX1RPTh1ocioyDjw==
+
+monaco-promql@1.7.4, monaco-promql@^1.7.4:
   version "1.7.4"
   resolved "https://registry.yarnpkg.com/monaco-promql/-/monaco-promql-1.7.4.tgz#64feb0850cba5d62255b7c952e919ba124b0413d"
   integrity sha512-ehiDBi7or/ndoRL98Lj9NgttXcAKNlH85OatV1bfdpseeVA8ziUm7Yi7mhICW6ORc7FZDDfUFcYg0SVrFYEpnw==
@@ -9389,6 +9394,13 @@ react-loading-skeleton@3.4.0:
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/react-loading-skeleton/-/react-loading-skeleton-3.4.0.tgz#c71a3a17259d08e4064974aa0b07f150a09dfd57"
   integrity sha512-1oJEBc9+wn7BbkQQk7YodlYEIjgeR+GrRjD+QXkVjwZN7LGIcAFHrx4NhT7UHGBxNY1+zax3c+Fo6XQM4R7CgA==
+
+react-monaco-editor@^0.56.1:
+  version "0.56.1"
+  resolved "https://registry.yarnpkg.com/react-monaco-editor/-/react-monaco-editor-0.56.1.tgz#36a69c3c81e42b94ff33cfcc67042c2f5bc19f05"
+  integrity sha512-L2/QjVK+C95zqvl19ACo5ftg3MWAL0ku4zaMzcgt8LO2mhH2gIDfHr1sIZYY7LaKdriWq4EUO6pIdnQDswZ9gA==
+  dependencies:
+    prop-types "^15.8.1"
 
 react-popper-tooltip@^4.4.2:
   version "4.4.2"

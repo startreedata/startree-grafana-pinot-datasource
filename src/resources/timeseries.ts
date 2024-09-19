@@ -46,6 +46,7 @@ export async function listTimeSeriesMetrics(
 
 interface ListTimeSeriesLabelsRequest {
   tableName: string | undefined;
+  // TODO: Should this also accept metric name?
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
 }
 
