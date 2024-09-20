@@ -37,29 +37,18 @@ export function PinotQlCode(props: {
     onChange(newQuery);
   };
 
-  if (
-    query.displayType === undefined ||
-    query.metricColumnAlias === undefined ||
-    query.timeColumnAlias === undefined ||
-    query.pinotQlCode === undefined
-  ) {
+  if (!query.displayType || !query.pinotQlCode) {
     onChangeAndUpdatePreview({
       ...query,
       displayType: query.displayType || DisplayTypeTimeSeries,
-      metricColumnAlias: query.metricColumnAlias || 'metric',
-      timeColumnAlias: query.timeColumnAlias || 'time',
       pinotQlCode:
         query.pinotQlCode ||
-        `
-SELECT
-  $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(),
-  SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
-GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000
-`.trim(),
+        `SELECT $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(), SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
+           FROM $__table()
+           WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
+           GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
+           ORDER BY $__timeAlias() DESC
+               LIMIT 100000`,
     });
     onRunQuery();
   }
