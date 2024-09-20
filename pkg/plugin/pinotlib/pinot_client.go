@@ -11,7 +11,20 @@ import (
 	"time"
 )
 
-const DefaultDatabase = "default"
+const (
+	DefaultDatabase = "default"
+
+	// https://docs.pinot.apache.org/configuration-reference/schema
+	DataTypeInt       = "INT"
+	DataTypeLong      = "LONG"
+	DataTypeFloat     = "FLOAT"
+	DataTypeDouble    = "DOUBLE"
+	DataTypeBoolean   = "BOOLEAN"
+	DataTypeTimestamp = "TIMESTAMP"
+	DataTypeString    = "STRING"
+	DataTypeJson      = "JSON"
+	DataTypeBytes     = "BYTES"
+)
 
 type PinotClient struct {
 	properties       PinotClientProperties
