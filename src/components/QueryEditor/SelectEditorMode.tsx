@@ -72,6 +72,8 @@ export function SelectEditorMode(props: {
                 ...query,
                 editorMode: EditorMode.Code,
                 displayType: DisplayTypeTimeSeries,
+                timeColumnAlias: 'time',
+                metricColumnAlias: query.metricColumn,
                 pinotQlCode: sql,
               })
             );
