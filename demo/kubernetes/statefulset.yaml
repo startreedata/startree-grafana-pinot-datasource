@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: pinot-grafana-demo
-  namespace: cell-9itmgf-default
+  namespace: default
 spec:
   serviceName: pinot-grafana-demo
   replicas: 1
