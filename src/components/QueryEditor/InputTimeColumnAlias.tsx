@@ -8,6 +8,7 @@ export function InputTimeColumnAlias(props: { current: string | undefined; onCha
       current={props.current}
       labels={labels.components.QueryEditor.timeAlias}
       onChange={props.onChange}
+      data-testid="time-column-alias"
     />
   );
 }
