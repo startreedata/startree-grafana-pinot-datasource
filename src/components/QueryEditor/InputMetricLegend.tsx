@@ -8,6 +8,7 @@ export function InputMetricLegend(props: { current: string | undefined; onChange
       current={props.current}
       labels={labels.components.QueryEditor.metricLegend}
       onChange={props.onChange}
+      data-testid="metric-legend"
     />
   );
 }

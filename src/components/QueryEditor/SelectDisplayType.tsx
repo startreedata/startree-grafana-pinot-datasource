@@ -16,7 +16,7 @@ export function SelectDisplayType(props: { value: string | undefined; onChange: 
   const labels = allLabels.components.QueryEditor.display;
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-display-type">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <RadioButtonGroup options={DisplayTypes} onChange={onChange} value={value} />
     </div>

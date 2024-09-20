@@ -74,7 +74,7 @@ LIMIT 100000
         }}
       />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <div className={'gf-form'}>
+        <div className={'gf-form'} data-testid="select-table">
           <SelectTable
             options={tables}
             selected={query.tableName}
@@ -107,6 +107,7 @@ LIMIT 100000
         current={query.pinotQlCode}
         onChange={(pinotQlCode) => onChangeAndUpdatePreview({ ...query, pinotQlCode })}
       />
+
       <div>
         <SqlPreview sql={sqlPreview} />
       </div>

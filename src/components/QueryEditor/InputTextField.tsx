@@ -12,6 +12,7 @@ export function InputTextField({
   labels: { label, tooltip },
   onChange,
   placeholder,
+  ...restProps
 }: {
   current: string | undefined;
   labels: { label: string; tooltip: string };
@@ -19,6 +20,7 @@ export function InputTextField({
   invalid?: boolean;
   placeholder?: string;
   onChange: (val: string) => void;
+  'data-testid'?: string;
 }) {
   const [value, setValue] = useState<string | undefined>(current);
 
@@ -31,7 +33,7 @@ export function InputTextField({
   }, [value, current, onChange, delayMs]);
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid={restProps['data-testid']}>
       <FormLabel tooltip={tooltip} label={label} />
       <Input
         className={`${styles.QueryEditor.inputForm}`}

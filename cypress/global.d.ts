@@ -25,6 +25,9 @@ declare namespace Cypress {
       dataTestPrefixAttribute: string,
       options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
     ): Chainable<JQuery<HTMLElement>>;
+
+    // Delete Pinot Data Source
+    deletePinotDatasource(uid: string): Chainable<void>;
   }
 }
 

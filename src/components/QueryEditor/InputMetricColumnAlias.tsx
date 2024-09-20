@@ -8,6 +8,7 @@ export function InputMetricColumnAlias(props: { current: string | undefined; onC
       current={props.current}
       labels={labels.components.QueryEditor.metricAlias}
       onChange={props.onChange}
+      data-testid="metric-column-alias"
     />
   );
 }
