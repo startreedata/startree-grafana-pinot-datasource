@@ -121,7 +121,7 @@ func NewTimeExprFormat(timeColumnFormat string) (TimeExprFormat, bool) {
 		}, true
 	}
 
-	sdfPattern, ok := pinotlib.SimpleDateTimeFormatFor(timeColumnFormat)
+	sdfPattern, ok := SimpleDateTimeFormatFor(timeColumnFormat)
 	if !ok {
 		return TimeExprFormat{}, false
 	}
