@@ -129,18 +129,18 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*da
 		if colId == timeIdx {
 			continue
 		}
-		frame.Fields = append(frame.Fields, ExtractColumnToField(results, colId))
+		frame.Fields = append(frame.Fields, pinotlib.ExtractColumnToField(results, colId))
 	}
 	return frame, nil
 }
 
 func (p *PinotQlCodeDriver) extractTableTime(results *pinot.ResultTable) (int, *data.Field) {
-	timeIdx, err := GetColumnIdx(results, p.params.TimeColumnAlias)
+	timeIdx, err := pinotlib.GetColumnIdx(results, p.params.TimeColumnAlias)
 	if err != nil {
 		return -1, nil
 	}
 
-	timeCol, err := ExtractTimeColumn(results, timeIdx, p.params.TimeColumnFormat)
+	timeCol, err := pinotlib.ExtractTimeColumn(results, timeIdx, p.params.TimeColumnFormat)
 	if err != nil {
 		return -1, nil
 	}
