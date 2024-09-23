@@ -232,7 +232,7 @@ func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDis
 	}
 
 	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
-		ValueExprs: dataquery.ExtractColumnExpr(results.ResultTable, 0),
+		ValueExprs: pinotlib.ExtractColumnExpr(results.ResultTable, 0),
 	}}
 }
 
