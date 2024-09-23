@@ -19,6 +19,7 @@ export function SelectQueryType({
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <RadioButtonGroup
+        data-testid="radio-btn-group"
         options={SupportedQueryTypes.map((name) => ({ label: name, value: name }))}
         onChange={(value) => {
           // Manually disable unimplemented options

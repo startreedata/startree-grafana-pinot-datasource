@@ -18,10 +18,11 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <div className={'gf-form'}>
+    <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">
+      <div className={'gf-form'} data-testid="select-query-type">
         <SelectQueryType current={query.queryType} onChange={(queryType) => onChange({ ...query, queryType })} />
       </div>
+
       <div style={{ display: 'flex' }}>
         <div className={'gf-form'}>
           <SelectEditorMode
@@ -35,7 +36,13 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
             intervalSize={props.data?.request?.interval}
           />
 
-          <ToolbarButton icon={'play'} variant={'primary'} style={{ marginLeft: 4 }} onClick={() => onRunQuery()}>
+          <ToolbarButton
+            data-testid="run-query-btn"
+            icon={'play'}
+            variant={'primary'}
+            style={{ marginLeft: 4 }}
+            onClick={() => onRunQuery()}
+          >
             Run Query
           </ToolbarButton>
         </div>

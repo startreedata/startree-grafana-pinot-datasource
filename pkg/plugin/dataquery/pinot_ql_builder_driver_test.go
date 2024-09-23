@@ -120,8 +120,8 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 
 SELECT
     "dim",
-    $__timeGroup("my_time_column") AS $__metricAlias(),
-    SUM("my_metric") AS $__timeAlias()
+    $__timeGroup("my_time_column") AS $__timeAlias(),
+    SUM("my_metric") AS $__metricAlias()
 FROM
     $__table()
 WHERE
@@ -130,7 +130,7 @@ GROUP BY
     "dim",
     $__timeGroup("my_time_column")
 ORDER BY
-    $__metricAlias() DESC
+    $__timeAlias() DESC
 LIMIT 100000;`
 
 		got, err := driver.RenderPinotSql(false)
