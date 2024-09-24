@@ -1,18 +1,20 @@
 import { useMonaco } from '@monaco-editor/react';
 import { promLanguageDefinition } from 'monaco-promql';
 import { language, languageConfiguration } from './promql';
-import {languages} from "monaco-editor";
+import { languages } from 'monaco-editor';
+
+// Borrowed some of these from startree query console.
 
 const languageId = promLanguageDefinition.id;
 
 export function addLanguageConfiguration(monaco: NonNullable<ReturnType<typeof useMonaco>>): () => void {
-  const disposable = monaco.languages.setLanguageConfiguration(languageId, languageConfiguration);
-  return () => disposable.dispose();
+  const { dispose } = monaco.languages.setLanguageConfiguration(languageId, languageConfiguration);
+  return dispose;
 }
 
 export function addTokensProvider(monaco: NonNullable<ReturnType<typeof useMonaco>>): () => void {
-  const disposable = monaco.languages.setMonarchTokensProvider(languageId, language);
-  return () => disposable.dispose();
+  const { dispose } = monaco.languages.setMonarchTokensProvider(languageId, language);
+  return dispose;
 }
 
 export function addCompletionItems(monaco: NonNullable<ReturnType<typeof useMonaco>>): () => void {

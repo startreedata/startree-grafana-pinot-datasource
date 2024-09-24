@@ -219,23 +219,21 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName strin
 	return metrics, nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string, from time.Time, to time.Time) ([]string, error) {
-	collection, err := p.fetchTimeSeriesLabels(ctx, tableName, from, to)
+func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) ([]string, error) {
+	collection, err := p.FetchTimeSeriesLabels(ctx, tableName, metricName, from, to)
 	if err != nil {
 		return nil, err
 	}
 	return collection.Names(), nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, labelName string, from time.Time, to time.Time) ([]string, error) {
-	collection, err := p.fetchTimeSeriesLabels(ctx, tableName, from, to)
+func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, metricName string, labelName string, from time.Time, to time.Time) ([]string, error) {
+	collection, err := p.FetchTimeSeriesLabels(ctx, tableName, metricName, from, to)
 	if err != nil {
 		return nil, err
 	}
 	return collection.Values(labelName), nil
 }
-
-// TODO: Is set really necessary here?
 
 type LabelsCollection map[string]Set[string]
 
@@ -261,20 +259,26 @@ func (x LabelsCollection) Add(name, value string) {
 	x[name].Add(value)
 }
 
-func (p *PinotClient) fetchTimeSeriesLabels(ctx context.Context, tableName string, from time.Time, to time.Time) (LabelsCollection, error) {
+func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) (LabelsCollection, error) {
 	// TODO: This code can be removed once the pinot api is implemented.
-	cacheKey := fmt.Sprintf("table=%s&from=%s&to=%s", tableName, from.Format(time.RFC3339), to.Format(time.RFC3339))
+	cacheKey := fmt.Sprintf("table=%s&metric=%s&from=%s&to=%s", tableName, metricName, from.Format(time.RFC3339), to.Format(time.RFC3339))
 	return p.timeseriesLabelsCache.Get(cacheKey, func() (LabelsCollection, error) {
 		timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
 		if err != nil {
 			return nil, err
 		}
 
+		var filterExprs []string
+		if metricName != "" {
+			filterExprs = []string{fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName)}
+		}
+
 		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-			ColumnName:     TimeSeriesTableColumnLabels,
-			TableName:      tableName,
-			TimeFilterExpr: timeExprBuilder.TimeFilterExpr(from, to),
-			Limit:          templates.DistinctValuesLimit,
+			ColumnName:           TimeSeriesTableColumnLabels,
+			TableName:            tableName,
+			TimeFilterExpr:       timeExprBuilder.TimeFilterExpr(from, to),
+			DimensionFilterExprs: filterExprs,
+			Limit:                templates.DistinctValuesLimit,
 		})
 		if err != nil {
 			return nil, err

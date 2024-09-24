@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { SelectTable } from './SelectTable';
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
@@ -9,44 +9,23 @@ import {
   useTimeSeriesTables,
 } from '../../resources/timeseries';
 import { promLanguageDefinition } from 'monaco-promql';
-import { useMonaco } from '@monaco-editor/react';
-import {
-  addCompletionItems,
-  addLanguageConfiguration,
-  addMetricsCompletionBinding,
-  addRunQueryShortcut,
-  addTokensProvider,
-} from '../../promql/more';
-import { ReactMonacoEditor } from '@grafana/ui';
-import { } from '@grafana/prometheus'
+import { Editor, useMonaco } from '@monaco-editor/react';
+import { addLanguageConfiguration, addRunQueryShortcut, addTokensProvider } from '../../promql/monaco_decorators';
+import { editor } from 'monaco-editor';
+import { getCompletionProvider } from '../../promql/completion_provider';
+import { MyDataProvider } from '../../promql/completions';
+import { DataSource } from '../../datasource';
+import { DateTime } from '@grafana/data';
+import { Label } from '../../promql/situation';
+import IStandaloneEditorConstructionOptions = editor.IStandaloneEditorConstructionOptions;
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const tables = useTimeSeriesTables(props.datasource);
 
-  const [metrics, setMetrics] = useState<string[] | undefined>(undefined);
-
-  useEffect(() => {
-    // Fetch promql resources for testing purposes.
-    // TODO: Remove before merge.
-
-    const timeRange = { from: props.data?.timeRange.from, to: props.data?.timeRange.to };
-
-    listTimeSeriesMetrics(props.datasource, {
-      tableName: props.query.tableName,
-      timeRange: timeRange,
-    }).then(setMetrics);
-
-    listTimeSeriesLabels(props.datasource, {
-      tableName: props.query.tableName,
-      timeRange: timeRange,
-    }).then((labels) => console.log({ labels }));
-
-    listTimeSeriesLabelValues(props.datasource, {
-      tableName: props.query.tableName,
-      labelName: 'startree_env',
-      timeRange: timeRange,
-    }).then((labelValues) => console.log({ labelValues }));
-  }, [props.datasource, props.query.tableName, props.data?.timeRange.from, props.data?.timeRange.to]);
+  const dataProvider = useDataProvider(props.datasource, props.query.tableName, {
+    to: props.data?.timeRange.to,
+    from: props.data?.timeRange.from,
+  });
 
   return (
     <>
@@ -62,8 +41,8 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
           <FormLabel tooltip={'Query'} label={'Query'} />
           <div style={{ flex: '1 1 auto', height: 50 }}>
             <MyEditor
+              dataProvider={dataProvider}
               content={props.query.promQlCode}
-              metrics={metrics}
               onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
               onRunQuery={props.onRunQuery}
             />
@@ -74,9 +53,71 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
   );
 }
 
+function useDataProvider(
+  datasource: DataSource,
+  tableName: string | undefined,
+  timeRange: {
+    to: DateTime | undefined;
+    from: DateTime | undefined;
+  }
+): MyDataProvider {
+  const cache = useMemo(
+    () => new Map<string, Promise<string[]>>(),
+    [datasource, tableName, timeRange.to, timeRange.from]
+  );
+
+  const retrieve = (key: string | undefined, generator: () => Promise<string[]>): Promise<string[]> => {
+    if (!tableName || !key) {
+      return new Promise(() => []);
+    }
+
+    if (!cache.has(key)) {
+      cache.set(key, generator());
+    }
+    return cache.get(key) || new Promise(() => []);
+  };
+
+  const getMetricNames = () =>
+    retrieve('kind=metrics', () =>
+      listTimeSeriesMetrics(datasource, {
+        tableName: tableName,
+        timeRange: { to: timeRange.to, from: timeRange.from },
+      })
+    );
+
+  const getLabelsFor = (metricName: string | undefined, otherLabels: Label[] | undefined): Promise<string[]> =>
+    retrieve(`kind=labels&metric=${metricName}`, () =>
+      listTimeSeriesLabels(datasource, {
+        tableName: tableName,
+        metricName: metricName,
+        timeRange: { to: timeRange.to, from: timeRange.from },
+      })
+    );
+
+  const getLabelValuesFor = (
+    metricName: string | undefined,
+    labelName: string,
+    otherLabels: Label[] | undefined
+  ): Promise<string[]> =>
+    retrieve(`kind=labelValues&metric=${metricName}&label=${labelName}`, () =>
+      listTimeSeriesLabelValues(datasource, {
+        tableName: tableName,
+        metricName: metricName,
+        labelName: labelName,
+        timeRange: { to: timeRange.to, from: timeRange.from },
+      })
+    );
+
+  return {
+    getMetricNames,
+    getLabelsFor,
+    getLabelValuesFor,
+  };
+}
+
 function MyEditor(props: {
   content: string | undefined;
-  metrics: string[] | undefined;
+  dataProvider: MyDataProvider;
   onChange: (val: string | undefined) => void;
   onRunQuery: () => void;
 }) {
@@ -91,41 +132,52 @@ function MyEditor(props: {
 
     monaco.languages.register(promLanguageDefinition);
 
-    const x = addCompletionItems(monaco);
+    if (!monaco.editor.addEditorAction) {
+      console.log({ addEditorAction: monaco?.editor?.addEditorAction });
+      return;
+    }
+
+    //const completionItemsCleanup = addCompletionItems(monaco);
     const languageConfigCleanup = addLanguageConfiguration(monaco);
     const tokensProviderCleanup = addTokensProvider(monaco);
     const runQueryCleanup = addRunQueryShortcut(monaco, props.onRunQuery);
-    const metricsCompletionCleanup = addMetricsCompletionBinding(monaco, props.metrics);
+
+    monaco.languages.registerCompletionItemProvider(
+      promLanguageDefinition.id,
+      getCompletionProvider(monaco, props.dataProvider)
+    );
 
     return () => {
-      x();
       languageConfigCleanup();
       tokensProviderCleanup();
       runQueryCleanup();
-      metricsCompletionCleanup();
     };
-  }, [monaco, props.metrics, props.onRunQuery]);
+    //}, [monaco, props.metrics, props.onRunQuery]);
+  });
+
+  const options: IStandaloneEditorConstructionOptions = {
+    codeLens: false,
+    lineNumbers: 'off',
+    minimap: { enabled: false },
+    scrollBeyondLastLine: false,
+    automaticLayout: true,
+    find: { addExtraSpaceOnTop: false },
+    hover: { above: false },
+    padding: {
+      top: 6,
+    },
+    renderLineHighlight: 'none',
+    theme: 'vs-dark',
+  };
 
   return (
-    <ReactMonacoEditor
+    <Editor
       language={languageId}
       width="100%"
       height="100%"
-      value={props.content}
+      value={props.content || ''}
       onChange={props.onChange}
-      options={{
-        codeLens: false,
-        lineNumbers: 'off',
-        minimap: { enabled: false },
-        scrollBeyondLastLine: false,
-        automaticLayout: true,
-        find: { addExtraSpaceOnTop: false },
-        hover: { above: false },
-        padding: {
-          top: 6,
-        },
-        renderLineHighlight: 'none',
-      }}
+      options={options}
     />
   );
 }
