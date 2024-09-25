@@ -64,6 +64,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       groupBy: ['country'],
       orderBy: [],
       filters: [{ column: 'country', operator: '=', value: ['CN'] }],
+      queryOptions: [],
       limit: 1000,
       legend: null,
     };
@@ -533,6 +534,120 @@ describe('Create a Panel with Pinot Query Builder', () => {
             cy.get('@orderBySelect').within(() => {
               cy.contains(option);
             });
+          });
+        }
+      });
+
+    /**
+     * Check and select Query Option field
+     */
+    cy.getBySel('select-query-options')
+      .should('exist')
+      .within(() => {
+        cy.wrap(cy.$$('body')).as('body');
+
+        // Check form label
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Query Options');
+
+        // Check add query option button
+        cy.getBySel('add-query-option-btn').should('exist').as('addQueryOptionBtn').click();
+        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+        // -- Check query option row --
+        cy.getBySel('query-option-row')
+          .should('exist')
+          .within(() => {
+            // Check SET label
+            cy.getBySel('set-label').should('exist').and('have.text', 'SET');
+
+            // Check query option select
+            cy.get('#query-option-select')
+              .should('exist')
+              .within(() => {
+                cy.get('input')
+                  .should('exist')
+                  .parent()
+                  .parent()
+                  .as('queryOptionSelect')
+                  .within(() => {
+                    cy.contains('Choose');
+                  })
+                  .click();
+
+                cy.get('@body')
+                  .find('[aria-label="Select options menu"]')
+                  .should('be.visible')
+                  .within(() => {
+                    const selectOptions = [
+                      'timeoutMs',
+                      'enableNullHandling',
+                      'explainPlanVerbose',
+                      'useMultistageEngine',
+                      'maxExecutionThreads',
+                      'numReplicaGroupsToQuery',
+                      'minSegmentGroupTrimSize',
+                      'minServerGroupTrimSize',
+                      'skipIndexes',
+                      'skipUpsert',
+                      'useStarTree',
+                      'maxRowsInJoin',
+                      'inPredicatePreSorted',
+                      'inPredicateLookupAlgorithm',
+                      'maxServerResponseSizeBytes',
+                      'maxQueryResponseSizeBytes',
+                    ];
+
+                    selectOptions.forEach((option) => cy.contains(option));
+
+                    // Close select menu
+                    cy.get('@body').click(0, 0);
+                  });
+              });
+
+            // Check operator label
+            cy.getBySel('operator-label').should('exist').and('have.text', '=');
+
+            // Check query option input value
+            cy.get('#query-option-value-input').should('exist');
+
+            // Check query option delete button
+            cy.getBySel('delete-query-option-btn').should('exist').click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+          });
+
+        // Check query option row should not exits after deleting the row
+        cy.getBySel('query-option-row').should('not.exist');
+
+        // -- Add the form data if any --
+        if (formData.queryOptions && formData.queryOptions.length > 0) {
+          formData.queryOptions.forEach((queryOption) => {
+            // Add query option row
+            cy.get('@addQueryOptionBtn').click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+            // -- Check query option row --
+            cy.getBySel('query-option-row')
+              .should('exist')
+              .within(() => {
+                // Select the query option
+                cy.get('#query-option-select').within(() => {
+                  cy.get('input').parent().parent().click();
+
+                  cy.get('@body')
+                    .find('[aria-label="Select options menu"]')
+                    .should('be.visible')
+                    .within(() => {
+                      // Select the option
+                      cy.contains(queryOption.option).click();
+
+                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                    });
+                });
+
+                // Fill the input value
+                cy.get('#query-option-value-input').type(queryOption.value.toString());
+                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              });
           });
         }
       });
