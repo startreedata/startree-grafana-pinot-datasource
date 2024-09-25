@@ -152,7 +152,7 @@ func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
 		return SqlObjectExpr(p.TimeColumnAlias)
 	} else {
-		return MacroExprFor(MacroMetricAlias)
+		return MacroExprFor(MacroTimeAlias)
 	}
 }
 
@@ -160,7 +160,7 @@ func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
 		return SqlObjectExpr(p.MetricColumnAlias)
 	} else {
-		return MacroExprFor(MacroTimeAlias)
+		return MacroExprFor(MacroMetricAlias)
 	}
 }
 

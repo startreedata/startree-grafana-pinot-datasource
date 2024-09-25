@@ -28,7 +28,7 @@ func TimeExpressionBuilderFor(tableSchema pinotlib.TableSchema, timeColumn strin
 		return TimeExpressionBuilder{}, fmt.Errorf("time column cannot be empty")
 	}
 
-	timeColumnFormat, err := GetTimeColumnFormat(tableSchema, timeColumn)
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, timeColumn)
 	if err != nil {
 		return TimeExpressionBuilder{}, err
 	}
@@ -125,7 +125,7 @@ func NewTimeExprFormat(timeColumnFormat string) (TimeExprFormat, bool) {
 		}, true
 	}
 
-	sdfPattern, ok := SimpleDateTimeFormatFor(timeColumnFormat)
+	sdfPattern, ok := pinotlib.SimpleDateTimeFormatFor(timeColumnFormat)
 	if !ok {
 		return TimeExprFormat{}, false
 	}
@@ -134,21 +134,4 @@ func NewTimeExprFormat(timeColumnFormat string) (TimeExprFormat, bool) {
 		inputFormat: "1:DAYS:SIMPLE_DATE_FORMAT:" + sdfPattern,
 		encodeTime:  func(d time.Time) string { return fmt.Sprintf(`'%s'`, d.Format(sdfPattern)) },
 	}, true
-}
-
-func SimpleDateTimeFormatFor(timeColumnFormat string) (string, bool) {
-	if !IsSimpleTimeColumnFormat(timeColumnFormat) {
-		return "", false
-	}
-
-	sdfElements := strings.Split(timeColumnFormat, "|")
-	if len(sdfElements) < 2 {
-		return "", false
-	}
-	sdfPattern := sdfElements[1]
-
-	if _, err := time.Parse(sdfPattern, time.Now().Format(sdfPattern)); err != nil {
-		return "", false
-	}
-	return sdfPattern, true
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
 	"slices"
 	"sort"
@@ -57,21 +58,21 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 }
 
 func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
-	timeColIdx, err := GetColumnIdx(results, timeColumnAlias)
+	timeColIdx, err := pinotlib.GetColumnIdx(results, timeColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 
-	timeCol, err := ExtractTimeColumn(results, timeColIdx, timeColumnFormat)
+	timeCol, err := pinotlib.ExtractTimeColumn(results, timeColIdx, timeColumnFormat)
 	if err != nil {
 		return nil, err
 	}
 
-	metColIdx, err := GetColumnIdx(results, metricColumnAlias)
+	metColIdx, err := pinotlib.GetColumnIdx(results, metricColumnAlias)
 	if err != nil {
 		return nil, err
 	}
-	metCol := ExtractDoubleColumn(results, metColIdx)
+	metCol := pinotlib.ExtractDoubleColumn(results, metColIdx)
 
 	dimensions := make(map[string][]string)
 	for colIdx := 0; colIdx < results.GetColumnCount(); colIdx++ {
@@ -79,7 +80,7 @@ func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColu
 			continue
 		}
 		name := results.GetColumnName(colIdx)
-		dimensions[name] = ExtractStringColumn(results, colIdx)
+		dimensions[name] = pinotlib.ExtractStringColumn(results, colIdx)
 	}
 
 	metrics := make([]Metric, results.GetRowCount())

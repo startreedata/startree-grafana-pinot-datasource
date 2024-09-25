@@ -6,6 +6,7 @@ export function InputMetricColumnAlias(props: { current: string | undefined; onC
   return (
     <InputTextField
       current={props.current}
+      placeholder={'metric'}
       labels={labels.components.QueryEditor.metricAlias}
       onChange={props.onChange}
       data-testid="metric-column-alias"
