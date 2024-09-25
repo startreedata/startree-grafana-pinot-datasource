@@ -273,6 +273,10 @@ describe('Create a Pinot Data Source', () => {
     cy.intercept('GET', '/api/datasources/*/health').as('datasourcesHealth');
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('DELETE', '/api/datasources/uid/*').as('deleteDatasource');
+    cy.intercept('GET', '/api/dashboards/home').as('dashboardsHome');
+    cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
+    cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
+    cy.intercept('POST', '/api/ds/query').as('dsQuery');
 
     /**
      * Visit page and initialize
@@ -382,8 +386,6 @@ describe('Create a Pinot Data Source', () => {
     cy.location('pathname').should('eq', '/explore');
     cy.wait('@resourcesTables');
 
-    cy.log('p21: ', ctx.newlyCreatedDatasourceUid);
-
     // Check if explore dropdown has newly created data source value
     cy.get('#data-source-picker').should('be.visible').parent().parent().should('contain.text', formData.name).click();
     cy.get('#react-select-3-listbox')
@@ -391,6 +393,32 @@ describe('Create a Pinot Data Source', () => {
       .within(() => {
         cy.contains(formData.name).click();
       });
+
+    /**
+     * Check for newly created data source in panel editor
+     */
+    cy.visit('/');
+    cy.wait('@dashboardsHome');
+
+    // -- Check and Add Panel --
+    cy.get('[aria-label="Add panel"]').click();
+    cy.get('button').contains('Add a new panel').click();
+    cy.location('search').should('contain', 'editPanel');
+
+    cy.wait(['@apiV1Rules', '@apiV1RulesSubtypeCortex', '@dsQuery', '@resourcesTables']);
+    cy.contains('Home / Edit Panel').should('be.visible');
+
+    // --  Check and Data source --
+    cy.get('#data-source-picker').should('exist').parent().parent().click();
+    cy.get('#react-select-6-listbox')
+      .should('be.visible')
+      .within(() => {
+        cy.contains(formData.name).click();
+      });
+
+    // -- Discard the Panel and go back --
+    cy.get('button[aria-label="Undo all changes"]').should('exist').click();
+    cy.location('search').should('not.contain', 'editPanel');
 
     /**
      * Finally delete the newly created data source
