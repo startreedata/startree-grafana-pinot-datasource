@@ -61,7 +61,7 @@ export function PinotQlBuilder(props: {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <div className={'gf-form'}>
+        <div className={'gf-form'} data-testid="select-table">
           <SelectTable
             options={tables}
             selected={query.tableName}

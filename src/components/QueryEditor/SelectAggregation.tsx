@@ -29,7 +29,7 @@ export function SelectAggregation(props: {
   }, [selected, onChange]);
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-aggregation">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}

@@ -13,6 +13,7 @@ export function InputLimit(props: { current: number | undefined; onChange: (val:
   return (
     <div className={'gf-form'} style={{ display: 'flex', flexDirection: 'row' }}>
       <InputTextField
+        data-testid="input-limit"
         current={current && current >= 1 ? current.toString(10) : undefined}
         labels={labels}
         invalid={!isValid}

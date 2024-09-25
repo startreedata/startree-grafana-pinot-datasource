@@ -20,7 +20,7 @@ export function SelectGroupBy(props: {
   }
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-group-by">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}
