@@ -3,11 +3,11 @@ package dataquery
 import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana/pkg/promlib/converter"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"math"
+	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -33,24 +33,32 @@ func NewPromQlCodeDriver(params PromQlCodeDriverParams) *PromQlDriver {
 }
 
 func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
+	return p.FutureExecute(ctx)
+}
+
+func (p *PromQlDriver) ExecuteDemo(ctx context.Context) backend.DataResponse {
 	// TODO: Replace with an actual api call
 
-	tsLen := int(p.params.TimeRange.To.Sub(p.params.TimeRange.From)/p.params.IntervalSize) + 1
-	ts := make([]time.Time, tsLen)
+	values := make(url.Values)
+	values.Add("start", "1727271155")
+	values.Add("language", "promql")
+	values.Add("query", "http_in_flight_requests")
+	values.Add("end", "1727385162")
+	values.Add("step", "15")
+	values.Add("table", "prometheusMsg_REALTIME")
 
-	ts[0] = p.params.TimeRange.From
-	for i := 1; i < tsLen; i++ {
-		ts[i] = ts[i-1].Add(p.params.IntervalSize)
+	req, err := http.NewRequest(http.MethodGet, "http://pinot:8000/timeseries/api/v1/query_range?"+values.Encode(), nil)
+	if err != nil {
+		return NewDataInternalErrorResponse(err)
 	}
 
-	met := make([]float64, tsLen)
-	for i := 0; i < tsLen; i++ {
-		met[i] = math.Log(float64(i))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return NewDataInternalErrorResponse(err)
 	}
 
-	return backend.DataResponse{Frames: []*data.Frame{data.NewFrame("sample",
-		data.NewField("ts", nil, ts),
-		data.NewField("met", nil, met))}}
+	iter := jsoniter.Parse(jsoniter.ConfigDefault, resp.Body, 1024)
+	return converter.ReadPrometheusStyleResult(iter, converter.Options{})
 }
 
 func (p *PromQlDriver) FutureExecute(ctx context.Context) backend.DataResponse {

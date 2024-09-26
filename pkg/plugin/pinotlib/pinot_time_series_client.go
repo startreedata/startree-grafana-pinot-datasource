@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -29,19 +30,23 @@ type PinotTimeSeriesQuery struct {
 	Start time.Time
 	End   time.Time
 	Step  time.Duration
+	Table string
 }
 
 func (x *PinotTimeSeriesQuery) ToMap() map[string]string {
 	return map[string]string{
-		"query": x.Query,
-		"start": x.formatTime(x.Start),
-		"end":   x.formatTime(x.End),
-		"step":  x.formatStep(x.Step),
+		"query":    x.Query,
+		"start":    x.formatTime(x.Start),
+		"end":      x.formatTime(x.End),
+		"step":     x.formatStep(x.Step),
+		"language": "promql",
+		// TODO: Set the table name correctly.
+		"table": "prometheusMsg_REALTIME",
 	}
 }
 
 func (x *PinotTimeSeriesQuery) ToUrlValues() url.Values {
-	var values url.Values
+	values := make(url.Values)
 	for k, v := range x.ToMap() {
 		values.Add(k, v)
 	}
@@ -49,11 +54,14 @@ func (x *PinotTimeSeriesQuery) ToUrlValues() url.Values {
 }
 
 func (x *PinotTimeSeriesQuery) formatTime(t time.Time) string {
-	return strconv.FormatFloat(float64(t.Unix())+float64(t.Nanosecond())/1e9, 'f', -1, 64)
+	//return strconv.FormatFloat(float64(t.Unix())+float64(t.Nanosecond())/1e9, 'f', -1, 64)
+	return strconv.FormatInt(t.Unix(), 10)
 }
 
 func (x *PinotTimeSeriesQuery) formatStep(s time.Duration) string {
-	return strconv.FormatFloat(x.Step.Seconds(), 'f', -1, 64)
+	//return strconv.FormatFloat(x.Step.Seconds(), 'f', -1, 64)
+	step := int64(math.Max(1, x.Step.Seconds()))
+	return strconv.FormatInt(step, 10)
 }
 
 func (p *PinotTimeSeriesClient) ExecuteTimeSeriesQuery(ctx context.Context, req *PinotTimeSeriesQuery) (*http.Response, error) {
@@ -61,8 +69,11 @@ func (p *PinotTimeSeriesClient) ExecuteTimeSeriesQuery(ctx context.Context, req 
 		return nil, ctx.Err()
 	}
 
-	reqUrl := p.properties.BrokerUrl + "/timeseries?" + req.ToUrlValues().Encode()
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, reqUrl, nil)
+	reqUrl := p.properties.BrokerUrl + "/timeseries/api/v1/query_range?" + req.ToUrlValues().Encode()
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, reqUrl, nil)
+
+	logger.Logger.Info(fmt.Sprintf("pinot/http - Outgoing %s %s", httpReq.Method, reqUrl))
+
 	if err != nil {
 		return nil, err
 	}
