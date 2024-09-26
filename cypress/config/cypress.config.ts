@@ -10,6 +10,8 @@ const config: CypressConfigOptions = {
     runMode: 2,
   },
   e2e: {
+    viewportWidth: 1366,
+    viewportHeight: 768,
     baseUrl: 'http://localhost:3000',
     env: {
       // Auth credentials

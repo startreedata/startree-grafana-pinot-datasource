@@ -97,6 +97,7 @@ export function EditFilter(props: {
   return (
     <InputGroup>
       <Select
+        id="column-select"
         placeholder="Select column"
         width="auto"
         value={thisFilter.columnName}
@@ -112,6 +113,7 @@ export function EditFilter(props: {
       />
 
       <Select
+        id="query-segment-operator-select"
         className="query-segment-operator"
         value={thisFilter.operator}
         options={operatorOptions}
@@ -126,6 +128,7 @@ export function EditFilter(props: {
 
       {operatorIsMulti ? (
         <MultiSelect
+          id="value-select"
           placeholder="Select value"
           width="auto"
           isLoading={isLoadingValues}
@@ -144,6 +147,7 @@ export function EditFilter(props: {
         />
       ) : (
         <Select
+          id="value-select"
           placeholder="Select value"
           width="auto"
           value={thisFilter.valueExprs?.find((v, i) => i === 0)}
@@ -163,7 +167,7 @@ export function EditFilter(props: {
         />
       )}
 
-      <AccessoryButton icon="times" variant="secondary" onClick={onDelete} />
+      <AccessoryButton data-testid="delete-filter-btn" icon="times" variant="secondary" onClick={onDelete} />
     </InputGroup>
   );
 }

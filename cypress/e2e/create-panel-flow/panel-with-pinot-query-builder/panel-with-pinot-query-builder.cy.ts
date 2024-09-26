@@ -54,6 +54,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
     }).as('tablesSchema');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
+    cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
     const formData = {
       table: 'complex_website',
@@ -63,7 +64,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       aggregation: 'SUM',
       groupBy: ['country'],
       orderBy: [],
-      filters: [{ column: 'country', operator: '=', value: ['CN'] }],
+      filters: [{ column: 'country', operator: '=', value: 'CN' }],
       queryOptions: [],
       limit: 1000,
       legend: null,
@@ -534,6 +535,210 @@ describe('Create a Panel with Pinot Query Builder', () => {
             cy.get('@orderBySelect').within(() => {
               cy.contains(option);
             });
+          });
+        }
+      });
+
+    /**
+     * Check and select Filters field
+     */
+    cy.getBySel('select-filters')
+      .should('exist')
+      .within(() => {
+        cy.wrap(cy.$$('body')).as('body');
+
+        // Check form label
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Filters');
+
+        // Check add filter button
+        cy.getBySel('add-filter-btn').should('exist').as('addFilterBtn').click();
+        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+        // -- Check filter row --
+        cy.getBySel('filter-row')
+          .should('exist')
+          .within(() => {
+            // -- Check select column --
+            cy.get('#column-select')
+              .should('exist')
+              .within(() => {
+                cy.get('input')
+                  .should('exist')
+                  .parent()
+                  .parent()
+                  .within(() => {
+                    cy.contains('Select column');
+                  })
+                  .click();
+
+                cy.get('@body')
+                  .find('[aria-label="Select options menu"]')
+                  .should('be.visible')
+                  .within(() => {
+                    const schema = ctx.apiResponse.tablesSchema.schema as Record<string, unknown>;
+                    const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
+                    const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
+
+                    const selectOptions = [...dimensionFieldSpecs, ...metricFieldSpecs].filter(
+                      (item) => item.name !== formData.metricColumn
+                    );
+
+                    selectOptions.forEach((option) => cy.contains(option.name));
+
+                    // Close select menu
+                    cy.get('@body').click(0, 0);
+                  });
+              });
+
+            // -- Check query segment operator select --
+            cy.get('#query-segment-operator-select')
+              .should('exist')
+              .within(() => {
+                cy.get('input')
+                  .should('exist')
+                  .parent()
+                  .parent()
+                  .within(() => {
+                    cy.contains('Choose');
+                  })
+                  .click();
+
+                cy.get('@body')
+                  .find('[aria-label="Select options menu"]')
+                  .should('be.visible')
+                  .within(() => {
+                    const selectOptions = ['=', '!=', '>', '>=', '<', '<=', 'like', 'not like'];
+
+                    selectOptions.forEach((option) => cy.contains(option));
+
+                    // Close select menu
+                    cy.get('@body').click(0, 0);
+                  });
+              });
+
+            // -- Check value select --
+            cy.get('#value-select')
+              .should('exist')
+              .within(() => {
+                cy.get('input')
+                  .should('exist')
+                  .parent()
+                  .parent()
+                  .within(() => {
+                    cy.contains('Select value');
+                  })
+                  .click();
+
+                cy.get('@body')
+                  .find('[aria-label="Select options menu"]')
+                  .should('be.visible')
+                  .within(() => {
+                    const selectOptions = ['No options found'];
+
+                    selectOptions.forEach((option) => cy.contains(option));
+
+                    // Close select menu
+                    cy.get('@body').click(0, 0);
+                  });
+              });
+
+            // -- Check filter delete button --
+            cy.getBySel('delete-filter-btn').should('exist').click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+          });
+
+        // Check filter row should not exits after deleting the row
+        cy.getBySel('filter-row').should('not.exist');
+
+        // -- Add the form data if any --
+        if (formData.filters && formData.filters.length > 0) {
+          formData.filters.forEach((filterOption) => {
+            // Add filter row
+            cy.get('@addFilterBtn').click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+            // -- Check filter row --
+            cy.getBySel('filter-row')
+              .should('exist')
+              .within(() => {
+                // Select column
+                cy.get('#column-select').within(() => {
+                  cy.get('input').parent().parent().as('columnSelect').click();
+
+                  cy.get('@body')
+                    .find('[aria-label="Select options menu"]')
+                    .should('be.visible')
+                    .within(() => {
+                      // Select the option
+                      cy.contains(filterOption.column).click();
+
+                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                    });
+
+                  // Check if the option is selected
+                  cy.get('@columnSelect').within(() => {
+                    cy.contains(filterOption.column);
+                  });
+                });
+
+                // Select query segment operator
+                cy.get('#query-segment-operator-select').within(() => {
+                  cy.get('input')
+                    .parent()
+                    .parent()
+                    .as('querySegmentOperatorSelect')
+                    .within(() => {
+                      // Check pre selected option
+                      cy.contains('=');
+                    })
+                    .click();
+
+                  cy.get('@body')
+                    .find('[aria-label="Select options menu"]')
+                    .should('be.visible')
+                    .within(() => {
+                      // Select the option
+                      cy.contains(filterOption.operator).click();
+
+                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                    });
+
+                  // Check if the option is selected
+                  cy.get('@querySegmentOperatorSelect').within(() => {
+                    cy.contains(filterOption.operator);
+                  });
+                });
+
+                // Select value
+                cy.get('#value-select').within(() => {
+                  cy.get('input').parent().parent().as('valueSelect').click();
+
+                  cy.wait('@queryDistinctValues').then(({ response }) => {
+                    const data = response.body as { code: number; valueExprs: string[] };
+                    cy.log('data: ', data);
+
+                    cy.get('@body')
+                      .find('[aria-label="Select options menu"]')
+                      .should('be.visible')
+                      .within(() => {
+                        // Check the available options
+                        data.valueExprs.forEach((valueExpr) => {
+                          cy.contains(valueExpr);
+                        });
+
+                        // Select the option
+                        cy.contains(filterOption.value).click();
+
+                        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      });
+                  });
+
+                  // Check if the option is selected
+                  cy.get('@valueSelect').within(() => {
+                    cy.contains(filterOption.value);
+                  });
+                });
+              });
           });
         }
       });

@@ -32,22 +32,24 @@ export function SelectFilters(props: {
   };
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-filters">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {dimensionFilters.map((filter, idx) => (
-          <EditFilter
-            {...props}
-            key={idx}
-            unusedColumns={unusedColumns}
-            thisFilter={filter}
-            remainingFilters={[...dimensionFilters.slice(0, idx), ...dimensionFilters.slice(idx + 1)]}
-            onChange={(val: DimensionFilter) => onChangeFilter(val, idx)}
-            onDelete={() => onDeleteFilter(idx)}
-          />
+          <div key={idx} data-testid="filter-row">
+            <EditFilter
+              {...props}
+              unusedColumns={unusedColumns}
+              thisFilter={filter}
+              remainingFilters={[...dimensionFilters.slice(0, idx), ...dimensionFilters.slice(idx + 1)]}
+              onChange={(val: DimensionFilter) => onChangeFilter(val, idx)}
+              onDelete={() => onDeleteFilter(idx)}
+            />
+          </div>
         ))}
         <div>
           <AccessoryButton
+            data-testid="add-filter-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
