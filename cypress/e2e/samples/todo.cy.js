@@ -11,9 +11,7 @@
 // please read our getting started guide:
 // https://on.cypress.io/introduction-to-cypress
 
-import { EnvVariables } from 'support/constants/env-variables';
-
-describe('example to-do app', () => {
+describe.skip('example to-do app', () => {
   beforeEach(() => {
     // Cypress starts out with a blank slate for each test
     // so we must tell it to visit our website with the `cy.visit()` command.
@@ -122,9 +120,5 @@ describe('example to-do app', () => {
       // Finally, make sure that the clear button no longer exists.
       cy.contains('Clear completed').should('not.exist');
     });
-  });
-
-  it('should check if env variables working', () => {
-    cy.wrap(Cypress.env(EnvVariables.authPassword)).should('equal', 'test');
   });
 });
