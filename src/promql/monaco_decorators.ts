@@ -46,6 +46,7 @@ export function addRunQueryShortcut(
   monaco: NonNullable<ReturnType<typeof useMonaco>>,
   onRunQuery: () => void
 ): () => void {
+
   // Register a custom action to run query
   const disposable = monaco.editor.addEditorAction({
     id: 'run-query',

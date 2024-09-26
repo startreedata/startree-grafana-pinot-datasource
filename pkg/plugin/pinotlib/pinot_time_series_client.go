@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	TimeSeriesTableColumnMetricName  = "name" // "metric"
+	TimeSeriesTableColumnMetricName  = "metric" // "metric"
 	TimeSeriesTableColumnLabels      = "labels"
 	TimeSeriesTableColumnMetricValue = "value"
-	TimeSeriesTableColumnTimestamp   = "timestampRoundedSeconds" // "ts"
+	TimeSeriesTableColumnTimestamp   = "ts" // "ts"
 	TimeSeriesTimestampFormat        = "1:MILLISECONDS:EPOCH"
 )
 
@@ -111,7 +111,7 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 
 	var hasTsField bool
 	for _, fieldSpec := range schema.DateTimeFieldSpecs {
-		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeLong {
+		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeTimestamp {
 			hasTsField = true
 			break
 		}

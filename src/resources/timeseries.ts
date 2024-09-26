@@ -38,6 +38,8 @@ export async function listTimeSeriesMetrics(
 ): Promise<string[]> {
   const endpoint = 'timeseries/metrics';
 
+  console.log({request});
+
   if (request.tableName && request.timeRange.from && request.timeRange.to) {
     return datasource.postResource<ListTimeSeriesMetricsResponse>(endpoint, request).then((resp) => resp.metrics || []);
   }

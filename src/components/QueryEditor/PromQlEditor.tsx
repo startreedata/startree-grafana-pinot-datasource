@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SelectTable } from './SelectTable';
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
@@ -8,23 +8,24 @@ import {
   listTimeSeriesMetrics,
   useTimeSeriesTables,
 } from '../../resources/timeseries';
-import { promLanguageDefinition } from 'monaco-promql';
-import { Editor, useMonaco } from '@monaco-editor/react';
-import { addLanguageConfiguration, addRunQueryShortcut, addTokensProvider } from '../../promql/monaco_decorators';
-import { editor } from 'monaco-editor';
+import { promLanguageDefinition } from '../../promql/promql.contribution';
+import { useMonaco } from '@monaco-editor/react';
+import { addLanguageConfiguration, addTokensProvider } from '../../promql/monaco_decorators';
+import { languages } from 'monaco-editor';
 import { getCompletionProvider } from '../../promql/completion_provider';
 import { MyDataProvider } from '../../promql/completions';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { Label } from '../../promql/situation';
-import IStandaloneEditorConstructionOptions = editor.IStandaloneEditorConstructionOptions;
+import { ReactMonacoEditor } from '@grafana/ui';
+import CompletionItemProvider = languages.CompletionItemProvider;
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const tables = useTimeSeriesTables(props.datasource);
 
   const dataProvider = useDataProvider(props.datasource, props.query.tableName, {
-    to: props.data?.timeRange.to,
-    from: props.data?.timeRange.from,
+    to: props.range?.to,
+    from: props.range?.from,
   });
 
   return (
@@ -121,6 +122,7 @@ function MyEditor(props: {
   onChange: (val: string | undefined) => void;
   onRunQuery: () => void;
 }) {
+  const [monacoModelId, setMonacoModelId] = useState<string>();
   const monaco = useMonaco();
 
   const languageId = promLanguageDefinition.id;
@@ -132,52 +134,66 @@ function MyEditor(props: {
 
     monaco.languages.register(promLanguageDefinition);
 
-    if (!monaco.editor.addEditorAction) {
-      console.log({ addEditorAction: monaco?.editor?.addEditorAction });
-      return;
-    }
-
-    //const completionItemsCleanup = addCompletionItems(monaco);
     const languageConfigCleanup = addLanguageConfiguration(monaco);
     const tokensProviderCleanup = addTokensProvider(monaco);
-    const runQueryCleanup = addRunQueryShortcut(monaco, props.onRunQuery);
 
-    monaco.languages.registerCompletionItemProvider(
+    //const runQueryCleanup = addRunQueryShortcut(monaco, props.onRunQuery);
+
+    const completionProvider = getCompletionProvider(monaco, props.dataProvider);
+    const filteringCompletionProvider: CompletionItemProvider = {
+      ...completionProvider,
+      provideCompletionItems: (model, position, context, token) => {
+        if (monacoModelId !== model.id) {
+          return { suggestions: [] };
+        }
+        return completionProvider.provideCompletionItems(model, position, context, token);
+      },
+    };
+
+    const cleanup = monaco.languages.registerCompletionItemProvider(
       promLanguageDefinition.id,
-      getCompletionProvider(monaco, props.dataProvider)
+      filteringCompletionProvider
     );
 
     return () => {
       languageConfigCleanup();
       tokensProviderCleanup();
-      runQueryCleanup();
+      // runQueryCleanup();
+      cleanup.dispose();
     };
-    //}, [monaco, props.metrics, props.onRunQuery]);
   });
 
-  const options: IStandaloneEditorConstructionOptions = {
-    codeLens: false,
-    lineNumbers: 'off',
-    minimap: { enabled: false },
-    scrollBeyondLastLine: false,
-    automaticLayout: true,
-    find: { addExtraSpaceOnTop: false },
-    hover: { above: false },
-    padding: {
-      top: 6,
-    },
-    renderLineHighlight: 'none',
-    theme: 'vs-dark',
-  };
-
   return (
-    <Editor
+    <ReactMonacoEditor
       language={languageId}
       width="100%"
       height="100%"
       value={props.content || ''}
       onChange={props.onChange}
-      options={options}
+      options={{
+        codeLens: false,
+        lineNumbers: 'off',
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        automaticLayout: true,
+        find: { addExtraSpaceOnTop: false },
+        hover: { above: false },
+        padding: {
+          top: 6,
+        },
+        renderLineHighlight: 'none',
+      }}
+      onMount={(editor, monaco) => {
+        setMonacoModelId(editor.getModel()?.id);
+        editor.addAction({
+          id: 'run-query',
+          label: 'Run Query',
+          contextMenuOrder: 1,
+          contextMenuGroupId: '1_modification',
+          keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+          run: props.onRunQuery,
+        });
+      }}
     />
   );
 }

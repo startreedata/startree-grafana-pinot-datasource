@@ -34,8 +34,8 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
             query={props.query}
             onChange={props.onChange}
             timeRange={{
-              to: props.data?.request?.range.to,
-              from: props.data?.request?.range.from,
+              to: props.range?.to,
+              from: props.range?.from,
             }}
             intervalSize={props.data?.request?.interval}
           />

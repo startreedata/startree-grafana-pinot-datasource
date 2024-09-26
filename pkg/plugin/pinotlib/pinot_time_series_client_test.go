@@ -1,7 +1,9 @@
 package pinotlib
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -10,14 +12,14 @@ func TestIsTimeSeriesTableSchema(t *testing.T) {
 		schema := TableSchema{
 			SchemaName: "startree_metrics_analytics",
 			DimensionFieldSpecs: []DimensionFieldSpec{
-				{Name: "name", DataType: "STRING"},
+				{Name: "metric", DataType: "STRING"},
 				{Name: "labels", DataType: "JSON"},
 			},
 			MetricFieldSpecs: []MetricFieldSpec{
 				{Name: "value", DataType: "DOUBLE"},
 			},
 			DateTimeFieldSpecs: []DateTimeFieldSpec{
-				{Name: "timestampRoundedSeconds", DataType: "LONG"},
+				{Name: "ts", DataType: "LONG"},
 			},
 		}
 
@@ -33,5 +35,13 @@ func TestIsTimeSeriesTableSchema(t *testing.T) {
 		}
 
 		assert.Equal(t, false, IsTimeSeriesTableSchema(schema))
+	})
+
+	t.Run("x", func(t *testing.T) {
+		client := NewPinotTestClient(t)
+
+		got, err := client.ListTimeSeriesTables(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"events"}, got)
 	})
 }

@@ -58,7 +58,7 @@ export function getCompletionProvider(monaco: Monaco, dataProvider: MyDataProvid
     const situation = getSituation(model.getValue(), offset);
 
     return getCompletions(situation, dataProvider).then((items) => {
-      const maxIndexDigits = items.length.toString().length;
+      const maxIndexDigits = items.length.toString().length; // TODO: WTF is this?
       const suggestions = items.map((item, index) => ({
         kind: getMonacoCompletionItemKind(item.type, monaco),
         label: item.label,

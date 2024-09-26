@@ -486,3 +486,10 @@ func assertEqualTimeColumns(t *testing.T, want, got []time.Time) {
 	}
 	assert.Equal(t, wantStrs, gotStrs)
 }
+
+func TestX(t *testing.T) {
+	ts := "2024-09-18 00:00:00.1"
+
+	got := parseTimestamp(ts)
+	assert.Equal(t, time.Date(2024, 9, 18, 0, 0, 0, int(100*time.Millisecond), time.UTC), got)
+}
