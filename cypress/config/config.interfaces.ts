@@ -1,9 +1,4 @@
 export type EndToEndEnvVariables = {
-  // Auth
-  authUsername: string;
-  authPassword: string;
-  authAccessToken: string;
-
   // Pinot connection credentials
   pinotConnectionControllerUrl: string;
   pinotConnectionBrokerUrl: string;
