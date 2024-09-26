@@ -25,6 +25,7 @@ const config: CypressConfigOptions = {
       // with any changed environment variables
       return config;
     },
+    excludeSpecPattern: ['cypress/e2e/samples/*'],
   },
 };
 
