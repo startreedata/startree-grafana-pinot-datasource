@@ -1,13 +1,16 @@
 package dataquery
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/grafana/grafana/pkg/promlib/converter"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"net/http"
-	"net/url"
+	"strings"
 	"time"
 )
 
@@ -20,6 +23,7 @@ type PromQlCodeDriverParams struct {
 	PromQlCode   string
 	TimeRange    TimeRange
 	IntervalSize time.Duration
+	Legend       string
 }
 
 type PromQlDriver struct {
@@ -33,45 +37,49 @@ func NewPromQlCodeDriver(params PromQlCodeDriverParams) *PromQlDriver {
 }
 
 func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
-	return p.FutureExecute(ctx)
-}
-
-func (p *PromQlDriver) ExecuteDemo(ctx context.Context) backend.DataResponse {
-	// TODO: Replace with an actual api call
-
-	values := make(url.Values)
-	values.Add("start", "1727271155")
-	values.Add("language", "promql")
-	values.Add("query", "http_in_flight_requests")
-	values.Add("end", "1727385162")
-	values.Add("step", "15")
-	values.Add("table", "prometheusMsg_REALTIME")
-
-	req, err := http.NewRequest(http.MethodGet, "http://pinot:8000/timeseries/api/v1/query_range?"+values.Encode(), nil)
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	if strings.TrimSpace(p.params.PromQlCode) == "" {
+		return backend.DataResponse{}
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	tableMetadata, err := p.params.PinotClient.GetTableMetadata(ctx, p.params.TableName)
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewDataInternalErrorResponse(fmt.Errorf("error getting table metadata: %w", err))
 	}
 
-	iter := jsoniter.Parse(jsoniter.ConfigDefault, resp.Body, 1024)
-	return converter.ReadPrometheusStyleResult(iter, converter.Options{})
-}
-
-func (p *PromQlDriver) FutureExecute(ctx context.Context) backend.DataResponse {
-	resp, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.PinotTimeSeriesQuery{
+	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.PinotTimeSeriesQuery{
 		Query: p.params.PromQlCode,
 		Start: p.params.TimeRange.From,
 		End:   p.params.TimeRange.To,
 		Step:  p.params.IntervalSize,
+		Table: tableMetadata.TableNameAndType,
 	})
 	if err != nil {
 		return NewDataInternalErrorResponse(err)
 	}
 
-	iter := jsoniter.Parse(jsoniter.ConfigDefault, resp.Body, 1024)
-	return converter.ReadPrometheusStyleResult(iter, converter.Options{})
+	if queryResponse.StatusCode != http.StatusOK {
+		var body bytes.Buffer
+		_, _ = body.ReadFrom(queryResponse.Body)
+		return NewDataInternalErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
+	}
+
+	iter := jsoniter.Parse(jsoniter.ConfigDefault, queryResponse.Body, 1024)
+	dataResponse := converter.ReadPrometheusStyleResult(iter, converter.Options{})
+
+	for _, frame := range dataResponse.Frames {
+		p.decorateFrame(frame)
+	}
+	return dataResponse
+}
+
+func (p *PromQlDriver) decorateFrame(frame *data.Frame) {
+	if len(frame.Fields) < 1 {
+		return
+	}
+	frame.Fields[0].Config = &data.FieldConfig{Interval: float64(p.params.IntervalSize.Milliseconds())}
+
+	for i := 1; i < len(frame.Fields); i++ {
+		name := FormatSeriesName(p.params.Legend, frame.Fields[i].Labels)
+		frame.Fields[i].SetConfig(&data.FieldConfig{DisplayNameFromDS: name})
+	}
 }

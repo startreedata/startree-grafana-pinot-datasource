@@ -17,6 +17,7 @@ const (
 	TimeSeriesTableColumnMetricValue = "value"
 	TimeSeriesTableColumnTimestamp   = "ts" // "ts"
 	TimeSeriesTimestampFormat        = "1:MILLISECONDS:EPOCH"
+	TimeSeriesQueryLanguagePromQl    = "promql"
 )
 
 type PinotTimeSeriesClient struct {
@@ -35,13 +36,12 @@ type PinotTimeSeriesQuery struct {
 
 func (x *PinotTimeSeriesQuery) ToMap() map[string]string {
 	return map[string]string{
+		"language": TimeSeriesQueryLanguagePromQl,
 		"query":    x.Query,
 		"start":    x.formatTime(x.Start),
 		"end":      x.formatTime(x.End),
 		"step":     x.formatStep(x.Step),
-		"language": "promql",
-		// TODO: Set the table name correctly.
-		"table": "prometheusMsg_REALTIME",
+		"table":    x.Table,
 	}
 }
 

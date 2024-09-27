@@ -93,6 +93,25 @@ func (p *PinotControllerClient) GetTableSchema(ctx context.Context, table string
 	return schema, nil
 }
 
+type TableMetadata struct {
+	TableNameAndType string `json:"tableName"`
+	DiskSizeInBytes  uint64 `json:"diskSizeInBytes"`
+	NumSegments      uint64 `json:"numSegments"`
+	NumRows          uint64 `json:"numRows"`
+}
+
+func (p *PinotControllerClient) GetTableMetadata(ctx context.Context, table string) (TableMetadata, error) {
+	req, err := p.newGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/metadata")
+	if err != nil {
+		return TableMetadata{}, err
+	}
+	var metadata TableMetadata
+	if err = p.doRequestAndDecodeResponse(req, &metadata); err != nil {
+		return TableMetadata{}, err
+	}
+	return metadata, nil
+}
+
 func (p *PinotControllerClient) newHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	return p.newRequest(ctx, http.MethodHead, endpoint, nil)
 }

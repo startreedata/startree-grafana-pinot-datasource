@@ -38,6 +38,7 @@ type PinotClient struct {
 	listDatabasesCache    *cache.ResourceCache[[]string]
 	listTablesCache       *cache.ResourceCache[[]string]
 	getTableSchemaCache   *cache.MultiResourceCache[string, TableSchema]
+	getTableMetadataCache *cache.MultiResourceCache[string, TableMetadata]
 	timeseriesLabelsCache *cache.MultiResourceCache[string, LabelsCollection]
 }
 
@@ -112,6 +113,7 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 		listDatabasesCache:    cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
 		listTablesCache:       cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
 		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
+		getTableMetadataCache: cache.NewMultiResourceCache[string, TableMetadata](properties.ControllerCacheTimeout),
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
 	}, nil
 }
@@ -151,6 +153,12 @@ func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
 func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
 	return p.getTableSchemaCache.Get(table, func() (TableSchema, error) {
 		return p.controllerClient.GetTableSchema(ctx, table)
+	})
+}
+
+func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (TableMetadata, error) {
+	return p.getTableMetadataCache.Get(table, func() (TableMetadata, error) {
+		return p.controllerClient.GetTableMetadata(ctx, table)
 	})
 }
 

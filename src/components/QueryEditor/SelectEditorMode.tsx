@@ -7,6 +7,7 @@ import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { DisplayTypeTimeSeries } from './SelectDisplayType';
 import { previewSqlBuilder } from '../../resources/previewSql';
+import { QueryType } from '../../types/QueryType';
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
@@ -42,45 +43,47 @@ export function SelectEditorMode(props: {
         }}
         onCancel={() => setShowConfirm(false)}
       />
-      <RadioButtonGroup
-        options={Object.keys(EditorMode).map((name) => ({ label: name, value: name }))}
-        onChange={(value) => {
-          if (value === EditorMode.Builder) {
-            setShowConfirm(true);
-          }
+      {query.queryType === QueryType.PinotQL && (
+        <RadioButtonGroup
+          options={Object.keys(EditorMode).map((name) => ({ label: name, value: name }))}
+          onChange={(value) => {
+            if (value === EditorMode.Builder) {
+              setShowConfirm(true);
+            }
 
-          if (value === EditorMode.Code) {
-            previewSqlBuilder(datasource, {
-              aggregationFunction: query.aggregationFunction,
-              groupByColumns: query.groupByColumns,
-              intervalSize: props.intervalSize || '0',
-              metricColumn: query.metricColumn,
-              tableName: query.tableName,
-              timeColumn: query.timeColumn,
-              timeRange: {
-                to: props.timeRange.to?.toISOString(),
-                from: props.timeRange.from?.toISOString(),
-              },
-              filters: query.filters,
-              limit: query.limit,
-              granularity: query.granularity,
-              orderBy: query.orderBy,
-              queryOptions: query.queryOptions,
-              expandMacros: false,
-            }).then((sql) =>
-              onChange({
-                ...query,
-                editorMode: EditorMode.Code,
-                displayType: DisplayTypeTimeSeries,
-                timeColumnAlias: 'time',
-                metricColumnAlias: query.metricColumn,
-                pinotQlCode: sql,
-              })
-            );
-          }
-        }}
-        value={query.editorMode}
-      />
+            if (value === EditorMode.Code) {
+              previewSqlBuilder(datasource, {
+                aggregationFunction: query.aggregationFunction,
+                groupByColumns: query.groupByColumns,
+                intervalSize: props.intervalSize || '0',
+                metricColumn: query.metricColumn,
+                tableName: query.tableName,
+                timeColumn: query.timeColumn,
+                timeRange: {
+                  to: props.timeRange.to?.toISOString(),
+                  from: props.timeRange.from?.toISOString(),
+                },
+                filters: query.filters,
+                limit: query.limit,
+                granularity: query.granularity,
+                orderBy: query.orderBy,
+                queryOptions: query.queryOptions,
+                expandMacros: false,
+              }).then((sql) =>
+                onChange({
+                  ...query,
+                  editorMode: EditorMode.Code,
+                  displayType: DisplayTypeTimeSeries,
+                  timeColumnAlias: 'time',
+                  metricColumnAlias: query.metricColumn,
+                  pinotQlCode: sql,
+                })
+              );
+            }
+          }}
+          value={query.editorMode}
+        />
+      )}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { Label } from '../../promql/situation';
 import { ReactMonacoEditor } from '@grafana/ui';
+import { InputMetricLegend } from './InputMetricLegend';
 import CompletionItemProvider = languages.CompletionItemProvider;
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
@@ -41,7 +42,7 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
         <>
           <FormLabel tooltip={'Query'} label={'Query'} />
           <div style={{ flex: '1 1 auto', height: 50 }}>
-            <MyEditor
+            <PromQlQueryField
               dataProvider={dataProvider}
               content={props.query.promQlCode}
               onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
@@ -49,6 +50,12 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
             />
           </div>
         </>
+      </div>
+      <div className={'gf-form'}>
+        <InputMetricLegend
+          current={props.query.legend}
+          onChange={(legend) => props.onChange({ ...props.query, legend })}
+        />
       </div>
     </>
   );
@@ -116,7 +123,7 @@ function useDataProvider(
   };
 }
 
-function MyEditor(props: {
+function PromQlQueryField(props: {
   content: string | undefined;
   dataProvider: MyDataProvider;
   onChange: (val: string | undefined) => void;

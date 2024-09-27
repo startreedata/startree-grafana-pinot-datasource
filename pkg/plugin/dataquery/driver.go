@@ -23,6 +23,7 @@ func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query Pin
 			PromQlCode:   query.PromQlCode,
 			TimeRange:    TimeRange{To: timeRange.To, From: timeRange.From},
 			IntervalSize: query.IntervalSize,
+			Legend:       query.Legend,
 		}), nil
 	case QueryTypePinotVariableQuery:
 		return NewPinotVariableQueryDriver(PinotVariableQueryParams{
