@@ -49,20 +49,22 @@ export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (
     .reduce((collector, name) => collector.add(name), new Set<string>());
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-query-options">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {selected.map((option, idx) => (
-          <EditQueryOption
-            key={idx}
-            queryOption={option}
-            unused={unused}
-            onChange={(val) => onChangeOption(val, idx)}
-            onDelete={() => onDeleteOption(idx)}
-          />
+          <div key={idx} data-testid="query-option-row">
+            <EditQueryOption
+              queryOption={option}
+              unused={unused}
+              onChange={(val) => onChangeOption(val, idx)}
+              onDelete={() => onDeleteOption(idx)}
+            />
+          </div>
         ))}
         <div>
           <AccessoryButton
+            data-testid="add-query-option-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
