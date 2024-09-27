@@ -23,7 +23,7 @@ export function SelectTimeColumn(props: {
     .sort();
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-time-column">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
