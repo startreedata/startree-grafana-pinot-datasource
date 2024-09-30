@@ -62,7 +62,7 @@ jobs:
       - name: Check for E2E
         id: check-for-e2e
         run: |
-          if [ -f "playwright.config.ts" ]
+          if [ -f "cypress/config/cypress.config.ts" ]
           then
             echo "has-e2e=true" >> $GITHUB_OUTPUT
           fi
@@ -104,48 +104,32 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Resolve Grafana E2E versions
         id: resolve-versions
         uses: grafana/plugin-actions/e2e-version@main
 
   cypress-e2e-tests:
-    needs: [build, resolve-versions]
+    needs: [build]
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        GRAFANA_IMAGE: ${{fromJson(needs.resolve-versions.outputs.matrix)}}
-    name: Cypress e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
+    name: Cypress e2e tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download plugin
-        if: needs.build.outputs.has-backend == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
-
-      - name: Execute permissions on binary
-        if: needs.build.outputs.has-backend == 'true'
-        run: |
-          chmod +x ./dist/gpx_pinot_linux_amd64
-
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'yarn'
 
       - name: Install dev dependencies
         run: yarn install --frozen-lockfile
 
       - name: Start Grafana
         run: |
-          docker compose pull
-          DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
+          docker compose up -d
 
       - name: Wait for Grafana to start
         uses: nev7n/wait_for_response@v1
@@ -165,8 +149,8 @@ jobs:
           config: baseUrl=http://localhost:3000
           # record: true
           browser: chrome
-          #   build: yarn run build
-          #   start: yarn run dev
+          build: yarn run build
+          start: yarn run dev
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 60
         env:
