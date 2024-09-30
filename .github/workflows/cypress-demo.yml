@@ -148,8 +148,7 @@ jobs:
         id: run-cypress-e2e-tests
         with:
           config-file: cypress/config/cypress.config.ts
-          config: baseUrl=http://localhost:3000
-          record: true
+          config: baseUrl=http://localhost:3000,video=true
           browser: chrome
           #   build: yarn run build
           #   start: yarn run dev
