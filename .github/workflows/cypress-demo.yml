@@ -151,8 +151,8 @@ jobs:
           config: baseUrl=http://localhost:3000
           # record: true
           browser: chrome
-          build: yarn run build
-          start: yarn run dev
+          #   build: yarn run build
+          #   start: yarn run dev
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 60
         env:
