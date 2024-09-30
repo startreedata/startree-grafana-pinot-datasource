@@ -5,6 +5,7 @@ import type { CypressConfigOptions } from './config.interfaces';
 dotenvConfig({ path: '../.env' });
 
 const config: CypressConfigOptions = {
+  projectId: 'startree-grafana-pinot-datasource',
   experimentalMemoryManagement: true,
   retries: {
     runMode: 2,
