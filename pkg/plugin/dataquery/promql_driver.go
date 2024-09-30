@@ -41,17 +41,13 @@ func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 		return backend.DataResponse{}
 	}
 
-	tableMetadata, err := p.params.PinotClient.GetTableMetadata(ctx, p.params.TableName)
-	if err != nil {
-		return NewDataInternalErrorResponse(fmt.Errorf("error getting table metadata: %w", err))
-	}
-
-	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.PinotTimeSeriesQuery{
-		Query: p.params.PromQlCode,
-		Start: p.params.TimeRange.From,
-		End:   p.params.TimeRange.To,
-		Step:  p.params.IntervalSize,
-		Table: tableMetadata.TableNameAndType,
+	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
+		Language:  pinotlib.TimeSeriesQueryLanguagePromQl,
+		Query:     p.params.PromQlCode,
+		Start:     p.params.TimeRange.From,
+		End:       p.params.TimeRange.To,
+		Step:      p.params.IntervalSize,
+		TableName: p.params.TableName,
 	})
 	if err != nil {
 		return NewDataInternalErrorResponse(err)

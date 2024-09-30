@@ -21,7 +21,7 @@ func TestR(t *testing.T) {
 	want.Add("step", "15")
 	want.Add("table", "prometheusMsg_REALTIME")
 
-	req := &pinotlib.PinotTimeSeriesQuery{
+	req := &pinotlib.TimeSeriesRangeQuery{
 		Query: "http_in_flight_requests",
 		Start: time.Unix(1727271155, 0),
 		End:   time.Unix(1727385162, 0),
@@ -34,7 +34,7 @@ func TestR(t *testing.T) {
 
 func TestQ(t *testing.T) {
 	client := test_helpers.NewPinotTestClient(t)
-	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &pinotlib.PinotTimeSeriesQuery{
+	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &pinotlib.TimeSeriesRangeQuery{
 		Query: "http_in_flight_requests",
 		Start: time.Unix(1727346410, 0),
 		End:   time.Unix(1727389610, 0),
@@ -50,4 +50,21 @@ func TestQ(t *testing.T) {
 	buf.ReadFrom(resp.Body)
 	assert.Equal(t, "", buf.String())
 
+}
+
+func TestS(t *testing.T) {
+	client := test_helpers.NewPinotTestClient(t)
+	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &pinotlib.TimeSeriesRangeQuery{
+		Query: "http_in_flight_requests{environment=\"development\"}",
+		Start: time.Unix(1727378727, 0),
+		End:   time.Unix(1727379131, 0),
+		Step:  1,
+		Table: "prometheusMsg_REALTIME",
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	var buf bytes.Buffer
+	buf.ReadFrom(resp.Body)
+	assert.Equal(t, "", buf.String())
 }

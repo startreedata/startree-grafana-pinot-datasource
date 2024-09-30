@@ -9,7 +9,7 @@ import {
   useTimeSeriesTables,
 } from '../../resources/timeseries';
 import { promLanguageDefinition } from '../../promql/promql.contribution';
-import { useMonaco } from '@monaco-editor/react';
+import MonacoEditor, { useMonaco } from '@monaco-editor/react';
 import { addLanguageConfiguration, addTokensProvider } from '../../promql/monaco_decorators';
 import { languages } from 'monaco-editor';
 import { getCompletionProvider } from '../../promql/completion_provider';
@@ -17,7 +17,6 @@ import { MyDataProvider } from '../../promql/completions';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { Label } from '../../promql/situation';
-import { ReactMonacoEditor } from '@grafana/ui';
 import { InputMetricLegend } from './InputMetricLegend';
 import CompletionItemProvider = languages.CompletionItemProvider;
 
@@ -171,7 +170,8 @@ function PromQlQueryField(props: {
   });
 
   return (
-    <ReactMonacoEditor
+    <MonacoEditor
+      theme={'vs-dark'}
       language={languageId}
       width="100%"
       height="100%"

@@ -1,4 +1,4 @@
-package pinotlib
+package collections
 
 type Set[T comparable] map[T]struct{}
 
