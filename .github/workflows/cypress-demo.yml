@@ -149,7 +149,7 @@ jobs:
         with:
           config-file: cypress/config/cypress.config.ts
           config: baseUrl=http://localhost:3000
-          # record: true
+          record: true
           browser: chrome
           #   build: yarn run build
           #   start: yarn run dev
@@ -164,13 +164,31 @@ jobs:
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
           PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
+      # Upload cypress screenshots on failure
+      - name: Upload cypress screenshots artifact
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          retention-days: 30
+
+      # Upload cypress videos
+      - name: Upload cypress videos artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
+          retention-days: 30
+
       - name: Docker logs
         if: ${{ always() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
         run: |
           docker logs startree-pinot-datasource >& grafana-server.log
 
       - name: Stop grafana docker
-        run: docker-compose down
+        run: docker compose down
         if: always()
 
       - name: Upload server log
