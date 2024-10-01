@@ -17,12 +17,13 @@ jobs:
     outputs:
       plugin-id: ${{ steps.metadata.outputs.plugin-id }}
       plugin-version: ${{ steps.metadata.outputs.plugin-version }}
-      has-e2e: ${{ steps.check-for-e2e.outputs.has-e2e }}
+      has-playwright-e2e: ${{ steps.check-for-playwright-e2e.outputs.has-playwright-e2e }}
       has-backend: ${{ steps.check-for-backend.outputs.has-backend }}
     env:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Setup Node.js environment
         uses: actions/setup-node@v4
         with:
@@ -32,6 +33,15 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:ci
+
       - name: Build frontend
         run: npm run build
 
@@ -39,6 +49,15 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+
+      - name: Start Pinot
+        run: docker compose up pinot --detach --wait --wait-timeout 500
+
+      - name: Test backend
+        uses: magefile/mage-action@v3
+        with:
+          version: latest
+          args: coverage
 
       - name: Build backend
         uses: magefile/mage-action@v3
@@ -49,6 +68,7 @@ jobs:
       - name: Start Grafana
         run: |
           docker compose up -d
+
       - name: Wait for Grafana to start
         uses: nev7n/wait_for_response@v1
         with:
@@ -57,17 +77,14 @@ jobs:
           timeout: 60000
           interval: 500
 
-      # Install npm dependencies, cache them correctly
-      # and run all Cypress tests
+      # Run all Cypress tests
       - name: Cypress E2E run
         uses: cypress-io/github-action@v6
         id: run-cypress-e2e-tests
         with:
           config-file: cypress/config/cypress.config.ts
-          config: baseUrl=http://localhost:3000,video=true
+          # config: video=true
           browser: chrome
-          #   build: yarn run build
-          #   start: yarn run dev
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 60
         env:
@@ -82,33 +99,55 @@ jobs:
       # Upload cypress screenshots on failure
       - name: Upload cypress screenshots artifact
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
         with:
           name: cypress-screenshots
           path: cypress/screenshots
           retention-days: 30
 
-      # Upload cypress videos
-      - name: Upload cypress videos artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cypress-videos
-          path: cypress/videos
-          retention-days: 30
+      # # Upload cypress videos
+      # - name: Upload cypress videos artifact
+      #   uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: cypress-videos
+      #     path: cypress/videos
+      #     retention-days: 30
 
-      - name: Docker logs
-        if: ${{ always() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
+      - name: Check for Playwright E2E tests
+        id: check-for-playwright-e2e
         run: |
-          docker logs startree-pinot-datasource >& grafana-server.log
+          if [ -f "playwright.config.ts" ]
+          then
+            echo "has-playwright-e2e=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Get plugin metadata
+        id: metadata
+        run: |
+          sudo apt-get install jq
+
+          export GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
+          export GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
+          export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
+
+          echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
+          echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
+          echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
+
+      - name: Package plugin
+        id: package-plugin
+        run: |
+          mv dist ${{ steps.metadata.outputs.plugin-id }}
+          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+
+      - name: Archive Build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
+          path: ${{ steps.metadata.outputs.plugin-id }}
+          retention-days: 5
+
       - name: Stop grafana docker
         run: docker compose down
         if: always()
-
-      - name: Upload server log
-        uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
-        with:
-          name: cypress-e2e-${{github.run_id}}-server-log
-          path: grafana-server.log
-          retention-days: 5
