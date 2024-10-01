@@ -1,0 +1,542 @@
+[
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600001,
+    "value": 6009
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615001,
+    "value": 12011
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630001,
+    "value": 18018
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645001,
+    "value": 24026
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660001,
+    "value": 30033
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675001,
+    "value": 36041
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690001,
+    "value": 42053
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705001,
+    "value": 48072
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720001,
+    "value": 54090
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735001,
+    "value": 60110
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600010,
+    "value": 40
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615010,
+    "value": 80
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630010,
+    "value": 120
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645010,
+    "value": 160
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660010,
+    "value": 200
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675010,
+    "value": 240
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690010,
+    "value": 280
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705010,
+    "value": 320
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720010,
+    "value": 360
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735010,
+    "value": 400
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600100,
+    "value": 1006
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615100,
+    "value": 2008
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630100,
+    "value": 3015
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645100,
+    "value": 4018
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660100,
+    "value": 5025
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675100,
+    "value": 6030
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690100,
+    "value": 7039
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705100,
+    "value": 8043
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720100,
+    "value": 9054
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735100,
+    "value": 10058
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600000,
+    "value": 10005
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615000,
+    "value": 20009
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630000,
+    "value": 30019
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645000,
+    "value": 40032
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660000,
+    "value": 50047
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675000,
+    "value": 60059
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690000,
+    "value": 70079
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705000,
+    "value": 80105
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720000,
+    "value": 90125
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"200\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735000,
+    "value": 100152
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600000,
+    "value": 285
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615000,
+    "value": 565
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630000,
+    "value": 846
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645000,
+    "value": 1126
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660000,
+    "value": 1415
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675000,
+    "value": 1699
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690000,
+    "value": 1983
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705000,
+    "value": 2272
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720000,
+    "value": 2557
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"500\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735000,
+    "value": 2847
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617600000,
+    "value": 2005
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617615000,
+    "value": 4012
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617630000,
+    "value": 6015
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617645000,
+    "value": 8019
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617660000,
+    "value": 10030
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617675000,
+    "value": 12036
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617690000,
+    "value": 14043
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617705000,
+    "value": 16049
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617720000,
+    "value": 18057
+  },
+  {
+    "labels": "{\"method\":\"GET\",\"path\":\"/api\",\"status\":\"400\"}",
+    "metric": "http_request_handled",
+    "ts": 1726617735000,
+    "value": 20070
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617600000,
+    "value": 2002
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617615000,
+    "value": 4007
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617630000,
+    "value": 6009
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617645000,
+    "value": 8013
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617660000,
+    "value": 10021
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617675000,
+    "value": 12031
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617690000,
+    "value": 14036
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617705000,
+    "value": 16039
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617720000,
+    "value": 18052
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"user_activity\"}",
+    "metric": "db_record_write",
+    "ts": 1726617735000,
+    "value": 20061
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617600000,
+    "value": 6007
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617615000,
+    "value": 12012
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617630000,
+    "value": 18015
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617645000,
+    "value": 24028
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617660000,
+    "value": 30041
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617675000,
+    "value": 36054
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617690000,
+    "value": 42067
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617705000,
+    "value": 48079
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617720000,
+    "value": 54093
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"webhook_actions\"}",
+    "metric": "db_record_write",
+    "ts": 1726617735000,
+    "value": 60111
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617600000,
+    "value": 404
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617615000,
+    "value": 810
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617630000,
+    "value": 1211
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617645000,
+    "value": 1619
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617660000,
+    "value": 2026
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617675000,
+    "value": 2436
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617690000,
+    "value": 2843
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617705000,
+    "value": 3252
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617720000,
+    "value": 3658
+  },
+  {
+    "labels": "{\"db\":\"app\",\"table\":\"background_tasks\"}",
+    "metric": "db_record_write",
+    "ts": 1726617735000,
+    "value": 4061
+  }
+]

@@ -329,26 +329,14 @@ func (x *ResourceHandler) ListTimeSeriesMetrics(ctx context.Context, data ListTi
 		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	timeExprBuilder, err := pinotlib.NewTimeExpressionBuilder(pinotlib.TimeSeriesTableColumnTimestamp, pinotlib.TimeSeriesTimestampFormat)
-	if err != nil {
-		return newInternalServerErrorResponse(err)
-	}
-
-	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName:     pinotlib.TimeSeriesTableColumnMetricName,
-		TableName:      data.TableName,
-		TimeFilterExpr: timeExprBuilder.TimeFilterExpr(data.TimeRange.From, data.TimeRange.To),
-		Limit:          templates.DistinctValuesLimit,
+	metrics, err := x.client.ListTimeSeriesMetrics(ctx, pinotlib.TimeSeriesMetricNamesQuery{
+		TableName: data.TableName,
+		From:      data.TimeRange.From,
+		To:        data.TimeRange.To,
 	})
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
-
-	resp, err := x.client.ExecuteSQL(ctx, data.TableName, sql)
-	if err != nil {
-		return newInternalServerErrorResponse(err)
-	}
-	metrics := pinotlib.ExtractStringColumn(resp.ResultTable, 0)
 
 	return &Response{Code: http.StatusOK, ListTimeSeriesMetricsResponse: &ListTimeSeriesMetricsResponse{
 		Metrics: metrics,
@@ -370,7 +358,12 @@ func (x *ResourceHandler) ListTimeSeriesLabels(ctx context.Context, data ListTim
 		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	labels, err := x.client.ListTimeSeriesLabelNames(ctx, data.TableName, data.MetricName, data.TimeRange.From, data.TimeRange.To)
+	labels, err := x.client.ListTimeSeriesLabelNames(ctx, pinotlib.TimeSeriesLabelNamesQuery{
+		TableName:  data.TableName,
+		MetricName: data.MetricName,
+		From:       data.TimeRange.From,
+		To:         data.TimeRange.To,
+	})
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
@@ -397,7 +390,13 @@ func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data Li
 		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	values, err := x.client.ListTimeSeriesLabelValues(ctx, data.TableName, data.MetricName, data.LabelName, data.TimeRange.From, data.TimeRange.To)
+	values, err := x.client.ListTimeSeriesLabelValues(ctx, pinotlib.TimeSeriesLabelValuesQuery{
+		TableName:  data.TableName,
+		MetricName: data.MetricName,
+		LabelName:  data.LabelName,
+		From:       data.TimeRange.From,
+		To:         data.TimeRange.To,
+	})
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}

@@ -59,6 +59,10 @@ func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 		return NewDataInternalErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
 	}
 
+	var buf bytes.Buffer
+	buf.ReadFrom(queryResponse.Body)
+	fmt.Println("")
+
 	iter := jsoniter.Parse(jsoniter.ConfigDefault, queryResponse.Body, 1024)
 	dataResponse := converter.ReadPrometheusStyleResult(iter, converter.Options{})
 

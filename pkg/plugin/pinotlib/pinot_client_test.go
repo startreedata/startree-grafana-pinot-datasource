@@ -2,6 +2,8 @@ package pinotlib
 
 import (
 	"context"
+	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -9,16 +11,18 @@ import (
 
 func TestPinotClient_Query(t *testing.T) {
 	ctx := context.Background()
-	client := NewPinotTestClient(t)
-	sql := `select * from githubEvents limit 10`
-	_, err := client.ExecuteSQL(ctx, "githubEvents", sql)
+	client := setupPinotAndCreateClient(t)
+	sql := fmt.Sprintf(`select * from %s limit 10`, pinottest.InfraMetricsTableName)
+	_, err := client.ExecuteSQL(ctx, pinottest.InfraMetricsTableName, sql)
 	assert.NoError(t, err)
 }
 
-func NewPinotTestClient(t *testing.T) *PinotClient {
+func setupPinotAndCreateClient(t *testing.T) *PinotClient {
+	pinottest.CreateTestTables(t)
+
 	pinotClient, err := NewPinotClient(PinotClientProperties{
-		ControllerUrl: "http://localhost:9000",
-		BrokerUrl:     "http://localhost:8000",
+		ControllerUrl: pinottest.ControllerUrl,
+		BrokerUrl:     pinottest.BrokerUrl,
 	})
 	require.NoError(t, err)
 	return pinotClient

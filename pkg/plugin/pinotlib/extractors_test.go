@@ -9,12 +9,82 @@ import (
 )
 
 func TestGetColumnIdx(t *testing.T) {
-	want := 1
-	got, err := GetColumnIdx(&pinot.ResultTable{
+	results := &pinot.ResultTable{
 		DataSchema: pinot.RespSchema{ColumnNames: []string{"col0", "col1"}},
-	}, "col1")
-	assert.NoError(t, err)
-	assert.Equal(t, want, got)
+	}
+
+	testArgs := []struct {
+		colName string
+		want    int
+		wantErr bool
+	}{
+		{colName: "col0", want: 0},
+		{colName: "col1", want: 1},
+		{colName: "dne", want: -1, wantErr: true},
+	}
+
+	for _, tt := range testArgs {
+		t.Run(tt.colName, func(t *testing.T) {
+			got, err := GetColumnIdx(results, tt.colName)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetTimeColumnFormat(t *testing.T) {
+	schema := TableSchema{
+		SchemaName: "githubEvents",
+		DimensionFieldSpecs: []DimensionFieldSpec{
+			{Name: "id", DataType: "STRING"},
+			{Name: "type", DataType: "STRING"},
+			{Name: "actor", DataType: "JSON"},
+			{Name: "repo", DataType: "JSON"},
+			{Name: "payload", DataType: "JSON"},
+			{Name: "public", DataType: "BOOLEAN"},
+		},
+		MetricFieldSpecs: nil,
+		DateTimeFieldSpecs: []DateTimeFieldSpec{
+			{
+				Name:        "created_at",
+				DataType:    "STRING",
+				Format:      "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'",
+				Granularity: "1:SECONDS",
+			},
+			{
+				Name:        "created_at_timestamp",
+				DataType:    "TIMESTAMP",
+				Format:      "TIMESTAMP",
+				Granularity: "1:SECONDS",
+			},
+		},
+	}
+
+	testArgs := []struct {
+		colName string
+		want    string
+		wantErr bool
+	}{
+		{colName: "created_at", want: "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'"},
+		{colName: "created_at_timestamp", want: "TIMESTAMP"},
+		{colName: "actor", wantErr: true},
+	}
+
+	for _, tt := range testArgs {
+		t.Run(tt.colName, func(t *testing.T) {
+			got, err := GetTimeColumnFormat(schema, tt.colName)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestExtractColumn(t *testing.T) {

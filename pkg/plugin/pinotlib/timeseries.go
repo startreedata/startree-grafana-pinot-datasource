@@ -36,17 +36,15 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	formatTime := func(t time.Time) string {
-		//return strconv.FormatFloat(float64(t.Unix())+float64(t.Nanosecond())/1e9, 'f', -1, 64)
 		return strconv.FormatInt(t.Unix(), 10)
 	}
 
 	formatStep := func(s time.Duration) string {
-		//return strconv.FormatFloat(x.Step.Seconds(), 'f', -1, 64)
 		step := int64(math.Max(1, s.Seconds()))
 		return strconv.FormatInt(step, 10)
 	}
 
-	var values url.Values
+	values := make(url.Values)
 	values.Set("language", req.Language)
 	values.Set("query", req.Query)
 	values.Set("start", formatTime(req.Start))
@@ -54,7 +52,7 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	values.Set("step", formatStep(req.Step))
 	values.Set("table", tableMetadata.TableNameAndType)
 
-	httpReq, err := p.newTimeseriesGetRequest(ctx, "/timeseries/api/v1/query_range?"+values.Encode())
+	httpReq, err := p.newTimeseriesGetRequest(ctx, "/query_range?"+values.Encode())
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +104,17 @@ func (p *PinotClient) ListTimeSeriesTables(ctx context.Context) ([]string, error
 	}
 }
 
-func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName string, from time.Time, to time.Time) ([]string, error) {
+type TimeSeriesMetricNamesQuery struct {
+	TableName string
+	From      time.Time
+	To        time.Time
+}
+
+func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSeriesMetricNamesQuery) ([]string, error) {
 	// TODO: Replace with pinot api call when implemented.
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 
 	timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
 	if err != nil {
@@ -116,37 +123,58 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, tableName strin
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
 		ColumnName:     TimeSeriesTableColumnMetricName,
-		TableName:      tableName,
-		TimeFilterExpr: timeExprBuilder.TimeFilterExpr(from, to),
+		TableName:      query.TableName,
+		TimeFilterExpr: timeExprBuilder.TimeFilterExpr(query.From, query.To),
 		Limit:          templates.DistinctValuesLimit,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := p.ExecuteSQL(ctx, tableName, sql)
+	resp, err := p.ExecuteSQL(ctx, query.TableName, sql)
 	metrics := ExtractStringColumn(resp.ResultTable, 0)
 	return metrics, nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) ([]string, error) {
-	// TODO: Replace with pinot api call when implemented.
+type TimeSeriesLabelNamesQuery struct {
+	TableName  string
+	MetricName string
+	From       time.Time
+	To         time.Time
+}
 
-	collection, err := p.FetchTimeSeriesLabels(ctx, tableName, metricName, from, to)
+func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, query TimeSeriesLabelNamesQuery) ([]string, error) {
+	// TODO: Replace with pinot api call when implemented.
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	collection, err := p.FetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
 	if err != nil {
 		return nil, err
 	}
 	return collection.Names(), nil
 }
 
-func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, tableName string, metricName string, labelName string, from time.Time, to time.Time) ([]string, error) {
-	// TODO: Replace with pinot api call when implemented.
+type TimeSeriesLabelValuesQuery struct {
+	TableName  string
+	MetricName string
+	LabelName  string
+	From       time.Time
+	To         time.Time
+}
 
-	collection, err := p.FetchTimeSeriesLabels(ctx, tableName, metricName, from, to)
+func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, query TimeSeriesLabelValuesQuery) ([]string, error) {
+	// TODO: Replace with pinot api call when implemented.
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	collection, err := p.FetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
 	if err != nil {
 		return nil, err
 	}
-	return collection.Values(labelName), nil
+	return collection.Values(query.LabelName), nil
 }
 
 type LabelsCollection map[string]collections.Set[string]

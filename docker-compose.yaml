@@ -8,17 +8,11 @@ services:
       - '2123:2123/tcp'
       - '7050:7050/tcp'
       - '6000:6000/tcp'
+      - '8097:8097/tcp'
     command:
       - 'StarTreeQuickStart'
       - '-type'
       - 'PROMQL_TIME_SERIES'
-
-  #    healthcheck:
-  #      test: [ "CMD-SHELL", "curl --silent --fail http://localhost:9000/tables | grep billing" ]
-  #      interval: 5s
-  #      timeout: 10s
-  #      retries: 50
-  #      start_period: 60s
 
   grafana:
     user: root

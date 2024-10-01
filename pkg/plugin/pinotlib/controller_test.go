@@ -2,49 +2,66 @@ package pinotlib
 
 import (
 	"context"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/stretchr/testify/assert"
-	"sort"
 	"testing"
 )
+
+func TestPinotClient_ListDatabases(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+
+	t.Run("context cancelled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := client.ListDatabases(ctx)
+		assert.Contains(t, err.Error(), context.Canceled.Error())
+	})
+
+	t.Run("success", func(t *testing.T) {
+		ctx := context.Background()
+		pinottest.CreateTestTables(t)
+
+		got, err := client.ListDatabases(ctx)
+		assert.NoError(t, err)
+		assert.Equal(t, got, []string{"default"})
+	})
+}
 
 func TestPinotClient_ListTables(t *testing.T) {
 	t.Run("context cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := NewPinotTestClient(t)
+		client := setupPinotAndCreateClient(t)
 		_, err := client.ListTables(ctx)
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
-		client := NewPinotTestClient(t)
-
-		wantTables := []string{"airlineStats", "baseballStats", "billing",
-			"dimBaseballTeams", "githubComplexTypeEvents", "githubEvents", "starbucksStores"}
+		client := setupPinotAndCreateClient(t)
+		pinottest.CreateTestTables(t)
 
 		gotTables, err := client.ListTables(ctx)
-		sort.Strings(gotTables)
-
 		assert.NoError(t, err)
-		assert.Subset(t, gotTables, wantTables)
+		assert.Subset(t, gotTables, []string{"infraMetrics", "githubEvents", "starbucksStores"})
 	})
 }
 
 func TestPinotClient_GetTableSchema(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+
 	t.Run("context cancelled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		client := NewPinotTestClient(t)
 		_, err := client.ListTables(ctx)
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("githubEvents", func(t *testing.T) {
 		ctx := context.Background()
-		client := NewPinotTestClient(t)
 
 		want := TableSchema{
 			SchemaName: "githubEvents",
@@ -67,13 +84,40 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 				{
 					Name:        "created_at_timestamp",
 					DataType:    "TIMESTAMP",
-					Format:      "1:MILLISECONDS:TIMESTAMP",
+					Format:      "TIMESTAMP",
 					Granularity: "1:SECONDS",
 				},
 			},
 		}
 
 		got, err := client.GetTableSchema(ctx, "githubEvents")
+		assert.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+}
+
+func TestPinotClient_GetTableMetadata(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+
+	t.Run("context cancelled", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		_, err := client.GetTableMetadata(ctx, "githubEvents")
+		assert.Contains(t, err.Error(), context.Canceled.Error())
+	})
+
+	t.Run("githubEvents", func(t *testing.T) {
+		ctx := context.Background()
+
+		want := TableMetadata{
+			TableNameAndType: "githubEvents_OFFLINE",
+			DiskSizeInBytes:  22673060,
+			NumSegments:      1,
+			NumRows:          10000,
+		}
+
+		got, err := client.GetTableMetadata(ctx, "githubEvents")
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
