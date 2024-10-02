@@ -18,9 +18,9 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &TimeSeriesRangeQuery{
 		Language:  TimeSeriesQueryLanguagePromQl,
 		Query:     "http_request_handled",
-		Start:     time.Unix(1726617601, 0),
+		Start:     time.Unix(1726617600, 0),
 		End:       time.Unix(1726617735, 0),
-		Step:      1 * time.Second,
+		Step:      60 * time.Second,
 		TableName: pinottest.InfraMetricsTableName,
 	})
 
@@ -51,7 +51,7 @@ func TestPinotClient_ListTimeSeriesMetrics(t *testing.T) {
 
 		_, err := client.ListTimeSeriesMetrics(ctx, TimeSeriesMetricNamesQuery{
 			TableName: "infraMetrics",
-			From:      time.Unix(1726617601, 0),
+			From:      time.Unix(1726617600, 0),
 			To:        time.Unix(1726617735, 0),
 		})
 		assert.Contains(t, err.Error(), context.Canceled.Error())
@@ -60,7 +60,7 @@ func TestPinotClient_ListTimeSeriesMetrics(t *testing.T) {
 	t.Run("infraMetrics", func(t *testing.T) {
 		got, err := client.ListTimeSeriesMetrics(context.Background(), TimeSeriesMetricNamesQuery{
 			TableName: "infraMetrics",
-			From:      time.Unix(1726617601, 0),
+			From:      time.Unix(1726617600, 0),
 			To:        time.Unix(1726617735, 0),
 		})
 		require.NoError(t, err)
@@ -79,7 +79,7 @@ func TestPinotClient_ListTimeSeriesLabelNames(t *testing.T) {
 		_, err := client.ListTimeSeriesLabelNames(ctx, TimeSeriesLabelNamesQuery{
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
-			From:       time.Unix(1726617601, 0),
+			From:       time.Unix(1726617600, 0),
 			To:         time.Unix(1726617735, 0),
 		})
 		assert.Contains(t, err.Error(), context.Canceled.Error())
@@ -89,7 +89,7 @@ func TestPinotClient_ListTimeSeriesLabelNames(t *testing.T) {
 		got, err := client.ListTimeSeriesLabelNames(context.Background(), TimeSeriesLabelNamesQuery{
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
-			From:       time.Unix(1726617601, 0),
+			From:       time.Unix(1726617600, 0),
 			To:         time.Unix(1726617735, 0),
 		})
 
@@ -111,7 +111,7 @@ func TestPinotClient_ListTimeSeriesLabelValues(t *testing.T) {
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
 			LabelName:  "path",
-			From:       time.Unix(1726617601, 0),
+			From:       time.Unix(1726617600, 0),
 			To:         time.Unix(1726617735, 0),
 		})
 		assert.Contains(t, err.Error(), context.Canceled.Error())
@@ -122,7 +122,7 @@ func TestPinotClient_ListTimeSeriesLabelValues(t *testing.T) {
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
 			LabelName:  "path",
-			From:       time.Unix(1726617601, 0),
+			From:       time.Unix(1726617600, 0),
 			To:         time.Unix(1726617735, 0),
 		})
 		require.NoError(t, err)

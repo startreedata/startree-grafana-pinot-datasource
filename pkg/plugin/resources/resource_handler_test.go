@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-func TestPinotResourceHandler_SqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
+func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
 	defer server.Close()
 
 	want := strings.TrimSpace(`
@@ -59,7 +59,7 @@ LIMIT 100000;
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
 	defer server.Close()
 
 	var got json.RawMessage
@@ -80,7 +80,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 }
 
 func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.NewPinotTestClient(t)))
+	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
 	defer server.Close()
 
 	var want = `SELECT 

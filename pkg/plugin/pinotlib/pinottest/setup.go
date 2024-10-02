@@ -29,6 +29,7 @@ const (
 	InfraMetricsTableName    = "infraMetrics"
 	GithubEventsTableName    = "githubEvents"
 	StarbucksStoresTableName = "starbucksStores"
+	AirlineStatsTableName    = "airlineStats"
 )
 
 var createTestTablesOnce sync.Once
@@ -63,6 +64,12 @@ func CreateTestTables(t *testing.T) {
 				configFile: "data/starbucksStores_offline_table_config.json",
 				dataFile:   "data/starbucksStores_data.csv",
 			},
+			{
+				tableName:  AirlineStatsTableName,
+				schemaFile: "data/airlineStats_schema.json",
+				configFile: "data/airlineStats_offline_table_config.json",
+				// TODO: Add data file at some point
+			},
 		}
 
 		var wg sync.WaitGroup
@@ -78,7 +85,7 @@ func CreateTestTables(t *testing.T) {
 				t.Logf("Creating %s table config...", job.tableName)
 				createTableConfig(t, job.configFile)
 			}
-			if !tableHasData(t, job.tableName) {
+			if !(tableHasData(t, job.tableName) || job.dataFile == "") {
 				t.Logf("Uploading %s table data...", job.tableName)
 				uploadJsonTableData(t, job.tableName+"_OFFLINE", job.dataFile)
 			}
@@ -88,7 +95,7 @@ func CreateTestTables(t *testing.T) {
 			go setupTable(job)
 		}
 		wg.Wait()
-		t.Log("Setup complete")
+		t.Log("Pinot setup complete.")
 	})
 }
 

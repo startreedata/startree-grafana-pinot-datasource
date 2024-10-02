@@ -8,8 +8,7 @@ import (
 	"time"
 )
 
-const OutputFileJsonl = "testdata/data.jsonl"
-const OutputFileJson = "testdata/data.json"
+const OutputFileJson = "data.json"
 
 type TimeSeriesRow struct {
 	Metric    string
@@ -66,7 +65,7 @@ func main() {
 				Metric:    "http_request_handled",
 				Value:     val,
 				Labels:    map[string]string{"status": "200", "method": "GET", "path": "/app"},
-				Timestamp: tsAt(i) + 1,
+				Timestamp: tsAt(i),
 			})
 	}
 
@@ -78,7 +77,7 @@ func main() {
 				Metric:    "http_request_handled",
 				Value:     val,
 				Labels:    map[string]string{"status": "500", "method": "GET", "path": "/app"},
-				Timestamp: tsAt(i) + 10,
+				Timestamp: tsAt(i),
 			})
 	}
 
@@ -90,7 +89,7 @@ func main() {
 				Metric:    "http_request_handled",
 				Value:     val,
 				Labels:    map[string]string{"status": "400", "method": "GET", "path": "/app"},
-				Timestamp: tsAt(i) + 100,
+				Timestamp: tsAt(i),
 			})
 	}
 
@@ -166,29 +165,12 @@ func main() {
 			})
 	}
 
-	{
-		file, err := os.OpenFile(OutputFileJsonl, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-
-		for _, row := range rows {
-			if err := json.NewEncoder(file).Encode(&row); err != nil {
-				panic(err)
-			}
-		}
+	file, err := os.OpenFile(OutputFileJson, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		panic(err)
 	}
-
-	{
-		file, err := os.OpenFile(OutputFileJson, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
-		if err := json.NewEncoder(file).Encode(&rows); err != nil {
-			panic(err)
-		}
+	defer file.Close()
+	if err := json.NewEncoder(file).Encode(&rows); err != nil {
+		panic(err)
 	}
-
 }

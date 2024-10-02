@@ -24,23 +24,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Login to Docker registry
+      - name: Log in to Docker registry
         uses: docker/login-action@v3
         with:
           registry: repo.startreedata.io/startree-docker-registry
           username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
           password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
 
-      - name: Start Pinot
+      - name: Start Pinot container
         run: docker compose up pinot --detach
 
-      - name: Setup Node.js environment
+      - name: Install Node.js environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'yarn'
 
-      - name: Setup Go environment
+      - name: Install Go environment
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
