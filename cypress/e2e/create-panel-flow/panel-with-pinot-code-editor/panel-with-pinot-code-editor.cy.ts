@@ -244,9 +244,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
               const editorValue = editor.getValue(); // Retrieve the editor's content
 
               const defaultValue = `
-                SELECT
-                  $__timeGroup("timestamp") AS $__timeAlias(),
-                  SUM("metric") AS $__metricAlias()
+                SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
                 FROM $__table()
                 WHERE $__timeFilter("timestamp")
                 GROUP BY $__timeGroup("timestamp")

@@ -39,7 +39,7 @@ export function SelectOrderBy(props: {
   const options = [...usedOptions, ...unusedOptions];
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-order-by">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}

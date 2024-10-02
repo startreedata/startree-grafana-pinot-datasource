@@ -22,25 +22,27 @@ export function EditQueryOption(props: {
   const selectableNames = queryOption.name ? [queryOption.name, ...unused] : [...unused];
   return (
     <InputGroup>
-      <div style={{ padding: 6 }}>
+      <div style={{ padding: 6 }} data-testid="set-label">
         <span>SET</span>
       </div>
       <Select
+        id="query-option-select"
         width="auto"
         value={queryOption.name}
         allowCustomValue
         options={selectableNames.map((name) => ({ label: name, value: name }))}
         onChange={(change) => onChange({ ...queryOption, name: change.value })}
       />
-      <div style={{ padding: 6 }}>
+      <div style={{ padding: 6 }} data-testid="operator-label">
         <span>=</span>
       </div>
       <Input
+        id="query-option-value-input"
         className={`${styles.QueryEditor.inputForm}`}
         value={value}
         onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
       />
-      <AccessoryButton icon="times" variant="secondary" onClick={onDelete} />
+      <AccessoryButton data-testid="delete-query-option-btn" icon="times" variant="secondary" onClick={onDelete} />
     </InputGroup>
   );
 }

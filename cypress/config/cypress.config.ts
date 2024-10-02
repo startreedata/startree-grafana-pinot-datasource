@@ -5,18 +5,16 @@ import type { CypressConfigOptions } from './config.interfaces';
 dotenvConfig({ path: '../.env' });
 
 const config: CypressConfigOptions = {
+  projectId: 'startree-grafana-pinot-datasource',
   experimentalMemoryManagement: true,
   retries: {
     runMode: 2,
   },
   e2e: {
+    viewportWidth: 1366,
+    viewportHeight: 768,
     baseUrl: 'http://localhost:3000',
     env: {
-      // Auth credentials
-      authUsername: process.env.AUTH_USERNAME,
-      authPassword: process.env.AUTH_PASSWORD,
-      authAccessToken: process.env.AUTH_ACCESS_TOKEN,
-
       // Pinot connection credentials
       pinotConnectionControllerUrl: process.env.PINOT_CONNECTION_CONTROLLER_URL,
       pinotConnectionBrokerUrl: process.env.PINOT_CONNECTION_BROKER_URL,
@@ -28,6 +26,7 @@ const config: CypressConfigOptions = {
       // with any changed environment variables
       return config;
     },
+    excludeSpecPattern: ['cypress/e2e/samples/*'],
   },
 };
 

@@ -51,10 +51,13 @@ jobs:
 
       - name: Check types
         run: npm run typecheck
+
       - name: Lint
         run: npm run lint
+
       - name: Unit tests
         run: npm run test:ci
+
       - name: Build frontend
         run: npm run build
 
@@ -66,3 +69,52 @@ jobs:
 
       - name: Build backend
         run: go run cmd/release/main.go build_backend
+
+      - name: Start Grafana
+        run: |
+          docker compose up -d
+
+      - name: Wait for Grafana to start
+        uses: nev7n/wait_for_response@v1
+        with:
+          url: 'http://localhost:3000/'
+          responseCode: 200
+          timeout: 60000
+          interval: 500
+
+      # Run all Cypress tests
+      - name: Cypress E2E run
+        uses: cypress-io/github-action@v6
+        id: run-cypress-e2e-tests
+        with:
+          config-file: cypress/config/cypress.config.ts
+          # config: video=true
+          browser: chrome
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 60
+        env:
+          # pass GitHub token to allow accurately detecting a build vs a re-run build
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Cypress env vars
+          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
+          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
+          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
+          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
+
+      # Upload cypress screenshots on failure
+      - name: Upload cypress screenshots artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          retention-days: 30
+
+      # # Upload cypress videos
+      # - name: Upload cypress videos artifact
+      #   uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: cypress-videos
+      #     path: cypress/videos
+      #     retention-days: 30
