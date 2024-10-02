@@ -13,7 +13,7 @@ import MonacoEditor, { useMonaco } from '@monaco-editor/react';
 import { addLanguageConfiguration, addTokensProvider } from '../../promql/monaco_decorators';
 import { languages } from 'monaco-editor';
 import { getCompletionProvider } from '../../promql/completion_provider';
-import { MyDataProvider } from '../../promql/completions';
+import { PromQlCompletionDataProvider } from '../../promql/completions';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { Label } from '../../promql/situation';
@@ -67,7 +67,7 @@ function useDataProvider(
     to: DateTime | undefined;
     from: DateTime | undefined;
   }
-): MyDataProvider {
+): PromQlCompletionDataProvider {
   const cache = useMemo(
     () => new Map<string, Promise<string[]>>(),
     [datasource, tableName, timeRange.to, timeRange.from] // eslint-disable-line
@@ -124,7 +124,7 @@ function useDataProvider(
 
 function PromQlQueryField(props: {
   content: string | undefined;
-  dataProvider: MyDataProvider;
+  dataProvider: PromQlCompletionDataProvider;
   onChange: (val: string | undefined) => void;
   onRunQuery: () => void;
 }) {

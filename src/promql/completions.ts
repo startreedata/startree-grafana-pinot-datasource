@@ -1,8 +1,6 @@
-// Borrowed from grafana
-
-import { FUNCTIONS } from './grafana_promql';
+import { FUNCTIONS } from './static_completion_data';
 import { Label, Situation } from './situation';
-import { NeverCaseError } from './never_case_error'; // FIXME: we should not load this from the "outside", but we cannot do that while we have the "old" query-field too
+import { NeverCaseError } from './never_case_error';
 
 export type CompletionType = 'HISTORY' | 'FUNCTION' | 'METRIC_NAME' | 'DURATION' | 'LABEL_NAME' | 'LABEL_VALUE';
 
@@ -21,13 +19,13 @@ type Completion = {
 //   type: string;
 // };
 
-export interface MyDataProvider {
+export interface PromQlCompletionDataProvider {
   getMetricNames: () => Promise<string[]>;
   getLabelsFor: (metricName: string | undefined, otherLabels?: Label[]) => Promise<string[] | undefined>;
   getLabelValuesFor: (metricName: string | undefined, labelName: string, otherLabels?: Label[]) => Promise<string[]>;
 }
 
-async function getAllMetricNamesCompletions(dataProvider: MyDataProvider): Promise<Completion[]> {
+async function getAllMetricNamesCompletions(dataProvider: PromQlCompletionDataProvider): Promise<Completion[]> {
   const metrics = await dataProvider.getMetricNames();
   return metrics.map((metric) => ({
     type: 'METRIC_NAME',
@@ -65,7 +63,7 @@ async function getLabelNamesForCompletions(
   suffix: string,
   triggerOnInsert: boolean,
   otherLabels: Label[],
-  dataProvider: MyDataProvider
+  dataProvider: PromQlCompletionDataProvider
 ): Promise<Completion[]> {
   const labels = await dataProvider.getLabelsFor(metric, otherLabels);
   return (labels || []).map((labelName) => ({
@@ -79,7 +77,7 @@ async function getLabelNamesForCompletions(
 async function getLabelNamesForSelectorCompletions(
   metric: string | undefined,
   otherLabels: Label[],
-  dataProvider: MyDataProvider
+  dataProvider: PromQlCompletionDataProvider
 ): Promise<Completion[]> {
   return getLabelNamesForCompletions(metric, '=', true, otherLabels, dataProvider);
 }
@@ -87,7 +85,7 @@ async function getLabelNamesForSelectorCompletions(
 async function getLabelNamesForByCompletions(
   metric: string | undefined,
   otherLabels: Label[],
-  dataProvider: MyDataProvider
+  dataProvider: PromQlCompletionDataProvider
 ): Promise<Completion[]> {
   return getLabelNamesForCompletions(metric, '', false, otherLabels, dataProvider);
 }
@@ -97,7 +95,7 @@ async function getLabelValuesForMetricCompletions(
   labelName: string,
   betweenQuotes: boolean,
   otherLabels: Label[],
-  dataProvider: MyDataProvider
+  dataProvider: PromQlCompletionDataProvider
 ): Promise<Completion[]> {
   return (await dataProvider.getLabelValuesFor(metric, labelName, otherLabels)).map((text) => ({
     type: 'LABEL_VALUE',
@@ -108,7 +106,7 @@ async function getLabelValuesForMetricCompletions(
 
 export async function getCompletions(
   situation: Situation | null,
-  myDataProvider: MyDataProvider
+  myDataProvider: PromQlCompletionDataProvider
 ): Promise<Completion[]> {
   if (situation === null) {
     return [];

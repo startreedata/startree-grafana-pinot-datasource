@@ -1,6 +1,4 @@
-// Borrowed from grafana
-
-import { CompletionType, getCompletions, MyDataProvider } from './completions';
+import { CompletionType, getCompletions, PromQlCompletionDataProvider } from './completions';
 import { getSituation } from './situation';
 import { NeverCaseError } from './never_case_error';
 import { editor, languages, Position } from 'monaco-editor';
@@ -29,7 +27,10 @@ function getMonacoCompletionItemKind(type: CompletionType, monaco: Monaco): lang
   }
 }
 
-export function getCompletionProvider(monaco: Monaco, dataProvider: MyDataProvider): CompletionItemProvider {
+export function getCompletionProvider(
+  monaco: Monaco,
+  dataProvider: PromQlCompletionDataProvider
+): CompletionItemProvider {
   const provideCompletionItems = (model: ITextModel, position: Position): ProviderResult<CompletionList> => {
     const word = model.getWordAtPosition(position);
     const range =
