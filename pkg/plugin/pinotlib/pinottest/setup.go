@@ -78,15 +78,15 @@ func CreateTestTables(t *testing.T) {
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
 			if !schemaExists(t, job.tableName) {
-				t.Logf("Creating schema for %s table schema...", job.tableName)
+				t.Logf("Table %s: creating schema...", job.tableName)
 				createTableSchema(t, job.schemaFile)
 			}
 			if !tableExists(t, job.tableName) {
-				t.Logf("Creating %s table config...", job.tableName)
+				t.Logf("Table %s: creating config...", job.tableName)
 				createTableConfig(t, job.configFile)
 			}
 			if !(tableHasData(t, job.tableName) || job.dataFile == "") {
-				t.Logf("Uploading %s table data...", job.tableName)
+				t.Logf("Table %s: uploading data...", job.tableName)
 				uploadJsonTableData(t, job.tableName+"_OFFLINE", job.dataFile)
 			}
 		}
