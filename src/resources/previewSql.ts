@@ -11,8 +11,8 @@ export interface PreviewSqlResponse extends PinotResourceResponse {
 }
 
 export interface PreviewSqlBuilderRequest {
-  timeRange: { to: string | undefined; from: string | undefined };
-  intervalSize: string;
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  intervalSize: string | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
   metricColumn: string | undefined;
@@ -29,7 +29,6 @@ export interface PreviewSqlBuilderRequest {
 export async function previewSqlBuilder(datasource: DataSource, request: PreviewSqlBuilderRequest): Promise<string> {
   if (
     request.intervalSize &&
-    request.intervalSize !== '0' &&
     request.tableName &&
     request.timeColumn &&
     (request.metricColumn || request.aggregationFunction === 'COUNT') &&
@@ -48,7 +47,7 @@ export async function previewSqlBuilder(datasource: DataSource, request: Preview
 
 export interface PreviewSqlCodeRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  intervalSize: string;
+  intervalSize: string | undefined;
   tableName: string | undefined;
   timeColumnAlias: string | undefined;
   timeColumnFormat: string | undefined;
