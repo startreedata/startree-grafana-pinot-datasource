@@ -70,7 +70,7 @@ function useDataProvider(
 ): MyDataProvider {
   const cache = useMemo(
     () => new Map<string, Promise<string[]>>(),
-    [datasource, tableName, timeRange.to, timeRange.from]
+    [datasource, tableName, timeRange.to, timeRange.from] // eslint-disable-line
   );
 
   const retrieve = (key: string | undefined, generator: () => Promise<string[]>): Promise<string[]> => {
