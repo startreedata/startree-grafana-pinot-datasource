@@ -65,7 +65,4 @@ jobs:
           args: coverage
 
       - name: Build backend
-        uses: magefile/mage-action@v3
-        with:
-          version: latest
-          args: buildAll
+        run: go run cmd/release/main.go build_backend
