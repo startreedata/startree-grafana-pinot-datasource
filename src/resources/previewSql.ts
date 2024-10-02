@@ -58,7 +58,6 @@ export interface PreviewSqlCodeRequest {
 export async function previewSqlCode(datasource: DataSource, request: PreviewSqlCodeRequest): Promise<string> {
   if (
     request.intervalSize &&
-    request.intervalSize !== '0' &&
     request.tableName &&
     request.timeColumnAlias &&
     request.metricColumnAlias &&
