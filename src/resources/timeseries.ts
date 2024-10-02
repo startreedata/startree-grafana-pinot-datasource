@@ -38,7 +38,7 @@ export async function listTimeSeriesMetrics(
 ): Promise<string[]> {
   const endpoint = 'timeseries/metrics';
 
-  console.log({request});
+  console.log({ request });
 
   if (request.tableName && request.timeRange.from && request.timeRange.to) {
     return datasource.postResource<ListTimeSeriesMetricsResponse>(endpoint, request).then((resp) => resp.metrics || []);
@@ -89,34 +89,6 @@ export async function listTimeSeriesLabelValues(
     return datasource
       .postResource<ListTimeSeriesLabelValuesResponse>(endpoint, request)
       .then((resp) => resp.labelValues || []);
-  }
-  return [];
-}
-
-export interface LabelAndValues {
-  name: string;
-  values: string[];
-}
-
-interface GetTimeSeriesMetricLabelsCollectionRequest {
-  tableName: string | undefined;
-  metricName: string | undefined;
-  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-}
-
-interface GetTimeSeriesMetricLabelsCollectionResponse extends PinotResourceResponse {
-  collection: LabelAndValues[] | null;
-}
-
-export async function getTimeSeriesMetricLabelsCollection(
-  datasource: DataSource,
-  request: GetTimeSeriesMetricLabelsCollectionRequest
-): Promise<LabelAndValues[]> {
-  const endpoint = 'timeseries/metricLabelsCollection';
-  if (request.tableName && request.metricName && request?.timeRange.from && request?.timeRange.to) {
-    return datasource
-      .postResource<GetTimeSeriesMetricLabelsCollectionResponse>(endpoint, request)
-      .then((resp) => resp.collection || []);
   }
   return [];
 }

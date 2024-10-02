@@ -91,7 +91,6 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router.HandleFunc("/timeseries/metrics", adaptHandlerWithBody(handler.ListTimeSeriesMetrics))
 	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
 	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(handler.ListTimeSeriesLabelValues))
-	router.HandleFunc("/timeseries/metricLabelsCollection", adaptHandlerWithBody(handler.GetTimeSeriesMetricLabelsCollection))
 
 	return &handler
 }
@@ -402,71 +401,6 @@ func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data Li
 	}
 	return &Response{Code: http.StatusOK, ListTimeSeriesLabelValuesResponse: &ListTimeSeriesLabelValuesResponse{
 		LabelValues: values,
-	}}
-}
-
-type GetTimeSeriesMetricLabelsCollectionRequest = struct {
-	TableName  string              `json:"tableName"`
-	MetricName string              `json:"metricName"`
-	TimeRange  dataquery.TimeRange `json:"timeRange"`
-}
-
-func (x *ResourceHandler) GetTimeSeriesMetricLabelsCollection(ctx context.Context, data GetTimeSeriesMetricLabelsCollectionRequest) *Response {
-	if data.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
-	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
-		return newInternalServerErrorResponse(err)
-	} else if !ok {
-		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
-	}
-
-	labels, err := x.client.FetchTimeSeriesLabels(ctx, data.TableName, data.MetricName, data.TimeRange.From, data.TimeRange.To)
-
-	var collection []LabelAndValues
-	for label, valueSet := range labels {
-		collection = append(collection, LabelAndValues{
-			Name:   label,
-			Values: valueSet.Values(),
-		})
-	}
-
-	if err != nil {
-		return newInternalServerErrorResponse(err)
-	}
-	return &Response{Code: http.StatusOK, GetTimeSeriesMetricLabelsCollectionResponse: &GetTimeSeriesMetricLabelsCollectionResponse{
-		Collection: collection,
-	}}
-}
-
-type GetTimeSeriesLabelsCollectionRequest = struct {
-	TableName string              `json:"tableName"`
-	TimeRange dataquery.TimeRange `json:"timeRange"`
-}
-
-func (x *ResourceHandler) GetTimeSeriesLabelsCollection(ctx context.Context, data GetTimeSeriesLabelsCollectionRequest) *Response {
-	if data.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
-	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
-		return newInternalServerErrorResponse(err)
-	} else if !ok {
-		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
-	}
-
-	labels, err := x.client.FetchTimeSeriesLabels(ctx, data.TableName, "", data.TimeRange.From, data.TimeRange.To)
-
-	var collection []LabelAndValues
-	for label, valueSet := range labels {
-		collection = append(collection, LabelAndValues{
-			Name:   label,
-			Values: valueSet.Values(),
-		})
-	}
-
-	if err != nil {
-		return newInternalServerErrorResponse(err)
-	}
-	return &Response{Code: http.StatusOK, GetTimeSeriesMetricLabelsCollectionResponse: &GetTimeSeriesMetricLabelsCollectionResponse{
-		Collection: collection,
 	}}
 }
 
