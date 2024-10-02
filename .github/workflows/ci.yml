@@ -44,6 +44,13 @@ jobs:
         with:
           go-version: '1.21'
 
+      - name: Login in Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+
       - name: Start Pinot
         run: docker compose up pinot --detach --wait --wait-timeout 500
 
