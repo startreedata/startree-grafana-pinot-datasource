@@ -176,7 +176,7 @@ func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
 	if expandMacros {
 		return p.timeExprBuilder.TimeGroupExpr(p.TimeGranularity.Expr)
 	} else {
-		return MacroExprFor(MacroTimeGroup, SqlObjectExpr(p.params.TimeColumn), p.TimeGranularity.Expr)
+		return MacroExprFor(MacroTimeGroup, SqlObjectExpr(p.params.TimeColumn), SqlLiteralStringExpr(p.TimeGranularity.Expr))
 	}
 }
 
