@@ -1,22 +1,18 @@
 services:
   pinot:
     container_name: 'pinot'
-    image: apachepinot/pinot:1.1.0
+    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:timeseries-promql-raghav'
     ports:
-      - 9000:9000/tcp
-      - 8000:8000/tcp
-      - 2123:2123/tcp
+      - '9000:9000/tcp'
+      - '8000:8000/tcp'
+      - '2123:2123/tcp'
+      - '7050:7050/tcp'
+      - '6000:6000/tcp'
+      - '8097:8097/tcp'
     command:
-      - QuickStart
-      - -type
-      - batch
-
-    healthcheck:
-      test: [ "CMD-SHELL", "curl --silent --fail http://localhost:9000/tables | grep billing" ]
-      interval: 5s
-      timeout: 10s
-      retries: 50
-      start_period: 60s
+      - 'StarTreeQuickStart'
+      - '-type'
+      - 'PROMQL_TIME_SERIES'
 
   grafana:
     user: root
@@ -37,6 +33,7 @@ services:
     cap_add:
       - SYS_PTRACE
     volumes:
+      - grafana_data:/var/lib/grafana
       - ./dist:/var/lib/grafana/plugins/startree-pinot-datasource
       - ./provisioning:/etc/grafana/provisioning
       - .:/root/startree-pinot-datasource
@@ -47,3 +44,6 @@ services:
       GF_LOG_LEVEL: debug
       GF_DATAPROXY_LOGGING: 1
       GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: startree-pinot-datasource
+
+volumes:
+  grafana_data:

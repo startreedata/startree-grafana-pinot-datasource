@@ -3,22 +3,23 @@ import { TableSchema } from '../types/TableSchema';
 import { useEffect, useState } from 'react';
 import { PinotResourceResponse } from './PinotResourceResponse';
 
-interface ListTablesResponse extends PinotResourceResponse {
-  tables: string[] | null;
-}
-
 export function useTables(datasource: DataSource): string[] | undefined {
   const [tables, setTables] = useState<string[] | undefined>();
 
   useEffect(() => {
-    listTables(datasource).then((resp) => setTables(resp.tables || undefined));
+    listTables(datasource).then((tables) => setTables(tables));
   }, [datasource]);
 
   return tables;
 }
 
-export async function listTables(datasource: DataSource): Promise<ListTablesResponse> {
-  return fetchControllerResource<ListTablesResponse>(datasource, 'tables');
+interface ListTablesResponse extends PinotResourceResponse {
+  tables: string[] | null;
+}
+
+export async function listTables(datasource: DataSource): Promise<string[]> {
+  const endpoint = 'tables';
+  return fetchControllerResource<ListTablesResponse>(datasource, endpoint).then((resp) => resp.tables || []);
 }
 
 interface GetTableSchemaResponse extends PinotResourceResponse {
@@ -30,15 +31,16 @@ export function useTableSchema(datasource: DataSource, tableName: string | undef
 
   useEffect(() => {
     if (tableName) {
-      fetchTableSchema(datasource, tableName).then((resp) => setTableSchema(resp.schema || undefined));
+      fetchTableSchema(datasource, tableName).then((schema) => setTableSchema(schema || undefined));
     }
   }, [datasource, tableName]);
 
   return tableSchema;
 }
 
-export async function fetchTableSchema(datasource: DataSource, tableName: string): Promise<GetTableSchemaResponse> {
-  return fetchControllerResource<GetTableSchemaResponse>(datasource, 'tables/' + tableName + '/schema');
+export async function fetchTableSchema(datasource: DataSource, tableName: string): Promise<TableSchema | null> {
+  const endpoint = 'tables/' + tableName + '/schema';
+  return fetchControllerResource<GetTableSchemaResponse>(datasource, endpoint).then((resp) => resp.schema);
 }
 
 async function fetchControllerResource<T>(datasource: DataSource, endpoint: string): Promise<T> {

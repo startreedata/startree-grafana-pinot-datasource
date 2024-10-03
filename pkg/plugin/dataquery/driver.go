@@ -8,14 +8,6 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 )
 
-const (
-	QueryTypePinotQl            = "PinotQL"
-	QueryTypePinotVariableQuery = "PinotVariableQuery"
-
-	EditorModeBuilder = "Builder"
-	EditorModeCode    = "Code"
-)
-
 type Driver interface {
 	Execute(ctx context.Context) backend.DataResponse
 }
@@ -24,6 +16,15 @@ func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query Pin
 	switch query.QueryType {
 	case QueryTypePinotQl:
 		return newPinotQlDriver(pinotClient, query, timeRange)
+	case QueryTypePromQl:
+		return NewPromQlCodeDriver(PromQlCodeDriverParams{
+			PinotClient:  pinotClient,
+			TableName:    query.TableName,
+			PromQlCode:   query.PromQlCode,
+			TimeRange:    TimeRange{To: timeRange.To, From: timeRange.From},
+			IntervalSize: query.IntervalSize,
+			Legend:       query.Legend,
+		}), nil
 	case QueryTypePinotVariableQuery:
 		return NewPinotVariableQueryDriver(PinotVariableQueryParams{
 			PinotClient:  pinotClient,
@@ -33,9 +34,8 @@ func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query Pin
 			PinotQlCode:  query.VariableQuery.PinotQlCode,
 			ColumnType:   query.VariableQuery.ColumnType,
 		}), nil
-	default:
-		return new(NoOpDriver), nil
 	}
+	return new(NoOpDriver), nil
 }
 
 func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {

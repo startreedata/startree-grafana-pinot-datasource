@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -50,13 +51,27 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 		return extractTypedColumn[float64](results, colIdx, results.GetDouble)
 	case DataTypeString, DataTypeJson, DataTypeBytes:
 		return extractTypedColumn[string](results, colIdx, results.GetString)
+	case DataTypeTimestamp:
+		return extractTypedColumn[time.Time](results, colIdx, func(rowIdx, colIdx int) time.Time {
+			var (
+				year   int
+				month  time.Month
+				day    int
+				hour   int
+				minute int
+				second float64
+			)
+			_, _ = fmt.Sscanf(results.GetString(rowIdx, colIdx), "%d-%d-%d %d:%d:%f", &year, &month, &day, &hour, &minute, &second)
+			_, fractional := math.Modf(second)
+			return time.Date(year, month, day, hour, minute, int(second), int(fractional*float64(time.Second)), time.UTC)
+		})
 	default:
 		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
 		return make([]int64, results.GetRowCount())
 	}
 }
 
-func extractTypedColumn[V int64 | float64 | string | bool](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
+func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
 	values := make([]V, results.GetRowCount())
 	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
 		values[rowIdx] = getter(rowIdx, colIdx)
@@ -198,6 +213,10 @@ func ExtractColumnExpr(results *pinot.ResultTable, colIdx int) []string {
 	}
 	return exprs
 }
+
+//func ExtractTimestampColumn(results *pinot.ResultTable, colIdx int) []string {
+//
+//}
 
 func ExtractTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
 	if IsSimpleTimeColumnFormat(timeColumnFormat) {

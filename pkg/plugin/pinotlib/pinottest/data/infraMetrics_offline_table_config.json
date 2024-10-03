@@ -1,0 +1,17 @@
+{
+  "tableName": "infraMetrics",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "schemaName": "infraMetrics",
+    "replication" : "1"
+  },
+  "tenants":  {
+    "broker":"DefaultTenant",
+    "server":"DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

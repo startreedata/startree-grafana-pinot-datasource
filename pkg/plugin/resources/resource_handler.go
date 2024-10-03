@@ -3,6 +3,8 @@ package resources
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
@@ -26,6 +28,19 @@ type Response struct {
 	*GetTableSchemaResponse
 	*DistinctValuesResponse
 	*PreviewSqlResponse
+	*ListTimeSeriesMetricsResponse
+	*ListTimeSeriesLabelsResponse
+	*ListTimeSeriesLabelValuesResponse
+	*GetTimeSeriesMetricLabelsCollectionResponse
+}
+
+type LabelAndValues struct {
+	Name   string   `json:"name"`
+	Values []string `json:"values"`
+}
+
+type GetTimeSeriesMetricLabelsCollectionResponse struct {
+	Collection []LabelAndValues `json:"collection"`
 }
 
 type GetDatabasesResponse struct {
@@ -48,6 +63,18 @@ type DistinctValuesResponse struct {
 	ValueExprs []string `json:"valueExprs"`
 }
 
+type ListTimeSeriesMetricsResponse struct {
+	Metrics []string `json:"metrics"`
+}
+
+type ListTimeSeriesLabelsResponse struct {
+	Labels []string `json:"labels"`
+}
+
+type ListTimeSeriesLabelValuesResponse struct {
+	LabelValues []string `json:"labelValues"`
+}
+
 func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router := mux.NewRouter()
 
@@ -60,6 +87,10 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(handler.PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(handler.PreviewSqlDistinctValues))
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
+	router.HandleFunc("/timeseries/tables", adaptHandler(handler.ListTimeSeriesTables))
+	router.HandleFunc("/timeseries/metrics", adaptHandlerWithBody(handler.ListTimeSeriesMetrics))
+	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
+	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(handler.ListTimeSeriesLabelValues))
 
 	return &handler
 }
@@ -259,12 +290,12 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 			return "", err
 		}
 
-		exprBuilder, err := dataquery.TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
+		exprBuilder, err := pinotlib.TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
 		if err != nil {
 			return "", err
 		}
 
-		timeFilterExpr = exprBuilder.TimeFilterExpr(*data.TimeRange)
+		timeFilterExpr = exprBuilder.TimeFilterExpr(data.TimeRange.From, data.TimeRange.To)
 	}
 
 	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
@@ -273,6 +304,104 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),
 	})
+}
+
+func (x *ResourceHandler) ListTimeSeriesTables(r *http.Request) *Response {
+	tables, err := x.client.ListTimeSeriesTables(r.Context())
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	return &Response{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
+}
+
+type ListTimeSeriesMetricsRequest struct {
+	TableName string              `json:"tableName"`
+	TimeRange dataquery.TimeRange `json:"timeRange"`
+}
+
+func (x *ResourceHandler) ListTimeSeriesMetrics(ctx context.Context, data ListTimeSeriesMetricsRequest) *Response {
+	if data.TableName == "" {
+		return newBadRequestResponse(errors.New("tableName is required"))
+	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
+		return newInternalServerErrorResponse(err)
+	} else if !ok {
+		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+	}
+
+	metrics, err := x.client.ListTimeSeriesMetrics(ctx, pinotlib.TimeSeriesMetricNamesQuery{
+		TableName: data.TableName,
+		From:      data.TimeRange.From,
+		To:        data.TimeRange.To,
+	})
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+
+	return &Response{Code: http.StatusOK, ListTimeSeriesMetricsResponse: &ListTimeSeriesMetricsResponse{
+		Metrics: metrics,
+	}}
+}
+
+type ListTimeSeriesLabelsRequest = struct {
+	TableName  string              `json:"tableName"`
+	MetricName string              `json:"metricName"`
+	TimeRange  dataquery.TimeRange `json:"timeRange"`
+}
+
+func (x *ResourceHandler) ListTimeSeriesLabels(ctx context.Context, data ListTimeSeriesLabelsRequest) *Response {
+	if data.TableName == "" {
+		return newBadRequestResponse(errors.New("tableName is required"))
+	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
+		return newInternalServerErrorResponse(err)
+	} else if !ok {
+		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+	}
+
+	labels, err := x.client.ListTimeSeriesLabelNames(ctx, pinotlib.TimeSeriesLabelNamesQuery{
+		TableName:  data.TableName,
+		MetricName: data.MetricName,
+		From:       data.TimeRange.From,
+		To:         data.TimeRange.To,
+	})
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	return &Response{Code: http.StatusOK, ListTimeSeriesLabelsResponse: &ListTimeSeriesLabelsResponse{
+		Labels: labels,
+	}}
+}
+
+type ListTimeSeriesLabelValuesRequest struct {
+	TableName  string              `json:"tableName"`
+	MetricName string              `json:"metricName"`
+	LabelName  string              `json:"labelName"`
+	TimeRange  dataquery.TimeRange `json:"timeRange"`
+}
+
+func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data ListTimeSeriesLabelValuesRequest) *Response {
+	if data.TableName == "" {
+		return newBadRequestResponse(errors.New("tableName is required"))
+	} else if data.LabelName == "" {
+		return newBadRequestResponse(errors.New("labelName is required"))
+	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
+		return newInternalServerErrorResponse(err)
+	} else if !ok {
+		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+	}
+
+	values, err := x.client.ListTimeSeriesLabelValues(ctx, pinotlib.TimeSeriesLabelValuesQuery{
+		TableName:  data.TableName,
+		MetricName: data.MetricName,
+		LabelName:  data.LabelName,
+		From:       data.TimeRange.From,
+		To:         data.TimeRange.To,
+	})
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	return &Response{Code: http.StatusOK, ListTimeSeriesLabelValuesResponse: &ListTimeSeriesLabelValuesResponse{
+		LabelValues: values,
+	}}
 }
 
 func newPreviewSqlResponse(sql string) *Response {

@@ -8,10 +8,8 @@ import (
 
 func NewCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHandler {
 	return backend.CheckHealthHandlerFunc(func(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return nil, ctx.Err()
-		default:
 		}
 
 		// Test connection to controller

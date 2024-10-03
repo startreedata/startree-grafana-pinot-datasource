@@ -16,7 +16,7 @@ const (
 )
 
 type PinotQlCodeDriverParams struct {
-	*pinotlib.PinotClient
+	PinotClient       *pinotlib.PinotClient
 	Code              string
 	DatabaseName      string
 	TableName         string
@@ -48,7 +48,7 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 		params.TimeColumnAlias = DefaultTimeColumnAlias
 	}
 	if params.TimeColumnFormat == "" {
-		params.TimeColumnFormat = TimeGroupExprOutputFormat
+		params.TimeColumnFormat = pinotlib.TimeGroupExprOutputFormat
 	}
 	if params.MetricColumnAlias == "" {
 		params.MetricColumnAlias = DefaultMetricColumnAlias

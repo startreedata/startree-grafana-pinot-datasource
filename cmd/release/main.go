@@ -74,6 +74,9 @@ func main() {
 	case "demo":
 		releaseManager.DeployDemo()
 
+	case "build_backend":
+		releaseManager.buildBackend()
+
 	default:
 		printUsage()
 		os.Exit(1)
@@ -393,7 +396,17 @@ func (x *ReleaseManager) getRepoFileUrl(fileName string) string {
 func (x *ReleaseManager) buildPlugin() {
 	fmt.Println("Building plugin...")
 	removeAll(BuildArtifactsDir)
+	x.buildBackend()
+	x.buildFrontend()
+}
+
+func (x *ReleaseManager) buildBackend() {
+	fmt.Println("Building backend...")
 	mage.Invoke(mage.Invocation{Verbose: true, Stdout: os.Stdout, Stderr: os.Stderr})
+}
+
+func (x *ReleaseManager) buildFrontend() {
+	fmt.Println("Building frontend...")
 	runCmd(nil, os.Stdout, "npm", "run", "build")
 }
 

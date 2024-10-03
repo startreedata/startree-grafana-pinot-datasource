@@ -14,13 +14,17 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
       ...query,
       queryType: query.queryType || QueryType.PinotQL,
       editorMode: query.editorMode || EditorMode.Builder,
+      tableName: undefined,
     });
   }
 
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">
       <div className={'gf-form'} data-testid="select-query-type">
-        <SelectQueryType current={query.queryType} onChange={(queryType) => onChange({ ...query, queryType })} />
+        <SelectQueryType
+          current={query.queryType}
+          onChange={(queryType) => onChange({ ...query, queryType, tableName: undefined })}
+        />
       </div>
 
       <div style={{ display: 'flex' }}>
@@ -30,8 +34,8 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
             query={props.query}
             onChange={props.onChange}
             timeRange={{
-              to: props.data?.request?.range.to,
-              from: props.data?.request?.range.from,
+              to: props.range?.to,
+              from: props.range?.from,
             }}
             intervalSize={props.data?.request?.interval}
           />

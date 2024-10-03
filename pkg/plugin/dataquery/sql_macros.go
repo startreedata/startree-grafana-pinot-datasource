@@ -73,7 +73,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		builder, err := TimeExpressionBuilderFor(x.TableSchema, args[0])
+		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, args[0])
 		if err != nil {
 			return "", err
 		}
@@ -88,7 +88,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 			return "", err
 		}
 
-		return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
+		return builder.TimeFilterBucketAlignedExpr(x.TimeRange.From, x.TimeRange.To, granularity.Size), nil
 	})
 }
 
@@ -99,7 +99,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 		}
 		timeColumn := args[0]
 
-		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 		if err != nil {
 			return "", err
 		}
@@ -125,7 +125,7 @@ func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
 		}
 		timeColumn := args[0]
 
-		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 		if err != nil {
 			return "", err
 		}
@@ -140,7 +140,7 @@ func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
 		}
 		timeColumn := args[0]
 
-		builder, err := TimeExpressionBuilderFor(x.TableSchema, timeColumn)
+		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
 		if err != nil {
 			return "", err
 		}
@@ -166,7 +166,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
 		timeColumn := unquoteObjectName(args[0])
-		builder, err := NewTimeExpressionBuilder(timeColumn, FormatMillisecondsEpoch)
+		builder, err := pinotlib.NewTimeExpressionBuilder(timeColumn, pinotlib.FormatMillisecondsEpoch)
 		if err != nil {
 			return "", err
 		}
@@ -181,7 +181,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 			return "", err
 		}
 
-		return builder.TimeFilterBucketAlignedExpr(x.TimeRange, granularity.Size), nil
+		return builder.TimeFilterBucketAlignedExpr(x.TimeRange.From, x.TimeRange.To, granularity.Size), nil
 	})
 }
 
