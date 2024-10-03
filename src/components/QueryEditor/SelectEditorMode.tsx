@@ -16,7 +16,7 @@ export function SelectEditorMode(props: {
   intervalSize: string | undefined;
   onChange: (value: PinotDataQuery) => void;
 }) {
-  const { query, datasource, onChange } = props;
+  const { query, datasource, intervalSize, timeRange, onChange } = props;
   const [showConfirm, setShowConfirm] = useState(false);
 
   return (
@@ -53,37 +53,36 @@ export function SelectEditorMode(props: {
 
             if (value === EditorMode.Code) {
               previewSqlBuilder(datasource, {
+                intervalSize: intervalSize,
+                timeRange: timeRange,
+                expandMacros: false,
                 aggregationFunction: query.aggregationFunction,
                 groupByColumns: query.groupByColumns,
-                intervalSize: props.intervalSize || '0',
                 metricColumn: query.metricColumn,
                 tableName: query.tableName,
                 timeColumn: query.timeColumn,
-                timeRange: {
-                  to: props.timeRange.to?.toISOString(),
-                  from: props.timeRange.from?.toISOString(),
-                },
                 filters: query.filters,
                 limit: query.limit,
                 granularity: query.granularity,
                 orderBy: query.orderBy,
                 queryOptions: query.queryOptions,
-                expandMacros: false,
               }).then((sql) =>
-                onChange({
-                  ...query,
-                  editorMode: EditorMode.Code,
-                  displayType: DisplayTypeTimeSeries,
-                  timeColumnAlias: 'time',
-                  metricColumnAlias: query.metricColumn,
-                  pinotQlCode: sql,
-                })
+                  onChange({
+                    ...query,
+                    editorMode: EditorMode.Code,
+                    displayType: DisplayTypeTimeSeries,
+                    timeColumnAlias: 'time',
+                    metricColumnAlias: query.metricColumn,
+                    pinotQlCode: sql,
+                  })
               );
             }
           }}
           value={query.editorMode}
         />
       )}
+        value={query.editorMode}
+      />
     </div>
   );
 }
