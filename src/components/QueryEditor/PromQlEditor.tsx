@@ -1,14 +1,11 @@
-import React, { lazy, Suspense } from 'react';
+import React from 'react';
 import { SelectTable } from './SelectTable';
 import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
 import { useTimeSeriesTables } from '../../resources/timeseries';
 import { InputMetricLegend } from './InputMetricLegend';
 import { useCompletionDataProvider } from '../../promql/completionDataProvider';
-
-const PromQlQueryField = lazy(() =>
-  import('./PromQlQueryField').then((module) => ({ default: module.PromQlQueryField }))
-);
+import { PromQlQueryField } from './PromQlQueryField';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const tables = useTimeSeriesTables(props.datasource);
@@ -32,27 +29,25 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
         <>
           <FormLabel tooltip={'Query'} label={'Query'} />
           <div style={{ flex: '1 1 auto', height: 50 }}>
-            <Suspense fallback={null}>
-              <PromQlQueryField
-                dataProvider={dataProvider}
-                content={props.query.promQlCode}
-                options={{
-                  codeLens: false,
-                  lineNumbers: 'off',
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                  find: { addExtraSpaceOnTop: false },
-                  hover: { above: false },
-                  padding: {
-                    top: 6,
-                  },
-                  renderLineHighlight: 'none',
-                }}
-                onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
-                onRunQuery={props.onRunQuery}
-              />
-            </Suspense>
+            <PromQlQueryField
+              dataProvider={dataProvider}
+              content={props.query.promQlCode}
+              options={{
+                codeLens: false,
+                lineNumbers: 'off',
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                find: { addExtraSpaceOnTop: false },
+                hover: { above: false },
+                padding: {
+                  top: 6,
+                },
+                renderLineHighlight: 'none',
+              }}
+              onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
+              onRunQuery={props.onRunQuery}
+            />
           </div>
         </>
       </div>
