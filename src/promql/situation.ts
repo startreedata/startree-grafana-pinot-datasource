@@ -24,8 +24,6 @@ import {
   VectorSelector,
 } from '@prometheus-io/lezer-promql';
 
-import { NeverCaseError } from './never_case_error';
-
 type Direction = 'parent' | 'firstChild' | 'lastChild' | 'nextSibling';
 
 type NodeTypeId =
@@ -63,7 +61,7 @@ function move(node: SyntaxNode, direction: Direction): SyntaxNode | null {
     case 'nextSibling':
       return node.nextSibling;
     default:
-      throw new NeverCaseError(direction);
+      throw new Error('should never happen');
   }
 }
 

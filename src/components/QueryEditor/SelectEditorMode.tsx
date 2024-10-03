@@ -81,8 +81,6 @@ export function SelectEditorMode(props: {
           value={query.editorMode}
         />
       )}
-        value={query.editorMode}
-      />
     </div>
   );
 }

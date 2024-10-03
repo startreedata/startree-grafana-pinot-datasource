@@ -24,10 +24,6 @@
 import { languages } from 'monaco-editor';
 import IRichLanguageConfiguration = languages.LanguageConfiguration;
 import ILanguage = languages.IMonarchLanguage;
-import ProviderResult = languages.ProviderResult;
-import CompletionList = languages.CompletionList;
-import CompletionItemProvider = languages.CompletionItemProvider;
-import CompletionItem = languages.CompletionItem;
 
 // noinspection JSUnusedGlobalSymbols
 export const languageConfiguration: IRichLanguageConfiguration = {
@@ -62,7 +58,7 @@ export const languageConfiguration: IRichLanguageConfiguration = {
 
 // PromQL Aggregation Operators
 // (https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)
-export  const aggregations = [
+export const aggregations = [
   'sum',
   'min',
   'max',
@@ -258,21 +254,3 @@ export const language = {
     whitespace: [[/[ \t\r\n]+/, 'white']],
   },
 } as ILanguage;
-
-// noinspection JSUnusedGlobalSymbols
-export const completionItemProvider: CompletionItemProvider = {
-  provideCompletionItems: () => {
-    // To simplify, we made the choice to never create automatically the parenthesis behind keywords
-    // It is because in PromQL, some keywords need parenthesis behind, some don't, some can have but it's optional.
-    const suggestions = keywords.map((value) => {
-      return {
-        label: value,
-        kind: languages.CompletionItemKind.Keyword,
-        insertText: value,
-        insertTextRules: languages.CompletionItemInsertTextRule.InsertAsSnippet,
-      } as CompletionItem;
-    });
-
-    return { suggestions } as ProviderResult<CompletionList>;
-  },
-};

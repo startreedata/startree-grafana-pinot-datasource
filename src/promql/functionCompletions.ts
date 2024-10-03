@@ -1,163 +1,9 @@
-// Borrowed from grafana
+import { Completion, CompletionType } from './completion';
 
-import { CompletionItem } from '@grafana/ui';
+export const FUNCTION_COMPLETIONS: Completion[] = [
+  // Functions
+  // https://prometheus.io/docs/prometheus/latest/querying/functions/#functions
 
-export const RATE_RANGES: CompletionItem[] = [
-  { label: '$__interval', sortValue: '$__interval' },
-  { label: '$__rate_interval', sortValue: '$__rate_interval' },
-  { label: '$__range', sortValue: '$__range' },
-  { label: '1m', sortValue: '00:01:00' },
-  { label: '5m', sortValue: '00:05:00' },
-  { label: '10m', sortValue: '00:10:00' },
-  { label: '30m', sortValue: '00:30:00' },
-  { label: '1h', sortValue: '01:00:00' },
-  { label: '1d', sortValue: '24:00:00' },
-];
-
-export const OPERATORS = ['by', 'group_left', 'group_right', 'ignoring', 'on', 'offset', 'without'];
-export const LOGICAL_OPERATORS = ['or', 'and', 'unless'];
-
-const TRIGONOMETRIC_FUNCTIONS: CompletionItem[] = [
-  {
-    label: 'acos',
-    insertText: 'acos',
-    detail: 'acos(v instant-vector)',
-    documentation: 'calculates the arccosine of all elements in v',
-  },
-  {
-    label: 'acosh',
-    insertText: 'acosh',
-    detail: 'acosh(v instant-vector)',
-    documentation: 'calculates the inverse hyperbolic cosine of all elements in v',
-  },
-  {
-    label: 'asin',
-    insertText: 'asin',
-    detail: 'asin(v instant-vector)',
-    documentation: 'calculates the arcsine of all elements in v',
-  },
-  {
-    label: 'asinh',
-    insertText: 'asinh',
-    detail: 'asinh(v instant-vector)',
-    documentation: 'calculates the inverse hyperbolic sine of all elements in v',
-  },
-  {
-    label: 'atan',
-    insertText: 'atan',
-    detail: 'atan(v instant-vector)',
-    documentation: 'calculates the arctangent of all elements in v',
-  },
-  {
-    label: 'atanh',
-    insertText: 'atanh',
-    detail: 'atanh(v instant-vector)',
-    documentation: 'calculates the inverse hyperbolic tangent of all elements in v',
-  },
-  {
-    label: 'cos',
-    insertText: 'cos',
-    detail: 'cos(v instant-vector)',
-    documentation: 'calculates the cosine of all elements in v',
-  },
-  {
-    label: 'cosh',
-    insertText: 'cosh',
-    detail: 'cosh(v instant-vector)',
-    documentation: 'calculates the hyperbolic cosine of all elements in v',
-  },
-  {
-    label: 'sin',
-    insertText: 'sin',
-    detail: 'sin(v instant-vector)',
-    documentation: 'calculates the sine of all elements in v',
-  },
-  {
-    label: 'sinh',
-    insertText: 'sinh',
-    detail: 'sinh(v instant-vector)',
-    documentation: 'calculates the hyperbolic sine of all elements in v',
-  },
-  {
-    label: 'tan',
-    insertText: 'tan',
-    detail: 'tan(v instant-vector)',
-    documentation: 'calculates the tangent of all elements in v',
-  },
-  {
-    label: 'tanh',
-    insertText: 'tanh',
-    detail: 'tanh(v instant-vector)',
-    documentation: 'calculates the hyperbolic tangent of all elements in v',
-  },
-];
-
-const AGGREGATION_OPERATORS: CompletionItem[] = [
-  {
-    label: 'sum',
-    insertText: 'sum',
-    documentation: 'Calculate sum over dimensions',
-  },
-  {
-    label: 'min',
-    insertText: 'min',
-    documentation: 'Select minimum over dimensions',
-  },
-  {
-    label: 'max',
-    insertText: 'max',
-    documentation: 'Select maximum over dimensions',
-  },
-  {
-    label: 'avg',
-    insertText: 'avg',
-    documentation: 'Calculate the average over dimensions',
-  },
-  {
-    label: 'group',
-    insertText: 'group',
-    documentation: 'All values in the resulting vector are 1',
-  },
-  {
-    label: 'stddev',
-    insertText: 'stddev',
-    documentation: 'Calculate population standard deviation over dimensions',
-  },
-  {
-    label: 'stdvar',
-    insertText: 'stdvar',
-    documentation: 'Calculate population standard variance over dimensions',
-  },
-  {
-    label: 'count',
-    insertText: 'count',
-    documentation: 'Count number of elements in the vector',
-  },
-  {
-    label: 'count_values',
-    insertText: 'count_values',
-    documentation: 'Count number of elements with the same value',
-  },
-  {
-    label: 'bottomk',
-    insertText: 'bottomk',
-    documentation: 'Smallest k elements by sample value',
-  },
-  {
-    label: 'topk',
-    insertText: 'topk',
-    documentation: 'Largest k elements by sample value',
-  },
-  {
-    label: 'quantile',
-    insertText: 'quantile',
-    documentation: 'Calculate φ-quantile (0 ≤ φ ≤ 1) over dimensions',
-  },
-];
-
-export const FUNCTIONS = [
-  ...AGGREGATION_OPERATORS,
-  ...TRIGONOMETRIC_FUNCTIONS,
   {
     insertText: 'abs',
     label: 'abs',
@@ -532,6 +378,144 @@ export const FUNCTIONS = [
     detail: 'present_over_time(range-vector)',
     documentation: 'The value 1 for any series in the specified interval.',
   },
-];
 
-export const PROM_KEYWORDS = FUNCTIONS.map((keyword) => keyword.label);
+  // Trigonometric Functions
+  // https://prometheus.io/docs/prometheus/latest/querying/functions/#trigonometric-functions
+
+  {
+    label: 'acos',
+    insertText: 'acos',
+    detail: 'acos(v instant-vector)',
+    documentation: 'calculates the arccosine of all elements in v',
+  },
+  {
+    label: 'acosh',
+    insertText: 'acosh',
+    detail: 'acosh(v instant-vector)',
+    documentation: 'calculates the inverse hyperbolic cosine of all elements in v',
+  },
+  {
+    label: 'asin',
+    insertText: 'asin',
+    detail: 'asin(v instant-vector)',
+    documentation: 'calculates the arcsine of all elements in v',
+  },
+  {
+    label: 'asinh',
+    insertText: 'asinh',
+    detail: 'asinh(v instant-vector)',
+    documentation: 'calculates the inverse hyperbolic sine of all elements in v',
+  },
+  {
+    label: 'atan',
+    insertText: 'atan',
+    detail: 'atan(v instant-vector)',
+    documentation: 'calculates the arctangent of all elements in v',
+  },
+  {
+    label: 'atanh',
+    insertText: 'atanh',
+    detail: 'atanh(v instant-vector)',
+    documentation: 'calculates the inverse hyperbolic tangent of all elements in v',
+  },
+  {
+    label: 'cos',
+    insertText: 'cos',
+    detail: 'cos(v instant-vector)',
+    documentation: 'calculates the cosine of all elements in v',
+  },
+  {
+    label: 'cosh',
+    insertText: 'cosh',
+    detail: 'cosh(v instant-vector)',
+    documentation: 'calculates the hyperbolic cosine of all elements in v',
+  },
+  {
+    label: 'sin',
+    insertText: 'sin',
+    detail: 'sin(v instant-vector)',
+    documentation: 'calculates the sine of all elements in v',
+  },
+  {
+    label: 'sinh',
+    insertText: 'sinh',
+    detail: 'sinh(v instant-vector)',
+    documentation: 'calculates the hyperbolic sine of all elements in v',
+  },
+  {
+    label: 'tan',
+    insertText: 'tan',
+    detail: 'tan(v instant-vector)',
+    documentation: 'calculates the tangent of all elements in v',
+  },
+  {
+    label: 'tanh',
+    insertText: 'tanh',
+    detail: 'tanh(v instant-vector)',
+    documentation: 'calculates the hyperbolic tangent of all elements in v',
+  },
+
+  // Aggregation Operators
+  // https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators
+
+  {
+    label: 'sum',
+    insertText: 'sum',
+    documentation: 'Calculate sum over dimensions',
+  },
+  {
+    label: 'min',
+    insertText: 'min',
+    documentation: 'Select minimum over dimensions',
+  },
+  {
+    label: 'max',
+    insertText: 'max',
+    documentation: 'Select maximum over dimensions',
+  },
+  {
+    label: 'avg',
+    insertText: 'avg',
+    documentation: 'Calculate the average over dimensions',
+  },
+  {
+    label: 'group',
+    insertText: 'group',
+    documentation: 'All values in the resulting vector are 1',
+  },
+  {
+    label: 'stddev',
+    insertText: 'stddev',
+    documentation: 'Calculate population standard deviation over dimensions',
+  },
+  {
+    label: 'stdvar',
+    insertText: 'stdvar',
+    documentation: 'Calculate population standard variance over dimensions',
+  },
+  {
+    label: 'count',
+    insertText: 'count',
+    documentation: 'Count number of elements in the vector',
+  },
+  {
+    label: 'count_values',
+    insertText: 'count_values',
+    documentation: 'Count number of elements with the same value',
+  },
+  {
+    label: 'bottomk',
+    insertText: 'bottomk',
+    documentation: 'Smallest k elements by sample value',
+  },
+  {
+    label: 'topk',
+    insertText: 'topk',
+    documentation: 'Largest k elements by sample value',
+  },
+  {
+    label: 'quantile',
+    insertText: 'quantile',
+    documentation: 'Calculate φ-quantile (0 ≤ φ ≤ 1) over dimensions',
+  },
+].map((x) => ({ ...x, type: CompletionType.FUNCTION }));
