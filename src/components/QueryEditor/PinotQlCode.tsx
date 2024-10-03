@@ -25,9 +25,7 @@ export function PinotQlCode(props: {
 
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
-  const defaultSql = (query: PinotDataQuery) => `SELECT
-  $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(),
-  SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
+  const defaultSql = (query: PinotDataQuery) => `SELECT $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(), SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
 FROM $__table()
 WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
 GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
