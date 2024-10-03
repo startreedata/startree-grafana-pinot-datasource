@@ -15,7 +15,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
-					Format:   FormatMillisecondsEpoch,
+					Format:   pinotlib.FormatMillisecondsEpoch,
 				}},
 			},
 			TimeRange: TimeRange{
@@ -87,7 +87,7 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 				Name:     "my_time_column",
 				DataType: "LONG",
-				Format:   FormatMillisecondsEpoch,
+				Format:   pinotlib.FormatMillisecondsEpoch,
 			}},
 		},
 		TimeRange: TimeRange{

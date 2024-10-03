@@ -7,14 +7,29 @@ import (
 	"time"
 )
 
+type QueryType string
+
+const (
+	QueryTypePinotQl            QueryType = "PinotQL"
+	QueryTypePromQl             QueryType = "PromQL"
+	QueryTypePinotVariableQuery QueryType = "PinotVariableQuery"
+)
+
+type EditorMode string
+
+const (
+	EditorModeBuilder EditorMode = "Builder"
+	EditorModeCode    EditorMode = "Code"
+)
+
 type PinotDataQuery struct {
-	QueryType    string        `json:"queryType"`
-	EditorMode   string        `json:"editorMode"`
+	QueryType    QueryType     `json:"queryType"`
+	EditorMode   EditorMode    `json:"editorMode"`
 	DatabaseName string        `json:"databaseName"`
 	TableName    string        `json:"tableName"`
 	IntervalSize time.Duration `json:"intervalSize"`
 
-	// Builder query
+	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`
 	MetricColumn        string            `json:"metricColumn"`
 	GroupByColumns      []string          `json:"groupByColumns"`
@@ -26,7 +41,7 @@ type PinotDataQuery struct {
 	QueryOptions        []QueryOption     `json:"queryOptions"`
 	Legend              string            `json:"legend"`
 
-	// Code query
+	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`
 	TimeColumnFormat  string `json:"timeColumnFormat"`
@@ -40,6 +55,9 @@ type PinotDataQuery struct {
 		ColumnName   string `json:"columnName"`
 		ColumnType   string `json:"columnType"`
 	} `json:"variableQuery"`
+
+	// PromQl code
+	PromQlCode string `json:"promQlCode"`
 }
 
 type TimeRange struct {

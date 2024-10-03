@@ -60,6 +60,9 @@ export interface PinotDataQuery extends DataQuery {
 
   // Pinot Variable Query
   variableQuery?: PinotVariableQuery;
+
+  // PromQl
+  promQlCode?: string;
 }
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
