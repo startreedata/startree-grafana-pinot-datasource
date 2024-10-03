@@ -20,6 +20,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           }}
           intervalSize={props.data?.request?.interval}
           tables={tables}
+          scopedVars={props.data?.request?.scopedVars || {}}
           onChange={props.onChange}
           onRunQuery={props.onRunQuery}
         />
