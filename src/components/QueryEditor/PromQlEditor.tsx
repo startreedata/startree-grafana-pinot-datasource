@@ -4,8 +4,8 @@ import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
 import { useTimeSeriesTables } from '../../resources/timeseries';
 import { InputMetricLegend } from './InputMetricLegend';
-import { PromQlQueryField } from './PromQlQueryField';
 import { useCompletionDataProvider } from '../../promql/completionDataProvider';
+import { PromQlQueryField } from './PromQlQueryField';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const tables = useTimeSeriesTables(props.datasource);
