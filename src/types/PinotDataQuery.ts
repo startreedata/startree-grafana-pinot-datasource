@@ -62,53 +62,30 @@ export interface PinotDataQuery extends DataQuery {
   variableQuery?: PinotVariableQuery;
 }
 
-export function interpolatePinotQlBuilderVars(
-  buildQuery: {
-    timeColumn?: string;
-    granularity?: string;
-    metricColumn?: string;
-    groupByColumns?: string[];
-    aggregationFunction?: string;
-    filters?: DimensionFilter[];
-    orderBy?: OrderByClause[];
-    queryOptions?: QueryOption[];
-  },
-  scopedVars: ScopedVars
-): {
-  timeColumn: string | undefined;
-  granularity: string | undefined;
-  metricColumn: string | undefined;
-  groupByColumns: string[] | undefined;
-  aggregationFunction: string | undefined;
-  filters: DimensionFilter[] | undefined;
-  queryOptions: QueryOption[] | undefined;
-} {
+export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
-
   return {
-    timeColumn: templateSrv.replace(buildQuery.timeColumn, scopedVars),
-    metricColumn: templateSrv.replace(buildQuery.metricColumn, scopedVars),
-    granularity: templateSrv.replace(buildQuery.granularity, scopedVars),
-    aggregationFunction: templateSrv.replace(buildQuery.aggregationFunction, scopedVars),
-    groupByColumns: (buildQuery.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
-    filters: (buildQuery.filters || []).map(({ columnName, operator, valueExprs }) => ({
+    ...query,
+
+    // Sql Builder
+
+    timeColumn: templateSrv.replace(query.timeColumn, scopedVars),
+    metricColumn: templateSrv.replace(query.metricColumn, scopedVars),
+    granularity: templateSrv.replace(query.granularity, scopedVars),
+    aggregationFunction: templateSrv.replace(query.aggregationFunction, scopedVars),
+    groupByColumns: (query.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
+    filters: (query.filters || []).map(({ columnName, operator, valueExprs }) => ({
       columnName,
       operator,
       valueExprs: valueExprs?.map((expr) => templateSrv.replace(expr, scopedVars)),
     })),
-    queryOptions: (buildQuery.queryOptions || []).map(({ name, value }) => ({
+    queryOptions: (query.queryOptions || []).map(({ name, value }) => ({
       name,
       value: templateSrv.replace(value, scopedVars),
     })),
-  };
-}
 
-export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
-  const templateSrv = getTemplateSrv();
+    // Sql Editor
 
-  return {
-    ...query,
-    ...interpolatePinotQlBuilderVars(query, scopedVars),
     pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
   };
 }

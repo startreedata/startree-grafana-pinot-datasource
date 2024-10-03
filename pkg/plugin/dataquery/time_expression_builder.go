@@ -16,6 +16,10 @@ func SqlObjectExpr(obj string) string {
 	return fmt.Sprintf(`"%s"`, obj)
 }
 
+func SqlLiteralStringExpr(obj string) string {
+	return fmt.Sprintf(`'%s'`, obj)
+}
+
 type TimeExpressionBuilder struct {
 	timeColumn       string
 	timeColumnFormat string
