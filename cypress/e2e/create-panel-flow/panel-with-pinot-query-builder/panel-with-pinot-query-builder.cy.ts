@@ -923,7 +923,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     });
   });
 
-  it.only('Time series should render when switching from Query Builder to Code Editor', () => {
+  it('Time series should render when switching from Query Builder to Code Editor', () => {
     /**
      * All Intercepts
      */
