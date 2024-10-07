@@ -42,7 +42,7 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	// TODO: Handle TIMESTAMP data type.
 	switch colDataType {
 	case DataTypeBoolean:
-		return extractTypedColumn[bool](results, colIdx, func(rowIdx, colIdx int) bool {
+		return extractTypedColumn[bool](results, colIdx, func(rowIdx, _ int) bool {
 			return (results.Get(rowIdx, colIdx)).(bool)
 		})
 	case DataTypeInt, DataTypeLong:
@@ -52,7 +52,7 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 	case DataTypeString, DataTypeJson, DataTypeBytes:
 		return extractTypedColumn[string](results, colIdx, results.GetString)
 	case DataTypeTimestamp:
-		return extractTypedColumn[time.Time](results, colIdx, func(rowIdx, colIdx int) time.Time {
+		return extractTypedColumn[time.Time](results, colIdx, func(rowIdx, _ int) time.Time {
 			var (
 				year   int
 				month  time.Month

@@ -21,7 +21,7 @@ const options = [
   { label: 'NANOSECONDS', value: '1:NANOSECONDS' },
 ];
 
-export function SelectGranularity(props: {
+export function SelectPinotGranularity(props: {
   selected: string | undefined;
   disabled: boolean;
   onChange: (val: string | undefined) => void;

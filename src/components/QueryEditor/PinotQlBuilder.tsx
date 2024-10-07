@@ -9,7 +9,7 @@ import { SelectTimeColumn } from './SelectTimeColumn';
 import { interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
 import { useTableSchema } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
-import { SelectGranularity } from './SelectGranularity';
+import { SelectPinotGranularity } from './SelectPinotGranularity';
 import { SelectTable } from './SelectTable';
 import { SelectOrderBy } from './SelectOrderBy';
 import { SelectQueryOptions } from './SelectQueryOptions';
@@ -76,7 +76,7 @@ export function PinotQlBuilder(props: {
           isLoading={isSchemaLoading}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
-        <SelectGranularity
+        <SelectPinotGranularity
           selected={query.granularity}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
