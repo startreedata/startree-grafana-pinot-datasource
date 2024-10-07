@@ -1,7 +1,7 @@
 services:
   pinot:
     container_name: 'pinot'
-    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:timeseries-promql-raghav'
+    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:timeseries-promql-labels'
     ports:
       - '9000:9000/tcp'
       - '8000:8000/tcp'

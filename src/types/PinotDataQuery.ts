@@ -63,6 +63,7 @@ export interface PinotDataQuery extends DataQuery {
 
   // PromQl
   promQlCode?: string;
+  promStepSize?: string;
 }
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
