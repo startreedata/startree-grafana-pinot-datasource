@@ -20,8 +20,8 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 		Query:     "http_request_handled",
 		Start:     time.Unix(1726617600, 0),
 		End:       time.Unix(1726617735, 0),
-		Step:      60 * time.Second,
-		TableName: pinottest.InfraMetricsTableName,
+		Step:      15 * time.Second,
+		TableName: pinottest.InfraMetricsTableName + "_OFFLINE",
 	})
 
 	require.NoError(t, err)

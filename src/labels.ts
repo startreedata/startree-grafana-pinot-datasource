@@ -106,6 +106,11 @@ export default {
           'Series name override or template. Ex. {{hostname}} will be replaced with the label value for hostname.',
         label: 'Legend',
       },
+      stepSize: {
+        label: 'Step Size',
+        tooltip:
+          'Sequence of decimal numbers, each with optional fraction and a unit suffix, such as "30s" or "2h45m". Valid time units are "s", "m", "h". Minimum value is "1s".',
+      },
     },
     VariableQueryEditor: {
       sqlEditor: {
