@@ -16,7 +16,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 		PromQlCode:  "sum(db_record_write)",
 		TimeRange: TimeRange{
 			From: time.Unix(1726617600, 0),
-			To:   time.Unix(1726617735, 0),
+			To:   time.Unix(1726619400, 0),
 		},
 		IntervalSize: 60 * time.Second,
 		Legend:       "",

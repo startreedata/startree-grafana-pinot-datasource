@@ -1,6 +1,7 @@
 package pinotlib
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
@@ -19,18 +20,26 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 		Language:  TimeSeriesQueryLanguagePromQl,
 		Query:     "http_request_handled",
 		Start:     time.Unix(1726617600, 0),
-		End:       time.Unix(1726617735, 0),
+		End:       time.Unix(1726619400, 0),
 		Step:      60 * time.Second,
-		TableName: pinottest.InfraMetricsTableName,
+		TableName: "infraMetrics_OFFLINE",
 	})
+	defer func() {
+		require.NoError(t, resp.Body.Close())
+	}()
 
 	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	var body bytes.Buffer
+	_, err = body.ReadFrom(resp.Body)
+	require.NoError(t, err)
+
+	assert.Equal(t, http.StatusOK, resp.StatusCode, body.String())
 
 	var respData struct {
 		Status string `json:"status"`
 	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respData))
+	require.NoError(t, json.NewDecoder(&body).Decode(&respData))
 	assert.Equal(t, "success", respData.Status)
 }
 
