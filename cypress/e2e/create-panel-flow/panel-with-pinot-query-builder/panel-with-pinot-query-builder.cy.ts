@@ -983,7 +983,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Visit Dashboard page and initialize
      */
-    cy.visit('/?orgId=1&from=1718649000000&to=1721327399000');
+    cy.visit('/');
     cy.wait('@dashboardsHome');
 
     /**
@@ -1001,15 +1001,24 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('input#PanelFrameTitle').should('exist').clear().type(ctx.panelTitle);
 
-    // /**
-    //  * Change the Time Range
-    //  */
-    // cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
-    // cy.get('#TimePickerContent')
-    //   .should('be.visible')
-    //   .within(() => {
-    //     cy.contains('Last 6 months').parent().click();
-    //   });
+    /**
+     * Change the Time Range
+     */
+    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
+    cy.get('#TimePickerContent')
+      .should('be.visible')
+      .within(() => {
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-06-18 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-07-18 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
+      });
+
+    cy.wait('@dsQuery');
 
     /**
      * Check and select Data source
@@ -1411,18 +1420,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.getBySel('sql-preview-container')
       .should('exist')
       .within(() => {
-        cy.getBySel('sql-preview')
-          .should('exist')
-          .and('not.be.empty')
-          .invoke('text')
-          .then((value) => {
-            const queryValue = value.trim().replace(/ /g, '');
-            cy.wrap(queryValue).as('queryBuilderSqlPreview');
-          });
-
-        // cy.get('@queryBuilderSqlPreview').then((data: unknown) => {
-        //   cy.log('helo, ', data);
-        // });
+        cy.getBySel('sql-preview').should('exist').and('not.be.empty');
       });
 
     /**
