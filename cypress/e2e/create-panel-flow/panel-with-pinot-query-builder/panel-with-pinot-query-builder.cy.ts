@@ -1078,7 +1078,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
@@ -1316,7 +1315,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                       // Select the option
                       cy.contains(filterOption.operator).click();
 
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait(['@dsQuery']);
                     });
 
                   // Check if the option is selected
@@ -1484,7 +1483,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
         cy.wrap(codeEditorQueryResponse).should('deep.equal', queryBuilderQueryResponse);
       });
     });
-    cy.wait('@previewSqlCode');
 
     // Check the UPlot chart for Code Editor results
     cy.get('.panel-content').should('not.contain', 'No data');
