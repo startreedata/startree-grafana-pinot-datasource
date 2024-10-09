@@ -983,7 +983,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Visit Dashboard page and initialize
      */
-    cy.visit('/');
+    cy.visit('/?orgId=1&from=1718649000000&to=1721327399000');
     cy.wait('@dashboardsHome');
 
     /**
@@ -1001,15 +1001,15 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('input#PanelFrameTitle').should('exist').clear().type(ctx.panelTitle);
 
-    /**
-     * Change the Time Range
-     */
-    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
-    cy.get('#TimePickerContent')
-      .should('be.visible')
-      .within(() => {
-        cy.contains('Last 6 months').parent().click();
-      });
+    // /**
+    //  * Change the Time Range
+    //  */
+    // cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
+    // cy.get('#TimePickerContent')
+    //   .should('be.visible')
+    //   .within(() => {
+    //     cy.contains('Last 6 months').parent().click();
+    //   });
 
     /**
      * Check and select Data source
