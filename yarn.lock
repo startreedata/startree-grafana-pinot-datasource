@@ -8322,7 +8322,7 @@ monaco-editor@^0.51.0:
   resolved "https://registry.yarnpkg.com/monaco-editor/-/monaco-editor-0.51.0.tgz#922a6103f6742b5a62fbb097276c5a6619d879db"
   integrity sha512-xaGwVV1fq343cM7aOYB6lVE4Ugf0UyimdD/x5PWcWBMKENwectaEu77FAN7c5sFiyumqeJdX1RPTh1ocioyDjw==
 
-monaco-promql@1.7.4, monaco-promql@^1.7.4:
+monaco-promql@1.7.4:
   version "1.7.4"
   resolved "https://registry.yarnpkg.com/monaco-promql/-/monaco-promql-1.7.4.tgz#64feb0850cba5d62255b7c952e919ba124b0413d"
   integrity sha512-ehiDBi7or/ndoRL98Lj9NgttXcAKNlH85OatV1bfdpseeVA8ziUm7Yi7mhICW6ORc7FZDDfUFcYg0SVrFYEpnw==
