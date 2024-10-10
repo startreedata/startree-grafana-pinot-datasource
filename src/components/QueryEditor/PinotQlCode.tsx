@@ -25,18 +25,10 @@ export function PinotQlCode(props: {
 
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
-  const defaultSql = (query: PinotDataQuery) => `SELECT $__timeGroup("${query.timeColumn || 'timestamp'}") AS $__timeAlias(), SUM("${query.metricColumn || 'metric'}") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("${query.timeColumn || 'timestamp'}")
-GROUP BY $__timeGroup("${query.timeColumn || 'timestamp'}")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000`;
-
-  if (!query.displayType || !query.pinotQlCode) {
+  if (!query.displayType) {
     onChange({
       ...query,
       displayType: query.displayType || DisplayTypeTimeSeries,
-      pinotQlCode: query.pinotQlCode || defaultSql(query),
     });
     onRunQuery();
   }
@@ -55,17 +47,7 @@ LIMIT 100000`;
           <SelectTable
             options={tables}
             selected={query.tableName}
-            onChange={(value: string | undefined) =>
-              onChange({
-                ...query,
-                tableName: value,
-                timeColumn: undefined,
-                metricColumn: undefined,
-                groupByColumns: undefined,
-                aggregationFunction: undefined,
-                filters: undefined,
-              })
-            }
+            onChange={(tableName) => onChange({ ...query, tableName, filters: undefined })}
           />
         </div>
       </div>
