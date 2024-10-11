@@ -23,29 +23,43 @@ jobs:
       GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Node.js environment
+
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+
+      - name: Start Pinot container
+        run: docker compose up pinot --detach
+
+      - name: Install Node.js environment
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'yarn'
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-      - name: Check types
-        run: npm run typecheck
-      - name: Lint
-        run: npm run lint
-      - name: Unit tests
-        run: npm run test:ci
-      - name: Build frontend
-        run: npm run build
 
-      - name: Setup Go environment
+      - name: Install Go environment
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
+          cache-dependency-path: 'go.sum'
 
-      - name: Start Pinot
-        run: docker compose up pinot --detach --wait --wait-timeout 500
+      - name: Install yarn dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test:ci
+
+      - name: Build frontend
+        run: npm run build
 
       - name: Test backend
         uses: magefile/mage-action@v3
@@ -54,97 +68,11 @@ jobs:
           args: coverage
 
       - name: Build backend
-        uses: magefile/mage-action@v3
-        with:
-          version: latest
-          args: buildAll
-
-      - name: Check for E2E
-        id: check-for-e2e
-        run: |
-          if [ -f "playwright.config.ts" ]
-          then
-            echo "has-e2e=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Get plugin metadata
-        id: metadata
-        run: |
-          sudo apt-get install jq
-
-          export GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
-          export GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
-          export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
-
-          echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
-          echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
-          echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
-
-      - name: Package plugin
-        id: package-plugin
-        run: |
-          mv dist ${{ steps.metadata.outputs.plugin-id }}
-          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
-
-      - name: Archive Build
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.metadata.outputs.plugin-id }}-${{ steps.metadata.outputs.plugin-version }}
-          path: ${{ steps.metadata.outputs.plugin-id }}
-          retention-days: 5
-
-  resolve-versions:
-    name: Resolve e2e images
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    needs: build
-    if: ${{ needs.build.outputs.has-e2e == 'true' }}
-    outputs:
-      matrix: ${{ steps.resolve-versions.outputs.matrix }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Resolve Grafana E2E versions
-        id: resolve-versions
-        uses: grafana/plugin-actions/e2e-version@main
-
-  playwright-tests:
-    needs: [resolve-versions, build]
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        GRAFANA_IMAGE: ${{fromJson(needs.resolve-versions.outputs.matrix)}}
-    name: e2e test ${{ matrix.GRAFANA_IMAGE.name }}@${{ matrix.GRAFANA_IMAGE.VERSION }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download plugin
-        if: needs.build.outputs.has-backend == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          name: ${{ needs.build.outputs.plugin-id }}-${{ needs.build.outputs.plugin-version }}
-
-      - name: Execute permissions on binary
-        if: needs.build.outputs.has-backend == 'true'
-        run: |
-          chmod +x ./dist/gpx_pinot_linux_amd64
-
-      - name: Setup Node.js environment
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dev dependencies
-        run: yarn install --frozen-lockfile
+        run: go run cmd/release/main.go build_backend
 
       - name: Start Grafana
         run: |
-          docker compose pull
-          DEVELOPMENT=false GRAFANA_VERSION=${{ matrix.GRAFANA_IMAGE.VERSION }} GRAFANA_IMAGE=${{ matrix.GRAFANA_IMAGE.NAME }} docker compose up -d
+          docker compose up -d
 
       - name: Wait for Grafana to start
         uses: nev7n/wait_for_response@v1
@@ -154,35 +82,39 @@ jobs:
           timeout: 60000
           interval: 500
 
-      - name: Install Playwright Browsers
-        run: npm exec playwright install chromium --with-deps
-
-      - name: Run Playwright tests
-        id: run-tests
-        run: npm run e2e
-
-      - name: Docker logs
-        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
-        run: |
-          docker logs startree-pinot-datasource >& grafana-server.log
-
-      - name: Stop grafana docker
-        run: docker-compose down
-
-      - name: Upload server log
-        uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+      # Run all Cypress tests
+      - name: Cypress E2E run
+        uses: cypress-io/github-action@v6
+        id: run-cypress-e2e-tests
         with:
-          name: ${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}-server-log
-          path: grafana-server.log
-          retention-days: 5
+          config-file: cypress/config/cypress.config.ts
+          # config: video=true
+          browser: chrome
+          wait-on: 'http://localhost:3000'
+          wait-on-timeout: 60
+        env:
+          # pass GitHub token to allow accurately detecting a build vs a re-run build
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Cypress env vars
+          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
+          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
+          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
+          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
-      # Uncomment this step to upload the Playwright report to Github artifacts.
-      # If your repository is public, the report will be public on the Internet so beware not to expose sensitive information.
-      # - name: Upload artifacts
+      # Upload cypress screenshots on failure
+      - name: Upload cypress screenshots artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          retention-days: 30
+
+      # # Upload cypress videos
+      # - name: Upload cypress videos artifact
       #   uses: actions/upload-artifact@v4
-      #   if: ${{ always() && steps.run-tests.outcome == 'failure' }}
+      #   if: always()
       #   with:
-      #     name: playwright-report-${{ matrix.GRAFANA_IMAGE.NAME }}-v${{ matrix.GRAFANA_IMAGE.VERSION }}-${{github.run_id}}
-      #     path: playwright-report/
-      #     retention-days: 5
+      #     name: cypress-videos
+      #     path: cypress/videos
+      #     retention-days: 30

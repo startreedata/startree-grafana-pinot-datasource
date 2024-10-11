@@ -49,7 +49,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
     <>
       <DataSourceDescription dataSourceName={labels.dataSourceName} docsLink={labels.docsLinks} />
       <hr style={{ marginTop: '50px', marginBottom: '56px' }} />
-      <h3>Connection</h3>
+      <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">
         <InputUrl
           label={labels.controllerUrl.label}
@@ -92,10 +92,10 @@ export function ConfigEditor(props: ConfigEditorProps) {
           onChange={(databaseName) => onConfigChange({ ...jsonData, databaseName })}
         />
       </div>
-      <h3>Authentication</h3>
-      <p className={styles.text}>
+      <h3 data-testid="auth-heading">Authentication</h3>
+      <p className={styles.text} data-testid="auth-description">
         This plugin requires a Pinot authentication token. For detailed instructions on generating a token,{' '}
-        <a href={labels.token.help} target="_blank" rel="noreferrer">
+        <a href={labels.token.help} target="_blank" rel="noreferrer" data-testid="view-doc-link">
           view the documentation
         </a>
         .

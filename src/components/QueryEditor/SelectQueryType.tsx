@@ -4,7 +4,7 @@ import { QueryType } from '../../types/QueryType';
 import React from 'react';
 import allLabels from '../../labels';
 
-const SupportedQueryTypes = [QueryType.PinotQL];
+const SupportedQueryTypes = [QueryType.PinotQL, QueryType.PromQL];
 
 export function SelectQueryType({
   current,
@@ -19,17 +19,9 @@ export function SelectQueryType({
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <RadioButtonGroup
+        data-testid="radio-btn-group"
         options={SupportedQueryTypes.map((name) => ({ label: name, value: name }))}
-        onChange={(value) => {
-          // Manually disable unimplemented options
-          switch (value) {
-            case QueryType.LogQL:
-            case QueryType.PromQL:
-              // TODO: Add some unsupported popup
-              return;
-          }
-          onChange(value);
-        }}
+        onChange={onChange}
         value={current}
       />
     </>

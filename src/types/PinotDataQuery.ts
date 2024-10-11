@@ -60,55 +60,35 @@ export interface PinotDataQuery extends DataQuery {
 
   // Pinot Variable Query
   variableQuery?: PinotVariableQuery;
-}
 
-export function interpolatePinotQlBuilderVars(
-  buildQuery: {
-    timeColumn?: string;
-    granularity?: string;
-    metricColumn?: string;
-    groupByColumns?: string[];
-    aggregationFunction?: string;
-    filters?: DimensionFilter[];
-    orderBy?: OrderByClause[];
-    queryOptions?: QueryOption[];
-  },
-  scopedVars: ScopedVars
-): {
-  timeColumn: string | undefined;
-  granularity: string | undefined;
-  metricColumn: string | undefined;
-  groupByColumns: string[] | undefined;
-  aggregationFunction: string | undefined;
-  filters: DimensionFilter[] | undefined;
-  queryOptions: QueryOption[] | undefined;
-} {
-  const templateSrv = getTemplateSrv();
-
-  return {
-    timeColumn: templateSrv.replace(buildQuery.timeColumn, scopedVars),
-    metricColumn: templateSrv.replace(buildQuery.metricColumn, scopedVars),
-    granularity: templateSrv.replace(buildQuery.granularity, scopedVars),
-    aggregationFunction: templateSrv.replace(buildQuery.aggregationFunction, scopedVars),
-    groupByColumns: (buildQuery.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
-    filters: (buildQuery.filters || []).map(({ columnName, operator, valueExprs }) => ({
-      columnName,
-      operator,
-      valueExprs: valueExprs?.map((expr) => templateSrv.replace(expr, scopedVars)),
-    })),
-    queryOptions: (buildQuery.queryOptions || []).map(({ name, value }) => ({
-      name,
-      value: templateSrv.replace(value, scopedVars),
-    })),
-  };
+  // PromQl
+  promQlCode?: string;
 }
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
-
   return {
     ...query,
-    ...interpolatePinotQlBuilderVars(query, scopedVars),
+
+    // Sql Builder
+
+    timeColumn: templateSrv.replace(query.timeColumn, scopedVars),
+    metricColumn: templateSrv.replace(query.metricColumn, scopedVars),
+    granularity: templateSrv.replace(query.granularity, scopedVars),
+    aggregationFunction: templateSrv.replace(query.aggregationFunction, scopedVars),
+    groupByColumns: (query.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
+    filters: (query.filters || []).map(({ columnName, operator, valueExprs }) => ({
+      columnName,
+      operator,
+      valueExprs: valueExprs?.map((expr) => templateSrv.replace(expr, scopedVars)),
+    })),
+    queryOptions: (query.queryOptions || []).map(({ name, value }) => ({
+      name,
+      value: templateSrv.replace(value, scopedVars),
+    })),
+
+    // Sql Editor
+
     pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
   };
 }

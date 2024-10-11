@@ -15,11 +15,12 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           datasource={props.datasource}
           query={props.query}
           timeRange={{
-            to: props.data?.request?.range.to,
-            from: props.data?.request?.range.from,
+            to: props.range?.to,
+            from: props.range?.from,
           }}
           intervalSize={props.data?.request?.interval}
           tables={tables}
+          scopedVars={props.data?.request?.scopedVars || {}}
           onChange={props.onChange}
           onRunQuery={props.onRunQuery}
         />
@@ -28,8 +29,8 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           datasource={props.datasource}
           query={props.query}
           timeRange={{
-            to: props.data?.request?.range.to,
-            from: props.data?.request?.range.from,
+            to: props.range?.to,
+            from: props.range?.from,
           }}
           intervalSize={props.data?.request?.interval}
           tables={tables}

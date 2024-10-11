@@ -29,11 +29,11 @@ const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 const PodInstallerFile = "pod_installer.sh"
 
-const DemoK8sNamespace = "cell-9itmgf-default"
+const DemoK8sNamespace = "default"
 const DemoK8sPod = "pinot-grafana-demo-0"
 const DemoContainerPluginPath = "/var/lib/grafana/plugins"
-const DemoGrafanaUrl = "https://pinot-grafana-demo.9itmgf.cp.s7e.startree.cloud"
-const DemoK8sContext = "scp-acc-2j9kjvzye-2j9itmj9e:Apps_Team:startree-apps"
+const DemoGrafanaUrl = "https://pinot-grafana-demo.metrics.analytics.startree.cloud"
+const DemoK8sContext = "arn:aws:eks:us-west-2:381492139006:cluster/sc-analytics-metrics"
 
 const ZipCmd = "zip"
 const UnzipCmd = "unzip"
@@ -73,6 +73,9 @@ func main() {
 
 	case "demo":
 		releaseManager.DeployDemo()
+
+	case "build_backend":
+		releaseManager.buildBackend()
 
 	default:
 		printUsage()
@@ -393,7 +396,17 @@ func (x *ReleaseManager) getRepoFileUrl(fileName string) string {
 func (x *ReleaseManager) buildPlugin() {
 	fmt.Println("Building plugin...")
 	removeAll(BuildArtifactsDir)
+	x.buildBackend()
+	x.buildFrontend()
+}
+
+func (x *ReleaseManager) buildBackend() {
+	fmt.Println("Building backend...")
 	mage.Invoke(mage.Invocation{Verbose: true, Stdout: os.Stdout, Stderr: os.Stderr})
+}
+
+func (x *ReleaseManager) buildFrontend() {
+	fmt.Println("Building frontend...")
 	runCmd(nil, os.Stdout, "npm", "run", "build")
 }
 

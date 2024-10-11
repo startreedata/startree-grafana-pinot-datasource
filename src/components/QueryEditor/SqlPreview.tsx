@@ -8,9 +8,9 @@ export function SqlPreview(props: { sql: string | undefined }) {
   const labels = allLabels.components.QueryEditor.sqlPreview;
 
   return (
-    <div className="gf-form">
+    <div className="gf-form" data-testid="sql-preview-container">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <pre>
+      <pre data-testid="sql-preview">
         {sql || ''}
         {sql && <CopyButton text={sql} />}
       </pre>

@@ -30,14 +30,14 @@ export function SelectGranularity(props: {
   const labels = allLabels.components.QueryEditor.granularity;
 
   return (
-    <div className={'gf-form'}>
+    <div className={'gf-form'} data-testid="select-granularity">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <Select
         className={`${styles.QueryEditor.inputForm}`}
         allowCustomValue
         placeholder={'auto'}
         options={options}
-        value={selected||null}
+        value={selected || null}
         disabled={disabled}
         onChange={(change) => (change.value !== 'auto' ? onChange(change.value) : onChange(undefined))}
       />
