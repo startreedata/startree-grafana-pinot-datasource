@@ -69,6 +69,19 @@ describe('Create a Panel with Pinot Code Editor', () => {
     };
 
     /**
+     * Granting the clipboard permissions to browser
+     */
+    cy.wrap(
+      Cypress.automation('remote:debugger:protocol', {
+        command: 'Browser.grantPermissions',
+        params: {
+          permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+          origin: window.location.origin,
+        },
+      })
+    );
+
+    /**
      * Create new Pinot Datasource for testing create panel flow
      */
     createPinotDatasource(ctx).then((data) => {
