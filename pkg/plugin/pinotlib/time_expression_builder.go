@@ -57,7 +57,13 @@ func (x TimeExpressionBuilder) TimeColumnFormat() string {
 }
 
 func (x TimeExpressionBuilder) TimeFilterBucketAlignedExpr(from time.Time, to time.Time, bucketSize time.Duration) string {
-	return x.TimeFilterExpr(from.Truncate(bucketSize), to.Truncate(bucketSize).Add(bucketSize))
+	fromTrunc := from.Truncate(bucketSize)
+	toTrunc := to.Truncate(bucketSize)
+	if toTrunc.Before(to) {
+		toTrunc = toTrunc.Add(bucketSize)
+	}
+
+	return x.TimeFilterExpr(fromTrunc, toTrunc)
 }
 
 func (x TimeExpressionBuilder) TimeFilterExpr(from time.Time, to time.Time) string {
