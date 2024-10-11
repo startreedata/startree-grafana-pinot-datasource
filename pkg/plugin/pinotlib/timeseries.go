@@ -131,7 +131,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 		return nil, err
 	}
 
-	resp, err := p.ExecuteSQL(ctx, query.TableName, sql)
+	resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
 	metrics := ExtractStringColumn(resp.ResultTable, 0)
 	return metrics, nil
 }
@@ -227,7 +227,7 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 			return nil, err
 		}
 
-		resp, err := p.ExecuteSQL(ctx, tableName, sql)
+		resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
 		if err != nil {
 			return nil, err
 		}

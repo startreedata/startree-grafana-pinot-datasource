@@ -3,7 +3,6 @@ package dataquery
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
@@ -24,31 +23,31 @@ type TimeSeriesExtractorParams struct {
 type Metric struct {
 	Timestamp time.Time
 	Value     float64
-	Labels    map[string]string
+	Labels    []MetricLabel
 }
 
 type MetricSeries struct {
-	name   string
-	values []*float64
-	labels map[string]string
+	Name   string
+	Values []*float64
+	Labels map[string]string
 }
 
-func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot.ResultTable) (*data.Frame, error) {
+func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinotlib.ResultTable) (*data.Frame, error) {
 	metrics, err := ExtractMetrics(results, params.TimeColumnAlias, params.TimeColumnFormat, params.MetricColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 
-	timeCol, metricSeries := PivotToTimeSeries(metrics, params.MetricName, params.Legend)
+	timeCol, metricSeries := PivotToTimeSeries(metrics, params.Legend)
 	slices.SortFunc(metricSeries, func(a, b MetricSeries) int {
-		return strings.Compare(a.name, b.name)
+		return strings.Compare(a.Name, b.Name)
 	})
 
 	fields := make([]*data.Field, 0, len(metricSeries)+1)
 	for _, series := range metricSeries {
-		field := data.NewField(params.MetricName, series.labels, series.values)
+		field := data.NewField(params.MetricName, series.Labels, series.Values)
 		field.SetConfig(&data.FieldConfig{
-			DisplayNameFromDS: series.name,
+			DisplayNameFromDS: series.Name,
 		})
 		fields = append(fields, field)
 	}
@@ -57,7 +56,12 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 	return data.NewFrame("response", fields...), nil
 }
 
-func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
+type MetricLabel struct {
+	name  string
+	value string
+}
+
+func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
 	timeColIdx, err := pinotlib.GetColumnIdx(results, timeColumnAlias)
 	if err != nil {
 		return nil, err
@@ -75,32 +79,41 @@ func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColu
 	metCol := pinotlib.ExtractDoubleColumn(results, metColIdx)
 
 	dimensions := make(map[string][]string)
-	for colIdx := 0; colIdx < results.GetColumnCount(); colIdx++ {
+	for colIdx := 0; colIdx < len(results.DataSchema.ColumnNames); colIdx++ {
 		if colIdx == timeColIdx || colIdx == metColIdx {
 			continue
 		}
-		name := results.GetColumnName(colIdx)
+		name, _ := pinotlib.GetColumnName(results, colIdx)
 		dimensions[name] = pinotlib.ExtractStringColumn(results, colIdx)
 	}
 
-	metrics := make([]Metric, results.GetRowCount())
-	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
-		labels := make(map[string]string, len(dimensions))
-		for name, col := range dimensions {
-			labels[name] = col[rowIdx]
+	dimensionNames := make([]string, 0, len(dimensions))
+	for name := range dimensions {
+		dimensionNames = append(dimensionNames, name)
+	}
+	sort.Strings(dimensionNames)
+
+	metrics := make([]Metric, pinotlib.GetRowCount(results))
+	for rowIdx := 0; rowIdx < pinotlib.GetRowCount(results); rowIdx++ {
+		labelsList := make([]MetricLabel, len(dimensions))
+		for i, name := range dimensionNames {
+			labelsList[i] = MetricLabel{
+				name:  name,
+				value: dimensions[name][rowIdx],
+			}
 		}
 
 		metrics[rowIdx] = Metric{
 			Timestamp: timeCol[rowIdx],
 			Value:     metCol[rowIdx],
-			Labels:    labels,
+			Labels:    labelsList,
 		}
 	}
 
 	return metrics, nil
 }
 
-func PivotToTimeSeries(metrics []Metric, metricName string, legend string) ([]time.Time, []MetricSeries) {
+func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSeries) {
 	timeCol := GetTimeColumn(metrics)
 
 	timestampToIdx := make(map[time.Time]int, len(timeCol))
@@ -108,19 +121,26 @@ func PivotToTimeSeries(metrics []Metric, metricName string, legend string) ([]ti
 		timestampToIdx[val] = i
 	}
 
-	timeSeriesMap := make(map[string]MetricSeries)
+	timeSeriesMap := make(map[int]MetricSeries)
+	formatter := NewLegendFormatter()
+	var seriesMapper SeriesMapper
+
 	for _, met := range metrics {
-		tsKey := GetSeriesKey(met.Labels)
+		tsKey := seriesMapper.GetKey(met.Labels)
 		if _, ok := timeSeriesMap[tsKey]; !ok {
+			labels := make(map[string]string, len(met.Labels))
+			for _, label := range met.Labels {
+				labels[label.name] = label.value
+			}
 			timeSeriesMap[tsKey] = MetricSeries{
-				name:   FormatSeriesName(legend, met.Labels),
-				values: make([]*float64, len(timeCol)),
-				labels: met.Labels,
+				Name:   formatter.FormatSeriesName(legend, labels),
+				Values: make([]*float64, len(timeCol)),
+				Labels: labels,
 			}
 		}
 		colIdx := timestampToIdx[met.Timestamp]
 		value := met.Value
-		timeSeriesMap[tsKey].values[colIdx] = &value
+		timeSeriesMap[tsKey].Values[colIdx] = &value
 	}
 
 	metricSeries := make([]MetricSeries, 0, len(timeSeriesMap))
@@ -143,39 +163,107 @@ func GetTimeColumn(metrics []Metric) []time.Time {
 	return result[:]
 }
 
-func FormatSeriesName(legend string, labels map[string]string) string {
+type SeriesMapper struct {
+	order  map[string]int
+	caches []map[string]int
+	next   int
+}
+
+// GetKey generates a unique key for a slice of metric labels.
+// * The slice of labels must always be the same length.
+// * The slice of labels must always have the same names.
+// * The names must appear in the same order.
+func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
+	if x.order == nil {
+		x.order = make(map[string]int, len(labels))
+		for i := range labels {
+			x.order[labels[i].name] = i
+		}
+	}
+
+	if len(labels) != len(x.order) {
+		panic(fmt.Sprintf(
+			"SeriesMapper.GetKey() called with different length of labels: %d (got) vs %d (want)", len(labels), len(x.order)))
+	}
+
+	for i := range labels {
+		name := labels[i].name
+		order, ok := x.order[name]
+		if !ok {
+			panic(fmt.Sprintf("SeriesMapper.GetKey() encountered new label `%s`", name))
+		}
+
+		if order != i {
+			panic(fmt.Sprintf(
+				"SeriesMapper.GetKey() called with different order for label `%s`: %d (got) vs %d (want)", name, i, order))
+		}
+	}
+
+	if len(labels) == 0 {
+		return 0
+	}
+
+	if x.caches == nil {
+		x.caches = make([]map[string]int, 1)
+	}
+	if x.caches[0] == nil {
+		x.caches[0] = make(map[string]int)
+	}
+	cache := x.caches[0]
+	for i := 0; i < len(labels)-1; i++ {
+		val := labels[i].value
+		if _, ok := cache[val]; !ok {
+			cache[val] = len(x.caches)
+			x.caches = append(x.caches, make(map[string]int))
+		}
+		cache = x.caches[cache[val]]
+	}
+
+	finalVal := labels[len(labels)-1].value
+	if _, ok := cache[finalVal]; !ok {
+		cache[finalVal] = x.next
+		x.next++
+	}
+	return cache[finalVal]
+}
+
+type LegendFormatter struct {
+	regexpCache map[string]*regexp.Regexp
+}
+
+func NewLegendFormatter() *LegendFormatter {
+	return new(LegendFormatter)
+}
+
+func (f *LegendFormatter) getRegexpFromCache(key string) *regexp.Regexp {
+	if f.regexpCache == nil {
+		f.regexpCache = make(map[string]*regexp.Regexp)
+	}
+	if re, ok := f.regexpCache[key]; ok {
+		return re
+	}
+	pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		logger.Logger.Debug("Error compiling legend regex", err)
+		return nil
+	}
+	f.regexpCache[key] = re
+	return re
+}
+
+func (f *LegendFormatter) FormatSeriesName(legend string, labels map[string]string) string {
 	legend = strings.TrimSpace(legend)
 	if !strings.Contains(legend, "{{") {
 		return legend
 	}
 
 	for key, val := range labels {
-		pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
-		r, err := regexp.Compile(pattern)
-		if err != nil {
-			logger.Logger.Info("Error compiling legend regex", err)
+		re := f.getRegexpFromCache(key)
+		if re == nil {
 			continue
 		}
-		legend = r.ReplaceAllString(legend, val)
+		legend = re.ReplaceAllString(legend, val)
 	}
 	return legend
-}
-
-// GetSeriesKey returns a unique string for the set of labels.
-func GetSeriesKey(labels map[string]string) string {
-	if len(labels) == 0 {
-		return ""
-	}
-
-	keys := make([]string, 0, len(labels))
-	for key := range labels {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-
-	formatted := make([]string, 0, len(labels))
-	for _, key := range keys {
-		formatted = append(formatted, fmt.Sprintf("%s=%s", key, labels[key]))
-	}
-	return strings.Join(formatted, "&")
 }
