@@ -2150,4 +2150,247 @@ describe('Create a Panel with Pinot Query Builder', () => {
       deletePinotDatasource(ctx, datasourceUid);
     });
   });
+
+  it('Time series should render when selecting only required fields', () => {
+    /**
+     * All Intercepts
+     */
+    cy.intercept('GET', '/api/datasources').as('getDatasources');
+    cy.intercept('GET', '/api/plugins?embedded=0').as('pluginsEmbedded');
+    cy.intercept('GET', '/api/plugins/errors').as('pluginsErrors');
+    cy.intercept('GET', '/api/gnet/plugins').as('gnetPlugins');
+    cy.intercept('GET', '/api/plugins?enabled=1&type=datasource').as('pluginsTypeDatasource');
+    cy.intercept('POST', '/api/datasources', (req) => {
+      req.continue((res) => (ctx.newlyCreatedDatasourceUid = res.body.datasource.uid));
+    }).as('postDatasources');
+    cy.intercept('GET', '/api/frontend/settings').as('frontendSettings');
+    cy.intercept('GET', '/api/plugins/startree-pinot-datasource/settings').as('pluginsSettings');
+    cy.intercept('GET', '/api/access-control/user/permissions?reloadcache=true').as('userPermissions');
+    cy.intercept('PUT', '/api/datasources/uid/*').as('datasourcesUid');
+    cy.intercept('GET', '/api/datasources/uid/*?accesscontrol=true').as('datasourcesUidAccessControl');
+    cy.intercept('GET', '/api/datasources/*/health').as('datasourcesHealth');
+    cy.intercept('GET', '/api/datasources/*/resources/tables', (req) => {
+      req.continue((res) => (ctx.apiResponse.resourcesTables = res.body));
+    }).as('resourcesTables');
+    cy.intercept('DELETE', '/api/datasources/uid/*').as('deleteDatasource');
+    cy.intercept('GET', '/api/dashboards/home').as('dashboardsHome');
+    cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
+    cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
+    cy.intercept('POST', '/api/ds/query').as('dsQuery');
+    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
+      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
+    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
+    cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
+
+    const formData = {
+      table: 'complex_website',
+      timeColumn: 'hoursSinceEpoch',
+      metricColumn: 'views',
+    };
+
+    /**
+     * Create new Pinot Datasource for testing create panel flow
+     */
+    createPinotDatasource(ctx).then((data) => {
+      cy.wrap({
+        name: data.name,
+        uid: ctx.newlyCreatedDatasourceUid,
+      }).as('newlyCreatedDatasource');
+    });
+
+    /**
+     * Visit Dashboard page and initialize
+     */
+    cy.visit('/');
+    cy.wait('@dashboardsHome');
+
+    /**
+     * Check and Add Panel
+     */
+    cy.get('[aria-label="Add panel"]').should('be.visible').click();
+    cy.get('button').contains('Add a new panel').should('be.visible').click();
+    cy.location('search').should('contain', 'editPanel');
+
+    cy.wait(['@apiV1Rules', '@apiV1RulesSubtypeCortex', '@dsQuery', '@resourcesTables']);
+
+    /**
+     * Change Panel Title
+     */
+    cy.get('input#PanelFrameTitle').should('exist').clear().type(ctx.panelTitle);
+
+    /**
+     * Change the Time Range
+     */
+    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
+    cy.get('#TimePickerContent')
+      .should('be.visible')
+      .within(() => {
+        cy.contains('Last 6 months').parent().click();
+      });
+
+    /**
+     * Check and select Data source
+     */
+    cy.get('@newlyCreatedDatasource').then((data: unknown) => {
+      const pinotDatasourceName: string = (data as any).name;
+
+      cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
+      cy.get('#react-select-6-listbox')
+        .should('be.visible')
+        .within(() => {
+          cy.contains(pinotDatasourceName).click();
+        });
+
+      // Check the selected data source
+      cy.get('@dataSourcePicker').should('contain.text', pinotDatasourceName);
+    });
+
+    /**
+     * Check and Select Editor Mode
+     */
+    cy.getBySel('select-editor-mode')
+      .should('exist')
+      .within(() => {
+        // Check Radio group
+        cy.get('input[type="radio"]')
+          .eq(0)
+          .should('exist')
+          .invoke('attr', 'id')
+          .then((id) => {
+            cy.get(`label[for="${id}"]`).should('exist').and('contain.text', 'Builder').click();
+          });
+      });
+
+    /**
+     * Check Run query button
+     */
+    cy.getBySel('query-editor-header')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query').as('runQueryBtn');
+      });
+
+    /**
+     * Check and select Table field
+     */
+    cy.getBySel('select-table')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input').parent().parent().as('tableSelect').click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.table).click();
+          });
+
+        // Check if correct option is selected
+        cy.get('@tableSelect').within(() => {
+          cy.contains(formData.table);
+        });
+      });
+
+    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait('@previewSqlBuilder');
+
+    /**
+     * Check and select Time Column field
+     */
+    cy.getBySel('select-time-column')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input')
+          .parent()
+          .parent()
+          .as('timeColumnSelect')
+          .within(() => {
+            // Check already selected option
+            cy.contains('hoursSinceEpoch');
+          })
+          .click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.timeColumn).click();
+          });
+
+        // Check if correct option is selected
+        cy.get('@timeColumnSelect').within(() => {
+          cy.contains(formData.timeColumn);
+        });
+      });
+
+    /**
+     * Check and select Metric Column field
+     */
+    cy.getBySel('select-metric-column')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input')
+          .parent()
+          .parent()
+          .as('metricColumnSelect')
+          .within(() => {
+            // Check already selected option
+            cy.contains('clicks');
+          })
+          .click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.metricColumn).click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+          });
+
+        // Check if correct option is selected
+        cy.get('@metricColumnSelect').within(() => {
+          cy.contains(formData.metricColumn);
+        });
+      });
+
+    /**
+     * Check Sql Preview Container
+     */
+    cy.getBySel('sql-preview-container')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('sql-preview').should('exist').and('not.be.empty');
+      });
+
+    /**
+     * Finally Run Query and check results
+     */
+    cy.get('@runQueryBtn').click();
+    cy.wait('@dsQuery', { timeout: 5000 });
+
+    // Check the UPlot chart
+    cy.get('.panel-content').should('not.contain', 'No data');
+    cy.getBySel('uplot-main-div').should('exist');
+
+    /**
+     * Discard the Panel and go back
+     */
+    cy.get('button[aria-label="Undo all changes"]').should('exist').click();
+    cy.location('search').should('not.contain', 'editPanel');
+
+    /**
+     * Delete the newly created data source for the panel
+     */
+    cy.get('@newlyCreatedDatasource').then((data: unknown) => {
+      const datasourceUid = (data as any).uid;
+      deletePinotDatasource(ctx, datasourceUid);
+    });
+  });
 });
