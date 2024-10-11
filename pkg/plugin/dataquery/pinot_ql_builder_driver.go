@@ -168,7 +168,7 @@ func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
 	if expandMacros {
 		return p.timeExprBuilder.TimeFilterBucketAlignedExpr(p.params.TimeRange.From, p.params.TimeRange.To, p.TimeGranularity.Size)
 	} else {
-		return MacroExprFor(MacroTimeFilter, fmt.Sprintf(`"%s"`, p.params.TimeColumn))
+		return MacroExprFor(MacroTimeFilter, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.SqlLiteralStringExpr(p.TimeGranularity.Expr))
 	}
 }
 
