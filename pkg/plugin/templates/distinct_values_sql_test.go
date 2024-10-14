@@ -9,7 +9,7 @@ func TestRenderDistinctValues(t *testing.T) {
 	t.Run("with filters", func(t *testing.T) {
 		want := `SELECT DISTINCT "dim"
 FROM "my_table"
-WHERE ts >= 10 AND ts <= 20
+WHERE ts >= 10 AND ts < 20
     AND ("dim1" = 'val1')
     AND ("dim2" = 'val2')
 ORDER BY "dim" ASC
@@ -17,7 +17,7 @@ LIMIT 100;`
 		got, err := RenderDistinctValuesSql(DistinctValuesSqlParams{
 			ColumnName:           "dim",
 			TableName:            "my_table",
-			TimeFilterExpr:       "ts >= 10 AND ts <= 20",
+			TimeFilterExpr:       "ts >= 10 AND ts < 20",
 			DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
 		})
 		assert.NoError(t, err)
