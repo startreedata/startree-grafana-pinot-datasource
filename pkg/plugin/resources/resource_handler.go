@@ -32,6 +32,7 @@ type Response struct {
 	*ListTimeSeriesLabelsResponse
 	*ListTimeSeriesLabelValuesResponse
 	*GetTimeSeriesMetricLabelsCollectionResponse
+	IsPromQlSupported *bool `json:"isPromQlSupported,omitempty"`
 }
 
 type LabelAndValues struct {
@@ -81,12 +82,13 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	handler := ResourceHandler{client: client, router: router}
 
 	router.HandleFunc("/databases", adaptHandler(handler.ListDatabases))
-	router.HandleFunc("/tables", adaptHandler(handler.ListTables))
-	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
+	router.HandleFunc("/isPromQlSupported", adaptHandler(handler.IsPromQlSupported))
 	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(handler.PreviewSqlBuilder))
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(handler.PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(handler.PreviewSqlDistinctValues))
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
+	router.HandleFunc("/tables", adaptHandler(handler.ListTables))
+	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
 	router.HandleFunc("/timeseries/tables", adaptHandler(handler.ListTimeSeriesTables))
 	router.HandleFunc("/timeseries/metrics", adaptHandlerWithBody(handler.ListTimeSeriesMetrics))
 	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
@@ -402,6 +404,14 @@ func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data Li
 	return &Response{Code: http.StatusOK, ListTimeSeriesLabelValuesResponse: &ListTimeSeriesLabelValuesResponse{
 		LabelValues: values,
 	}}
+}
+
+func (x *ResourceHandler) IsPromQlSupported(r *http.Request) *Response {
+	ok, err := x.client.IsTimeseriesSupported(r.Context())
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	return &Response{Code: http.StatusOK, IsPromQlSupported: &ok}
 }
 
 func newPreviewSqlResponse(sql string) *Response {
