@@ -91,7 +91,7 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 			}},
 		},
 		TimeRange: TimeRange{
-			To:   time.Unix(0, 0),
+			To:   time.Unix(1, 0),
 			From: time.Unix(0, 0),
 		},
 		IntervalSize:        100,
@@ -125,7 +125,7 @@ SELECT
 FROM
     $__table()
 WHERE
-    $__timeFilter("my_time_column")
+    $__timeFilter("my_time_column", '1:SECONDS')
 GROUP BY
     "dim",
     $__timeGroup("my_time_column", '1:SECONDS')

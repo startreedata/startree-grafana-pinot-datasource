@@ -69,6 +69,19 @@ describe('Create a Panel with Pinot Code Editor', () => {
     };
 
     /**
+     * Granting the clipboard permissions to browser
+     */
+    cy.wrap(
+      Cypress.automation('remote:debugger:protocol', {
+        command: 'Browser.grantPermissions',
+        params: {
+          permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+          origin: window.location.origin,
+        },
+      })
+    );
+
+    /**
      * Create new Pinot Datasource for testing create panel flow
      */
     createPinotDatasource(ctx).then((data) => {
@@ -315,6 +328,21 @@ describe('Create a Panel with Pinot Code Editor', () => {
 
         // Check the limit should be equal to changed limit from form data
         cy.get('@sqlPreview').should('contain.text', 'LIMIT 1000');
+
+        // Check the copy button in SQL Preview
+        cy.get('@sqlPreview').within(() => {
+          cy.getBySel('copy-query-btn').should('exist').click();
+        });
+
+        // Check if the clipboard has the query copied
+        cy.get('@sqlPreview')
+          .invoke('text')
+          .then((sqlPreviewValue) => {
+            cy.window().then(async (win) => {
+              const text = await win.navigator.clipboard.readText();
+              expect(text).to.eq(sqlPreviewValue);
+            });
+          });
       });
 
     /**

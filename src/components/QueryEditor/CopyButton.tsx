@@ -12,6 +12,7 @@ export function CopyButton({ text }: { text: string }) {
       onMouseLeave={() => setIsCopied(false)}
     >
       <IconButton
+        data-testid="copy-query-btn"
         name={'copy'}
         tooltip={isCopied ? labels.copiedTooltip : labels.copyTooltip}
         onClick={() => {
