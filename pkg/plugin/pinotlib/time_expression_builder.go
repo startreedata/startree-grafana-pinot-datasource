@@ -67,7 +67,7 @@ func (x TimeExpressionBuilder) TimeFilterBucketAlignedExpr(from time.Time, to ti
 }
 
 func (x TimeExpressionBuilder) TimeFilterExpr(from time.Time, to time.Time) string {
-	return fmt.Sprintf(`%s >= %s AND %s <= %s`,
+	return fmt.Sprintf(`%s >= %s AND %s < %s`,
 		SqlObjectExpr(x.timeColumn), x.TimeExpr(from),
 		SqlObjectExpr(x.timeColumn), x.TimeExpr(to),
 	)

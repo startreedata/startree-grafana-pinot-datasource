@@ -148,7 +148,7 @@ SELECT
 FROM
     "my_table"
 WHERE
-    "my_time_column" >= 0 AND "my_time_column" <= 1000
+    "my_time_column" >= 0 AND "my_time_column" < 1000
 GROUP BY
     "dim",
     DATETIMECONVERT("my_time_column", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:SECONDS')

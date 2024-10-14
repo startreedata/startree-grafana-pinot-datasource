@@ -33,10 +33,10 @@ func TestExpandMacros(t *testing.T) {
 		{expr: `$__table`, want: `"CleanLogisticData"`},
 		{expr: `$__table()`, want: `"CleanLogisticData"`},
 		{expr: `$__timeFilter`, wantErr: "failed to expand macro `timeFilter` (line 1, col 1): expected 1 required argument, got 0"},
-		{expr: `$__timeFilter("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" <= 93600`},
-		{expr: `$__timeFilter("timestamp", '1:HOURS')`, want: `"timestamp" >= 0 AND "timestamp" <= 93600`},
-		{expr: `$__timeFilter("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" <= 90060`},
-		{expr: `$__timeFilter("timestamp", '1:SECONDS')`, want: `"timestamp" >= 1 AND "timestamp" <= 90001`},
+		{expr: `$__timeFilter("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" < 93600`},
+		{expr: `$__timeFilter("timestamp", '1:HOURS')`, want: `"timestamp" >= 0 AND "timestamp" < 93600`},
+		{expr: `$__timeFilter("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" < 90060`},
+		{expr: `$__timeFilter("timestamp", '1:SECONDS')`, want: `"timestamp" >= 1 AND "timestamp" < 90001`},
 		{expr: `$__timeGroup`, wantErr: "failed to expand macro `timeGroup` (line 1, col 1): expected 1 required argument, got 0"},
 		{expr: `$__timeGroup("timestamp")`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')`},
 		{expr: `$__timeGroup("timestamp", '1:MINUTES')`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
@@ -47,8 +47,8 @@ func TestExpandMacros(t *testing.T) {
 		{expr: `$__timeAlias`, want: `"time"`},
 		{expr: `$__metricAlias`, want: `"metric"`},
 		{expr: `$__timeFilterMillis`, wantErr: "failed to expand macro `timeFilterMillis` (line 1, col 1): expected 1 required argument, got 0"},
-		{expr: `$__timeFilterMillis("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" <= 93600000`},
-		{expr: `$__timeFilterMillis("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" <= 90060000`},
+		{expr: `$__timeFilterMillis("timestamp")`, want: `"timestamp" >= 0 AND "timestamp" < 93600000`},
+		{expr: `$__timeFilterMillis("timestamp", '1:MINUTES')`, want: `"timestamp" >= 0 AND "timestamp" < 90060000`},
 		{expr: `$__timeToMillis`, want: `90001000`},
 		{expr: `$__timeFromMillis`, want: `1000`},
 		{expr: `$__granularityMillis`, want: `3600000`},
@@ -119,7 +119,7 @@ WITH data AS (
   FROM
      "CleanLogisticData" 
   WHERE
-     "timestamp" >= 1523714400 AND "timestamp" <= 1512241200 
+     "timestamp" >= 1523714400 AND "timestamp" < 1512241200 
 )
 
 SELECT 
