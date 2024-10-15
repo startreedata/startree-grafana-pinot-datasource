@@ -96,6 +96,7 @@ jobs:
           # pass GitHub token to allow accurately detecting a build vs a re-run build
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Cypress env vars
+          CYPRESS_DEBUG: 1
           PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
           PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
@@ -110,11 +111,11 @@ jobs:
           path: cypress/screenshots
           retention-days: 30
 
-      # # Upload cypress videos
-      # - name: Upload cypress videos artifact
-      #   uses: actions/upload-artifact@v4
-      #   if: always()
-      #   with:
-      #     name: cypress-videos
-      #     path: cypress/videos
-      #     retention-days: 30
+      # Upload cypress videos
+      - name: Upload cypress videos artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cypress-videos
+          path: cypress/videos
+          retention-days: 30

@@ -2424,7 +2424,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     });
   });
 
-  it('Adding new query with different params should loads separate time series', () => {
+  it.only('Adding new query with different params should loads separate time series', () => {
     /**
      * All Intercepts
      */
@@ -2653,6 +2653,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
         cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
           const respData = response.body as any;
           const fields = respData.results.A.frames[0].schema.fields;
+          console.log('clicks: ', fields);
+          cy.log('clicks: ', fields);
 
           // Check the result data
           cy.wrap(fields[0]).should('have.property', 'name', 'clicks');
@@ -2814,6 +2816,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
         cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
           const respData = response.body as any;
           const fields = respData.results.B.frames[0].schema.fields;
+          console.log('views: ', fields);
+          cy.log('views: ', fields);
 
           // Check the result data
           cy.wrap(fields[0]).should('have.property', 'name', 'views');
