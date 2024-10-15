@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/md5"
 	"crypto/sha1"
@@ -167,7 +168,15 @@ func (x *ReleaseManager) InstallPluginIntoDataPlane() {
 	}
 
 	fmt.Println("Installing plugin into Grafana...")
-	fmt.Println("Using k8s context", x.getK8sContext())
+	fmt.Printf("Use this k8s context: %s [N/y]? ", x.getK8sContext())
+	ans, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	switch strings.TrimSpace(ans) {
+	case "y", "Y":
+		break
+	default:
+		return
+	}
+
 	deployment := x.getK8sDeployment(x.getGrafanaDeploymentName())
 	x.patchGrafanaDeployment(deployment)
 	x.applyK8sConfig(deployment)
