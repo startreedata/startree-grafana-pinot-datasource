@@ -92,11 +92,11 @@ jobs:
           browser: chrome
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 60
+          spec: cypress/e2e/create-panel-flow/panel-with-pinot-query-builder/panel-with-pinot-query-builder.cy.ts
         env:
           # pass GitHub token to allow accurately detecting a build vs a re-run build
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Cypress env vars
-          CYPRESS_DEBUG: 1
           PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
           PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}

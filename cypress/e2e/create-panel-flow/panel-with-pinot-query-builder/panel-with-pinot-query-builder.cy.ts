@@ -2654,7 +2654,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           const respData = response.body as any;
           const fields = respData.results.A.frames[0].schema.fields;
           console.log('clicks: ', fields);
-          cy.log('clicks: ', JSON.stringify(respData.results));
+          cy.log('clicks: ', JSON.stringify(fields));
 
           // Check the result data
           cy.wrap(fields[0]).should('have.property', 'name', 'clicks');
@@ -2817,7 +2817,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
           const respData = response.body as any;
           const fields = respData.results.B.frames[0].schema.fields;
           console.log('views: ', fields);
-          cy.log('views: ', JSON.stringify(respData.results));
+          cy.log('views: ', JSON.stringify(fields));
+          cy.log('clicks: ', JSON.stringify(respData.results.A.frames[0].schema.fields));
           // cy.log('views: ', JSON.stringify(fields));
 
           // Check the result data
