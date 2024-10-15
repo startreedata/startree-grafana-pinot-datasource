@@ -1216,7 +1216,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             if (formData.aggregation) {
               cy.contains(formData.aggregation).click();
 
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait(['@dsQuery']);
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
