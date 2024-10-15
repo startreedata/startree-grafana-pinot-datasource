@@ -92,7 +92,6 @@ jobs:
           browser: chrome
           wait-on: 'http://localhost:3000'
           wait-on-timeout: 60
-          spec: cypress/e2e/create-panel-flow/panel-with-pinot-query-builder/panel-with-pinot-query-builder.cy.ts
         env:
           # pass GitHub token to allow accurately detecting a build vs a re-run build
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -111,11 +110,11 @@ jobs:
           path: cypress/screenshots
           retention-days: 30
 
-      # Upload cypress videos
-      - name: Upload cypress videos artifact
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: cypress-videos
-          path: cypress/videos
-          retention-days: 30
+      # # Upload cypress videos
+      # - name: Upload cypress videos artifact
+      #   uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: cypress-videos
+      #     path: cypress/videos
+      #     retention-days: 30
