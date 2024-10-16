@@ -257,7 +257,7 @@ func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDis
 		return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{}}
 	}
 
-	results, err := x.client.ExecuteSQL(ctx, data.TableName, sql)
+	results, err := x.client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
