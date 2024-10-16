@@ -95,9 +95,9 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 
 	metrics := make([]Metric, pinotlib.GetRowCount(results))
 	for rowIdx := 0; rowIdx < pinotlib.GetRowCount(results); rowIdx++ {
-		labelsList := make([]MetricLabel, len(dimensions))
+		labels := make([]MetricLabel, len(dimensions))
 		for i, name := range dimensionNames {
-			labelsList[i] = MetricLabel{
+			labels[i] = MetricLabel{
 				name:  name,
 				value: dimensions[name][rowIdx],
 			}
@@ -106,7 +106,7 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 		metrics[rowIdx] = Metric{
 			Timestamp: timeCol[rowIdx],
 			Value:     metCol[rowIdx],
-			Labels:    labelsList,
+			Labels:    labels,
 		}
 	}
 
@@ -122,7 +122,7 @@ func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSe
 	}
 
 	timeSeriesMap := make(map[int]MetricSeries)
-	formatter := NewLegendFormatter()
+	var formatter LegendFormatter
 	var seriesMapper SeriesMapper
 
 	for _, met := range metrics {
@@ -229,10 +229,6 @@ func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
 
 type LegendFormatter struct {
 	regexpCache map[string]*regexp.Regexp
-}
-
-func NewLegendFormatter() *LegendFormatter {
-	return new(LegendFormatter)
 }
 
 func (f *LegendFormatter) getRegexpFromCache(key string) *regexp.Regexp {

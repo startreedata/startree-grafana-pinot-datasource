@@ -75,7 +75,7 @@ func (p *PromQlDriver) decorateFrame(frame *data.Frame) {
 	}
 	frame.Fields[0].Config = &data.FieldConfig{Interval: float64(p.params.IntervalSize.Milliseconds())}
 
-	formatter := NewLegendFormatter()
+	var formatter LegendFormatter
 	for i := 1; i < len(frame.Fields); i++ {
 		name := formatter.FormatSeriesName(p.params.Legend, frame.Fields[i].Labels)
 		frame.Fields[i].SetConfig(&data.FieldConfig{DisplayNameFromDS: name})

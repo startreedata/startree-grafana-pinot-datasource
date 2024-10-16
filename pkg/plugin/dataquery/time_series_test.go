@@ -6,10 +6,6 @@ import (
 	"testing"
 )
 
-func TestExtractTimeSeriesMetrics(t *testing.T) {
-
-}
-
 func TestFormatSeriesName(t *testing.T) {
 	type Args struct {
 		defaultName string
@@ -46,7 +42,7 @@ func TestFormatSeriesName(t *testing.T) {
 		},
 	}
 
-	formatter := NewLegendFormatter()
+	var formatter LegendFormatter
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			got := formatter.FormatSeriesName(tt.args.legend, tt.args.labels)
