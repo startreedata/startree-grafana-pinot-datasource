@@ -26,10 +26,15 @@ type Metric struct {
 	Labels    []MetricLabel
 }
 
+type MetricLabel struct {
+	name  string
+	value string
+}
+
 type MetricSeries struct {
-	Name   string
-	Values []*float64
-	Labels map[string]string
+	name   string
+	values []*float64
+	labels map[string]string
 }
 
 func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinotlib.ResultTable) (*data.Frame, error) {
@@ -40,25 +45,20 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 
 	timeCol, metricSeries := PivotToTimeSeries(metrics, params.Legend)
 	slices.SortFunc(metricSeries, func(a, b MetricSeries) int {
-		return strings.Compare(a.Name, b.Name)
+		return strings.Compare(a.name, b.name)
 	})
 
 	fields := make([]*data.Field, 0, len(metricSeries)+1)
 	for _, series := range metricSeries {
-		field := data.NewField(params.MetricName, series.Labels, series.Values)
+		field := data.NewField(params.MetricName, series.labels, series.values)
 		field.SetConfig(&data.FieldConfig{
-			DisplayNameFromDS: series.Name,
+			DisplayNameFromDS: series.name,
 		})
 		fields = append(fields, field)
 	}
 	fields = append(fields, data.NewField("time", nil, timeCol))
 
 	return data.NewFrame("response", fields...), nil
-}
-
-type MetricLabel struct {
-	name  string
-	value string
 }
 
 func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
@@ -133,14 +133,14 @@ func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSe
 				labels[label.name] = label.value
 			}
 			timeSeriesMap[tsKey] = MetricSeries{
-				Name:   formatter.FormatSeriesName(legend, labels),
-				Values: make([]*float64, len(timeCol)),
-				Labels: labels,
+				name:   formatter.FormatSeriesName(legend, labels),
+				values: make([]*float64, len(timeCol)),
+				labels: labels,
 			}
 		}
 		colIdx := timestampToIdx[met.Timestamp]
 		value := met.Value
-		timeSeriesMap[tsKey].Values[colIdx] = &value
+		timeSeriesMap[tsKey].values[colIdx] = &value
 	}
 
 	metricSeries := make([]MetricSeries, 0, len(timeSeriesMap))
