@@ -195,6 +195,6 @@ function useSqlPreview(
 
   useEffect(() => {
     previewSqlBuilder(datasource, previewRequest).then((val) => val && setSqlPreview(val));
-  }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [datasource, query.queryType, query.editorMode, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return sqlPreview;
 }
