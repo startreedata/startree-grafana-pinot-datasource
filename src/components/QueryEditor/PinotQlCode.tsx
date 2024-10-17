@@ -89,7 +89,10 @@ function useSqlPreview(
   const interpolated = interpolateVariables(query, scopedVars);
   const previewRequest: PreviewSqlCodeRequest = {
     intervalSize: intervalSize,
-    timeRange: timeRange,
+    timeRange: {
+      to: timeRange.to?.endOf('second'),
+      from: timeRange.from?.startOf('second'),
+    },
     tableName: interpolated.tableName,
     timeColumnAlias: interpolated.timeColumnAlias,
     timeColumnFormat: interpolated.timeColumnFormat,

@@ -176,7 +176,10 @@ function useSqlPreview(
   const interpolated = interpolateVariables(query, scopedVars);
   const previewRequest: PreviewSqlBuilderRequest = {
     intervalSize: intervalSize,
-    timeRange: timeRange,
+    timeRange: {
+      to: timeRange.to?.endOf('second'),
+      from: timeRange.from?.startOf('second'),
+    },
     expandMacros: true,
     aggregationFunction: interpolated.aggregationFunction,
     groupByColumns: interpolated.groupByColumns,
