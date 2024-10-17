@@ -89,7 +89,10 @@ function useSqlPreview(
   const interpolated = interpolateVariables(query, scopedVars);
   const previewRequest: PreviewSqlCodeRequest = {
     intervalSize: intervalSize,
-    timeRange: timeRange,
+    timeRange: {
+      to: timeRange.to?.endOf('second'),
+      from: timeRange.from?.startOf('second'),
+    },
     tableName: interpolated.tableName,
     timeColumnAlias: interpolated.timeColumnAlias,
     timeColumnFormat: interpolated.timeColumnFormat,
@@ -99,7 +102,7 @@ function useSqlPreview(
 
   useEffect(() => {
     previewSqlCode(datasource, previewRequest).then((val) => val && setSqlPreview(val));
-  }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [datasource, query.queryType, query.editorMode, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return sqlPreview;
 }
