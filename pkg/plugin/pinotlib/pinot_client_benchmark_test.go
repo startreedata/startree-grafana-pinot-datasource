@@ -9,7 +9,8 @@ import (
 
 // This benchmark compares the Pinot SDK ExecuteSql() method to the simplified query handler used by this plugin.
 
-const sql = `SELECT
+func BenchmarkPinotQuery(b *testing.B) {
+	const sql = `SELECT
     "pattern",
     "fabric",
     DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '1:MINUTES') AS "time",
@@ -26,7 +27,6 @@ ORDER BY
     "time" DESC
 LIMIT 1000000000;`
 
-func BenchmarkPinotQuery(b *testing.B) {
 	const tableName = "benchmark"
 
 	sdkClient, err := pinot.NewWithConfig(&pinot.ClientConfig{
