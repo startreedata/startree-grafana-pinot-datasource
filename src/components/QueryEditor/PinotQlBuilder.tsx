@@ -176,7 +176,10 @@ function useSqlPreview(
   const interpolated = interpolateVariables(query, scopedVars);
   const previewRequest: PreviewSqlBuilderRequest = {
     intervalSize: intervalSize,
-    timeRange: timeRange,
+    timeRange: {
+      to: timeRange.to?.endOf('second'),
+      from: timeRange.from?.startOf('second'),
+    },
     expandMacros: true,
     aggregationFunction: interpolated.aggregationFunction,
     groupByColumns: interpolated.groupByColumns,
@@ -192,6 +195,6 @@ function useSqlPreview(
 
   useEffect(() => {
     previewSqlBuilder(datasource, previewRequest).then((val) => val && setSqlPreview(val));
-  }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [datasource, query.queryType, query.editorMode, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return sqlPreview;
 }
