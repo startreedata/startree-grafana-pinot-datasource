@@ -71,17 +71,17 @@ func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) backend.Da
 		return NewDataInternalErrorResponse(err)
 	}
 
-	resp, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sqlCode)
+	resp, err := d.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sqlCode))
 	if err != nil {
 		return NewDataInternalErrorResponse(err)
 	}
 
 	result := resp.ResultTable
-	values := make([]string, result.GetRowCount()*result.GetColumnCount())
-	for colId := 0; colId < result.GetColumnCount(); colId++ {
+	values := make([]string, pinotlib.GetRowCount(result)*pinotlib.GetColumnCount(result))
+	for colId := 0; colId < pinotlib.GetColumnCount(result); colId++ {
 		for rowId, val := range pinotlib.ExtractStringColumn(result, colId) {
 			// Extract values in table order.
-			values[rowId*result.GetColumnCount()+colId] = val
+			values[rowId*pinotlib.GetColumnCount(result)+colId] = val
 		}
 	}
 	values = pinotlib.GetDistinctValues(values)
@@ -102,7 +102,7 @@ func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backen
 		return NewDataInternalErrorResponse(err)
 	}
 
-	result, err := d.params.PinotClient.ExecuteSQL(ctx, d.params.TableName, sql)
+	result, err := d.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
 	if err != nil {
 		return NewDataInternalErrorResponse(err)
 	}

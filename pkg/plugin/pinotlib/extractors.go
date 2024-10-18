@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"math"
 	"strconv"
@@ -12,7 +11,22 @@ import (
 	"time"
 )
 
-func GetColumnIdx(resultTable *pinot.ResultTable, colName string) (int, error) {
+func GetRowCount(resultTable *ResultTable) int {
+	return len(resultTable.Rows)
+}
+
+func GetColumnCount(resultTable *ResultTable) int {
+	return len(resultTable.DataSchema.ColumnNames)
+}
+
+func GetColumnName(resultTable *ResultTable, colIdx int) (string, error) {
+	if colIdx > len(resultTable.DataSchema.ColumnNames) {
+		return "", fmt.Errorf("column index %d out of range", colIdx)
+	}
+	return resultTable.DataSchema.ColumnNames[colIdx], nil
+}
+
+func GetColumnIdx(resultTable *ResultTable, colName string) (int, error) {
 	for idx := range resultTable.DataSchema.ColumnNames {
 		if resultTable.DataSchema.ColumnNames[idx] == colName {
 			return idx, nil
@@ -30,29 +44,35 @@ func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, er
 	return "", fmt.Errorf("column `%s` is not a date time column", timeColumn)
 }
 
-func ExtractColumnToField(results *pinot.ResultTable, colIdx int) *data.Field {
+func ExtractColumnToField(results *ResultTable, colIdx int) *data.Field {
 	colName := results.DataSchema.ColumnNames[colIdx]
 	return data.NewField(colName, nil, ExtractColumn(results, colIdx))
 }
 
 // ExtractColumn extracts a column from the table.
 // The column data type is mapped to the corresponding golang type.
-func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
+func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	// TODO: Handle TIMESTAMP data type.
 	switch colDataType {
 	case DataTypeBoolean:
-		return extractTypedColumn[bool](results, colIdx, func(rowIdx, colIdx int) bool {
-			return (results.Get(rowIdx, colIdx)).(bool)
+		return extractTypedColumn[bool](results, func(rowIdx int) (bool, error) {
+			return (results.Rows[rowIdx][colIdx]).(bool), nil
 		})
 	case DataTypeInt, DataTypeLong:
-		return extractTypedColumn[int64](results, colIdx, results.GetLong)
+		return extractTypedColumn[int64](results, func(rowIdx int) (int64, error) {
+			return (results.Rows[rowIdx][colIdx]).(json.Number).Int64()
+		})
 	case DataTypeFloat, DataTypeDouble:
-		return extractTypedColumn[float64](results, colIdx, results.GetDouble)
+		return extractTypedColumn[float64](results, func(rowIdx int) (float64, error) {
+			return (results.Rows[rowIdx][colIdx]).(json.Number).Float64()
+		})
 	case DataTypeString, DataTypeJson, DataTypeBytes:
-		return extractTypedColumn[string](results, colIdx, results.GetString)
+		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+			return (results.Rows[rowIdx][colIdx]).(string), nil
+		})
 	case DataTypeTimestamp:
-		return extractTypedColumn[time.Time](results, colIdx, func(rowIdx, colIdx int) time.Time {
+		return extractTypedColumn[time.Time](results, func(rowIdx int) (time.Time, error) {
 			var (
 				year   int
 				month  time.Month
@@ -61,36 +81,44 @@ func ExtractColumn(results *pinot.ResultTable, colIdx int) interface{} {
 				minute int
 				second float64
 			)
-			_, _ = fmt.Sscanf(results.GetString(rowIdx, colIdx), "%d-%d-%d %d:%d:%f", &year, &month, &day, &hour, &minute, &second)
+			_, err := fmt.Sscanf((results.Rows[rowIdx][colIdx]).(string), "%d-%d-%d %d:%d:%f", &year, &month, &day, &hour, &minute, &second)
 			_, fractional := math.Modf(second)
-			return time.Date(year, month, day, hour, minute, int(second), int(fractional*float64(time.Second)), time.UTC)
+			return time.Date(year, month, day, hour, minute, int(second), int(fractional*float64(time.Second)), time.UTC), err
 		})
 	default:
 		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
-		return make([]int64, results.GetRowCount())
+		return make([]int64, len(results.Rows))
 	}
 }
 
-func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *pinot.ResultTable, colIdx int, getter func(rowIdx, colIdx int) V) []V {
-	values := make([]V, results.GetRowCount())
-	for rowIdx := 0; rowIdx < results.GetRowCount(); rowIdx++ {
-		values[rowIdx] = getter(rowIdx, colIdx)
+func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
+	values := make([]V, len(results.Rows))
+	hasError := false
+	for rowIdx := 0; rowIdx < len(results.Rows); rowIdx++ {
+		val, err := getter(rowIdx)
+		values[rowIdx] = val
+
+		// Only log the first error.
+		if err != nil && !hasError {
+			logger.Logger.Error("failed to parse column: " + err.Error())
+			hasError = true
+		}
 	}
 	return values
 }
 
-func ExtractLongColumn(results *pinot.ResultTable, colIdx int) []int64 {
+func ExtractLongColumn(results *ResultTable, colIdx int) []int64 {
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
 	case []int64:
 		return rawVals
 	case []float64:
-		vals := make([]int64, results.GetRowCount())
+		vals := make([]int64, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = int64(rawVals[i])
 		}
 		return vals
 	case []bool:
-		vals := make([]int64, results.GetRowCount())
+		vals := make([]int64, len(results.Rows))
 		for i := range rawVals {
 			if rawVals[i] {
 				vals[i] = 1
@@ -98,14 +126,14 @@ func ExtractLongColumn(results *pinot.ResultTable, colIdx int) []int64 {
 		}
 		return vals
 	default:
-		return make([]int64, results.GetRowCount())
+		return make([]int64, len(results.Rows))
 	}
 }
 
-func ExtractDoubleColumn(results *pinot.ResultTable, colIdx int) []float64 {
+func ExtractDoubleColumn(results *ResultTable, colIdx int) []float64 {
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
 	case []int64:
-		vals := make([]float64, results.GetRowCount())
+		vals := make([]float64, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = float64(rawVals[i])
 		}
@@ -113,7 +141,7 @@ func ExtractDoubleColumn(results *pinot.ResultTable, colIdx int) []float64 {
 	case []float64:
 		return rawVals
 	case []bool:
-		vals := make([]float64, results.GetRowCount())
+		vals := make([]float64, len(results.Rows))
 		for i := range rawVals {
 			if rawVals[i] {
 				vals[i] = 1
@@ -121,20 +149,20 @@ func ExtractDoubleColumn(results *pinot.ResultTable, colIdx int) []float64 {
 		}
 		return vals
 	default:
-		return make([]float64, results.GetRowCount())
+		return make([]float64, len(results.Rows))
 	}
 }
 
-func ExtractBooleanColumn(results *pinot.ResultTable, colIdx int) []bool {
+func ExtractBooleanColumn(results *ResultTable, colIdx int) []bool {
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
 	case []int64:
-		vals := make([]bool, results.GetRowCount())
+		vals := make([]bool, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = rawVals[i] != 0
 		}
 		return vals
 	case []float64:
-		vals := make([]bool, results.GetRowCount())
+		vals := make([]bool, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = rawVals[i] != 0
 		}
@@ -142,32 +170,32 @@ func ExtractBooleanColumn(results *pinot.ResultTable, colIdx int) []bool {
 	case []bool:
 		return rawVals
 	case []string:
-		vals := make([]bool, results.GetRowCount())
+		vals := make([]bool, len(results.Rows))
 		for i := range rawVals {
 			vals[i], _ = strconv.ParseBool(rawVals[i])
 		}
 		return vals
 	default:
-		return make([]bool, results.GetRowCount())
+		return make([]bool, len(results.Rows))
 	}
 }
 
-func ExtractStringColumn(results *pinot.ResultTable, colIdx int) []string {
+func ExtractStringColumn(results *ResultTable, colIdx int) []string {
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
 	case []int64:
-		vals := make([]string, results.GetRowCount())
+		vals := make([]string, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = fmt.Sprintf("%d", rawVals[i])
 		}
 		return vals
 	case []float64:
-		vals := make([]string, results.GetRowCount())
+		vals := make([]string, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = fmt.Sprintf("%v", rawVals[i])
 		}
 		return vals
 	case []bool:
-		vals := make([]string, results.GetRowCount())
+		vals := make([]string, len(results.Rows))
 		for i := range rawVals {
 			vals[i] = fmt.Sprintf("%v", rawVals[i])
 		}
@@ -175,12 +203,12 @@ func ExtractStringColumn(results *pinot.ResultTable, colIdx int) []string {
 	case []string:
 		return rawVals
 	default:
-		return make([]string, results.GetRowCount())
+		return make([]string, len(results.Rows))
 	}
 }
 
-func ExtractJsonColumn[V any](results *pinot.ResultTable, colIdx int) ([]V, error) {
-	values := make([]V, results.GetRowCount())
+func ExtractJsonColumn[V any](results *ResultTable, colIdx int) ([]V, error) {
+	values := make([]V, len(results.Rows))
 	for i, jsonStr := range ExtractStringColumn(results, colIdx) {
 		if err := json.Unmarshal([]byte(jsonStr), &values[i]); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal json at row %d, column %d: %v", i, colIdx, err)
@@ -191,8 +219,8 @@ func ExtractJsonColumn[V any](results *pinot.ResultTable, colIdx int) ([]V, erro
 
 // ExtractColumnExpr extracts the column as a slice of sql expressions representing the column value.
 // Strings will be single-quoted. Numbers and booleans are unquoted.
-func ExtractColumnExpr(results *pinot.ResultTable, colIdx int) []string {
-	exprs := make([]string, results.GetRowCount())
+func ExtractColumnExpr(results *ResultTable, colIdx int) []string {
+	exprs := make([]string, len(results.Rows))
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
 	case []int64:
 		for i := range rawVals {
@@ -214,11 +242,7 @@ func ExtractColumnExpr(results *pinot.ResultTable, colIdx int) []string {
 	return exprs
 }
 
-//func ExtractTimestampColumn(results *pinot.ResultTable, colIdx int) []string {
-//
-//}
-
-func ExtractTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
+func ExtractTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
 	if IsSimpleTimeColumnFormat(timeColumnFormat) {
 		return ExtractSimpleDateTimeColumn(results, colIdx, timeColumnFormat)
 	} else {
@@ -226,14 +250,14 @@ func ExtractTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFormat 
 	}
 }
 
-func ExtractSimpleDateTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
+func ExtractSimpleDateTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
 	simpleDateTimeFormat, ok := SimpleDateTimeFormatFor(timeColumnFormat)
 	if !ok {
 		return nil, fmt.Errorf("invalid time column format: %s", timeColumnFormat)
 	}
 
-	values := make([]time.Time, results.GetRowCount())
-	for i, val := range extractTypedColumn[string](results, colIdx, results.GetString) {
+	values := make([]time.Time, len(results.Rows))
+	for i, val := range ExtractStringColumn(results, colIdx) {
 		ts, err := time.Parse(simpleDateTimeFormat, val)
 		if err != nil {
 			return nil, err
@@ -260,14 +284,14 @@ func SimpleDateTimeFormatFor(timeColumnFormat string) (string, bool) {
 	return sdfPattern, true
 }
 
-func ExtractLongTimeColumn(results *pinot.ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
+func ExtractLongTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
 	timeConverter, ok := getLongTimeConverter(timeColumnFormat)
 	if !ok {
 		return nil, fmt.Errorf("invalid time column format: %s", timeColumnFormat)
 	}
-	values := make([]time.Time, results.GetRowCount())
+	values := make([]time.Time, len(results.Rows))
 	for i, val := range ExtractLongColumn(results, colIdx) {
-		values[i] = timeConverter(int64(val))
+		values[i] = timeConverter(val)
 	}
 	return values, nil
 }

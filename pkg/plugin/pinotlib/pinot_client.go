@@ -96,24 +96,6 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }
 
-func (p *PinotClient) ExecuteSQL(ctx context.Context, table string, query string) (*pinot.BrokerResponse, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
-	logger.Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query))
-	res, err := p.brokerConn.ExecuteSQL(table, query)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(res.Exceptions) > 0 {
-		return nil, fmt.Errorf(res.Exceptions[0].Message)
-	}
-
-	return res, nil
-}
-
 func (p *PinotClient) newRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {

@@ -25,6 +25,25 @@ type TimeSeriesRangeQuery struct {
 	TableName string
 }
 
+func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
+	req, err := p.newRequest(ctx, http.MethodHead, p.properties.BrokerUrl+TimeSeriesEndpoint+"/query_range", nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := p.doRequest(req)
+	if err != nil {
+		return false, err
+	}
+	defer p.closeResponseBody(resp)
+
+	return resp.StatusCode != http.StatusNotFound, nil
+}
+
 func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*http.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -131,7 +150,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 		return nil, err
 	}
 
-	resp, err := p.ExecuteSQL(ctx, query.TableName, sql)
+	resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
 	metrics := ExtractStringColumn(resp.ResultTable, 0)
 	return metrics, nil
 }
@@ -227,7 +246,7 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 			return nil, err
 		}
 
-		resp, err := p.ExecuteSQL(ctx, tableName, sql)
+		resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
 		if err != nil {
 			return nil, err
 		}

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"time"
 )
@@ -75,7 +74,7 @@ func (p *PinotQlCodeDriver) Execute(ctx context.Context) backend.DataResponse {
 		return NewDataInternalErrorResponse(err)
 	}
 
-	resp, err := p.params.PinotClient.ExecuteSQL(ctx, p.params.TableName, sql)
+	resp, err := p.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
 	if err != nil {
 		return NewDataInternalErrorResponse(err)
 	}
@@ -96,7 +95,7 @@ func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {
 	return rendered, nil
 }
 
-func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlCodeDriver) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
 	switch p.params.DisplayType {
 	case DisplayTypeTable:
 		return p.ExtractTableResults(results)
@@ -107,7 +106,7 @@ func (p *PinotQlCodeDriver) ExtractResults(results *pinot.ResultTable) (*data.Fr
 	}
 }
 
-func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinotlib.ResultTable) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
 		MetricName:        p.params.MetricColumnAlias,
 		Legend:            p.params.Legend,
@@ -117,7 +116,7 @@ func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinot.ResultTable)
 	}, results)
 }
 
-func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlCodeDriver) ExtractTableResults(results *pinotlib.ResultTable) (*data.Frame, error) {
 	frame := data.NewFrame("response")
 
 	timeIdx, timeCol := p.extractTableTime(results)
@@ -125,7 +124,7 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*da
 		frame.Fields = append(frame.Fields, timeCol)
 	}
 
-	for colId := 0; colId < results.GetColumnCount(); colId++ {
+	for colId := 0; colId < pinotlib.GetColumnCount(results); colId++ {
 		if colId == timeIdx {
 			continue
 		}
@@ -134,7 +133,7 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinot.ResultTable) (*da
 	return frame, nil
 }
 
-func (p *PinotQlCodeDriver) extractTableTime(results *pinot.ResultTable) (int, *data.Field) {
+func (p *PinotQlCodeDriver) extractTableTime(results *pinotlib.ResultTable) (int, *data.Field) {
 	timeIdx, err := pinotlib.GetColumnIdx(results, p.params.TimeColumnAlias)
 	if err != nil {
 		return -1, nil

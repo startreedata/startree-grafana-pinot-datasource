@@ -317,21 +317,22 @@ describe('Create a Panel with Pinot Code Editor', () => {
       });
 
     /**
-     * Check SQL Preview
+     * Check SQL preview
      */
     cy.getBySel('sql-preview-container')
       .should('exist')
       .within(() => {
         cy.getBySel('inline-form-label').should('exist').and('have.text', 'Sql Preview');
 
-        cy.getBySel('sql-preview')
-          .should('exist')
-          .and('not.be.empty')
-          .as('sqlPreview')
-          .within(() => {
-            // Check the Copy button and click
-            cy.getBySel('copy-query-btn').should('exist').click();
-          });
+        cy.getBySel('sql-preview').as('sqlPreview').should('exist').and('not.be.empty');
+
+        // Check the limit should be equal to changed limit from form data
+        cy.get('@sqlPreview').should('contain.text', 'LIMIT 1000');
+
+        // Check the copy button in SQL Preview
+        cy.get('@sqlPreview').within(() => {
+          cy.getBySel('copy-query-btn').should('exist').click();
+        });
 
         // Check if the clipboard has the query copied
         cy.get('@sqlPreview')
