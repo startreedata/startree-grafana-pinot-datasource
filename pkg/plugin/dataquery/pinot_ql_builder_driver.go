@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
@@ -87,7 +86,7 @@ func (p *PinotQlBuilderDriver) Execute(ctx context.Context) backend.DataResponse
 		return NewDataInternalErrorResponse(err)
 	}
 
-	resp, err := p.params.PinotClient.ExecuteSQL(ctx, p.params.TableName, sql)
+	resp, err := p.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
 	if err != nil {
 		return NewDataInternalErrorResponse(err)
 	}
@@ -130,7 +129,7 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 	}
 }
 
-func (p *PinotQlBuilderDriver) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
+func (p *PinotQlBuilderDriver) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
 		MetricName:        p.resolveMetricName(),
 		Legend:            p.params.Legend,
