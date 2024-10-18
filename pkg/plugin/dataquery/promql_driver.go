@@ -9,7 +9,6 @@ import (
 	"github.com/grafana/grafana/pkg/promlib/converter"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -61,12 +60,7 @@ func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 		return NewDataInternalErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
 	}
 
-	var buf bytes.Buffer
-	io.Copy(&buf, queryResponse.Body)
-
-	fmt.Println(buf.String())
-
-	iter := jsoniter.Parse(jsoniter.ConfigDefault, &buf, 1024)
+	iter := jsoniter.Parse(jsoniter.ConfigDefault, queryResponse.Body, 1024)
 	dataResponse := converter.ReadPrometheusStyleResult(iter, converter.Options{})
 
 	for _, frame := range dataResponse.Frames {
@@ -81,8 +75,9 @@ func (p *PromQlDriver) decorateFrame(frame *data.Frame) {
 	}
 	frame.Fields[0].Config = &data.FieldConfig{Interval: float64(p.params.IntervalSize.Milliseconds())}
 
+	var formatter LegendFormatter
 	for i := 1; i < len(frame.Fields); i++ {
-		name := FormatSeriesName(p.params.Legend, frame.Fields[i].Labels)
+		name := formatter.FormatSeriesName(p.params.Legend, frame.Fields[i].Labels)
 		frame.Fields[i].SetConfig(&data.FieldConfig{DisplayNameFromDS: name})
 	}
 }

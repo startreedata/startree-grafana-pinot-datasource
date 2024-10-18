@@ -60,7 +60,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       table: 'complex_website',
       timeColumn: 'hoursSinceEpoch',
       granularity: null,
-      metricColumn: 'views',
+      metricColumn: 'clicks',
       aggregation: 'SUM',
       groupBy: ['country'],
       orderBy: [],
@@ -383,8 +383,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
-            if (formData.granularity) {
-              cy.contains(formData.granularity).click();
+            if (formData.aggregation) {
+              cy.contains(formData.aggregation).click();
 
               cy.wait(['@dsQuery', '@previewSqlBuilder']);
             } else {
@@ -394,9 +394,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
           });
 
         // Check if correct option is selected
-        if (formData.granularity) {
-          cy.get('@granularitySelect').within(() => {
-            cy.contains(formData.granularity);
+        if (formData.aggregation) {
+          cy.get('@aggregationSelect').within(() => {
+            cy.contains(formData.aggregation);
           });
         }
       });
@@ -567,7 +567,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
         cy.getBySel('add-filter-btn').should('exist').as('addFilterBtn').click();
         cy.wait(['@dsQuery', '@previewSqlBuilder']);
 
-        // -- Check filter row --
+        /**
+         * Check filter row and default options
+         */
         cy.getBySel('filter-row')
           .should('exist')
           .within(() => {
@@ -663,7 +665,80 @@ describe('Create a Panel with Pinot Query Builder', () => {
         // Check filter row should not exits after deleting the row
         cy.getBySel('filter-row').should('not.exist');
 
-        // -- Add the form data if any --
+        /**
+         * Check View filter and it's options
+         */
+        cy.get('@addFilterBtn').click();
+        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+        cy.getBySel('filter-row').within(() => {
+          // -- Check select column --
+          cy.get('#column-select').within(() => {
+            cy.get('input').parent().parent().click();
+
+            cy.get('@body')
+              .find('[aria-label="Select options menu"]')
+              .should('be.visible')
+              .within(() => {
+                // Select View column filter
+                cy.contains('views').click();
+                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              });
+          });
+
+          // -- Check query segment operator select --
+          cy.get('#query-segment-operator-select').within(() => {
+            cy.get('input')
+              .parent()
+              .parent()
+              .within(() => {
+                cy.contains('=');
+              })
+              .click();
+
+            cy.get('@body')
+              .find('[aria-label="Select options menu"]')
+              .should('be.visible')
+              .within(() => {
+                // Select equals operator
+                cy.contains('=').click();
+                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              });
+          });
+
+          // -- Check value select --
+          cy.get('#value-select').within(() => {
+            cy.get('input').parent().parent().click();
+
+            cy.wait('@queryDistinctValues').then(({ response }) => {
+              const data = response.body as { code: number; valueExprs: string[] };
+
+              cy.get('@body')
+                .find('[aria-label="Select options menu"]')
+                .should('be.visible')
+                .within(() => {
+                  // Check the available options
+                  data.valueExprs.forEach((valueExpr) => {
+                    cy.contains(valueExpr);
+                  });
+
+                  // Check the options length should not exceed 100
+                  cy.wrap(data.valueExprs).should('have.length', 100);
+
+                  // Close select menu
+                  cy.get('@body').click(0, 0);
+                });
+            });
+          });
+
+          // -- Check filter delete button --
+          cy.getBySel('delete-filter-btn').click();
+          cy.wait(['@dsQuery', '@previewSqlBuilder']);
+        });
+
+        /**
+         * Add the form data if any
+         */
         if (formData.filters && formData.filters.length > 0) {
           formData.filters.forEach((filterOption) => {
             // Add filter row
@@ -728,7 +803,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
                   cy.wait('@queryDistinctValues').then(({ response }) => {
                     const data = response.body as { code: number; valueExprs: string[] };
-                    cy.log('data: ', data);
 
                     cy.get('@body')
                       .find('[aria-label="Select options menu"]')
@@ -871,21 +945,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     /**
-     * Check and fill Limit field
-     */
-    cy.getBySel('input-limit')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
-
-        cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto').as('limitInput');
-
-        if (formData.limit != null) {
-          cy.get('@limitInput').type(formData.limit.toString());
-        }
-      });
-
-    /**
      * Check Sql Preview Container
      */
     cy.getBySel('sql-preview-container')
@@ -893,14 +952,16 @@ describe('Create a Panel with Pinot Query Builder', () => {
       .within(() => {
         cy.getBySel('inline-form-label').should('exist').and('have.text', 'Sql Preview');
 
-        cy.getBySel('sql-preview')
-          .should('exist')
-          .and('not.be.empty')
-          .as('sqlPreview')
-          .within(() => {
-            // Check the Copy button and click
-            cy.getBySel('copy-query-btn').should('exist').click();
-          });
+        cy.getBySel('sql-preview').should('exist').as('sqlPreview').and('not.be.empty');
+
+        // Check the default limit should be 100000
+        cy.get('@sqlPreview').should('contain.text', '100000');
+
+        // Check the copy button in SQL Preview
+        cy.get('@sqlPreview').within(() => {
+          // Check the Copy button and click
+          cy.getBySel('copy-query-btn').should('exist').click();
+        });
 
         // Check if the clipboard has the query copied
         cy.get('@sqlPreview')
@@ -912,6 +973,38 @@ describe('Create a Panel with Pinot Query Builder', () => {
             });
           });
       });
+
+    /**
+     * Check Limit field
+     */
+    cy.getBySel('input-limit')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
+
+        cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto').as('limitInput');
+      });
+
+    /**
+     * Change the limit and check if it's update in SQL Preview
+     */
+    cy.get('@limitInput').clear().type('1000');
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+    cy.get('@sqlPreview').should('contain.text', '1000');
+
+    /**
+     * Clear the limit input and check for default limit value in SQL Preview
+     */
+    cy.get('@limitInput').clear();
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+    cy.get('@sqlPreview').should('contain.text', '100000');
+
+    /**
+     * Fill the limit input from form data
+     */
+    if (formData.limit != null) {
+      cy.get('@limitInput').clear().type(formData.limit.toString());
+    }
 
     /**
      * Check and fill Metric Legend field
@@ -1213,8 +1306,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .should('be.visible')
           .within(() => {
             // Select the option
-            if (formData.granularity) {
-              cy.contains(formData.granularity).click();
+            if (formData.aggregation) {
+              cy.contains(formData.aggregation).click();
 
               cy.wait(['@dsQuery']);
             } else {
@@ -1224,9 +1317,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
           });
 
         // Check if correct option is selected
-        if (formData.granularity) {
-          cy.get('@granularitySelect').within(() => {
-            cy.contains(formData.granularity);
+        if (formData.aggregation) {
+          cy.get('@aggregationSelect').within(() => {
+            cy.contains(formData.aggregation);
           });
         }
       });
@@ -1808,8 +1901,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .should('be.visible')
           .within(() => {
             // Select the option
-            if (formData.granularity) {
-              cy.contains(formData.granularity).click();
+            if (formData.aggregation) {
+              cy.contains(formData.aggregation).click();
 
               cy.wait(['@dsQuery', '@previewSqlBuilder']);
             } else {
@@ -1819,9 +1912,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
           });
 
         // Check if correct option is selected
-        if (formData.granularity) {
-          cy.get('@granularitySelect').within(() => {
-            cy.contains(formData.granularity);
+        if (formData.aggregation) {
+          cy.get('@aggregationSelect').within(() => {
+            cy.contains(formData.aggregation);
           });
         }
       });
@@ -2408,6 +2501,268 @@ describe('Create a Panel with Pinot Query Builder', () => {
     // Check the UPlot chart
     cy.get('.panel-content').should('not.contain', 'No data');
     cy.getBySel('uplot-main-div').should('exist');
+
+    /**
+     * Discard the Panel and go back
+     */
+    cy.get('button[aria-label="Undo all changes"]').should('exist').click();
+    cy.location('search').should('not.contain', 'editPanel');
+
+    /**
+     * Delete the newly created data source for the panel
+     */
+    cy.get('@newlyCreatedDatasource').then((data: unknown) => {
+      const datasourceUid = (data as any).uid;
+      deletePinotDatasource(ctx, datasourceUid);
+    });
+  });
+
+  it('Time series should render with every individual aggregation option', () => {
+    /**
+     * All Intercepts
+     */
+    cy.intercept('GET', '/api/datasources').as('getDatasources');
+    cy.intercept('GET', '/api/plugins?embedded=0').as('pluginsEmbedded');
+    cy.intercept('GET', '/api/plugins/errors').as('pluginsErrors');
+    cy.intercept('GET', '/api/gnet/plugins').as('gnetPlugins');
+    cy.intercept('GET', '/api/plugins?enabled=1&type=datasource').as('pluginsTypeDatasource');
+    cy.intercept('POST', '/api/datasources', (req) => {
+      req.continue((res) => (ctx.newlyCreatedDatasourceUid = res.body.datasource.uid));
+    }).as('postDatasources');
+    cy.intercept('GET', '/api/frontend/settings').as('frontendSettings');
+    cy.intercept('GET', '/api/plugins/startree-pinot-datasource/settings').as('pluginsSettings');
+    cy.intercept('GET', '/api/access-control/user/permissions?reloadcache=true').as('userPermissions');
+    cy.intercept('PUT', '/api/datasources/uid/*').as('datasourcesUid');
+    cy.intercept('GET', '/api/datasources/uid/*?accesscontrol=true').as('datasourcesUidAccessControl');
+    cy.intercept('GET', '/api/datasources/*/health').as('datasourcesHealth');
+    cy.intercept('GET', '/api/datasources/*/resources/tables', (req) => {
+      req.continue((res) => (ctx.apiResponse.resourcesTables = res.body));
+    }).as('resourcesTables');
+    cy.intercept('DELETE', '/api/datasources/uid/*').as('deleteDatasource');
+    cy.intercept('GET', '/api/dashboards/home').as('dashboardsHome');
+    cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
+    cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
+    cy.intercept('POST', '/api/ds/query').as('dsQuery');
+    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
+      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
+    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
+    cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
+
+    const formData = {
+      table: 'complex_website',
+      timeColumn: 'hoursSinceEpoch',
+      metricColumn: 'views',
+    };
+
+    /**
+     * Create new Pinot Datasource for testing create panel flow
+     */
+    createPinotDatasource(ctx).then((data) => {
+      cy.wrap({
+        name: data.name,
+        uid: ctx.newlyCreatedDatasourceUid,
+      }).as('newlyCreatedDatasource');
+    });
+
+    /**
+     * Visit Dashboard page and initialize
+     */
+    cy.visit('/');
+    cy.wait('@dashboardsHome');
+
+    /**
+     * Check and Add Panel
+     */
+    cy.get('[aria-label="Add panel"]').should('be.visible').click();
+    cy.get('button').contains('Add a new panel').should('be.visible').click();
+    cy.location('search').should('contain', 'editPanel');
+
+    cy.wait(['@apiV1Rules', '@apiV1RulesSubtypeCortex', '@dsQuery', '@resourcesTables']);
+
+    /**
+     * Change Panel Title
+     */
+    cy.get('input#PanelFrameTitle').should('exist').clear().type(ctx.panelTitle);
+
+    /**
+     * Change the Time Range
+     */
+    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
+    cy.get('#TimePickerContent')
+      .should('be.visible')
+      .within(() => {
+        cy.contains('Last 6 months').parent().click();
+      });
+
+    /**
+     * Check and select Data source
+     */
+    cy.get('@newlyCreatedDatasource').then((data: unknown) => {
+      const pinotDatasourceName: string = (data as any).name;
+
+      cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
+      cy.get('#react-select-6-listbox')
+        .should('be.visible')
+        .within(() => {
+          cy.contains(pinotDatasourceName).click();
+        });
+
+      // Check the selected data source
+      cy.get('@dataSourcePicker').should('contain.text', pinotDatasourceName);
+    });
+
+    /**
+     * Check and Select Editor Mode
+     */
+    cy.getBySel('select-editor-mode')
+      .should('exist')
+      .within(() => {
+        // Check Radio group
+        cy.get('input[type="radio"]')
+          .eq(0)
+          .should('exist')
+          .invoke('attr', 'id')
+          .then((id) => {
+            cy.get(`label[for="${id}"]`).should('exist').and('contain.text', 'Builder').click();
+          });
+      });
+
+    /**
+     * Check Run query button
+     */
+    cy.getBySel('query-editor-header')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query').as('runQueryBtn');
+      });
+
+    /**
+     * Check and select Table field
+     */
+    cy.getBySel('select-table')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input').parent().parent().as('tableSelect').click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.table).click();
+          });
+
+        // Check if correct option is selected
+        cy.get('@tableSelect').within(() => {
+          cy.contains(formData.table);
+        });
+      });
+
+    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait('@previewSqlBuilder');
+
+    /**
+     * Check and select Time Column field
+     */
+    cy.getBySel('select-time-column')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input')
+          .parent()
+          .parent()
+          .as('timeColumnSelect')
+          .within(() => {
+            // Check already selected option
+            cy.contains('hoursSinceEpoch');
+          })
+          .click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.timeColumn).click();
+          });
+
+        // Check if correct option is selected
+        cy.get('@timeColumnSelect').within(() => {
+          cy.contains(formData.timeColumn);
+        });
+      });
+
+    /**
+     * Check and select Metric Column field
+     */
+    cy.getBySel('select-metric-column')
+      .should('exist')
+      .within(() => {
+        // Check select list options
+        cy.get('input')
+          .parent()
+          .parent()
+          .as('metricColumnSelect')
+          .within(() => {
+            // Check already selected option
+            cy.contains('clicks');
+          })
+          .click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            // Select the option
+            cy.contains(formData.metricColumn).click();
+            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+          });
+
+        // Check if correct option is selected
+        cy.get('@metricColumnSelect').within(() => {
+          cy.contains(formData.metricColumn);
+        });
+      });
+
+    /**
+     * Check Aggregation field
+     */
+    cy.getBySel('select-aggregation')
+      .should('exist')
+      .within(() => {
+        cy.get('input').parent().parent().as('aggregationSelect');
+      });
+
+    /**
+     * Check Run Query and results with every Aggregation Option
+     */
+    ['COUNT', 'SUM', 'AVG', 'MAX', 'MIN', 'NONE'].forEach((option) => {
+      // Open select options menu
+      cy.get('@aggregationSelect').click();
+
+      cy.get('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          // Select the option
+          cy.contains(option).click();
+          cy.wait(['@dsQuery', '@previewSqlBuilder']);
+        });
+
+      // Check if correct option is selected
+      cy.get('@aggregationSelect').within(() => {
+        cy.contains(option);
+      });
+
+      // -- Run Query and check results --
+      cy.get('@runQueryBtn').click();
+      cy.wait('@dsQuery', { timeout: 5000 });
+
+      // Check the UPlot chart
+      cy.get('.panel-content').should('not.contain', 'No data');
+      cy.getBySel('uplot-main-div').should('exist');
+    });
 
     /**
      * Discard the Panel and go back

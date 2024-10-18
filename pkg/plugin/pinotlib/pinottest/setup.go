@@ -30,6 +30,7 @@ const (
 	GithubEventsTableName    = "githubEvents"
 	StarbucksStoresTableName = "starbucksStores"
 	AirlineStatsTableName    = "airlineStats"
+	BenchmarkTableName       = "benchmark"
 )
 
 var createTestTablesOnce sync.Once
@@ -69,6 +70,12 @@ func CreateTestTables(t *testing.T) {
 				schemaFile: "data/airlineStats_schema.json",
 				configFile: "data/airlineStats_offline_table_config.json",
 				// TODO: Add data file at some point
+			},
+			{
+				tableName:  BenchmarkTableName,
+				schemaFile: "data/benchmark_schema.json",
+				configFile: "data/benchmark_offline_table_config.json",
+				dataFile:   "data/benchmark_data.json",
 			},
 		}
 

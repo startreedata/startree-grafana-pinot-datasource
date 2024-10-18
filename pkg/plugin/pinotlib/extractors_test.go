@@ -2,15 +2,14 @@ package pinotlib
 
 import (
 	"encoding/json"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
 func TestGetColumnIdx(t *testing.T) {
-	results := &pinot.ResultTable{
-		DataSchema: pinot.RespSchema{ColumnNames: []string{"col0", "col1"}},
+	results := &ResultTable{
+		DataSchema: DataSchema{ColumnNames: []string{"col0", "col1"}},
 	}
 
 	testArgs := []struct {
@@ -132,8 +131,8 @@ func TestExtractColumn(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -186,8 +185,8 @@ func TestExtractColumnExpr(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractColumnExpr(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractColumnExpr(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -240,8 +239,8 @@ func TestExtractLongColumn(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractLongColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractLongColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -294,8 +293,8 @@ func TestExtractDoubleColumn(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractDoubleColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractDoubleColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -348,8 +347,8 @@ func TestExtractBooleanColumn(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractBooleanColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractBooleanColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -402,8 +401,8 @@ func TestExtractStringColumn(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractStringColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{tt.dataType}},
+			got := ExtractStringColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
@@ -534,8 +533,8 @@ func TestExtractLongTimeColumn(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
-			got, err := ExtractLongTimeColumn(&pinot.ResultTable{
-				DataSchema: pinot.RespSchema{ColumnDataTypes: []string{DataTypeLong}},
+			got, err := ExtractLongTimeColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{DataTypeLong}},
 				Rows:       tt.rows,
 			}, 0, tt.format)
 			assert.NoError(t, err)
