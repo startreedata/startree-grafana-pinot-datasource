@@ -3167,26 +3167,10 @@ describe('Create a Panel with Pinot Query Builder', () => {
          * Finally Run Query and check results
          */
         cy.get('@viewsRunQueryBtn').click();
-        // cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('viewsRunQueryResponse');
-
-        // cy.log('CHeck11: ', ctx.apiResponse.dsQuery);
-
-        // cy.get('@viewsRunQueryResponse').then((data: any) => {
-        //   const fields = ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields;
-
-        //   cy.log('CHeck22: ', JSON.stringify(ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields));
-        //   cy.log('viewsRunQueryResponse: ', JSON.stringify(fields));
-
-        //   cy.wrap(fields[0]).should('have.property', 'name', 'views');
-        //   cy.wrap(fields[1]).should('have.property', 'name', 'time');
-        // });
-
         cy.wait('@dsQuery', { timeout: 5000 }).then(() => {
-          cy.log('CHeck22: ', JSON.stringify(ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields));
           const fields = ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields;
 
           // Check the result data
-          // TODO: This is not working in github actions cus getting the name clicks instead of views
           cy.wrap(fields[0]).should('have.property', 'name', 'views');
           cy.wrap(fields[1]).should('have.property', 'name', 'time');
         });
@@ -3211,10 +3195,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
     // Run the Clicks query
     cy.get('@clicksRunQueryBtn').click();
-    cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
-      const respData = response.body as any;
-
-      cy.wrap(respData.results).should('not.have.property', 'B');
+    cy.wait('@dsQuery', { timeout: 5000 }).then(() => {
+      const results = ctx.apiResponse.dsQuery.results;
+      cy.wrap(results).should('not.have.property', 'B');
     });
 
     // Check the Views Query chip should not exist in the time series chart
