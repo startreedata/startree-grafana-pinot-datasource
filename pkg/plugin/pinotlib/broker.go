@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/goccy/go-json"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"io"
 	"net/http"
 	"sort"
@@ -91,6 +92,8 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query.Sql))
 
 	var respData BrokerResponse
 	resp, err := p.doRequest(req)

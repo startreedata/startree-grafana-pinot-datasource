@@ -25,6 +25,25 @@ type TimeSeriesRangeQuery struct {
 	TableName string
 }
 
+func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
+	req, err := p.newRequest(ctx, http.MethodHead, p.properties.BrokerUrl+TimeSeriesEndpoint+"/query_range", nil)
+	if err != nil {
+		return false, err
+	}
+
+	resp, err := p.doRequest(req)
+	if err != nil {
+		return false, err
+	}
+	defer p.closeResponseBody(resp)
+
+	return resp.StatusCode != http.StatusNotFound, nil
+}
+
 func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*http.Response, error) {
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
