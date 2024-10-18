@@ -901,7 +901,7 @@ describe('Create and run pinot query using Explore', () => {
     cy.get('div').contains('Graph').should('exist');
 
     // Check the Table div
-    cy.get('div').contains('Table').should('exist');
+    cy.get('[aria-label="Explore Table"]').should('exist');
 
     /**
      * Delete the newly created data source for the panel
@@ -1232,7 +1232,7 @@ describe('Create and run pinot query using Explore', () => {
     cy.get('div').contains('Graph').should('exist');
 
     // Check the Table div
-    cy.get('div').contains('Table').should('exist');
+    cy.get('[aria-label="Explore Table"]').should('exist');
 
     /**
      * Delete the newly created data source for the explore
