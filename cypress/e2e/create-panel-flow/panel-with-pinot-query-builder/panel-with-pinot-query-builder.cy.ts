@@ -945,21 +945,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     /**
-     * Check and fill Limit field
-     */
-    cy.getBySel('input-limit')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
-
-        cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto').as('limitInput');
-
-        if (formData.limit != null) {
-          cy.get('@limitInput').type(formData.limit.toString());
-        }
-      });
-
-    /**
      * Check Sql Preview Container
      */
     cy.getBySel('sql-preview-container')
@@ -967,14 +952,16 @@ describe('Create a Panel with Pinot Query Builder', () => {
       .within(() => {
         cy.getBySel('inline-form-label').should('exist').and('have.text', 'Sql Preview');
 
-        cy.getBySel('sql-preview')
-          .should('exist')
-          .and('not.be.empty')
-          .as('sqlPreview')
-          .within(() => {
-            // Check the Copy button and click
-            cy.getBySel('copy-query-btn').should('exist').click();
-          });
+        cy.getBySel('sql-preview').should('exist').as('sqlPreview').and('not.be.empty');
+
+        // Check the default limit should be 100000
+        cy.get('@sqlPreview').should('contain.text', '100000');
+
+        // Check the copy button in SQL Preview
+        cy.get('@sqlPreview').within(() => {
+          // Check the Copy button and click
+          cy.getBySel('copy-query-btn').should('exist').click();
+        });
 
         // Check if the clipboard has the query copied
         cy.get('@sqlPreview')
@@ -986,6 +973,38 @@ describe('Create a Panel with Pinot Query Builder', () => {
             });
           });
       });
+
+    /**
+     * Check Limit field
+     */
+    cy.getBySel('input-limit')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
+
+        cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto').as('limitInput');
+      });
+
+    /**
+     * Change the limit and check if it's update in SQL Preview
+     */
+    cy.get('@limitInput').clear().type('1000');
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+    cy.get('@sqlPreview').should('contain.text', '1000');
+
+    /**
+     * Clear the limit input and check for default limit value in SQL Preview
+     */
+    cy.get('@limitInput').clear();
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+    cy.get('@sqlPreview').should('contain.text', '100000');
+
+    /**
+     * Fill the limit input from form data
+     */
+    if (formData.limit != null) {
+      cy.get('@limitInput').clear().type(formData.limit.toString());
+    }
 
     /**
      * Check and fill Metric Legend field
