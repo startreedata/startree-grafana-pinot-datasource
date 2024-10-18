@@ -469,6 +469,7 @@ describe('Create and run pinot query using Explore', () => {
           .within(() => {
             cy.contains('Choose');
           })
+          .scrollIntoView()
           .click();
 
         cy.wrap(cy.$$('body')).as('body');
@@ -485,7 +486,7 @@ describe('Create and run pinot query using Explore', () => {
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the first option
-            cy.contains(selectOptions[0]).click();
+            cy.contains(selectOptions[0]).click({ force: true });
             cy.wait(['@dsQuery', '@previewSqlBuilder']);
 
             // Check if the first option is selected
