@@ -2779,7 +2779,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     });
   });
 
-  it('Adding new query with different params should loads separate time series', () => {
+  it.only('Adding new query with different params should loads separate time series', () => {
     /**
      * All Intercepts
      */
@@ -3166,13 +3166,18 @@ describe('Create a Panel with Pinot Query Builder', () => {
          * Finally Run Query and check results
          */
         cy.get('@viewsRunQueryBtn').click();
-        cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
+        cy.wait('@dsQuery', { timeout: 5000 }).then(({ response, request }) => {
+          cy.log('request: ', request.body.queries.length);
+          cy.log('request333: ', JSON.stringify(request.body.queries));
+          cy.log('request111: ', request.body.queries[0].metricColumn);
+          cy.log('request222: ', request.body.queries[1].metricColumn);
+
           const respData = response.body as any;
           const fields = respData.results.B.frames[0].schema.fields;
 
           // Check the result data
           // TODO: This is not working in github actions cus getting the name clicks instead of views
-          // cy.wrap(fields[0]).should('have.property', 'name', 'views');
+          cy.wrap(fields[0]).should('have.property', 'name', 'views');
           cy.wrap(fields[1]).should('have.property', 'name', 'time');
         });
       });
