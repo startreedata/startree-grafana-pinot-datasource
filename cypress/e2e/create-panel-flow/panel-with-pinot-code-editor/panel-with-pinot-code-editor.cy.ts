@@ -416,16 +416,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
       displayType: 'Time Series',
       timeAlias: 'time',
       metricAlias: 'metric',
-      pinotQuery: `
-        SELECT
-            $__timeGroup("hoursSinceEpoch") AS $__timeAlias(),
-            SUM("views") AS $__metricAlias()
-        FROM $__table()
-        WHERE $__timeFilter("hoursSinceEpoch")
-        GROUP BY $__timeGroup("hoursSinceEpoch")
-        ORDER BY $__timeAlias() DESC
-        LIMIT 1000
-      `,
       legend: null,
     };
 
@@ -548,31 +538,17 @@ describe('Create a Panel with Pinot Code Editor', () => {
       });
 
     /**
-     * Check and fill Pinot Query field
+     * Check Pinot Query field
      */
     cy.getBySel('sql-editor-container')
       .should('exist')
-      .scrollIntoView()
+      .as('sqlEditorContainer')
       .within(() => {
         cy.get('[aria-label="Code editor container"]')
           .should('exist')
+          .as('codeEditorContainer')
           .within(() => {
             cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
-
-            cy.window().then((win) => {
-              // Access the Monaco Editor instance via the window object
-              const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
-
-              // Set the new pinot query value
-              editor.setValue(formData.pinotQuery.trim());
-
-              // Check if query editor has the new value
-              const editorNewValue = editor.getValue();
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                'equal',
-                editorNewValue.trim().replace(/ /g, '')
-              );
-            });
           });
       });
 
@@ -621,6 +597,31 @@ describe('Create a Panel with Pinot Code Editor', () => {
           // Check if correct option is selected
           cy.get('@tableSelect').within(() => {
             cy.contains(table);
+          });
+        });
+
+        /**
+         * Check and fill Pinot Query field
+         */
+        cy.get('@sqlEditorContainer').within(() => {
+          cy.get('@codeEditorContainer').within(() => {
+            cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
+
+            cy.window().then((win) => {
+              const pinotQuery = `
+                SELECT * FROM ${table}
+              `;
+
+              // Access the Monaco Editor instance via the window object
+              const editor = (win as any).monaco.editor.getModels()[0];
+
+              // Set the new pinot query value
+              editor.setValue(pinotQuery.trim());
+
+              // Check if query editor has the new value
+              const editorNewValue = editor.getValue();
+              cy.wrap(pinotQuery.trim().replace(/ /g, '')).should('equal', editorNewValue.trim().replace(/ /g, ''));
+            });
           });
         });
 
