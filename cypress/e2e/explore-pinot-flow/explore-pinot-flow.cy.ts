@@ -195,7 +195,6 @@ describe('Create and run pinot query using Explore', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
