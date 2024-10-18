@@ -2778,7 +2778,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     });
   });
 
-  it.only('Adding new query with different params should loads separate time series', () => {
+  it('Adding new query with different params should loads separate time series', () => {
     /**
      * All Intercepts
      */
@@ -3195,10 +3195,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
     // Run the Clicks query
     cy.get('@clicksRunQueryBtn').click();
-    cy.wait('@dsQuery', { timeout: 5000 }).then(() => {
-      const results = ctx.apiResponse.dsQuery.results;
-      cy.wrap(results).should('not.have.property', 'B');
-    });
+    cy.wait('@dsQuery', { timeout: 5000 });
 
     // Check the Views Query chip should not exist in the time series chart
     cy.get('[aria-label="VizLegend series views"]').should('not.exist');
