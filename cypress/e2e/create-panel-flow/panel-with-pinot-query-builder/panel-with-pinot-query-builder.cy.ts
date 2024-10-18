@@ -60,7 +60,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       table: 'complex_website',
       timeColumn: 'hoursSinceEpoch',
       granularity: null,
-      metricColumn: 'views',
+      metricColumn: 'clicks',
       aggregation: 'SUM',
       groupBy: ['country'],
       orderBy: [],
@@ -567,7 +567,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
         cy.getBySel('add-filter-btn').should('exist').as('addFilterBtn').click();
         cy.wait(['@dsQuery', '@previewSqlBuilder']);
 
-        // -- Check filter row --
+        /**
+         * Check filter row and default options
+         */
         cy.getBySel('filter-row')
           .should('exist')
           .within(() => {
@@ -663,7 +665,80 @@ describe('Create a Panel with Pinot Query Builder', () => {
         // Check filter row should not exits after deleting the row
         cy.getBySel('filter-row').should('not.exist');
 
-        // -- Add the form data if any --
+        /**
+         * Check View filter and it's options
+         */
+        cy.get('@addFilterBtn').click();
+        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
+        cy.getBySel('filter-row').within(() => {
+          // -- Check select column --
+          cy.get('#column-select').within(() => {
+            cy.get('input').parent().parent().click();
+
+            cy.get('@body')
+              .find('[aria-label="Select options menu"]')
+              .should('be.visible')
+              .within(() => {
+                // Select View column filter
+                cy.contains('views').click();
+                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              });
+          });
+
+          // -- Check query segment operator select --
+          cy.get('#query-segment-operator-select').within(() => {
+            cy.get('input')
+              .parent()
+              .parent()
+              .within(() => {
+                cy.contains('=');
+              })
+              .click();
+
+            cy.get('@body')
+              .find('[aria-label="Select options menu"]')
+              .should('be.visible')
+              .within(() => {
+                // Select equals operator
+                cy.contains('=').click();
+                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              });
+          });
+
+          // -- Check value select --
+          cy.get('#value-select').within(() => {
+            cy.get('input').parent().parent().click();
+
+            cy.wait('@queryDistinctValues').then(({ response }) => {
+              const data = response.body as { code: number; valueExprs: string[] };
+
+              cy.get('@body')
+                .find('[aria-label="Select options menu"]')
+                .should('be.visible')
+                .within(() => {
+                  // Check the available options
+                  data.valueExprs.forEach((valueExpr) => {
+                    cy.contains(valueExpr);
+                  });
+
+                  // Check the options length should not exceed 100
+                  cy.wrap(data.valueExprs).should('have.length', 100);
+
+                  // Close select menu
+                  cy.get('@body').click(0, 0);
+                });
+            });
+          });
+
+          // -- Check filter delete button --
+          cy.getBySel('delete-filter-btn').click();
+          cy.wait(['@dsQuery', '@previewSqlBuilder']);
+        });
+
+        /**
+         * Add the form data if any
+         */
         if (formData.filters && formData.filters.length > 0) {
           formData.filters.forEach((filterOption) => {
             // Add filter row
@@ -728,7 +803,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
                   cy.wait('@queryDistinctValues').then(({ response }) => {
                     const data = response.body as { code: number; valueExprs: string[] };
-                    cy.log('data: ', data);
 
                     cy.get('@body')
                       .find('[aria-label="Select options menu"]')
