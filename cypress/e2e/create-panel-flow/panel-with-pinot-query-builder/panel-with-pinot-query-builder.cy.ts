@@ -5,8 +5,9 @@ export interface TestCtx {
   panelTitle: string;
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
-    resourcesTables?: Record<string, unknown>;
-    tablesSchema?: Record<string, unknown>;
+    resourcesTables?: Record<string, any>;
+    tablesSchema?: Record<string, any>;
+    dsQuery?: Record<string, any>;
   };
 }
 
@@ -219,7 +220,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
@@ -1804,7 +1804,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
@@ -2804,7 +2803,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/dashboards/home').as('dashboardsHome');
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
-    cy.intercept('POST', '/api/ds/query').as('dsQuery');
+    cy.intercept('POST', '/api/ds/query', (req) => {
+      req.continue((res) => (ctx.apiResponse.dsQuery = res.body));
+    }).as('dsQuery');
     cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
       req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
     }).as('tablesSchema');
@@ -3166,20 +3167,35 @@ describe('Create a Panel with Pinot Query Builder', () => {
          * Finally Run Query and check results
          */
         cy.get('@viewsRunQueryBtn').click();
-        cy.wait('@dsQuery', { timeout: 5000 }).then(({ response, request }) => {
-          cy.log('request: ', request.body.queries.length);
-          cy.log('request333: ', JSON.stringify(request.body.queries));
-          cy.log('request111: ', request.body.queries[0].metricColumn);
-          cy.log('request222: ', request.body.queries[1].metricColumn);
+        cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('viewsRunQueryResponse');
 
-          const respData = response.body as any;
-          const fields = respData.results.B.frames[0].schema.fields;
+        cy.log('CHeck11: ', ctx.apiResponse.dsQuery);
 
-          // Check the result data
-          // TODO: This is not working in github actions cus getting the name clicks instead of views
+        cy.get('@viewsRunQueryResponse').then((data: any) => {
+          const fields = data.results.B.frames[0].schema.fields;
+
+          cy.log('CHeck22: ', JSON.stringify(ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields));
+          cy.log('viewsRunQueryResponse: ', JSON.stringify(fields));
+
           cy.wrap(fields[0]).should('have.property', 'name', 'views');
           cy.wrap(fields[1]).should('have.property', 'name', 'time');
         });
+
+        // cy.wait('@dsQuery', { timeout: 5000 }).then(({ response, request }) => {
+        //   cy.log('response: ', JSON.stringify(ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields));
+        //   cy.log('request: ', request.body.queries.length);
+        //   cy.log('request111: ', request.body.queries[0].metricColumn);
+        //   cy.log('request222: ', request.body.queries[1].metricColumn);
+        //   cy.log('request333: ', JSON.stringify(request.body.queries));
+
+        //   const respData = response.body as any;
+        //   const fields = respData.results.B.frames[0].schema.fields;
+
+        //   // Check the result data
+        //   // TODO: This is not working in github actions cus getting the name clicks instead of views
+        //   cy.wrap(fields[0]).should('have.property', 'name', 'views');
+        //   cy.wrap(fields[1]).should('have.property', 'name', 'time');
+        // });
       });
 
     /**
