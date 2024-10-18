@@ -132,7 +132,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -1150,7 +1150,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -1732,7 +1732,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -2358,7 +2358,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -2417,7 +2417,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
@@ -2601,7 +2600,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -2660,7 +2659,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
       });
 
     cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-    cy.wait('@previewSqlBuilder');
 
     /**
      * Check and select Time Column field
@@ -2859,7 +2857,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
       const pinotDatasourceName: string = (data as any).name;
 
       cy.get('#data-source-picker').should('exist').parent().parent().as('dataSourcePicker').click();
-      cy.get('#react-select-6-listbox')
+      cy.get('[aria-label="Select options menu"]')
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
@@ -2928,7 +2926,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
           });
 
         cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-        cy.wait('@previewSqlBuilder');
 
         /**
          * Check and select Time Column field
@@ -3089,7 +3086,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
           });
 
         cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
-        cy.wait('@previewSqlBuilder');
 
         /**
          * Check and select Time Column field
