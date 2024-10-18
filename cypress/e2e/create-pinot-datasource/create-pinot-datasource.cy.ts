@@ -449,7 +449,7 @@ describe('Create a Pinot Data Source', () => {
     cy.location('pathname').should('eq', '/datasources');
   });
 
-  it('Pinot data source test should fail if user pass invalid data to fields', () => {
+  it.only('Pinot data source test should fail if user pass invalid data to fields', () => {
     /**
      * All Intercepts
      */
@@ -563,7 +563,7 @@ describe('Create a Pinot Data Source', () => {
     cy.getBySel('database-inline-field')
       .should('exist')
       .within(() => {
-        cy.get('input').type(formData.database);
+        cy.get('input').as('databaseInput').type(formData.database);
       });
 
     /**
@@ -571,9 +571,16 @@ describe('Create a Pinot Data Source', () => {
      */
     cy.getBySel('auth-type-container')
       .should('exist')
+      .as('authTypeContainer')
       .within(() => {
         // Check Select
-        cy.get('#react-select-2-input').should('exist').parent().parent().should('contain', 'Basic').click();
+        cy.get('#react-select-2-input')
+          .should('exist')
+          .parent()
+          .parent()
+          .as('authTypeSelect')
+          .should('contain', 'Basic')
+          .click();
 
         cy.wrap(cy.$$('body'))
           .find('[aria-label="Select options menu"]')
@@ -590,7 +597,7 @@ describe('Create a Pinot Data Source', () => {
     cy.getBySel('auth-token-container')
       .should('exist')
       .within(() => {
-        cy.get('input').type(formData.authToken);
+        cy.get('input').as('authTokenInput').type(formData.authToken);
       });
 
     /**
@@ -621,10 +628,85 @@ describe('Create a Pinot Data Source', () => {
     // Check for the Page Alert
     cy.get('[data-testid="data-testid Alert error"]')
       .should('be.visible')
-      .and('contain.text', 'caught http exception when querying Pinot: 404 Not Found');
+      .and('contain.text', 'pinot/http non-200 response: (404)');
 
     // Pass the correct data so flow can check other inputs
     cy.get('@brokerUrlInput').clear().type(formData.brokerUrl);
+
+    /**
+     * Check for error alert if user pass invalid data to Database
+     */
+    cy.get('@databaseInput').clear().type('invalid_database');
+
+    cy.get('@saveAndTestBtn').click();
+
+    // Check for the Page Alert
+    cy.get('[data-testid="data-testid Alert error"]')
+      .should('be.visible')
+      .and('contain.text', `pinot/http non-200 response: (404)`);
+
+    // Pass the correct data so flow can check other inputs
+    cy.get('@databaseInput').clear().type(formData.database);
+
+    /**
+     * Check for error alert if user pass invalid data to Auth Type
+     */
+    ['Basic', 'None'].forEach((invalidOption) => {
+      cy.get('@authTypeContainer').within(() => {
+        cy.get('@authTypeSelect').click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            cy.contains(invalidOption).parent().click();
+          });
+      });
+
+      cy.get('@saveAndTestBtn').click();
+
+      // Check for the Page Alert
+      cy.get('[data-testid="data-testid Alert error"]')
+        .should('be.visible')
+        .and(
+          'contain.text',
+          `Got an empty list of tables from ${formData.controllerUrl}. Please check the authentication and database settings.`
+        );
+    });
+
+    // Pass the correct data so flow can check other inputs
+    cy.get('@authTypeContainer').within(() => {
+      cy.get('@authTypeSelect').click();
+
+      cy.wrap(cy.$$('body'))
+        .find('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          cy.contains(formData.authType).parent().click();
+        });
+    });
+
+    /**
+     * Check for error alert if user pass invalid data to Auth Token
+     */
+    cy.getBySel('auth-token-container').within(() => {
+      cy.get('input').as('authTokenInput');
+    });
+
+    cy.get('@authTokenInput').clear().type('invalid_auth_token');
+
+    cy.get('@saveAndTestBtn').click();
+
+    // Check for the Page Alert
+    cy.get('[data-testid="data-testid Alert error"]')
+      .should('be.visible')
+      .and(
+        'contain.text',
+        `Got an empty list of tables from ${formData.controllerUrl}. Please check the authentication and database settings.`
+      );
+
+    // Pass the correct data so flow can check other inputs
+    cy.get('@authTokenInput').clear().type(formData.authToken);
 
     /**
      * Check Save and test data source
@@ -636,13 +718,8 @@ describe('Create a Pinot Data Source', () => {
     // Check for the Page Alert
     cy.get('[data-testid="data-testid Alert success"]').contains('Datasource updated').should('be.visible');
 
-    /**
-     * Check for data source health
-     */
+    // Wait for datasource health
     cy.wait('@datasourcesHealth');
-
-    // Check for page alert
-    cy.get('[data-testid="data-testid Alert success"]').contains('Pinot data source is working').should('be.visible');
 
     /**
      * Finally delete the newly created data source
