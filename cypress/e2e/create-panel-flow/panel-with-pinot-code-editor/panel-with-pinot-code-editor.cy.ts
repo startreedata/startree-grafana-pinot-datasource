@@ -385,7 +385,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
     });
   });
 
-  it('Time series should render when selecting different types of tables', () => {
+  it('Table view should render when selecting different types of tables', () => {
     /**
      * All Intercepts
      */
@@ -413,7 +413,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
 
     const formData = {
-      displayType: 'Time Series',
+      displayType: 'Table',
       timeAlias: 'time',
       metricAlias: 'metric',
       legend: null,
@@ -609,7 +609,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
 
             cy.window().then((win) => {
               const pinotQuery = `
-                SELECT * FROM ${table}
+                SELECT * FROM ${table};
               `;
 
               // Access the Monaco Editor instance via the window object
@@ -642,7 +642,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
 
         // Check the UPlot chart
         cy.get('.panel-content').should('not.contain', 'No data');
-        cy.getBySel('uplot-main-div').should('exist');
       });
     });
 
