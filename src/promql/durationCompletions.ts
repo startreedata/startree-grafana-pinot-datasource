@@ -1,5 +1,6 @@
 import { Completion, CompletionType } from './completion';
 
+// TODO: This could become a dynamic list based on the Pinot indexes.
 export const DURATION_COMPLETIONS: Completion[] = [
   '$__interval',
   '$__range',
