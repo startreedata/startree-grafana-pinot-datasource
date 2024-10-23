@@ -23,6 +23,7 @@ const (
 )
 
 type PinotDataQuery struct {
+	Hide         bool          `json:"hide"`
 	QueryType    QueryType     `json:"queryType"`
 	EditorMode   EditorMode    `json:"editorMode"`
 	DatabaseName string        `json:"databaseName"`

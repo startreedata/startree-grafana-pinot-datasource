@@ -4,7 +4,7 @@ import { Monaco } from '@monaco-editor/react';
 import { Completion, CompletionType } from './completion';
 import { CompletionDataProvider } from './completionDataProvider';
 import { DURATION_COMPLETIONS } from './durationCompletions';
-import { FUNCTION_COMPLETIONS } from './functionCompletions';
+import { FunctionCompletions } from './functionCompletions';
 import CompletionItemProvider = languages.CompletionItemProvider;
 import CompletionList = languages.CompletionList;
 import ITextModel = editor.ITextModel;
@@ -119,7 +119,7 @@ export async function getCompletions(
     case 'IN_FUNCTION':
     case 'AT_ROOT':
     case 'EMPTY':
-      return [...FUNCTION_COMPLETIONS, ...(await listMetricNameCompletions(dataProvider))];
+      return [...FunctionCompletions, ...(await listMetricNameCompletions(dataProvider))];
     case 'IN_LABEL_SELECTOR_NO_LABEL_NAME':
       return listSelectorLabelNameCompletions(situation.metricName, situation.otherLabels, dataProvider);
     case 'IN_GROUPING':
