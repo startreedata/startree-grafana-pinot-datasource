@@ -104,7 +104,7 @@ func (x *ResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (x *ResourceHandler) ListDatabases(r *http.Request) *Response {
 	databases, err := x.client.ListDatabases(r.Context())
 
-	if pinotlib.IsControllerStatusError(err, http.StatusForbidden) {
+	if pinotlib.IsForbiddenStatusError(err) {
 		logger.Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
 		return newEmptyResponse(http.StatusOK)
 	} else if err != nil {
@@ -165,7 +165,6 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		TableSchema:         tableSchema,
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
-		DatabaseName:        data.DatabaseName,
 		TableName:           data.TableName,
 		TimeColumn:          data.TimeColumn,
 		MetricColumn:        data.MetricColumn,

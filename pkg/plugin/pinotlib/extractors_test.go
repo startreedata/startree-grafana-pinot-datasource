@@ -438,96 +438,96 @@ func TestExtractLongTimeColumn(t *testing.T) {
 		{
 			format: "EPOCH_NANOS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541)},
+			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
 			format: "1:NANOSECONDS:EPOCH",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541)},
+			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
 			format: "EPOCH|NANOSECONDS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541)},
+			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
 			format: "EPOCH|NANOSECONDS|1",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541)},
+			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
 		},
 		{
 			format: "EPOCH_MICROS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds())},
+			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		}, {
 			format: "1:MICROSECONDS:EPOCH",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds())},
+			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		}, {
 			format: "EPOCH|MICROSECONDS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds())},
+			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		}, {
 			format: "EPOCH|MICROSECONDS|1",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds())},
+			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		},
 		{
 			format: "EPOCH_SECONDS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0)},
+			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
 		},
 		{
 			format: "1:SECONDS:EPOCH",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0)},
+			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
 		},
 		{
 			format: "EPOCH|SECONDS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0)},
+			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
 		},
 		{
 			format: "EPOCH|SECONDS|1",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0)},
+			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
 		},
 		{
 			format: "EPOCH_MINUTES",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0)},
+			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
 		},
 		{
 			format: "1:MINUTES:EPOCH",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0)},
+			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
 		},
 		{
 			format: "EPOCH|MINUTES",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0)},
+			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
 		},
 		{
 			format: "EPOCH|MINUTES|1",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0)},
+			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
 		},
 		{
 			format: "EPOCH_HOURS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0)},
+			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
 		},
 		{
 			format: "1:HOURS:EPOCH",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0)},
+			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
 		},
 		{
 			format: "EPOCH|HOURS",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0)},
+			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
 		},
 		{
 			format: "EPOCH|HOURS|1",
 			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0)},
+			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
 		},
 	}
 

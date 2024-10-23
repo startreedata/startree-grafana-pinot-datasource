@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -31,6 +32,7 @@ const (
 	StarbucksStoresTableName = "starbucksStores"
 	AirlineStatsTableName    = "airlineStats"
 	BenchmarkTableName       = "benchmark"
+	PartialTableName         = "partial"
 )
 
 var createTestTablesOnce sync.Once
@@ -77,6 +79,12 @@ func CreateTestTables(t *testing.T) {
 				configFile: "data/benchmark_offline_table_config.json",
 				dataFile:   "data/benchmark_data.json",
 			},
+			{
+				tableName:  PartialTableName,
+				schemaFile: "data/partial_schema.json",
+				configFile: "data/partial_offline_table_config.json",
+				dataFile:   "data/partial_data_1.json",
+			},
 		}
 
 		var wg sync.WaitGroup
@@ -95,6 +103,18 @@ func CreateTestTables(t *testing.T) {
 			if !(tableHasData(t, job.tableName) || job.dataFile == "") {
 				t.Logf("Table %s: uploading data...", job.tableName)
 				uploadJsonTableData(t, job.tableName+"_OFFLINE", job.dataFile)
+				waitForSegmentsAllGood(t, job.tableName, 1*time.Minute)
+
+				// Delete the partial table's segment and upload a new segment
+				if job.tableName == PartialTableName {
+					uploadJsonTableData(t, PartialTableName+"_OFFLINE", "data/partial_data_2.json")
+					waitForSegmentsAllGood(t, job.tableName, 1*time.Minute)
+					segments := listOfflineSegments(t, job.tableName)
+					require.Len(t, segments, 2)
+					deleteSegmentFromFilesystem(t, segments[0])
+					resetSegments(t, PartialTableName)
+					waitForSegmentStatus(t, PartialTableName, segments[0], "BAD", 1*time.Minute)
+				}
 			}
 		}
 
@@ -102,8 +122,129 @@ func CreateTestTables(t *testing.T) {
 			go setupTable(job)
 		}
 		wg.Wait()
+
 		t.Log("Pinot setup complete.")
 	})
+}
+
+func waitForSegmentsAllGood(t *testing.T, tableName string, timeout time.Duration) {
+	pollTicker := time.NewTicker(time.Second)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	for {
+		statuses := ListSegmentStatusForTable(t, tableName)
+		goodSegments := 0
+		for _, status := range statuses {
+			if status.SegmentStatus == "GOOD" {
+				goodSegments++
+			}
+		}
+		if len(statuses) == goodSegments {
+			return
+		}
+
+		select {
+		case <-timeoutTicker.C:
+			t.Fatalf("Timed out waiting for segments for %s", tableName)
+		case <-pollTicker.C:
+		}
+	}
+}
+
+func waitForSegmentStatus(t *testing.T, tableName string, segmentName string, segmentStatus string, timeout time.Duration) {
+	pollTicker := time.NewTicker(time.Second)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	for {
+		statuses := ListSegmentStatusForTable(t, tableName)
+		for _, status := range statuses {
+			if status.SegmentName == segmentName && status.SegmentStatus == segmentStatus {
+				return
+			}
+		}
+
+		select {
+		case <-timeoutTicker.C:
+			t.Fatalf("Timed out waiting for %s segment status to %s", segmentName, segmentStatus)
+		case <-pollTicker.C:
+		}
+	}
+}
+
+func listOfflineSegments(t *testing.T, tableName string) []string {
+	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/segments/"+tableName, nil)
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var data []struct {
+		Offline []string `json:"OFFLINE"`
+	}
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
+	require.Len(t, data, 1)
+	return data[0].Offline
+}
+
+type SegmentStatus struct {
+	SegmentName   string `json:"segmentName"`
+	SegmentStatus string `json:"segmentStatus"`
+}
+
+// ListSegmentStatusForTable returns the status of each segment in the table.
+// TODO: This might be better suited for pinotlib instead of the pinottest.
+func ListSegmentStatusForTable(t *testing.T, tableName string) []SegmentStatus {
+	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/tables/"+tableName+"/segmentsStatus", nil)
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	var data []SegmentStatus
+	require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
+	return data
+}
+
+const SegmentStatusGood = "GOOD"
+const SegmentStatusBad = "BAD"
+
+// ListBadSegmentsForTable returns the list of bad segments for the table.
+func ListBadSegmentsForTable(t *testing.T, tableName string) []string {
+	segments := ListSegmentStatusForTable(t, tableName)
+	var badSegments []string
+	for _, segment := range segments {
+		if segment.SegmentStatus == SegmentStatusBad {
+			badSegments = append(badSegments, segment.SegmentName)
+		}
+	}
+	return badSegments
+}
+
+func resetSegments(t *testing.T, tableName string) {
+	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/segments/"+tableName+"_OFFLINE/reset?errorSegmentsOnly=false", nil)
+	require.NoError(t, err)
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
+func deleteSegmentFromFilesystem(t *testing.T, segmentName string) {
+	cmd := exec.Command("docker", "compose", "exec", "pinot",
+		"find", "/tmp", "-name", segmentName, "-exec", "rm", "-rf", "{}", "+")
+	t.Log("Executing: ", cmd.String())
+	err := cmd.Run()
+	require.NoError(t, err)
 }
 
 func WaitForPinot(t *testing.T, timeout time.Duration) {

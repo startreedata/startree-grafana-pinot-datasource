@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources/cache"
 	"io"
@@ -39,7 +38,6 @@ const (
 
 type PinotClient struct {
 	properties PinotClientProperties
-	brokerConn *pinot.Connection
 	headers    map[string]string
 	httpClient *http.Client
 
@@ -71,18 +69,9 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 		headers["Database"] = properties.DatabaseName
 	}
 
-	brokerConn, err := pinot.NewWithConfig(&pinot.ClientConfig{
-		BrokerList:      []string{properties.BrokerUrl},
-		ExtraHTTPHeader: headers,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create broker client: %w", err)
-	}
-
 	httpClient := http.DefaultClient
 	return &PinotClient{
 		properties: properties,
-		brokerConn: brokerConn,
 		headers:    headers,
 		httpClient: httpClient,
 
@@ -109,7 +98,7 @@ func (p *PinotClient) newRequest(ctx context.Context, method string, url string,
 	return req, nil
 }
 
-func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
+func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}, useNumber bool) error {
 	resp, err := p.doRequest(req)
 	if err != nil {
 		return err
@@ -120,7 +109,7 @@ func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interfa
 		return p.newErrorFromResponseBody(resp)
 	}
 
-	return p.decodeResponse(resp, dest)
+	return p.decodeResponse(resp, dest, useNumber)
 }
 
 func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
@@ -146,8 +135,13 @@ func (p *PinotClient) newErrorFromResponseBody(resp *http.Response) error {
 	return newHttpStatusError(resp.StatusCode, body.String())
 }
 
-func (p *PinotClient) decodeResponse(resp *http.Response, dest interface{}) error {
-	if err := json.NewDecoder(resp.Body).Decode(dest); err != nil {
+func (p *PinotClient) decodeResponse(resp *http.Response, dest interface{}, useNumber bool) error {
+	decoder := json.NewDecoder(resp.Body)
+	if useNumber {
+		decoder.UseNumber()
+	}
+
+	if err := decoder.Decode(&dest); err != nil {
 		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
 	}
 	return nil
@@ -156,19 +150,29 @@ func (p *PinotClient) decodeResponse(resp *http.Response, dest interface{}) erro
 type HttpStatusError struct {
 	StatusCode int
 	Body       string
-	Err        error
 }
 
-func (x *HttpStatusError) Error() string { return x.Err.Error() }
+func (x *HttpStatusError) Error() string {
+	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, x.Body)
+}
 
-func IsControllerStatusError(err error, statusCode int) bool {
-	if err == nil {
-		return false
-	}
+func IsHttpStatusError(err error) bool {
+	var statusErr *HttpStatusError
+	return errors.As(err, &statusErr)
+}
 
+func IsNotFoundStatusError(err error) bool {
 	var statusErr *HttpStatusError
 	if errors.As(err, &statusErr) {
-		return statusErr.StatusCode == statusCode
+		return statusErr.StatusCode == http.StatusNotFound
+	}
+	return false
+}
+
+func IsForbiddenStatusError(err error) bool {
+	var statusErr *HttpStatusError
+	if errors.As(err, &statusErr) {
+		return statusErr.StatusCode == http.StatusForbidden
 	}
 	return false
 }
@@ -177,6 +181,5 @@ func newHttpStatusError(statusCode int, body string) *HttpStatusError {
 	return &HttpStatusError{
 		StatusCode: statusCode,
 		Body:       body,
-		Err:        fmt.Errorf("pinot/http non-200 response: (%d) %s", statusCode, body),
 	}
 }

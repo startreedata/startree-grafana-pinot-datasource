@@ -303,17 +303,17 @@ func IsSimpleTimeColumnFormat(timeColumnFormat string) bool {
 func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, bool) {
 	switch timeColumnFormat {
 	case "EPOCH_NANOS", "1:NANOSECONDS:EPOCH", "EPOCH|NANOSECONDS", "EPOCH|NANOSECONDS|1":
-		return func(v int64) time.Time { return time.Unix(0, v) }, true
+		return func(v int64) time.Time { return time.Unix(0, v).UTC() }, true
 	case "EPOCH_MICROS", "1:MICROSECONDS:EPOCH", "EPOCH|MICROSECONDS", "EPOCH|MICROSECONDS|1":
-		return func(v int64) time.Time { return time.UnixMicro(v) }, true
+		return func(v int64) time.Time { return time.UnixMicro(v).UTC() }, true
 	case "EPOCH_MILLIS", "1:MILLISECONDS:EPOCH", "EPOCH|MILLISECONDS", "EPOCH|MILLISECONDS|1", "EPOCH", "TIMESTAMP", "1:MILLISECONDS:TIMESTAMP":
-		return func(v int64) time.Time { return time.UnixMilli(v) }, true
+		return func(v int64) time.Time { return time.UnixMilli(v).UTC() }, true
 	case "EPOCH_SECONDS", "1:SECONDS:EPOCH", "EPOCH|SECONDS", "EPOCH|SECONDS|1":
-		return func(v int64) time.Time { return time.Unix(v, 0) }, true
+		return func(v int64) time.Time { return time.Unix(v, 0).UTC() }, true
 	case "EPOCH_MINUTES", "1:MINUTES:EPOCH", "EPOCH|MINUTES", "EPOCH|MINUTES|1":
-		return func(v int64) time.Time { return time.Unix(v*60, 0) }, true
+		return func(v int64) time.Time { return time.Unix(v*60, 0).UTC() }, true
 	case "EPOCH_HOURS", "1:HOURS:EPOCH", "EPOCH|HOURS", "EPOCH|HOURS|1":
-		return func(v int64) time.Time { return time.Unix(v*3600, 0) }, true
+		return func(v int64) time.Time { return time.Unix(v*3600, 0).UTC() }, true
 	default:
 		return nil, false
 	}
