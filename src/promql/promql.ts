@@ -1,31 +1,8 @@
-// The MIT License (MIT)
-//
-// Copyright (c) Celian Garcia and Augustin Husson @ Amadeus IT Group
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in all
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-// SOFTWARE.
-
-'use strict';
 import { languages } from 'monaco-editor';
+import { PinotSupportedFunctions, PinotSupportedOperators, PinotSupportedVectorMatching } from './pinotSupport';
 import IRichLanguageConfiguration = languages.LanguageConfiguration;
 import ILanguage = languages.IMonarchLanguage;
 
-// noinspection JSUnusedGlobalSymbols
 export const languageConfiguration: IRichLanguageConfiguration = {
   // the default separators except `@$`
   wordPattern: /(-?\d*\.\d\w*)|([^`~!#%^&*()\-=+\[{\]}\\|;:'",.<>\/?\s]+)/g,
@@ -56,102 +33,19 @@ export const languageConfiguration: IRichLanguageConfiguration = {
   folding: {},
 };
 
-// PromQL Aggregation Operators
-// (https://prometheus.io/docs/prometheus/latest/querying/operators/#aggregation-operators)
-export const aggregations = [
-  'sum',
-  'min',
-  'max',
-  'avg',
-  'group',
-  'stddev',
-  'stdvar',
-  'count',
-  'count_values',
-  'bottomk',
-  'topk',
-  'quantile',
-];
-
-// PromQL functions
-// (https://prometheus.io/docs/prometheus/latest/querying/functions/)
-export const functions = [
-  'abs',
-  'absent',
-  'ceil',
-  'changes',
-  'clamp_max',
-  'clamp_min',
-  'day_of_month',
-  'day_of_week',
-  'days_in_month',
-  'delta',
-  'deriv',
-  'exp',
-  'floor',
-  'histogram_quantile',
-  'holt_winters',
-  'hour',
-  'idelta',
-  'increase',
-  'irate',
-  'label_join',
-  'label_replace',
-  'ln',
-  'log2',
-  'log10',
-  'minute',
-  'month',
-  'predict_linear',
-  'rate',
-  'resets',
-  'round',
-  'scalar',
-  'sort',
-  'sort_desc',
-  'sqrt',
-  'time',
-  'timestamp',
-  'vector',
-  'year',
-];
-
-// PromQL specific functions: Aggregations over time
-// (https://prometheus.io/docs/prometheus/latest/querying/functions/#aggregation_over_time)
-const aggregationsOverTime = [];
-for (const agg of aggregations) {
-  aggregationsOverTime.push(agg + '_over_time');
-}
-
-// PromQL vector matching + the by and without clauses
-// (https://prometheus.io/docs/prometheus/latest/querying/operators/#vector-matching)
-const vectorMatching = ['on', 'ignoring', 'group_right', 'group_left', 'by', 'without'];
-// Produce a regex matching elements : (elt1|elt2|...)
+const functions = PinotSupportedFunctions;
+const operators = PinotSupportedOperators;
+const vectorMatching = ['without', 'by', ...PinotSupportedVectorMatching];
 const vectorMatchingRegex = `(${vectorMatching.reduce((prev, curr) => `${prev}|${curr}`)})`;
-
-// PromQL Operators
-// (https://prometheus.io/docs/prometheus/latest/querying/operators/)
-const operators = ['+', '-', '*', '/', '%', '^', '==', '!=', '>', '<', '>=', '<=', 'and', 'or', 'unless'];
-
-// PromQL offset modifier
-// (https://prometheus.io/docs/prometheus/latest/querying/basics/#offset-modifier)
 const offsetModifier = ['offset'];
+const keywords = [...functions, ...vectorMatching, ...offsetModifier];
 
-// Merging all the keywords in one list
-const keywords = aggregations
-  .concat(functions)
-  .concat(aggregationsOverTime)
-  .concat(vectorMatching)
-  .concat(offsetModifier);
-
-// noinspection JSUnusedGlobalSymbols
 export const language = {
   ignoreCase: false,
   defaultToken: '',
   tokenPostfix: '.promql',
 
   keywords: keywords,
-
   operators: operators,
   vectorMatching: vectorMatchingRegex,
 

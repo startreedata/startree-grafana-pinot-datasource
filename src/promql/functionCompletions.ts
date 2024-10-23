@@ -1,6 +1,7 @@
 import { Completion, CompletionType } from './completion';
+import {PinotSupportedFunctions} from "./pinotSupport"; // This is an exhaustive list of all Prometheus functions.
 
-export const FUNCTION_COMPLETIONS: Completion[] = [
+export const FunctionCompletions: Completion[] = [
   // Functions
   // https://prometheus.io/docs/prometheus/latest/querying/functions/#functions
 
@@ -518,4 +519,6 @@ export const FUNCTION_COMPLETIONS: Completion[] = [
     insertText: 'quantile',
     documentation: 'Calculate φ-quantile (0 ≤ φ ≤ 1) over dimensions',
   },
-].map((x) => ({ ...x, type: CompletionType.FUNCTION }));
+]
+  .filter((x) => PinotSupportedFunctions.includes(x.label))
+  .map((x) => ({ ...x, type: CompletionType.FUNCTION }));
