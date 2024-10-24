@@ -17,7 +17,7 @@ func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
 
 		var databases []string
 		err = p.doRequestAndDecodeResponse(req, &databases, false)
-		if IsNotFoundStatusError(err) {
+		if IsStatusNotFoundError(err) {
 			return []string{}, nil
 		} else if err != nil {
 			return nil, err

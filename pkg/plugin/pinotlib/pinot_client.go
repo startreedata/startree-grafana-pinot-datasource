@@ -161,7 +161,7 @@ func IsHttpStatusError(err error) bool {
 	return errors.As(err, &statusErr)
 }
 
-func IsNotFoundStatusError(err error) bool {
+func IsStatusNotFoundError(err error) bool {
 	var statusErr *HttpStatusError
 	if errors.As(err, &statusErr) {
 		return statusErr.StatusCode == http.StatusNotFound
@@ -169,7 +169,7 @@ func IsNotFoundStatusError(err error) bool {
 	return false
 }
 
-func IsForbiddenStatusError(err error) bool {
+func IsStatusForbiddenError(err error) bool {
 	var statusErr *HttpStatusError
 	if errors.As(err, &statusErr) {
 		return statusErr.StatusCode == http.StatusForbidden

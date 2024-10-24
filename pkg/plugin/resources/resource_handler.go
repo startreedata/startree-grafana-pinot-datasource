@@ -104,7 +104,7 @@ func (x *ResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (x *ResourceHandler) ListDatabases(r *http.Request) *Response {
 	databases, err := x.client.ListDatabases(r.Context())
 
-	if pinotlib.IsForbiddenStatusError(err) {
+	if pinotlib.IsStatusForbiddenError(err) {
 		logger.Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
 		return newEmptyResponse(http.StatusOK)
 	} else if err != nil {

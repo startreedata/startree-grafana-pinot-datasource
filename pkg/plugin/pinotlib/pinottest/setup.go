@@ -135,7 +135,7 @@ func waitForSegmentsAllGood(t *testing.T, tableName string, timeout time.Duratio
 	defer timeoutTicker.Stop()
 
 	for {
-		statuses := ListSegmentStatusForTable(t, tableName)
+		statuses := listSegmentStatusForTable(t, tableName)
 		goodSegments := 0
 		for _, status := range statuses {
 			if status.SegmentStatus == "GOOD" {
@@ -162,7 +162,7 @@ func waitForSegmentStatus(t *testing.T, tableName string, segmentName string, se
 	defer timeoutTicker.Stop()
 
 	for {
-		statuses := ListSegmentStatusForTable(t, tableName)
+		statuses := listSegmentStatusForTable(t, tableName)
 		for _, status := range statuses {
 			if status.SegmentName == segmentName && status.SegmentStatus == segmentStatus {
 				return
@@ -198,9 +198,7 @@ type SegmentStatus struct {
 	SegmentStatus string `json:"segmentStatus"`
 }
 
-// ListSegmentStatusForTable returns the status of each segment in the table.
-// TODO: This might be better suited for pinotlib instead of the pinottest.
-func ListSegmentStatusForTable(t *testing.T, tableName string) []SegmentStatus {
+func listSegmentStatusForTable(t *testing.T, tableName string) []SegmentStatus {
 	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/tables/"+tableName+"/segmentsStatus", nil)
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
@@ -211,21 +209,6 @@ func ListSegmentStatusForTable(t *testing.T, tableName string) []SegmentStatus {
 	var data []SegmentStatus
 	require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
 	return data
-}
-
-const SegmentStatusGood = "GOOD"
-const SegmentStatusBad = "BAD"
-
-// ListBadSegmentsForTable returns the list of bad segments for the table.
-func ListBadSegmentsForTable(t *testing.T, tableName string) []string {
-	segments := ListSegmentStatusForTable(t, tableName)
-	var badSegments []string
-	for _, segment := range segments {
-		if segment.SegmentStatus == SegmentStatusBad {
-			badSegments = append(badSegments, segment.SegmentName)
-		}
-	}
-	return badSegments
 }
 
 func resetSegments(t *testing.T, tableName string) {
