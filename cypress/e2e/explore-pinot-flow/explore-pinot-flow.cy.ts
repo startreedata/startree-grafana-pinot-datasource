@@ -367,8 +367,7 @@ describe('Create and run pinot query using Explore', () => {
             // Select the option
             if (formData.aggregation) {
               cy.contains(formData.aggregation).click();
-
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait('@dsQuery');
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
@@ -695,8 +694,7 @@ describe('Create and run pinot query using Explore', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(filterOption.operator).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
 
                   // Check if the option is selected
