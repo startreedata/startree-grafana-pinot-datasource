@@ -108,7 +108,14 @@ describe('Create and run pinot query using Explore', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
@@ -360,8 +367,7 @@ describe('Create and run pinot query using Explore', () => {
             // Select the option
             if (formData.aggregation) {
               cy.contains(formData.aggregation).click();
-
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait('@dsQuery');
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
@@ -688,8 +694,7 @@ describe('Create and run pinot query using Explore', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(filterOption.operator).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
 
                   // Check if the option is selected
@@ -999,7 +1004,14 @@ describe('Create and run pinot query using Explore', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
