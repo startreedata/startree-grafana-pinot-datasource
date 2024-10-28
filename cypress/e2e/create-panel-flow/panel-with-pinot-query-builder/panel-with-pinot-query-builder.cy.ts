@@ -122,7 +122,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
@@ -1132,10 +1139,10 @@ describe('Create a Panel with Pinot Query Builder', () => {
       .should('be.visible')
       .within(() => {
         // Fill from time field
-        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-06-18 00:00:00');
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
 
         // Fill to time field
-        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-07-18 23:59:59');
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
 
         // Apply time range
         cy.get('button').contains('Apply time range').click();
@@ -1722,7 +1729,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
@@ -2348,7 +2362,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
@@ -2590,7 +2611,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
@@ -2847,7 +2875,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.get('#TimePickerContent')
       .should('be.visible')
       .within(() => {
-        cy.contains('Last 6 months').parent().click();
+        // Fill from time field
+        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+
+        // Fill to time field
+        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+
+        // Apply time range
+        cy.get('button').contains('Apply time range').click();
       });
 
     /**
