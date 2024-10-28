@@ -104,8 +104,7 @@ jobs:
       # Upload cypress screenshots on failure
       - name: Upload cypress screenshots artifact
         uses: actions/upload-artifact@v4
-        # if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
-        if: always()
+        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
         with:
           name: cypress-screenshots
           path: cypress/screenshots
