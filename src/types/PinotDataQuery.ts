@@ -67,6 +67,7 @@ export interface PinotDataQuery extends DataQuery {
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
+
   return {
     ...query,
 
@@ -90,5 +91,15 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
     // Sql Editor
 
     pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
+
+    // Variable Query editor
+
+    variableQuery: query.variableQuery
+      ? {
+          ...query.variableQuery,
+          columnName: templateSrv.replace(query.variableQuery.columnName, scopedVars),
+          pinotQlCode: templateSrv.replace(query.variableQuery.pinotQlCode, scopedVars),
+        }
+      : undefined,
   };
 }
