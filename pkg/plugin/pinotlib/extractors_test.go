@@ -127,6 +127,15 @@ func TestExtractColumn(t *testing.T) {
 			col:      []interface{}{true, false, true},
 			want:     []bool{true, false, true},
 		},
+		{
+			dataType: DataTypeTimestamp,
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
+			want: []time.Time{
+				time.Date(2024, 10, 24, 10, 11, 12, 0.1*1_000_000_000, time.UTC),
+				time.Date(2024, 10, 25, 10, 11, 12, 0.01e9, time.UTC),
+				time.Date(2024, 10, 26, 10, 11, 12, 0.001e9, time.UTC),
+			},
+		},
 	}
 
 	for _, tt := range testArgs {
@@ -235,6 +244,11 @@ func TestExtractLongColumn(t *testing.T) {
 			col:      []interface{}{true, false, true},
 			want:     []int64{1, 0, 1},
 		},
+		{
+			dataType: DataTypeTimestamp,
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
+			want:     []int64{1729764672100, 1729851072010, 1729937472001},
+		},
 	}
 
 	for _, tt := range testArgs {
@@ -288,6 +302,11 @@ func TestExtractDoubleColumn(t *testing.T) {
 			dataType: DataTypeBoolean,
 			col:      []interface{}{true, false, true},
 			want:     []float64{1, 0, 1},
+		},
+		{
+			dataType: DataTypeTimestamp,
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
+			want:     []float64{1729764672100, 1729851072010, 1729937472001},
 		},
 	}
 
@@ -396,6 +415,11 @@ func TestExtractStringColumn(t *testing.T) {
 			dataType: DataTypeBoolean,
 			col:      []interface{}{true, false, true},
 			want:     []string{"true", "false", "true"},
+		},
+		{
+			dataType: DataTypeTimestamp,
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
+			want:     []string{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
 		},
 	}
 
