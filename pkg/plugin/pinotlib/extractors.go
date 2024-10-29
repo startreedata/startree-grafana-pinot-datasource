@@ -53,7 +53,6 @@ func ExtractColumnToField(results *ResultTable, colIdx int) *data.Field {
 // The column data type is mapped to the corresponding golang type.
 func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
-	// TODO: Handle TIMESTAMP data type.
 	switch colDataType {
 	case DataTypeBoolean:
 		return extractTypedColumn[bool](results, func(rowIdx int) (bool, error) {
@@ -83,7 +82,8 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 			)
 			_, err := fmt.Sscanf((results.Rows[rowIdx][colIdx]).(string), "%d-%d-%d %d:%d:%f", &year, &month, &day, &hour, &minute, &second)
 			_, fractional := math.Modf(second)
-			return time.Date(year, month, day, hour, minute, int(second), int(fractional*float64(time.Second)), time.UTC), err
+			nanos := int(math.Round(fractional * float64(time.Second.Nanoseconds())))
+			return time.Date(year, month, day, hour, minute, int(second), nanos, time.UTC), err
 		})
 	default:
 		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
@@ -125,6 +125,12 @@ func ExtractLongColumn(results *ResultTable, colIdx int) []int64 {
 			}
 		}
 		return vals
+	case []time.Time:
+		vals := make([]int64, len(results.Rows))
+		for i := range rawVals {
+			vals[i] = rawVals[i].UnixMilli()
+		}
+		return vals
 	default:
 		return make([]int64, len(results.Rows))
 	}
@@ -146,6 +152,12 @@ func ExtractDoubleColumn(results *ResultTable, colIdx int) []float64 {
 			if rawVals[i] {
 				vals[i] = 1
 			}
+		}
+		return vals
+	case []time.Time:
+		vals := make([]float64, len(results.Rows))
+		for i := range rawVals {
+			vals[i] = float64(rawVals[i].UnixMilli())
 		}
 		return vals
 	default:
@@ -181,19 +193,20 @@ func ExtractBooleanColumn(results *ResultTable, colIdx int) []bool {
 }
 
 func ExtractStringColumn(results *ResultTable, colIdx int) []string {
+	// Shortcut fields that are string encoded in the response table.
+	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
+	switch colDataType {
+	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
+		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
+		})
+	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeTimestamp:
+		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+			return (results.Rows[rowIdx][colIdx]).(string), nil
+		})
+	}
+
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
-	case []int64:
-		vals := make([]string, len(results.Rows))
-		for i := range rawVals {
-			vals[i] = fmt.Sprintf("%d", rawVals[i])
-		}
-		return vals
-	case []float64:
-		vals := make([]string, len(results.Rows))
-		for i := range rawVals {
-			vals[i] = fmt.Sprintf("%v", rawVals[i])
-		}
-		return vals
 	case []bool:
 		vals := make([]string, len(results.Rows))
 		for i := range rawVals {
