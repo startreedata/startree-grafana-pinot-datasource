@@ -95,6 +95,7 @@ func CreateTestTables(t *testing.T) {
 			if !schemaExists(t, job.tableName) {
 				t.Logf("Table %s: creating schema...", job.tableName)
 				createTableSchema(t, job.schemaFile)
+				waitForTableSchema(t, job.tableName, 1*time.Minute)
 			}
 			if !tableExists(t, job.tableName) {
 				t.Logf("Table %s: creating config...", job.tableName)
@@ -328,6 +329,41 @@ func createTableSchema(t *testing.T, schemaFile string) {
 	_, err = respBody.ReadFrom(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode, respBody.String())
+}
+
+func waitForTableSchema(t *testing.T, schemaName string, timeout time.Duration) {
+	pollTicker := time.NewTicker(time.Second)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	isReady := func() bool {
+		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/schemas/"+schemaName, nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer safeClose(t, resp.Body)
+		return resp.StatusCode == http.StatusOK
+	}
+
+	for {
+		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/schemas/"+schemaName, nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer safeClose(t, resp.Body)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
+
+		select {
+		case <-timeoutTicker.C:
+			t.Fatalf("Timed out waiting for schema %s", schemaName)
+		case <-pollTicker.C:
+			if isReady() {
+				return
+			}
+		}
+	}
 }
 
 func tableExists(t *testing.T, tableName string) bool {
