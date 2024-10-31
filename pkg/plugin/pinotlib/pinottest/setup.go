@@ -381,21 +381,37 @@ func tableExists(t *testing.T, tableName string) bool {
 }
 
 func createTableConfig(t *testing.T, configFile string) {
-	file, err := dataFS.Open(configFile)
-	require.NoError(t, err)
-	defer safeClose(t, file)
 
-	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/tables", file)
-	require.NoError(t, err)
+	create := func() bool {
+		file, err := dataFS.Open(configFile)
+		require.NoError(t, err)
+		defer safeClose(t, file)
 
-	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
+		req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/tables", file)
+		require.NoError(t, err)
 
-	var respBody bytes.Buffer
-	_, err = respBody.ReadFrom(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode, respBody.String())
+		resp, err = http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer safeClose(t, resp.Body)
+	}
+
+	for i := 0; i < 3; i++ {
+		file, err := dataFS.Open(configFile)
+		require.NoError(t, err)
+		defer safeClose(t, file)
+
+		req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/tables", file)
+		require.NoError(t, err)
+
+		resp, err = http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer safeClose(t, resp.Body)
+
+		var respBody bytes.Buffer
+		_, err = respBody.ReadFrom(resp.Body)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, resp.StatusCode, respBody.String())
+	}
 }
 
 func tableHasData(t *testing.T, tableName string) bool {
