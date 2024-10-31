@@ -5,16 +5,15 @@ import (
 	"embed"
 	"fmt"
 	"github.com/goccy/go-json"
-	"github.com/stretchr/testify/require"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"testing"
 	"time"
 )
 
@@ -37,9 +36,9 @@ const (
 
 var createTestTablesOnce sync.Once
 
-func CreateTestTables(t *testing.T) {
+func CreateTestTables() {
 	createTestTablesOnce.Do(func() {
-		WaitForPinot(t, 5*time.Minute)
+		WaitForPinot(5 * time.Minute)
 
 		type CreateTableJob struct {
 			tableName  string
@@ -92,29 +91,31 @@ func CreateTestTables(t *testing.T) {
 
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
-			if !schemaExists(t, job.tableName) {
-				t.Logf("Table %s: creating schema...", job.tableName)
-				createTableSchema(t, job.schemaFile)
-				waitForTableSchema(t, job.tableName, 1*time.Minute)
+			if !schemaExists(job.tableName) {
+				fmt.Printf("Table %s: creating schema...\n", job.tableName)
+				createTableSchema(job.schemaFile)
+				waitForTableSchema(job.tableName, 1*time.Minute)
 			}
-			if !tableExists(t, job.tableName) {
-				t.Logf("Table %s: creating config...", job.tableName)
-				createTableConfig(t, job.configFile)
+			if !tableExists(job.tableName) {
+				fmt.Printf("Table %s: creating config...\n", job.tableName)
+				createTableConfig(job.configFile)
 			}
-			if !(tableHasData(t, job.tableName) || job.dataFile == "") {
-				t.Logf("Table %s: uploading data...", job.tableName)
-				uploadJsonTableData(t, job.tableName+"_OFFLINE", job.dataFile)
-				waitForSegmentsAllGood(t, job.tableName, 1*time.Minute)
+			if !(tableHasData(job.tableName) || job.dataFile == "") {
+				fmt.Printf("Table %s: uploading data...\n", job.tableName)
+				uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
+				waitForSegmentsAllGood(job.tableName, 1*time.Minute)
 
 				// Delete the partial table's segment and upload a new segment
 				if job.tableName == PartialTableName {
-					uploadJsonTableData(t, PartialTableName+"_OFFLINE", "data/partial_data_2.json")
-					waitForSegmentsAllGood(t, job.tableName, 1*time.Minute)
-					segments := listOfflineSegments(t, job.tableName)
-					require.Len(t, segments, 2)
-					deleteSegmentFromFilesystem(t, segments[0])
-					resetSegments(t, PartialTableName)
-					waitForSegmentStatus(t, PartialTableName, segments[0], "BAD", 1*time.Minute)
+					uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
+					waitForSegmentsAllGood(job.tableName, 1*time.Minute)
+					segments := listOfflineSegments(job.tableName)
+					if len(segments) != 2 {
+						panic("expected 2 segments")
+					}
+					deleteSegmentFromFilesystem(segments[0])
+					resetSegments(PartialTableName)
+					waitForSegmentStatus(PartialTableName, segments[0], "BAD", 1*time.Minute)
 				}
 			}
 		}
@@ -124,11 +125,11 @@ func CreateTestTables(t *testing.T) {
 		}
 		wg.Wait()
 
-		t.Log("Pinot setup complete.")
+		fmt.Println("Pinot setup complete.")
 	})
 }
 
-func waitForSegmentsAllGood(t *testing.T, tableName string, timeout time.Duration) {
+func waitForSegmentsAllGood(tableName string, timeout time.Duration) {
 	pollTicker := time.NewTicker(time.Second)
 	defer pollTicker.Stop()
 
@@ -136,7 +137,7 @@ func waitForSegmentsAllGood(t *testing.T, tableName string, timeout time.Duratio
 	defer timeoutTicker.Stop()
 
 	for {
-		statuses := listSegmentStatusForTable(t, tableName)
+		statuses := listSegmentStatusForTable(tableName)
 		goodSegments := 0
 		for _, status := range statuses {
 			if status.SegmentStatus == "GOOD" {
@@ -149,13 +150,13 @@ func waitForSegmentsAllGood(t *testing.T, tableName string, timeout time.Duratio
 
 		select {
 		case <-timeoutTicker.C:
-			t.Fatalf("Timed out waiting for segments for %s", tableName)
+			panic(fmt.Sprintf("Timed out waiting for segments for %s", tableName))
 		case <-pollTicker.C:
 		}
 	}
 }
 
-func waitForSegmentStatus(t *testing.T, tableName string, segmentName string, segmentStatus string, timeout time.Duration) {
+func waitForSegmentStatus(tableName string, segmentName string, segmentStatus string, timeout time.Duration) {
 	pollTicker := time.NewTicker(time.Second)
 	defer pollTicker.Stop()
 
@@ -163,7 +164,7 @@ func waitForSegmentStatus(t *testing.T, tableName string, segmentName string, se
 	defer timeoutTicker.Stop()
 
 	for {
-		statuses := listSegmentStatusForTable(t, tableName)
+		statuses := listSegmentStatusForTable(tableName)
 		for _, status := range statuses {
 			if status.SegmentName == segmentName && status.SegmentStatus == segmentStatus {
 				return
@@ -172,25 +173,28 @@ func waitForSegmentStatus(t *testing.T, tableName string, segmentName string, se
 
 		select {
 		case <-timeoutTicker.C:
-			t.Fatalf("Timed out waiting for %s segment status to %s", segmentName, segmentStatus)
+			panic(fmt.Sprintf("Timed out waiting for %s segment status to %s", segmentName, segmentStatus))
 		case <-pollTicker.C:
 		}
 	}
 }
 
-func listOfflineSegments(t *testing.T, tableName string) []string {
+func listOfflineSegments(tableName string) []string {
 	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/segments/"+tableName, nil)
-	require.NoError(t, err)
+	requireNoError(err)
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
+	requireNoError(err)
+	defer safeClose(resp.Body)
 
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	requireNoError(err)
+	requireOkStatus(resp)
 	var data []struct {
 		Offline []string `json:"OFFLINE"`
 	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
-	require.Len(t, data, 1)
+	requireNoError(json.NewDecoder(resp.Body).Decode(&data))
+	if len(data) != 1 {
+		panic(fmt.Sprintf("Expected 1 result, got %d %v", len(data), data))
+	}
 	return data[0].Offline
 }
 
@@ -199,39 +203,43 @@ type SegmentStatus struct {
 	SegmentStatus string `json:"segmentStatus"`
 }
 
-func listSegmentStatusForTable(t *testing.T, tableName string) []SegmentStatus {
+func listSegmentStatusForTable(tableName string) []SegmentStatus {
 	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/tables/"+tableName+"/segmentsStatus", nil)
-	require.NoError(t, err)
+	requireNoError(err)
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireOkStatus(resp)
 	var data []SegmentStatus
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&data))
+	requireNoError(json.NewDecoder(resp.Body).Decode(&data))
 	return data
 }
 
-func resetSegments(t *testing.T, tableName string) {
+func resetSegments(tableName string) {
 	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/segments/"+tableName+"_OFFLINE/reset?errorSegmentsOnly=false", nil)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer resp.Body.Close()
-
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireOkStatus(resp)
 }
 
-func deleteSegmentFromFilesystem(t *testing.T, segmentName string) {
+func deleteSegmentFromFilesystem(segmentName string) {
 	cmd := exec.Command("docker", "compose", "exec", "pinot",
 		"find", "/tmp", "-name", segmentName, "-exec", "rm", "-rf", "{}", "+")
-	t.Log("Executing: ", cmd.String())
+	fmt.Println("Executing: ", cmd.String())
 	err := cmd.Run()
-	require.NoError(t, err)
+	requireNoError(err)
 }
 
-func WaitForPinot(t *testing.T, timeout time.Duration) {
+func requireNoError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func WaitForPinot(timeout time.Duration) {
 	pollTicker := time.NewTicker(time.Second)
 	defer pollTicker.Stop()
 
@@ -241,12 +249,12 @@ func WaitForPinot(t *testing.T, timeout time.Duration) {
 	isReady := func() bool {
 		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/instances", nil)
 		req.Header.Set("Accept", "application/json")
-		require.NoError(t, err)
+		requireNoError(err)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return false
 		}
-		defer safeClose(t, resp.Body)
+		defer safeClose(resp.Body)
 
 		if resp.StatusCode != http.StatusOK {
 			return false
@@ -254,7 +262,7 @@ func WaitForPinot(t *testing.T, timeout time.Duration) {
 		var respData struct {
 			Instances []string `json:"instances"`
 		}
-		require.NoError(t, json.NewDecoder(resp.Body).Decode(&respData))
+		requireNoError(json.NewDecoder(resp.Body).Decode(&respData))
 
 		var hasController bool
 		var hasBroker bool
@@ -275,11 +283,11 @@ func WaitForPinot(t *testing.T, timeout time.Duration) {
 	if isReady() {
 		return
 	}
-	t.Log("Waiting for Pinot...")
+	fmt.Println("Waiting for Pinot...")
 	for {
 		select {
 		case <-timeoutTicker.C:
-			t.Fatal("Timed out waiting for Pinot")
+			panic("Timed out waiting for Pinot")
 		case <-pollTicker.C:
 			if isReady() {
 				return
@@ -288,50 +296,46 @@ func WaitForPinot(t *testing.T, timeout time.Duration) {
 	}
 }
 
-func schemaExists(t *testing.T, schemaName string) bool {
+func schemaExists(schemaName string) bool {
 	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/schemas/"+schemaName, nil)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
+	requireNoError(err)
+	defer safeClose(resp.Body)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		t.Errorf("Unexpected status code: %d", resp.StatusCode)
+		panic(fmt.Sprintf("Unexpected status code: %d", resp.StatusCode))
 	}
 	return resp.StatusCode == http.StatusOK
 }
 
-func createTableSchema(t *testing.T, schemaFile string) {
+func createTableSchema(schemaFile string) {
 	var body bytes.Buffer
 	multipartWriter := multipart.NewWriter(&body)
-	defer safeClose(t, multipartWriter)
+	defer safeClose(multipartWriter)
 
 	formWriter, err := multipartWriter.CreateFormFile("schemaName", schemaFile)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	file, err := dataFS.Open(schemaFile)
-	require.NoError(t, err)
-	defer safeClose(t, file)
+	requireNoError(err)
+	defer safeClose(file)
 
 	_, err = io.Copy(formWriter, file)
-	require.NoError(t, err)
+	requireNoError(err)
 
-	safeClose(t, multipartWriter)
+	safeClose(multipartWriter)
 	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/schemas", &body)
 	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
-
-	var respBody bytes.Buffer
-	_, err = respBody.ReadFrom(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode, respBody.String())
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireOkStatus(resp)
 }
 
-func waitForTableSchema(t *testing.T, schemaName string, timeout time.Duration) {
+func waitForTableSchema(schemaName string, timeout time.Duration) {
 	pollTicker := time.NewTicker(time.Second)
 	defer pollTicker.Stop()
 
@@ -340,24 +344,20 @@ func waitForTableSchema(t *testing.T, schemaName string, timeout time.Duration) 
 
 	isReady := func() bool {
 		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/schemas/"+schemaName, nil)
-		require.NoError(t, err)
+		requireNoError(err)
 		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer safeClose(t, resp.Body)
+		requireNoError(err)
+		defer safeClose(resp.Body)
 		return resp.StatusCode == http.StatusOK
 	}
 
+	if isReady() {
+		return
+	}
 	for {
-		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/schemas/"+schemaName, nil)
-		require.NoError(t, err)
-		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer safeClose(t, resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-
 		select {
 		case <-timeoutTicker.C:
-			t.Fatalf("Timed out waiting for schema %s", schemaName)
+			panic(fmt.Sprintf("Timed out waiting for schema %s", schemaName))
 		case <-pollTicker.C:
 			if isReady() {
 				return
@@ -366,36 +366,36 @@ func waitForTableSchema(t *testing.T, schemaName string, timeout time.Duration) 
 	}
 }
 
-func tableExists(t *testing.T, tableName string) bool {
+func tableExists(tableName string) bool {
 	req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/tables/"+tableName+"/metadata", nil)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
+	requireNoError(err)
+	defer safeClose(resp.Body)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNotFound {
-		t.Errorf("Unexpected status code: %d", resp.StatusCode)
+		panic(fmt.Sprintf("Unexpected status code: %d", resp.StatusCode))
 	}
 	return resp.StatusCode == http.StatusOK
 }
 
-func createTableConfig(t *testing.T, configFile string) {
+func createTableConfig(configFile string) {
 	create := func() (int, string) {
 		file, err := dataFS.Open(configFile)
-		require.NoError(t, err)
-		defer safeClose(t, file)
+		requireNoError(err)
+		defer safeClose(file)
 
 		req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/tables", file)
-		require.NoError(t, err)
+		requireNoError(err)
 
 		resp, err := http.DefaultClient.Do(req)
-		require.NoError(t, err)
-		defer safeClose(t, resp.Body)
+		requireNoError(err)
+		defer safeClose(resp.Body)
 
 		var respBody bytes.Buffer
 		_, err = respBody.ReadFrom(resp.Body)
-		require.NoError(t, err)
+		requireNoError(err)
 
 		return resp.StatusCode, respBody.String()
 	}
@@ -408,11 +408,12 @@ func createTableConfig(t *testing.T, configFile string) {
 			return
 		}
 	}
-	require.Equal(t, http.StatusOK, code, body)
-
+	if code != http.StatusOK {
+		panic(fmt.Sprintf("Unexpected status code: %d %s", code, body))
+	}
 }
 
-func tableHasData(t *testing.T, tableName string) bool {
+func tableHasData(tableName string) bool {
 	reqData := struct {
 		Sql string `json:"sql"`
 	}{
@@ -420,65 +421,72 @@ func tableHasData(t *testing.T, tableName string) bool {
 	}
 
 	var reqBody bytes.Buffer
-	require.NoError(t, json.NewEncoder(&reqBody).Encode(reqData))
+	requireNoError(json.NewEncoder(&reqBody).Encode(reqData))
 
 	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/sql", &reqBody)
 	req.Header.Set("Content-Type", "application/json")
-	require.NoError(t, err)
+	requireNoError(err)
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
+	requireNoError(err)
+	defer safeClose(resp.Body)
 
 	var respData struct {
 		ResultTable struct {
 			Rows []interface{} `json:"rows"`
 		} `json:"resultTable"`
 	}
-	require.Equal(t, http.StatusOK, resp.StatusCode)
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&respData))
+	if resp.StatusCode != http.StatusOK {
+		panic(fmt.Sprintf("Unexpected status code: %d %s", resp.StatusCode, reqBody.String()))
+	}
+	requireNoError(json.NewDecoder(resp.Body).Decode(&respData))
 
 	return len(respData.ResultTable.Rows) != 0
 }
 
-func uploadJsonTableData(t *testing.T, tableNameWithType string, dataFile string) {
+func uploadJsonTableData(tableNameWithType string, dataFile string) {
 	var body bytes.Buffer
 	multipartWriter := multipart.NewWriter(&body)
-	defer safeClose(t, multipartWriter)
+	defer safeClose(multipartWriter)
 
 	formWriter, err := multipartWriter.CreateFormFile("file", dataFile)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	file, err := dataFS.Open(dataFile)
-	require.NoError(t, err)
-	defer safeClose(t, file)
+	requireNoError(err)
+	defer safeClose(file)
 
 	_, err = io.Copy(formWriter, file)
-	require.NoError(t, err)
+	requireNoError(err)
 
 	batchConfigMapJson, err := json.Marshal(map[string]string{
 		"inputFormat": strings.TrimPrefix(filepath.Ext(dataFile), "."),
 	})
-	require.NoError(t, err)
+	requireNoError(err)
 
 	values := make(url.Values)
 	values.Add("tableNameWithType", tableNameWithType)
 	values.Add("batchConfigMapStr", string(batchConfigMapJson))
 
-	safeClose(t, multipartWriter)
+	safeClose(multipartWriter)
 	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/ingestFromFile?"+values.Encode(), &body)
 	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 
 	resp, err := http.DefaultClient.Do(req)
-	require.NoError(t, err)
-	defer safeClose(t, resp.Body)
+	requireNoError(err)
+	defer safeClose(resp.Body)
 
-	var respBody bytes.Buffer
-	_, err = respBody.ReadFrom(resp.Body)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusOK, resp.StatusCode, respBody.String())
+	requireNoError(err)
+	requireOkStatus(resp)
 }
 
-func safeClose(t *testing.T, closer io.Closer) {
-	require.NoError(t, closer.Close())
+func requireOkStatus(resp *http.Response) {
+	if resp.StatusCode != http.StatusOK {
+		dump, _ := httputil.DumpResponse(resp, true)
+		panic(fmt.Sprintf("Unexpected status code: %d %s", resp.StatusCode, string(dump)))
+	}
+}
+
+func safeClose(closer io.Closer) {
+	requireNoError(closer.Close())
 }

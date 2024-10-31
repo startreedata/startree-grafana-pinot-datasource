@@ -7,7 +7,7 @@ import (
 )
 
 func setupPinotAndCreateClient(t *testing.T) *PinotClient {
-	pinottest.CreateTestTables(t)
+	pinottest.CreateTestTables()
 	pinotClient, err := NewPinotClient(PinotClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,

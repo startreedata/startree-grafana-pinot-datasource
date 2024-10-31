@@ -2,7 +2,6 @@ package pinotlib
 
 import (
 	"context"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -20,7 +19,6 @@ func TestPinotClient_ListDatabases(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
-		pinottest.CreateTestTables(t)
 
 		got, err := client.ListDatabases(ctx)
 		assert.NoError(t, err)
@@ -41,7 +39,6 @@ func TestPinotClient_ListTables(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctx := context.Background()
 		client := setupPinotAndCreateClient(t)
-		pinottest.CreateTestTables(t)
 
 		gotTables, err := client.ListTables(ctx)
 		assert.NoError(t, err)
