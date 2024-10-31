@@ -15,21 +15,11 @@ func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 
-		resp, err := p.doRequest(req)
-		if err != nil {
-			return nil, err
-		}
-		defer p.closeResponseBody(resp)
-
-		if resp.StatusCode == http.StatusNotFound {
-			return []string{}, nil
-		}
-		if resp.StatusCode != http.StatusOK {
-			return nil, p.newErrorFromResponseBody(resp)
-		}
-
 		var databases []string
-		if err = p.decodeResponse(resp, &databases); err != nil {
+		err = p.doRequestAndDecodeResponse(req, &databases, false)
+		if IsStatusNotFoundError(err) {
+			return []string{}, nil
+		} else if err != nil {
 			return nil, err
 		}
 		return databases, nil
@@ -47,7 +37,7 @@ func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
 		var tablesResp struct {
 			Tables []string `json:"tables"`
 		}
-		if err = p.doRequestAndDecodeResponse(req, &tablesResp); err != nil {
+		if err = p.doRequestAndDecodeResponse(req, &tablesResp, false); err != nil {
 			return nil, err
 		}
 
@@ -105,7 +95,7 @@ func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSc
 		}
 
 		var schema TableSchema
-		if err = p.doRequestAndDecodeResponse(req, &schema); err != nil {
+		if err = p.doRequestAndDecodeResponse(req, &schema, false); err != nil {
 			return TableSchema{}, err
 		}
 		return schema, nil
@@ -126,7 +116,7 @@ func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (Table
 			return TableMetadata{}, err
 		}
 		var metadata TableMetadata
-		if err = p.doRequestAndDecodeResponse(req, &metadata); err != nil {
+		if err = p.doRequestAndDecodeResponse(req, &metadata, false); err != nil {
 			return TableMetadata{}, err
 		}
 		return metadata, nil

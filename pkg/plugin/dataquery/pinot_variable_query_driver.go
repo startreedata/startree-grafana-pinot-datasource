@@ -53,14 +53,14 @@ func (d *PinotVariableQueryDriver) Execute(ctx context.Context) backend.DataResp
 	case VariableQueryTypePinotQlCode:
 		return d.getSqlResults(ctx)
 	default:
-		return NewDataResponse()
+		return NewEmptyDataResponse()
 	}
 }
 
 func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) backend.DataResponse {
 	sqlCode := strings.TrimSpace(d.params.PinotQlCode)
 	if sqlCode == "" {
-		return NewDataResponse()
+		return NewEmptyDataResponse()
 	}
 
 	macroEngine := MacroEngine{
@@ -68,30 +68,29 @@ func (d *PinotVariableQueryDriver) getSqlResults(ctx context.Context) backend.Da
 	}
 	sqlCode, err := macroEngine.ExpandTableName(sqlCode)
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	resp, err := d.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sqlCode))
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, d.params.PinotClient, pinotlib.NewSqlQuery(sqlCode))
+	if !ok {
+		return backendResp
 	}
 
-	result := resp.ResultTable
-	values := make([]string, pinotlib.GetRowCount(result)*pinotlib.GetColumnCount(result))
-	for colId := 0; colId < pinotlib.GetColumnCount(result); colId++ {
-		for rowId, val := range pinotlib.ExtractStringColumn(result, colId) {
+	values := make([]string, results.RowCount()*results.ColumnCount())
+	for colId := 0; colId < results.ColumnCount(); colId++ {
+		for rowId, val := range pinotlib.ExtractStringColumn(results, colId) {
 			// Extract values in table order.
-			values[rowId*pinotlib.GetColumnCount(result)+colId] = val
+			values[rowId*results.ColumnCount()+colId] = val
 		}
 	}
 	values = pinotlib.GetDistinctValues(values)
 	frame := data.NewFrame("result", data.NewField("codeValues", nil, values))
-	return NewDataResponse(frame)
+	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
 func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backend.DataResponse {
 	if d.params.TableName == "" || d.params.ColumnName == "" {
-		return NewDataResponse()
+		return NewEmptyDataResponse()
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
@@ -99,26 +98,28 @@ func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backen
 		TableName:  d.params.TableName,
 	})
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	result, err := d.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, d.params.PinotClient, pinotlib.NewSqlQuery(sql))
+	if !ok {
+		return backendResp
 	}
 
-	values := pinotlib.ExtractStringColumn(result.ResultTable, 0)
+	values := pinotlib.ExtractStringColumn(results, 0)
 	frame := data.NewFrame("result", data.NewField("distinctValues", nil, values))
-	return NewDataResponse(frame)
+	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
 func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) backend.DataResponse {
 	if d.params.TableName == "" {
-		return NewDataResponse()
+		return NewEmptyDataResponse()
 	}
 	schema, err := d.params.PinotClient.GetTableSchema(ctx, d.params.TableName)
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	if pinotlib.IsHttpStatusError(err) {
+		return NewDownstreamErrorResponse(err)
+	} else if err != nil {
+		return NewPluginErrorResponse(err)
 	}
 
 	var columns []string
@@ -139,14 +140,16 @@ func (d *PinotVariableQueryDriver) getColumnList(ctx context.Context) backend.Da
 	}
 
 	frame := data.NewFrame("result", data.NewField("columns", nil, columns))
-	return NewDataResponse(frame)
+	return NewOkDataResponse(frame)
 }
 
 func (d *PinotVariableQueryDriver) getTableList(ctx context.Context) backend.DataResponse {
 	tables, err := d.params.PinotClient.ListTables(ctx)
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	if pinotlib.IsHttpStatusError(err) {
+		return NewDownstreamErrorResponse(err)
+	} else if err != nil {
+		return NewPluginErrorResponse(err)
 	}
 	frame := data.NewFrame("result", data.NewField("tables", nil, tables))
-	return NewDataResponse(frame)
+	return NewOkDataResponse(frame)
 }

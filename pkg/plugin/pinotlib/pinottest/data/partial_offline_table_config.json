@@ -1,0 +1,17 @@
+{
+  "tableName": "partial",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "schemaName": "partial",
+    "replication" : "1"
+  },
+  "tenants":  {
+    "broker":"DefaultTenant",
+    "server":"DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

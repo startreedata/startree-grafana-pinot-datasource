@@ -38,7 +38,7 @@ func NewPromQlCodeDriver(params PromQlCodeDriverParams) *PromQlDriver {
 
 func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 	if strings.TrimSpace(p.params.PromQlCode) == "" {
-		return backend.DataResponse{}
+		return NewEmptyDataResponse()
 	}
 
 	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
@@ -50,14 +50,15 @@ func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 		TableName: p.params.TableName,
 	})
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 	defer queryResponse.Body.Close()
 
 	if queryResponse.StatusCode != http.StatusOK {
 		var body bytes.Buffer
 		_, _ = body.ReadFrom(queryResponse.Body)
-		return NewDataInternalErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
+		// TODO: Check the responses for bad promql queries. Is this always a downstream issue?
+		return NewDownstreamErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
 	}
 
 	iter := jsoniter.Parse(jsoniter.ConfigDefault, queryResponse.Body, 1024)

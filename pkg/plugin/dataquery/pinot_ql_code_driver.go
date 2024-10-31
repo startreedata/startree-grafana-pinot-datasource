@@ -17,7 +17,6 @@ const (
 type PinotQlCodeDriverParams struct {
 	PinotClient       *pinotlib.PinotClient
 	Code              string
-	DatabaseName      string
 	TableName         string
 	TimeColumnAlias   string
 	TimeColumnFormat  string
@@ -71,20 +70,20 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 func (p *PinotQlCodeDriver) Execute(ctx context.Context) backend.DataResponse {
 	sql, err := p.RenderPinotSql()
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	resp, err := p.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, p.params.PinotClient, pinotlib.NewSqlQuery(sql))
+	if !ok {
+		return backendResp
+	}
+
+	frame, err := p.ExtractResults(results)
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	frame, err := p.ExtractResults(resp.ResultTable)
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
-	}
-
-	return NewDataResponse(frame)
+	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
 func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {

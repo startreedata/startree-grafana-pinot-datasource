@@ -2,9 +2,7 @@ package dataquery
 
 import (
 	"context"
-	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 )
 
@@ -56,7 +54,6 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 			TableSchema:         tableSchema,
 			TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
 			IntervalSize:        query.IntervalSize,
-			DatabaseName:        query.DatabaseName,
 			TableName:           query.TableName,
 			TimeColumn:          query.TimeColumn,
 			MetricColumn:        query.MetricColumn,
@@ -76,7 +73,6 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 		return NewPinotQlCodeDriver(PinotQlCodeDriverParams{
 			PinotClient:       pinotClient,
 			Code:              query.PinotQlCode,
-			DatabaseName:      query.DatabaseName,
 			TableName:         query.TableName,
 			TimeColumnAlias:   query.TimeColumnAlias,
 			TimeColumnFormat:  query.TimeColumnFormat,
@@ -97,17 +93,18 @@ var _ Driver = &NoOpDriver{}
 type NoOpDriver struct{}
 
 func (d *NoOpDriver) Execute(ctx context.Context) backend.DataResponse {
-	return backend.DataResponse{}
+	return NewEmptyDataResponse()
 }
 
-func NewDataResponse(frames ...*data.Frame) backend.DataResponse {
-	return backend.DataResponse{Frames: frames}
-}
-
-func NewDataInternalErrorResponse(err error) backend.DataResponse {
-	return NewDataErrorResponse(backend.StatusInternal, err)
-}
-
-func NewDataErrorResponse(status backend.Status, err error) backend.DataResponse {
-	return backend.ErrDataResponse(status, fmt.Sprintf("Error: %s.", err.Error()))
+func doSqlQuery(ctx context.Context, pinotClient *pinotlib.PinotClient, query pinotlib.SqlQuery) (*pinotlib.ResultTable, []pinotlib.BrokerException, bool, backend.DataResponse) {
+	resp, err := pinotClient.ExecuteSqlQuery(ctx, query)
+	if err != nil {
+		return nil, nil, false, NewPluginErrorResponse(err)
+	} else if resp.HasData() {
+		return resp.ResultTable, resp.Exceptions, true, backend.DataResponse{}
+	} else if resp.HasExceptions() {
+		return nil, resp.Exceptions, false, NewPinotExceptionsDataResponse(resp.Exceptions)
+	} else {
+		return nil, nil, false, NewEmptyDataResponse()
+	}
 }

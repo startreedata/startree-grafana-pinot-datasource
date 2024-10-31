@@ -15,7 +15,7 @@ import (
 type BrokerResponse struct {
 	ResultTable *ResultTable      `json:"resultTable,omitempty"`
 	TraceInfo   map[string]string `json:"traceInfo,omitempty"`
-	Exceptions  []PinotException  `json:"exceptions"`
+	Exceptions  []BrokerException `json:"exceptions"`
 
 	NumSegmentsProcessed        int64 `json:"numSegmentsProcessed"`
 	NumServersResponded         int64 `json:"numServersResponded"`
@@ -31,7 +31,15 @@ type BrokerResponse struct {
 	MinConsumingFreshnessTimeMs int64 `json:"minConsumingFreshnessTimeMs"`
 }
 
-type PinotException struct {
+func (x *BrokerResponse) HasExceptions() bool {
+	return len(x.Exceptions) > 0
+}
+
+func (x *BrokerResponse) HasData() bool {
+	return x.ResultTable != nil && x.ResultTable.RowCount() > 0
+}
+
+type BrokerException struct {
 	Message   string `json:"message"`
 	ErrorCode int    `json:"errorCode"`
 }
@@ -46,15 +54,28 @@ type ResultTable struct {
 	Rows       [][]interface{} `json:"rows"`
 }
 
+func (x *ResultTable) RowCount() int {
+	return len(x.Rows)
+}
+
+func (x *ResultTable) ColumnCount() int {
+	return len(x.DataSchema.ColumnNames)
+}
+
 type BrokerExceptionError struct {
-	Exceptions []PinotException
+	Exceptions []BrokerException
+}
+
+func NewBrokerExceptionError(exceptions []BrokerException) *BrokerExceptionError {
+	return &BrokerExceptionError{exceptions}
 }
 
 func (e *BrokerExceptionError) Error() string {
-	if len(e.Exceptions) > 0 {
-		return e.Exceptions[0].Message
+	messages := make([]string, len(e.Exceptions))
+	for i, exception := range e.Exceptions {
+		messages[i] = fmt.Sprintf("Code %d: %s", exception.ErrorCode, exception.Message)
 	}
-	return "nondescript broker exception"
+	return "Broker request completed with exceptions:\n" + strings.Join(messages, "\n")
 }
 
 type SqlQuery struct {
@@ -112,9 +133,6 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, fmt.Errorf("pinot/http failed to decode response json: %w", err)
 	}
 
-	if len(respData.Exceptions) > 0 {
-		return nil, &BrokerExceptionError{respData.Exceptions}
-	}
 	return &respData, nil
 }
 
