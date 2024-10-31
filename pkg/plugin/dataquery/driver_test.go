@@ -1,11 +1,22 @@
 package dataquery
 
 import (
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sort"
 	"testing"
 )
+
+func TestNewDriver(t *testing.T) {
+	t.Run("hidden", func(t *testing.T) {
+		query := PinotDataQuery{Hide: true}
+		got, err := NewDriver(nil, query, backend.TimeRange{})
+		require.NoError(t, err)
+		assert.IsType(t, &NoOpDriver{}, got)
+	})
+}
 
 func sliceToPointers[V any](arr []V) []*V {
 	res := make([]*V, len(arr))
