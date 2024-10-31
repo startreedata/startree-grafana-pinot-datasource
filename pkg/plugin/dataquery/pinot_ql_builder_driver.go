@@ -35,7 +35,6 @@ type PinotQlBuilderParams struct {
 	TableSchema         pinotlib.TableSchema
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
-	DatabaseName        string
 	TableName           string
 	TimeColumn          string
 	MetricColumn        string
@@ -83,19 +82,19 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 func (p *PinotQlBuilderDriver) Execute(ctx context.Context) backend.DataResponse {
 	sql, err := p.RenderPinotSql(true)
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	resp, err := p.params.PinotClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
-	if err != nil {
-		return NewDataInternalErrorResponse(err)
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, p.params.PinotClient, pinotlib.NewSqlQuery(sql))
+	if !ok {
+		return backendResp
 	}
 
-	frame, err := p.ExtractResults(resp.ResultTable)
+	frame, err := p.ExtractResults(results)
 	if err != nil {
-		return NewDataInternalErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
-	return NewDataResponse(frame)
+	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
 func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error) {
