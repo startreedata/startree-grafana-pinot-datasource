@@ -306,8 +306,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             // Select the option
             if (formData.granularity) {
               cy.contains(formData.granularity).click();
-
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait('@dsQuery');
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
@@ -443,7 +442,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
             // Select the first option
             cy.contains(selectOptions[0].name).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
 
             // Check if the first option is selected
             cy.get('@groupBySelect').within(() => {
@@ -472,8 +471,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -517,7 +515,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
             // Select the first option
             cy.contains(selectOptions[0]).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
 
             // Check if the first option is selected
             cy.get('@orderBySelect').within(() => {
@@ -546,8 +544,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -688,7 +685,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select View column filter
                 cy.contains('views').click();
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
           });
 
@@ -765,8 +762,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(filterOption.column).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
 
                   // Check if the option is selected
@@ -820,8 +816,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
                         // Select the option
                         cy.contains(filterOption.value).click();
-
-                        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                        cy.wait('@dsQuery');
                       });
                   });
 
@@ -936,8 +931,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(queryOption.option).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
                 });
 
@@ -1256,8 +1250,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             // Select the option
             if (formData.granularity) {
               cy.contains(formData.granularity).click();
-
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait('@dsQuery');
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
@@ -1287,7 +1280,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .within(() => {
             // Select the option
             cy.contains(formData.metricColumn).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
           });
 
         // Check if correct option is selected
@@ -1351,8 +1344,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -1386,8 +1378,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -1430,8 +1421,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(filterOption.column).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
 
                   // Check if the option is selected
@@ -1469,8 +1459,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                       .should('be.visible')
                       .within(() => {
                         cy.contains(filterOption.value).click();
-
-                        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                        cy.wait('@dsQuery');
                       });
                   });
 
@@ -1516,8 +1505,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(queryOption.option).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
                 });
 
@@ -1855,8 +1843,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             // Select the option
             if (formData.granularity) {
               cy.contains(formData.granularity).click();
-
-              cy.wait(['@dsQuery', '@previewSqlBuilder']);
+              cy.wait('@dsQuery');
             } else {
               // Close the select menu
               cy.get('@body').click(0, 0);
@@ -1886,7 +1873,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .within(() => {
             // Select the option
             cy.contains(formData.metricColumn).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
           });
 
         // Check if correct option is selected
@@ -1950,8 +1937,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -1985,8 +1971,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
               .within(() => {
                 // Select the option
                 cy.contains(option).click();
-
-                cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                cy.wait('@dsQuery');
               });
 
             // Check if option is selected
@@ -2029,8 +2014,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(filterOption.column).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
 
                   // Check if the option is selected
@@ -2068,8 +2052,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                       .should('be.visible')
                       .within(() => {
                         cy.contains(filterOption.value).click();
-
-                        cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                        cy.wait('@dsQuery');
                       });
                   });
 
@@ -2115,8 +2098,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                     .within(() => {
                       // Select the option
                       cy.contains(queryOption.option).click();
-
-                      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+                      cy.wait('@dsQuery');
                     });
                 });
 
@@ -2485,7 +2467,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .within(() => {
             // Select the option
             cy.contains(formData.metricColumn).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
           });
 
         // Check if correct option is selected
@@ -2734,7 +2716,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .within(() => {
             // Select the option
             cy.contains(formData.metricColumn).click();
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
+            cy.wait('@dsQuery');
           });
 
         // Check if correct option is selected
