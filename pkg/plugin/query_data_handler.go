@@ -25,7 +25,7 @@ func fetchData(client *pinotlib.PinotClient, ctx context.Context, query backend.
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
 
-	driver, err := dataquery.NewDriver(ctx, client, pinotDataQuery, query.TimeRange)
+	driver, err := dataquery.NewDriver(client, pinotDataQuery, query.TimeRange)
 	if err != nil {
 		return dataquery.NewPluginErrorResponse(err)
 	}

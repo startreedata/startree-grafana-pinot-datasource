@@ -10,7 +10,11 @@ type Driver interface {
 	Execute(ctx context.Context) backend.DataResponse
 }
 
-func NewDriver(ctx context.Context, pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
+func NewDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, timeRange backend.TimeRange) (Driver, error) {
+	if query.Hide {
+		return new(NoOpDriver), nil
+	}
+
 	switch query.QueryType {
 	case QueryTypePinotQl:
 		return newPinotQlDriver(pinotClient, query, timeRange)
