@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources/cache"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/cache"
 	"io"
 	"net/http"
 	"strings"
@@ -98,7 +98,7 @@ func (p *PinotClient) newRequest(ctx context.Context, method string, url string,
 	return req, nil
 }
 
-func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}, useNumber bool) error {
+func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
 	resp, err := p.doRequest(req)
 	if err != nil {
 		return err
@@ -109,7 +109,12 @@ func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interfa
 		return p.newErrorFromResponseBody(resp)
 	}
 
-	return p.decodeResponse(resp, dest, useNumber)
+	decoder := json.NewDecoder(resp.Body)
+	decoder.UseNumber()
+	if err = decoder.Decode(&dest); err != nil {
+		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
+	}
+	return nil
 }
 
 func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
@@ -133,18 +138,6 @@ func (p *PinotClient) newErrorFromResponseBody(resp *http.Response) error {
 		logger.Logger.Error("pinot/http failed to read response body: ", err.Error())
 	}
 	return newHttpStatusError(resp.StatusCode, body.String())
-}
-
-func (p *PinotClient) decodeResponse(resp *http.Response, dest interface{}, useNumber bool) error {
-	decoder := json.NewDecoder(resp.Body)
-	if useNumber {
-		decoder.UseNumber()
-	}
-
-	if err := decoder.Decode(&dest); err != nil {
-		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
-	}
-	return nil
 }
 
 type HttpStatusError struct {
