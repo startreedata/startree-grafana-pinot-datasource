@@ -1,47 +1,15 @@
 package pinotlib
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
 	"sort"
 	"testing"
 	"time"
 )
-
-func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
-	client := setupPinotAndCreateClient(t)
-
-	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &TimeSeriesRangeQuery{
-		Language:  TimeSeriesQueryLanguagePromQl,
-		Query:     "http_request_handled",
-		Start:     time.Unix(1726617600, 0),
-		End:       time.Unix(1726619400, 0),
-		Step:      60 * time.Second,
-		TableName: "infraMetrics_OFFLINE",
-	})
-	defer func() {
-		require.NoError(t, resp.Body.Close())
-	}()
-
-	require.NoError(t, err)
-
-	var body bytes.Buffer
-	_, err = body.ReadFrom(resp.Body)
-	require.NoError(t, err)
-
-	assert.Equal(t, http.StatusOK, resp.StatusCode, body.String())
-
-	var respData struct {
-		Status string `json:"status"`
-	}
-	require.NoError(t, json.NewDecoder(&body).Decode(&respData))
-	assert.Equal(t, "success", respData.Status)
-}
 
 func TestPinotClient_ListTimeSeriesTables(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
@@ -192,4 +160,100 @@ func TestIsTimeSeriesTableSchema(t *testing.T) {
 		}
 		assert.Equal(t, false, IsTimeSeriesTableSchema(schema))
 	})
+}
+
+func TestTimeSeriesResult_UnmarshalJSON(t *testing.T) {
+	payload := `{
+        "metric": {
+          "__name__": "http_request_handled",
+          "metric": "http_request_handled",
+          "labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}"
+        },
+        "values": [
+          [
+            1726617600,
+            "24022.0"
+          ],
+          [
+            1726617660,
+            "48066.0"
+          ],
+          [
+            1726617720,
+            null
+          ]
+        ]
+      }`
+
+	var got TimeSeriesResult
+	err := json.Unmarshal([]byte(payload), &got)
+	require.NoError(t, err)
+	assert.Equal(t, TimeSeriesResult{
+		Metric: map[string]string{
+			"__name__": "http_request_handled",
+			"metric":   "http_request_handled",
+			"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+		},
+		Timestamps: []time.Time{
+			time.Unix(1726617600, 0).UTC(),
+			time.Unix(1726617660, 0).UTC(),
+		},
+		Values: []float64{
+			24022.0,
+			48066.0,
+		},
+	}, got)
+}
+
+func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+
+	resp, err := client.ExecuteTimeSeriesQuery(context.Background(), &TimeSeriesRangeQuery{
+		Language:  TimeSeriesQueryLanguagePromQl,
+		Query:     `http_request_handled{path="/app",method="GET",status=~"200|400"}`,
+		Start:     time.Unix(1726617600, 0).UTC(),
+		End:       time.Unix(1726617900, 0).UTC(),
+		Step:      60 * time.Second,
+		TableName: "infraMetrics_OFFLINE",
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, &TimeSeriesQueryResponse{
+		Status: "success",
+		Data: TimeSeriesData{
+			ResultType: "matrix",
+			Result: []TimeSeriesResult{
+				{
+					Metric: map[string]string{
+						"__name__": "http_request_handled",
+						"metric":   "http_request_handled",
+						"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+					},
+					Timestamps: []time.Time{
+						time.Unix(1726617600, 0).UTC(),
+						time.Unix(1726617660, 0).UTC(),
+						time.Unix(1726617720, 0).UTC(),
+						time.Unix(1726617780, 0).UTC(),
+						time.Unix(1726617840, 0).UTC(),
+					},
+					Values: []float64{24022, 48066, 60102, 0, 0},
+				},
+				{
+					Metric: map[string]string{
+						"__name__": "http_request_handled",
+						"metric":   "http_request_handled",
+						"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+					},
+					Timestamps: []time.Time{
+						time.Unix(1726617600, 0).UTC(),
+						time.Unix(1726617660, 0).UTC(),
+						time.Unix(1726617720, 0).UTC(),
+						time.Unix(1726617780, 0).UTC(),
+						time.Unix(1726617840, 0).UTC(),
+					},
+					Values: []float64{4018, 8045, 10061, 0, 0},
+				},
+			},
+		},
+	}, resp)
 }

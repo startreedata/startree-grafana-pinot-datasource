@@ -1,15 +1,10 @@
 package dataquery
 
 import (
-	"bytes"
 	"context"
-	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/grafana/grafana/pkg/promlib/converter"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -38,7 +33,7 @@ func NewPromQlCodeDriver(params PromQlCodeDriverParams) *PromQlDriver {
 
 func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 	if strings.TrimSpace(p.params.PromQlCode) == "" {
-		return NewEmptyDataResponse()
+		return backend.DataResponse{}
 	}
 
 	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
@@ -52,22 +47,9 @@ func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
-	defer queryResponse.Body.Close()
 
-	if queryResponse.StatusCode != http.StatusOK {
-		var body bytes.Buffer
-		_, _ = body.ReadFrom(queryResponse.Body)
-		// TODO: Check the responses for bad promql queries. Is this always a downstream issue?
-		return NewDownstreamErrorResponse(fmt.Errorf("error executing promql query: %s", body.String()))
-	}
-
-	iter := jsoniter.Parse(jsoniter.ConfigDefault, queryResponse.Body, 1024)
-	dataResponse := converter.ReadPrometheusStyleResult(iter, converter.Options{})
-
-	for _, frame := range dataResponse.Frames {
-		p.decorateFrame(frame)
-	}
-	return dataResponse
+	frames := ExtractTimeSeriesMatrix(queryResponse.Data.Result, p.params.Legend, p.params.IntervalSize)
+	return NewOkDataResponse(frames...)
 }
 
 func (p *PromQlDriver) decorateFrame(frame *data.Frame) {
