@@ -1,7 +1,6 @@
 import { getUniqueString } from 'support/utils/get-unique-string';
-import { createPinotDatasource, deletePinotDatasource } from './create-pinot-datasource';
 
-export interface TestCtx {
+interface TestCtx {
   panelTitle: string;
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
@@ -84,7 +83,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -388,7 +387,11 @@ describe('Create a Panel with Pinot Code Editor', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -440,7 +443,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -675,7 +678,11 @@ describe('Create a Panel with Pinot Code Editor', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -716,7 +723,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -957,7 +964,11 @@ describe('Create a Panel with Pinot Code Editor', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 });

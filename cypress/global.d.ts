@@ -26,8 +26,10 @@ declare namespace Cypress {
       options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
     ): Chainable<JQuery<HTMLElement>>;
 
-    // Delete Pinot Data Source
-    deletePinotDatasource(uid: string): Chainable<void>;
+    // Pinot Data Source
+    createPinotDatasource(): Cypress.Chainable<{ name: string }>;
+    deletePinotDatasourceWithUi(uid: string): Cypress.Chainable<{ success: boolean }>;
+    deletePinotDatasource(uid: string): Cypress.Chainable<void>;
   }
 }
 
