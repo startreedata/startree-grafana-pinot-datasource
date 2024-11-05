@@ -34,7 +34,7 @@ func TestPinotQlCodeDriver_Execute(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("happy path", func(t *testing.T) {
+	t.Run("time series", func(t *testing.T) {
 		params := PinotQlCodeDriverParams{
 			PinotClient:       client,
 			TableName:         "benchmark",
@@ -82,6 +82,60 @@ LIMIT 100000;`,
 				time.Date(2024, 10, 1, 0, 2, 0, 0, time.UTC),
 				time.Date(2024, 10, 1, 0, 1, 0, 0, time.UTC),
 				time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+			}),
+		)}, got.Frames, "DataResponse.Frames")
+		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
+		assert.NoError(t, got.Error, "DataResponse.Error")
+	})
+
+	t.Run("table", func(t *testing.T) {
+		params := PinotQlCodeDriverParams{
+			PinotClient:       client,
+			TableName:         "benchmark",
+			TimeColumnAlias:   "time",
+			MetricColumnAlias: "value",
+			TimeRange: TimeRange{
+				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+				To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
+			},
+			IntervalSize: 1 * time.Minute,
+			TableSchema:  benchmarkTableSchema,
+			DisplayType:  DisplayTypeTable,
+			Legend:       "test-legend",
+			Code: `SELECT
+    $__timeGroup("ts") AS $__timeAlias(),
+    SUM("value") AS $__metricAlias()
+FROM
+    $__table()
+WHERE
+    $__timeFilter("ts")
+GROUP BY
+    $__timeGroup("ts")
+ORDER BY
+    $__timeAlias() DESC
+LIMIT 100000;`,
+		}
+
+		driver, err := NewPinotQlCodeDriver(params)
+		require.NoError(t, err)
+
+		got := driver.Execute(context.Background())
+
+		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
+		assert.Equal(t, data.Frames{data.NewFrame("response",
+			data.NewField("time", nil, []time.Time{
+				time.Date(2024, 10, 1, 0, 4, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 3, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 2, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 1, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+			}),
+			data.NewField("value", nil, []float64{
+				4.995000894259197e+07,
+				4.9950041761314005e+07,
+				4.9949916961369045e+07,
+				4.994997804782016e+07,
+				4.995001567005852e+07,
 			}),
 		)}, got.Frames, "DataResponse.Frames")
 		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
