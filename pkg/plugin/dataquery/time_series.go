@@ -108,8 +108,8 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 	}
 	sort.Strings(dimensionNames)
 
-	metrics := make([]Metric, pinotlib.GetRowCount(results))
-	for rowIdx := 0; rowIdx < pinotlib.GetRowCount(results); rowIdx++ {
+	metrics := make([]Metric, results.RowCount())
+	for rowIdx := 0; rowIdx < results.RowCount(); rowIdx++ {
 		labels := make([]MetricLabel, len(dimensions))
 		for i, name := range dimensionNames {
 			labels[i] = MetricLabel{

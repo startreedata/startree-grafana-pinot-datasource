@@ -123,7 +123,7 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinotlib.ResultTable) (
 		frame.Fields = append(frame.Fields, timeCol)
 	}
 
-	for colId := 0; colId < pinotlib.GetColumnCount(results); colId++ {
+	for colId := 0; colId < results.ColumnCount(); colId++ {
 		if colId == timeIdx {
 			continue
 		}

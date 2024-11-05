@@ -1,20 +1,74 @@
 package dataquery
 
 import (
+	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"
 	"testing"
+	"time"
 )
 
 func TestNewDriver(t *testing.T) {
-	t.Run("hidden", func(t *testing.T) {
+	client := test_helpers.SetupPinotAndCreateClient(t)
+
+	t.Run("hide=true", func(t *testing.T) {
 		query := PinotDataQuery{Hide: true}
-		got, err := NewDriver(nil, query, backend.TimeRange{})
+		got, err := NewDriver(client, query, backend.TimeRange{})
 		require.NoError(t, err)
 		assert.IsType(t, &NoOpDriver{}, got)
+	})
+
+	t.Run("queryType="+string(QueryTypePinotQl), func(t *testing.T) {
+		t.Run("editorMode="+string(EditorModeBuilder), func(t *testing.T) {
+			query := PinotDataQuery{
+				QueryType:           QueryTypePinotQl,
+				EditorMode:          EditorModeBuilder,
+				TableName:           "benchmark",
+				TimeColumn:          "ts",
+				MetricColumn:        "value",
+				AggregationFunction: "SUM",
+				IntervalSize:        1 * time.Second,
+			}
+			got, err := NewDriver(client, query, backend.TimeRange{})
+			assert.NoError(t, err)
+			assert.IsType(t, &PinotQlBuilderDriver{}, got)
+		})
+
+		t.Run("editorMode="+string(EditorModeCode), func(t *testing.T) {
+			query := PinotDataQuery{
+				QueryType:    QueryTypePinotQl,
+				EditorMode:   EditorModeCode,
+				TableName:    "benchmark",
+				PinotQlCode:  `select 1;`,
+				IntervalSize: 1 * time.Second,
+			}
+			got, err := NewDriver(client, query, backend.TimeRange{})
+			assert.NoError(t, err)
+			assert.IsType(t, &PinotQlCodeDriver{}, got)
+		})
+	})
+
+	t.Run("queryType="+string(QueryTypePromQl), func(t *testing.T) {
+		query := PinotDataQuery{
+			QueryType: QueryTypePromQl,
+		}
+		got, err := NewDriver(client, query, backend.TimeRange{})
+		assert.NoError(t, err)
+		assert.IsType(t, &PromQlDriver{}, got)
+	})
+
+	t.Run("queryType="+string(QueryTypePinotVariableQuery), func(t *testing.T) {
+		query := PinotDataQuery{
+			QueryType: QueryTypePinotVariableQuery,
+		}
+		got, err := NewDriver(client, query, backend.TimeRange{})
+		assert.NoError(t, err)
+		assert.IsType(t, &PinotVariableQueryDriver{}, got)
 	})
 }
 
@@ -38,4 +92,13 @@ func assertBrokerExceptionErrorWithCodes(t *testing.T, err error, codes ...int) 
 		sort.Ints(codes)
 		assert.Equal(t, codes, exceptionCodes, "exception codes")
 	}
+}
+
+func TestNoOpDriver_Execute(t *testing.T) {
+	var driver NoOpDriver
+	got := driver.Execute(context.Background())
+	assert.Equal(t, backend.StatusOK, got.Status)
+	assert.Equal(t, data.Frames(nil), got.Frames)
+	assert.NoError(t, got.Error)
+	assert.Empty(t, 0, got.ErrorSource)
 }
