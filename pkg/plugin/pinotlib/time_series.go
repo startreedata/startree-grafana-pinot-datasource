@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"math"
 	"net/http"
@@ -131,6 +132,7 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	var resp TimeSeriesQueryResponse
+	logger.Logger.Info(fmt.Sprintf("pinot/http: executing timeseries query: %s", req.Query))
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}
