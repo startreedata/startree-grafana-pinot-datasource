@@ -96,7 +96,6 @@ describe('Add variable with Variable Query Editor', () => {
         .should('be.visible')
         .within(() => {
           cy.contains(pinotDatasourceName).click();
-          cy.wait('@resourcesTables');
         });
 
       // Check the selected data source

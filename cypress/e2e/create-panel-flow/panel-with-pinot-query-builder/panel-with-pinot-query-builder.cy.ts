@@ -2823,7 +2823,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query', (req) => {
-      req.continue((res) => (ctx.apiResponse.dsQuery = res.body));
+      req.continue((res) => (ctx.apiResponse.dsQuery = { ...res.body }));
     }).as('dsQuery');
     cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
       req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
