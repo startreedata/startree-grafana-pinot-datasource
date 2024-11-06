@@ -13,7 +13,7 @@ export function SelectTable(props: {
   const labels = allLabels.components.QueryEditor.table;
 
   return (
-    <>
+    <div className={'gf-form'} data-testid="select-table">
       <FormLabel label={labels.label} tooltip={labels.tooltip} />
       <Select
         className={`${styles.VariableQueryEditor.inputForm}`}
@@ -22,6 +22,6 @@ export function SelectTable(props: {
         value={selected || null}
         onChange={(change) => onChange(change.value)}
       />
-    </>
+    </div>
   );
 }

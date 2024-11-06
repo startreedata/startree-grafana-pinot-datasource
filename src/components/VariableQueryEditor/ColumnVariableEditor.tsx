@@ -17,7 +17,7 @@ export function ColumnVariableEditor({
 }) {
   return (
     <>
-      <div className={'gf-form'}>
+      <div className={'gf-form'} style={{ marginBottom: '0' }}>
         {selectTable}
         <SelectColumnType
           selected={variableQuery.columnType}
