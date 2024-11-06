@@ -1,13 +1,13 @@
-interface TestCtx {
+type ExplorePinotTestCtx = {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, unknown>;
     tablesSchema?: Record<string, unknown>;
   };
-}
+};
 
 describe('Create and run pinot query using Explore', () => {
-  const ctx: TestCtx = {
+  const ctx: ExplorePinotTestCtx = {
     newlyCreatedDatasourceUid: null,
     apiResponse: {},
   };
