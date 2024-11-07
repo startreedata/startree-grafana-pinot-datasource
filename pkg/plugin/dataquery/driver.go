@@ -81,6 +81,7 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 			TimeColumnAlias:   query.TimeColumnAlias,
 			TimeColumnFormat:  query.TimeColumnFormat,
 			MetricColumnAlias: query.MetricColumnAlias,
+			LogColumnAlias:    query.LogColumnAlias,
 			TimeRange:         TimeRange{To: timeRange.To, From: timeRange.From},
 			IntervalSize:      query.IntervalSize,
 			TableSchema:       tableSchema,

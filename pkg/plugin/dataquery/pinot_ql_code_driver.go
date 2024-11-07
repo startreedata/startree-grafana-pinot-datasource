@@ -2,7 +2,9 @@ package dataquery
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
@@ -12,6 +14,7 @@ import (
 const (
 	DisplayTypeTable      = "TABLE"
 	DisplayTypeTimeSeries = "TIMESERIES"
+	DisplayTypeLogs       = "LOGS"
 )
 
 type PinotQlCodeDriverParams struct {
@@ -21,6 +24,7 @@ type PinotQlCodeDriverParams struct {
 	TimeColumnAlias   string
 	TimeColumnFormat  string
 	MetricColumnAlias string
+	LogColumnAlias    string
 	TimeRange         TimeRange
 	IntervalSize      time.Duration
 	TableSchema       pinotlib.TableSchema
@@ -50,6 +54,9 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 	}
 	if params.MetricColumnAlias == "" {
 		params.MetricColumnAlias = DefaultMetricColumnAlias
+	}
+	if params.LogColumnAlias == "" {
+		params.LogColumnAlias = DefaultLogColumnAlias
 	}
 
 	macroEngine := MacroEngine{
@@ -100,6 +107,8 @@ func (p *PinotQlCodeDriver) ExtractResults(results *pinotlib.ResultTable) (*data
 		return p.ExtractTableResults(results)
 	case DisplayTypeTimeSeries:
 		return p.ExtractTimeSeriesResults(results)
+	case DisplayTypeLogs:
+		return p.ExtractLogResults(results)
 	default:
 		return p.ExtractTimeSeriesResults(results)
 	}
@@ -128,6 +137,59 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinotlib.ResultTable) (
 			continue
 		}
 		frame.Fields = append(frame.Fields, pinotlib.ExtractColumnToField(results, colId))
+	}
+	return frame, nil
+}
+
+func (p *PinotQlCodeDriver) ExtractLogResults(results *pinotlib.ResultTable) (*data.Frame, error) {
+
+	linesIdx, err := pinotlib.GetColumnIdx(results, p.params.LogColumnAlias)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract log lines column: %w", err)
+	}
+	linesCol := pinotlib.ExtractStringColumn(results, linesIdx)
+
+	timeIdx, err := pinotlib.GetColumnIdx(results, p.params.TimeColumnAlias)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract time column: %w", err)
+	}
+	timeCol, err := pinotlib.ExtractTimeColumn(results, timeIdx, p.params.TimeColumnFormat)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract time column: %w", err)
+	}
+
+	dims := make(map[string][]string, results.ColumnCount()-2)
+	for colIdx := 0; colIdx < results.ColumnCount(); colIdx++ {
+		if colIdx == timeIdx {
+			continue
+		}
+		if colIdx == linesIdx {
+			continue
+		}
+		colName := results.DataSchema.ColumnNames[colIdx]
+		dims[colName] = pinotlib.ExtractStringColumn(results, colIdx)
+	}
+
+	labelsCol := make([]json.RawMessage, results.RowCount())
+	for i := range labelsCol {
+		labels := make(map[string]string, len(dims))
+		for name, col := range dims {
+			labels[name] = col[i]
+		}
+		labelsCol[i], err = json.Marshal(labels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encode labels: %w", err)
+		}
+	}
+
+	frame := data.NewFrame("response")
+	frame.Meta = &data.FrameMeta{
+		Custom: map[string]interface{}{"frameType": "LabeledTimeValues"},
+	}
+	frame.Fields = data.Fields{
+		data.NewField("labels", nil, labelsCol),
+		data.NewField("Line", nil, linesCol),
+		data.NewField("Time", nil, timeCol),
 	}
 	return frame, nil
 }

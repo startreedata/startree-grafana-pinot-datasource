@@ -5,10 +5,12 @@ import allLabels from '../../labels';
 
 export const DisplayTypeTimeSeries = 'TIMESERIES';
 export const DisplayTypeTable = 'TABLE';
+export const DisplayTypeLogs = 'LOGS';
 
 const DisplayTypes = [
-  { label: 'Table', value: DisplayTypeTable },
   { label: 'Time Series', value: DisplayTypeTimeSeries },
+  { label: 'Table', value: DisplayTypeTable },
+  { label: 'Logs', value: DisplayTypeLogs },
 ];
 
 export function SelectDisplayType(props: { value: string | undefined; onChange: (val: string) => void }) {
@@ -18,7 +20,7 @@ export function SelectDisplayType(props: { value: string | undefined; onChange: 
   return (
     <div className={'gf-form'} data-testid="select-display-type">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <RadioButtonGroup options={DisplayTypes} onChange={onChange} value={value} />
+      <RadioButtonGroup options={DisplayTypes} onChange={onChange} value={value || DisplayTypeTimeSeries} />
     </div>
   );
 }

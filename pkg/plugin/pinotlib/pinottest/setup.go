@@ -32,6 +32,7 @@ const (
 	AirlineStatsTableName    = "airlineStats"
 	BenchmarkTableName       = "benchmark"
 	PartialTableName         = "partial"
+	NginxLogsTableName       = "nginxLogs"
 )
 
 var createTestTablesOnce sync.Once
@@ -83,6 +84,12 @@ func CreateTestTables() {
 				schemaFile: "data/partial_schema.json",
 				configFile: "data/partial_offline_table_config.json",
 				dataFile:   "data/partial_data_1.json",
+			},
+			{
+				tableName:  NginxLogsTableName,
+				schemaFile: "data/nginxLogs_schema.json",
+				configFile: "data/nginxLogs_offline_table_config.json",
+				dataFile:   "data/nginxLogs_data.json",
 			},
 		}
 

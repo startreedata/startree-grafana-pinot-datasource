@@ -15,6 +15,7 @@ import (
 const (
 	DefaultTimeColumnAlias   = "time"
 	DefaultMetricColumnAlias = "metric"
+	DefaultLogColumnAlias    = "message"
 
 	AggregationFunctionCount = "COUNT"
 	AggregationFunctionNone  = "NONE"
