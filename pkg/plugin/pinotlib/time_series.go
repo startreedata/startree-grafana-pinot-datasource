@@ -374,6 +374,9 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeTimestamp {
 			hasTsField = true
 			break
+		} else if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeLong {
+			hasTsField = true
+			break
 		}
 	}
 	if !hasTsField {
