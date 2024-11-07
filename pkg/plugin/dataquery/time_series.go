@@ -37,6 +37,21 @@ type MetricSeries struct {
 	labels map[string]string
 }
 
+func ExtractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration) []*data.Frame {
+	var legendFormatter LegendFormatter
+
+	frames := make([]*data.Frame, len(results))
+	for i, res := range results {
+		tsField := data.NewField("time", nil, res.Timestamps).SetConfig(&data.FieldConfig{
+			Interval: float64(intervalSize.Milliseconds())})
+		metField := data.NewField("", res.Metric, res.Values).SetConfig(&data.FieldConfig{
+			DisplayNameFromDS: legendFormatter.FormatSeriesName(legend, res.Metric),
+		})
+		frames[i] = data.NewFrame("", tsField, metField)
+	}
+	return frames
+}
+
 func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinotlib.ResultTable) (*data.Frame, error) {
 	metrics, err := ExtractMetrics(results, params.TimeColumnAlias, params.TimeColumnFormat, params.MetricColumnAlias)
 	if err != nil {
@@ -93,8 +108,8 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 	}
 	sort.Strings(dimensionNames)
 
-	metrics := make([]Metric, pinotlib.GetRowCount(results))
-	for rowIdx := 0; rowIdx < pinotlib.GetRowCount(results); rowIdx++ {
+	metrics := make([]Metric, results.RowCount())
+	for rowIdx := 0; rowIdx < results.RowCount(); rowIdx++ {
 		labels := make([]MetricLabel, len(dimensions))
 		for i, name := range dimensionNames {
 			labels[i] = MetricLabel{

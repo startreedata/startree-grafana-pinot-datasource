@@ -11,14 +11,6 @@ import (
 	"time"
 )
 
-func GetRowCount(resultTable *ResultTable) int {
-	return len(resultTable.Rows)
-}
-
-func GetColumnCount(resultTable *ResultTable) int {
-	return len(resultTable.DataSchema.ColumnNames)
-}
-
 func GetColumnName(resultTable *ResultTable, colIdx int) (string, error) {
 	if colIdx > len(resultTable.DataSchema.ColumnNames) {
 		return "", fmt.Errorf("column index %d out of range", colIdx)

@@ -1,9 +1,12 @@
 package pinotlib
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"math"
 	"net/http"
@@ -25,6 +28,62 @@ type TimeSeriesRangeQuery struct {
 	TableName string
 }
 
+type TimeSeriesQueryResponse struct {
+	Status string         `json:"status"`
+	Data   TimeSeriesData `json:"data"`
+}
+
+type TimeSeriesData struct {
+	ResultType string             `json:"resultType"`
+	Result     []TimeSeriesResult `json:"result"`
+}
+
+type TimeSeriesResult struct {
+	Metric     map[string]string
+	Timestamps []time.Time
+	Values     []float64
+}
+
+func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
+	var data struct {
+		Metric map[string]string `json:"metric"`
+		Values [][]interface{}   `json:"values"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(b))
+	decoder.UseNumber()
+	if err := decoder.Decode(&data); err != nil {
+		return err
+	}
+
+	x.Metric = data.Metric
+
+	x.Timestamps = make([]time.Time, 0, len(data.Values))
+	x.Values = make([]float64, 0, len(data.Values))
+	for i := range data.Values {
+		if len(data.Values[i]) != 2 {
+			return fmt.Errorf("expected 2 values got %d", len(data.Values[i]))
+		} else if data.Values[i][1] == nil {
+			continue
+		}
+
+		valueStr := data.Values[i][1].(string)
+		value, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			return err
+		}
+		x.Values = append(x.Values, value)
+
+		ts, err := data.Values[i][0].(json.Number).Int64()
+		if err != nil {
+			return err
+		}
+		x.Timestamps = append(x.Timestamps, time.Unix(ts, 0).UTC())
+	}
+	x.Values = x.Values[:]
+	x.Timestamps = x.Timestamps[:]
+	return nil
+}
+
 func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
@@ -44,11 +103,7 @@ func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
 	return resp.StatusCode != http.StatusNotFound, nil
 }
 
-func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*http.Response, error) {
-	if ctx.Err() != nil {
-		return nil, ctx.Err()
-	}
-
+func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*TimeSeriesQueryResponse, error) {
 	tableMetadata, err := p.GetTableMetadata(ctx, req.TableName)
 	if err != nil {
 		return nil, err
@@ -76,7 +131,12 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 		return nil, err
 	}
 
-	return p.doRequest(httpReq)
+	var resp TimeSeriesQueryResponse
+	logger.Logger.Info(fmt.Sprintf("pinot/http: executing timeseries query: %s", req.Query))
+	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
 }
 
 func (p *PinotClient) ListTimeSeriesTables(ctx context.Context) ([]string, error) {

@@ -2,6 +2,7 @@ package dataquery
 
 import (
 	"context"
+	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -13,16 +14,61 @@ func TestPromQlDriver_Execute(t *testing.T) {
 	driver := NewPromQlCodeDriver(PromQlCodeDriverParams{
 		PinotClient: client,
 		TableName:   "infraMetrics",
-		PromQlCode:  "sum(db_record_write)",
+		PromQlCode:  `http_request_handled{path="/app",method="GET",status=~"200|400"}`,
 		TimeRange: TimeRange{
-			From: time.Unix(1726617600, 0),
-			To:   time.Unix(1726619400, 0),
+			From: time.Unix(1726617600, 0).UTC(),
+			To:   time.Unix(1726617900, 0).UTC(),
 		},
 		IntervalSize: 60 * time.Second,
-		Legend:       "",
+		Legend:       "legend",
 	})
 
-	resp := driver.Execute(context.Background())
-	assert.NoError(t, resp.Error)
-	assert.NotEmpty(t, resp.Frames)
+	got := driver.Execute(context.Background())
+	// TODO: Add this w/ pr #82
+	//assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
+	assert.Equal(t, data.Frames{
+		data.NewFrame("",
+			data.NewField("time", nil, []time.Time{
+				time.Unix(1726617600, 0).UTC(),
+				time.Unix(1726617660, 0).UTC(),
+				time.Unix(1726617720, 0).UTC(),
+				time.Unix(1726617780, 0).UTC(),
+				time.Unix(1726617840, 0).UTC(),
+			}).SetConfig(&data.FieldConfig{
+				Interval: float64(60 * time.Second.Milliseconds()),
+			}),
+			data.NewField("", data.Labels{
+				"__name__": "http_request_handled",
+				"metric":   "http_request_handled",
+				"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+			}, []float64{
+				24022, 48066, 60102, 0, 0,
+			}).SetConfig(&data.FieldConfig{
+				DisplayNameFromDS: "legend",
+			}),
+		),
+
+		data.NewFrame("",
+			data.NewField("time", nil, []time.Time{
+				time.Unix(1726617600, 0).UTC(),
+				time.Unix(1726617660, 0).UTC(),
+				time.Unix(1726617720, 0).UTC(),
+				time.Unix(1726617780, 0).UTC(),
+				time.Unix(1726617840, 0).UTC(),
+			}).SetConfig(&data.FieldConfig{
+				Interval: float64(60 * time.Second.Milliseconds()),
+			}),
+			data.NewField("", data.Labels{
+				"__name__": "http_request_handled",
+				"metric":   "http_request_handled",
+				"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+			}, []float64{
+				4018, 8045, 10061, 0, 0,
+			}).SetConfig(&data.FieldConfig{
+				DisplayNameFromDS: "legend",
+			}),
+		),
+	}, got.Frames, "DataResponse.Frames")
+	assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
+	assert.NoError(t, got.Error, "DataResponse.Error")
 }
