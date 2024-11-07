@@ -133,7 +133,7 @@ func TestPinotClient_IsTimeSeriesTable(t *testing.T) {
 }
 
 func TestIsTimeSeriesTableSchema(t *testing.T) {
-	t.Run("is", func(t *testing.T) {
+	t.Run("tsIsTimestamp", func(t *testing.T) {
 		schema := TableSchema{
 			SchemaName: "startree_metrics_analytics",
 			DimensionFieldSpecs: []DimensionFieldSpec{
@@ -151,12 +151,37 @@ func TestIsTimeSeriesTableSchema(t *testing.T) {
 		assert.Equal(t, true, IsTimeSeriesTableSchema(schema))
 	})
 
-	t.Run("isnt", func(t *testing.T) {
+	t.Run("tsIsLong", func(t *testing.T) {
 		schema := TableSchema{
-			SchemaName:          "startree_metrics_analytics",
-			DimensionFieldSpecs: nil,
-			MetricFieldSpecs:    nil,
-			DateTimeFieldSpecs:  nil,
+			SchemaName: "startree_metrics_analytics",
+			DimensionFieldSpecs: []DimensionFieldSpec{
+				{Name: "metric", DataType: "STRING"},
+				{Name: "labels", DataType: "JSON"},
+			},
+			MetricFieldSpecs: []MetricFieldSpec{
+				{Name: "value", DataType: "DOUBLE"},
+			},
+			DateTimeFieldSpecs: []DateTimeFieldSpec{
+				{Name: "ts", DataType: "LONG"},
+			},
+		}
+
+		assert.Equal(t, true, IsTimeSeriesTableSchema(schema))
+	})
+
+	t.Run("unsupported", func(t *testing.T) {
+		schema := TableSchema{
+			SchemaName: "startree_metrics_analytics",
+			DimensionFieldSpecs: []DimensionFieldSpec{
+				{Name: "metricZZ", DataType: "STRING"},
+				{Name: "labels", DataType: "JSON"},
+			},
+			MetricFieldSpecs: []MetricFieldSpec{
+				{Name: "value", DataType: "DOUBLE"},
+			},
+			DateTimeFieldSpecs: []DateTimeFieldSpec{
+				{Name: "ts", DataType: "LONG"},
+			},
 		}
 		assert.Equal(t, false, IsTimeSeriesTableSchema(schema))
 	})
