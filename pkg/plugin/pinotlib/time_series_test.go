@@ -191,8 +191,9 @@ func TestTimeSeriesResult_UnmarshalJSON(t *testing.T) {
 	assert.Equal(t, TimeSeriesResult{
 		Metric: map[string]string{
 			"__name__": "http_request_handled",
-			"metric":   "http_request_handled",
-			"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+			"method":   "GET",
+			"path":     "/app",
+			"status":   "200",
 		},
 		Timestamps: []time.Time{
 			time.Unix(1726617600, 0).UTC(),
@@ -226,32 +227,30 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 				{
 					Metric: map[string]string{
 						"__name__": "http_request_handled",
-						"metric":   "http_request_handled",
-						"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+						"method":   "GET",
+						"path":     "/app",
+						"status":   "200",
 					},
 					Timestamps: []time.Time{
 						time.Unix(1726617600, 0).UTC(),
 						time.Unix(1726617660, 0).UTC(),
 						time.Unix(1726617720, 0).UTC(),
-						time.Unix(1726617780, 0).UTC(),
-						time.Unix(1726617840, 0).UTC(),
 					},
-					Values: []float64{24022, 48066, 60102, 0, 0},
+					Values: []float64{24022, 48066, 60102},
 				},
 				{
 					Metric: map[string]string{
 						"__name__": "http_request_handled",
-						"metric":   "http_request_handled",
-						"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+						"method":   "GET",
+						"path":     "/app",
+						"status":   "400",
 					},
 					Timestamps: []time.Time{
 						time.Unix(1726617600, 0).UTC(),
 						time.Unix(1726617660, 0).UTC(),
 						time.Unix(1726617720, 0).UTC(),
-						time.Unix(1726617780, 0).UTC(),
-						time.Unix(1726617840, 0).UTC(),
 					},
-					Values: []float64{4018, 8045, 10061, 0, 0},
+					Values: []float64{4018, 8045, 10061},
 				},
 			},
 		},

@@ -55,13 +55,7 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	//x.Metric = data.Metric
-	labels, err := flattenLabels(data.Metric)
-	if err != nil {
-		return err
-	}
-	x.Metric = labels
-
+	x.Metric = flattenLabels(data.Metric)
 	x.Timestamps = make([]time.Time, 0, len(data.Values))
 	x.Values = make([]float64, 0, len(data.Values))
 	for i := range data.Values {
@@ -89,20 +83,19 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func flattenLabels(metric map[string]string) (map[string]string, error) {
+func flattenLabels(metric map[string]string) map[string]string {
 	labelsJson := metric["labels"]
 	if labelsJson == "" {
-		return nil, fmt.Errorf("labels key not found")
+		return metric
 	}
 
 	var labels map[string]string
 	err := json.Unmarshal([]byte(metric["labels"]), &labels)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal labels `%s`: %s", labelsJson, err)
+		logger.Logger.Info(fmt.Sprintf("failed to unmarshal labels `%s`: %s", labelsJson, err))
 	}
-
 	labels["__name__"] = metric["__name__"]
-	return labels, nil
+	return labels
 }
 
 func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
