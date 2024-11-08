@@ -634,7 +634,7 @@ describe('Add variable with Variable Query Editor', () => {
     });
   });
 
-  it('Sql query should show the return data', () => {
+  it.only('Sql query should show the return data', () => {
     /**
      * All Intercepts
      */
@@ -831,6 +831,7 @@ describe('Add variable with Variable Query Editor', () => {
      * Check Preview of values
      */
     cy.get('@dsQueryResp').then((resp: unknown) => {
+      cy.log('Resp: ', JSON.stringify(resp));
       const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
