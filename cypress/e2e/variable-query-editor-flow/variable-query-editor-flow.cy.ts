@@ -818,21 +818,19 @@ describe('Add variable with Variable Query Editor', () => {
 
               // Check if query editor has the new value
               const editorNewValue = editor.getValue();
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                'equal',
-                editorNewValue.trim().replace(/ /g, '')
-              );
+              cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''))
+                .should('equal', editorNewValue.trim().replace(/ /g, ''))
+                .then(() => {
+                  cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('dsQueryResp');
+                });
             });
           });
-      })
-      .then(() => {
-        cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('dsQueryResp');
       });
 
     /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp').then((resp: unknown) => {
+    cy.get('@dsQueryResp', { timeout: 5000 }).then((resp: unknown) => {
       cy.log('Resp: ', JSON.stringify(resp));
       const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
