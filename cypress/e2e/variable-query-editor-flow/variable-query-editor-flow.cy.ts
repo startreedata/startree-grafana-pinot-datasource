@@ -805,57 +805,52 @@ describe('Add variable with Variable Query Editor', () => {
           .within(() => {
             cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
 
-            cy.window()
-              .then((win) => {
-                // Access the Monaco Editor instance via the window object
-                const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
-                const editorValue = editor.getValue(); // Retrieve the editor's content
+            cy.window().then((win) => {
+              // Access the Monaco Editor instance via the window object
+              const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
+              const editorValue = editor.getValue(); // Retrieve the editor's content
 
-                // Check the initial query value
-                cy.wrap(editorValue).should('be.empty');
+              // Check the initial query value
+              cy.wrap(editorValue).should('be.empty');
 
-                // Set the new pinot query value
-                editor.setValue(formData.pinotQuery.trim());
+              // Set the new pinot query value
+              editor.setValue(formData.pinotQuery.trim());
 
-                // Check if query editor has the new value
-                const editorNewValue = editor.getValue();
-                cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''))
-                  .should('equal', editorNewValue.trim().replace(/ /g, ''))
-                  .then(() => {
-                    cy.log('Then after wrap');
-                  });
-              })
-              .then(() => {
-                cy.log('Then after window');
-              });
-          })
-          .then(() => {
-            /**
-             * Check Preview of values
-             */
-            cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
-              const data = response.body as Record<string, any>;
-              cy.log('Check: ', JSON.stringify(response.body));
-              const previewValues: string[] = data.results.A.frames[0].data.values[0];
+              // Polling check: ensure that the editor reflects the new value
+              cy.wrap(null).then(() => {
+                const checkEditorValue = () => {
+                  const editorNewValue = editor.getValue().trim().replace(/ /g, '');
+                  const expectedValue = formData.pinotQuery.trim().replace(/ /g, '');
+                  return editorNewValue === expectedValue;
+                };
 
-              cy.get('@previewOfValues').within(() => {
-                cy.get('label[aria-label="Variable editor Preview of Values option"]')
-                  .should('exist')
-                  .as('previewValue');
-
-                // Check Preview values
-                previewValues.forEach((value) => {
-                  cy.get('@previewValue').contains(value);
-                });
+                // Retry until the editor value is updated
+                cy.wrap(checkEditorValue, { timeout: 5000 }).should('be.true');
               });
             });
+          })
+          .then(() => {
+            // Added timeout because of the set value in editor takes time
+            cy.wait('@dsQuery', { timeout: 10000 }).as('dsQueryResp');
           });
-      })
-      .then(() => {
-        cy.log('Then after sql-editor');
       });
 
-    cy.log('Then after all');
+    /**
+     * Check Preview of values
+     */
+    cy.get('@previewOfValues').within(() => {
+      cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
+
+      cy.get('@dsQueryResp', { timeout: 5000 }).then((resp: unknown) => {
+        const data = resp as Record<string, any>;
+        const previewValues: string[] = data.results.A.frames[0].data.values[0];
+
+        // Check Preview values
+        previewValues.forEach((value) => {
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+        });
+      });
+    });
 
     /**
      * Delete the newly created data source for the panel
