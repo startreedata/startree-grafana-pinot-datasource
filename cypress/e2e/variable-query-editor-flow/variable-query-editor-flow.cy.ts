@@ -816,29 +816,23 @@ describe('Add variable with Variable Query Editor', () => {
               // Set the new pinot query value
               editor.setValue(formData.pinotQuery.trim());
 
-              // Polling check: ensure that the editor reflects the new value
-              cy.wrap(null).then(() => {
-                const editorNewValue = editor.getValue();
+              // Ensure that the editor reflects the new value
+              const editorNewValue = editor.getValue();
 
-                // Retry until the editor value is updated
-                cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''), { timeout: 5000 }).should(
-                  'equal',
-                  editorNewValue.trim().replace(/ /g, '')
-                );
-              });
+              // Retry until the editor value is updated
+              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
+                'equal',
+                editorNewValue.trim().replace(/ /g, '')
+              );
             });
-          })
-          .then(() => {
-            // Added timeout because of the set value in editor takes time
-            cy.wait('@dsQuery', { timeout: 10000 }).its('response.body').as('dsQueryResp');
           });
       });
 
     /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp').then((resp: unknown) => {
-      const data = resp as Record<string, any>;
+    cy.wait('@dsQuery', { timeout: 10000 }).then(({ response }) => {
+      const data = response.body as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
       cy.get('@previewOfValues').within(() => {
