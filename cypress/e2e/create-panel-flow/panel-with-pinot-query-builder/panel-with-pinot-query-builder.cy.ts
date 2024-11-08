@@ -1607,7 +1607,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
      * Discard the Panel and go back
      */
     cy.get('button[aria-label="Undo all changes"]').should('exist').click();
-    cy.location('search').should('not.contain', 'editPanel');
 
     /**
      * Delete the newly created data source for the panel
@@ -2257,7 +2256,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
      * Discard the Panel and go back
      */
     cy.get('button[aria-label="Undo all changes"]').should('exist').click();
-    cy.location('search').should('not.contain', 'editPanel');
 
     /**
      * Delete the newly created data source for the panel

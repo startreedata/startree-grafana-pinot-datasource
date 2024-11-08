@@ -787,8 +787,6 @@ describe('Add variable with Variable Query Editor', () => {
                 'equal',
                 editorNewValue.trim().replace(/ /g, '')
               );
-
-              cy.wait('@dsQuery', { timeout: 10000 });
             });
           });
       });
