@@ -755,42 +755,6 @@ describe('Add variable with Variable Query Editor', () => {
       });
 
     /**
-     * Check and select Table
-     */
-    cy.getBySel('select-table')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Table');
-
-        // Check select list options
-        cy.get('input')
-          .parent()
-          .parent()
-          .as('tableSelect')
-          .within(() => {
-            cy.contains('Choose');
-          })
-          .click();
-
-        cy.wrap(cy.$$('body'))
-          .find('[aria-label="Select options menu"]')
-          .should('be.visible')
-          .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
-            selectOptions.forEach((option) => cy.contains(option));
-
-            // Select the option
-            cy.contains(formData.table).click();
-            cy.wait(['@resourcesTablesSchema', '@dsQuery']);
-          });
-
-        // Check if correct option is selected
-        cy.get('@tableSelect').within(() => {
-          cy.contains(formData.table);
-        });
-      });
-
-    /**
      * Check and fill Pinot Query
      */
     cy.getBySel('sql-editor')
@@ -824,16 +788,52 @@ describe('Add variable with Variable Query Editor', () => {
                 editorNewValue.trim().replace(/ /g, '')
               );
 
-              cy.wait('@dsQuery', { timeout: 10000 }).its('response.body').as('dsQueryResp');
+              cy.wait('@dsQuery', { timeout: 10000 });
             });
           });
       });
 
     /**
+     * Check and select Table
+     */
+    cy.getBySel('select-table')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Table');
+
+        // Check select list options
+        cy.get('input')
+          .parent()
+          .parent()
+          .as('tableSelect')
+          .within(() => {
+            cy.contains('Choose');
+          })
+          .click();
+
+        cy.wrap(cy.$$('body'))
+          .find('[aria-label="Select options menu"]')
+          .should('be.visible')
+          .within(() => {
+            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            selectOptions.forEach((option) => cy.contains(option));
+
+            // Select the option
+            cy.contains(formData.table).click();
+            cy.wait('@resourcesTablesSchema');
+          });
+
+        // Check if correct option is selected
+        cy.get('@tableSelect').within(() => {
+          cy.contains(formData.table);
+        });
+      });
+
+    /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp', { timeout: 5000 }).then((resp: unknown) => {
-      const data = resp as Record<string, any>;
+    cy.wait('@dsQuery').then(({ response }) => {
+      const data = response.body as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
       cy.contains('Preview of values')
