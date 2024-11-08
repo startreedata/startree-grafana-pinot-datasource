@@ -92,6 +92,10 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
 
     pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
 
+    // PromQl Editor
+
+    promQlCode: templateSrv.replace(query.promQlCode, scopedVars),
+
     // Variable Query editor
 
     variableQuery: query.variableQuery
