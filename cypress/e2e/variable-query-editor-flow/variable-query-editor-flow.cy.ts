@@ -829,7 +829,7 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.wait('@dsQuery').then(({ response }) => {
+    cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
       cy.log('Resp: ', JSON.stringify(response.body));
       const data = response.body as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
