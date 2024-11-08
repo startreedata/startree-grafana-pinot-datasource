@@ -634,7 +634,7 @@ describe('Add variable with Variable Query Editor', () => {
     });
   });
 
-  it.only('Sql query should show the return data', () => {
+  it('Sql query should show the return data', () => {
     /**
      * All Intercepts
      */
@@ -830,6 +830,7 @@ describe('Add variable with Variable Query Editor', () => {
 
     /**
      * Check Preview of values
+     * Note: Added timeout because the sql editor takes time to set value
      */
     cy.wait('@dsQuery', { timeout: 10000 }).then(({ response }) => {
       const data = response.body as Record<string, any>;

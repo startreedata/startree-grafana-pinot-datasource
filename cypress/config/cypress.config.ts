@@ -11,7 +11,6 @@ const config: CypressConfigOptions = {
     runMode: 2,
   },
   e2e: {
-    video: true,
     viewportWidth: 1366,
     viewportHeight: 768,
     baseUrl: 'http://localhost:3000',
