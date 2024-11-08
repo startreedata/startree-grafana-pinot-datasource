@@ -818,32 +818,31 @@ describe('Add variable with Variable Query Editor', () => {
 
               // Polling check: ensure that the editor reflects the new value
               cy.wrap(null).then(() => {
-                const checkEditorValue = () => {
-                  const editorNewValue = editor.getValue().trim().replace(/ /g, '');
-                  const expectedValue = formData.pinotQuery.trim().replace(/ /g, '');
-                  return editorNewValue === expectedValue;
-                };
+                const editorNewValue = editor.getValue();
 
                 // Retry until the editor value is updated
-                cy.wrap(checkEditorValue, { timeout: 5000 }).should('be.true');
+                cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''), { timeout: 5000 }).should(
+                  'equal',
+                  editorNewValue.trim().replace(/ /g, '')
+                );
               });
             });
           })
           .then(() => {
             // Added timeout because of the set value in editor takes time
-            cy.wait('@dsQuery', { timeout: 10000 }).as('dsQueryResp');
+            cy.wait('@dsQuery', { timeout: 10000 }).its('response.body').as('dsQueryResp');
           });
       });
 
     /**
      * Check Preview of values
      */
-    cy.get('@previewOfValues').within(() => {
-      cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
+    cy.get('@dsQueryResp').then((resp: unknown) => {
+      const data = resp as Record<string, any>;
+      const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
-      cy.get('@dsQueryResp', { timeout: 5000 }).then((resp: unknown) => {
-        const data = resp as Record<string, any>;
-        const previewValues: string[] = data.results.A.frames[0].data.values[0];
+      cy.get('@previewOfValues').within(() => {
+        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
         // Check Preview values
         previewValues.forEach((value) => {
