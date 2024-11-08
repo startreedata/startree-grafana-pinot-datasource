@@ -818,11 +818,10 @@ describe('Add variable with Variable Query Editor', () => {
 
               // Check if query editor has the new value
               const editorNewValue = editor.getValue();
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''))
-                .should('equal', editorNewValue.trim().replace(/ /g, ''))
-                .then(() => {
-                  cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('dsQueryResp');
-                });
+              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
+                'equal',
+                editorNewValue.trim().replace(/ /g, '')
+              );
             });
           });
       });
@@ -830,20 +829,23 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp', { timeout: 5000 }).then((resp: unknown) => {
-      cy.log('Resp: ', JSON.stringify(resp));
-      const data = resp as Record<string, any>;
-      const previewValues: string[] = data.results.A.frames[0].data.values[0];
-
-      cy.get('@previewOfValues').within(() => {
+    cy.contains('Preview of values')
+      .parent()
+      .parent()
+      .within(() => {
         cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-        // Check Preview values
-        previewValues.forEach((value) => {
-          cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+        cy.wait('@dsQuery', { timeout: 10000 }).then(({ response }) => {
+          const data = response.body as Record<string, any>;
+          cy.log('Check: ', JSON.stringify(response.body));
+          const previewValues: string[] = data.results.A.frames[0].data.values[0];
+
+          // Check Preview values
+          previewValues.forEach((value) => {
+            cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+          });
         });
       });
-    });
 
     /**
      * Delete the newly created data source for the panel
