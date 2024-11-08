@@ -805,24 +805,31 @@ describe('Add variable with Variable Query Editor', () => {
           .within(() => {
             cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
 
-            cy.window().then((win) => {
-              // Access the Monaco Editor instance via the window object
-              const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
-              const editorValue = editor.getValue(); // Retrieve the editor's content
+            cy.window()
+              .then((win) => {
+                // Access the Monaco Editor instance via the window object
+                const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
+                const editorValue = editor.getValue(); // Retrieve the editor's content
 
-              // Check the initial query value
-              cy.wrap(editorValue).should('be.empty');
+                // Check the initial query value
+                cy.wrap(editorValue).should('be.empty');
 
-              // Set the new pinot query value
-              editor.setValue(formData.pinotQuery.trim());
+                // Set the new pinot query value
+                editor.setValue(formData.pinotQuery.trim());
 
-              // Check if query editor has the new value
-              const editorNewValue = editor.getValue();
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                'equal',
-                editorNewValue.trim().replace(/ /g, '')
-              );
-            });
+                // Check if query editor has the new value
+                const editorNewValue = editor.getValue();
+                cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
+                  'equal',
+                  editorNewValue.trim().replace(/ /g, '')
+                );
+              })
+              .then(() => {
+                cy.wait('@dsQuery').then(({ response }) => {
+                  cy.log('Check1: ', JSON.stringify(response.body));
+                  cy.wrap(response.body).as('dsQueryResp');
+                });
+              });
           });
       });
 
@@ -835,9 +842,9 @@ describe('Add variable with Variable Query Editor', () => {
       .within(() => {
         cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-        cy.wait('@dsQuery', { timeout: 10000 }).then(({ response }) => {
-          const data = response.body as Record<string, any>;
-          cy.log('Check: ', JSON.stringify(response.body));
+        cy.get('@dsQueryResp').then((resp: unknown) => {
+          const data = resp as Record<string, any>;
+          cy.log('Check: ', JSON.stringify(resp));
           const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
           // Check Preview values
