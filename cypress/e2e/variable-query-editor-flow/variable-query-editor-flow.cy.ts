@@ -788,6 +788,9 @@ describe('Add variable with Variable Query Editor', () => {
                 editorNewValue.trim().replace(/ /g, '')
               );
             });
+          })
+          .then(() => {
+            cy.wait('@dsQuery', { timeout: 10000 });
           });
       });
 
@@ -818,7 +821,6 @@ describe('Add variable with Variable Query Editor', () => {
 
             // Select the option
             cy.contains(formData.table).click();
-            cy.wait('@resourcesTablesSchema');
           });
 
         // Check if correct option is selected
@@ -826,6 +828,8 @@ describe('Add variable with Variable Query Editor', () => {
           cy.contains(formData.table);
         });
       });
+
+    cy.wait('@resourcesTablesSchema');
 
     /**
      * Check Preview of values
