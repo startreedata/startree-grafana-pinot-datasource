@@ -809,14 +809,13 @@ describe('Add variable with Variable Query Editor', () => {
               // Access the Monaco Editor instance via the window object
               const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
               const editorValue = editor.getValue(); // Retrieve the editor's content
-              console.log(editorValue);
-              cy.log(editorValue);
 
               // Check the initial query value
               cy.wrap(editorValue).should('be.empty');
 
               // Set the new pinot query value
               editor.setValue(formData.pinotQuery.trim());
+              cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
 
               // Check if query editor has the new value
               const editorNewValue = editor.getValue();
@@ -825,8 +824,6 @@ describe('Add variable with Variable Query Editor', () => {
                 editorNewValue.trim().replace(/ /g, '')
               );
             });
-
-            cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
           });
       });
 
