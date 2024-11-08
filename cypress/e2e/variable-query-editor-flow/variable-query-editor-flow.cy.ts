@@ -819,34 +819,43 @@ describe('Add variable with Variable Query Editor', () => {
 
                 // Check if query editor has the new value
                 const editorNewValue = editor.getValue();
-                cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                  'equal',
-                  editorNewValue.trim().replace(/ /g, '')
-                );
+                cy.wrap(formData.pinotQuery.trim().replace(/ /g, ''))
+                  .should('equal', editorNewValue.trim().replace(/ /g, ''))
+                  .then(() => {
+                    cy.log('Then after wrap');
+                  });
               })
               .then(() => {
-                /**
-                 * Check Preview of values
-                 */
-                cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
-                  const data = response.body as Record<string, any>;
-                  cy.log('Check: ', JSON.stringify(response.body));
-                  const previewValues: string[] = data.results.A.frames[0].data.values[0];
+                cy.log('Then after window');
+              });
+          })
+          .then(() => {
+            /**
+             * Check Preview of values
+             */
+            cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
+              const data = response.body as Record<string, any>;
+              cy.log('Check: ', JSON.stringify(response.body));
+              const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
-                  cy.get('@previewOfValues').within(() => {
-                    cy.get('label[aria-label="Variable editor Preview of Values option"]')
-                      .should('exist')
-                      .as('previewValue');
+              cy.get('@previewOfValues').within(() => {
+                cy.get('label[aria-label="Variable editor Preview of Values option"]')
+                  .should('exist')
+                  .as('previewValue');
 
-                    // Check Preview values
-                    previewValues.forEach((value) => {
-                      cy.get('@previewValue').contains(value);
-                    });
-                  });
+                // Check Preview values
+                previewValues.forEach((value) => {
+                  cy.get('@previewValue').contains(value);
                 });
               });
+            });
           });
+      })
+      .then(() => {
+        cy.log('Then after sql-editor');
       });
+
+    cy.log('Then after all');
 
     /**
      * Delete the newly created data source for the panel
