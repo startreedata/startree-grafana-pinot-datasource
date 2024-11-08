@@ -815,7 +815,6 @@ describe('Add variable with Variable Query Editor', () => {
 
               // Set the new pinot query value
               editor.setValue(formData.pinotQuery.trim());
-              cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
 
               // Check if query editor has the new value
               const editorNewValue = editor.getValue();
@@ -830,9 +829,9 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp').then((resp: unknown) => {
-      cy.log('Resp: ', JSON.stringify(resp));
-      const data = resp as Record<string, any>;
+    cy.wait('@dsQuery').then(({ response }) => {
+      cy.log('Resp: ', JSON.stringify(response.body));
+      const data = response.body as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
       cy.get('@previewOfValues').within(() => {
