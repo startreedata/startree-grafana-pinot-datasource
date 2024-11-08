@@ -825,33 +825,27 @@ describe('Add variable with Variable Query Editor', () => {
                 );
               })
               .then(() => {
-                cy.wait('@dsQuery').then(({ response }) => {
-                  cy.log('Check1: ', JSON.stringify(response.body));
-                  cy.wrap(response.body).as('dsQueryResp');
+                /**
+                 * Check Preview of values
+                 */
+                cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
+                  const data = response.body as Record<string, any>;
+                  cy.log('Check: ', JSON.stringify(response.body));
+                  const previewValues: string[] = data.results.A.frames[0].data.values[0];
+
+                  cy.get('@previewOfValues').within(() => {
+                    cy.get('label[aria-label="Variable editor Preview of Values option"]')
+                      .should('exist')
+                      .as('previewValue');
+
+                    // Check Preview values
+                    previewValues.forEach((value) => {
+                      cy.get('@previewValue').contains(value);
+                    });
+                  });
                 });
               });
           });
-      });
-
-    /**
-     * Check Preview of values
-     */
-    cy.contains('Preview of values')
-      .parent()
-      .parent()
-      .within(() => {
-        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
-
-        cy.get('@dsQueryResp').then((resp: unknown) => {
-          const data = resp as Record<string, any>;
-          cy.log('Check: ', JSON.stringify(resp));
-          const previewValues: string[] = data.results.A.frames[0].data.values[0];
-
-          // Check Preview values
-          previewValues.forEach((value) => {
-            cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
-          });
-        });
       });
 
     /**
