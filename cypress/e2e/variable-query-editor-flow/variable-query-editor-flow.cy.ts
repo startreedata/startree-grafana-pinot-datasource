@@ -824,22 +824,25 @@ describe('Add variable with Variable Query Editor', () => {
               );
             });
           });
+      })
+      .then(() => {
+        cy.wait('@dsQuery', { timeout: 5000 }).its('response.body').as('dsQueryResp');
       });
 
     /**
      * Check Preview of values
      */
-    cy.wait('@dsQuery', { timeout: 5000 }).then(({ response }) => {
-      cy.log('Resp: ', JSON.stringify(response.body));
-      const data = response.body as Record<string, any>;
+    cy.get('@dsQueryResp').then((resp: unknown) => {
+      cy.log('Resp: ', JSON.stringify(resp));
+      const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
       cy.get('@previewOfValues').within(() => {
-        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist').as('previewValue');
+        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
         // Check Preview values
         previewValues.forEach((value) => {
-          cy.get('@previewValue').contains(value);
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
         });
       });
     });
