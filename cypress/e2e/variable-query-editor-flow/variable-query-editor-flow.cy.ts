@@ -788,10 +788,11 @@ describe('Add variable with Variable Query Editor', () => {
                 editorNewValue.trim().replace(/ /g, '')
               );
             });
-          })
-          .then(() => {
-            cy.wait('@dsQuery', { timeout: 10000 });
           });
+      })
+      .then(() => {
+        cy.contains(formData.pinotQuery, { timeout: 10000 });
+        cy.wait('@dsQuery');
       });
 
     /**
