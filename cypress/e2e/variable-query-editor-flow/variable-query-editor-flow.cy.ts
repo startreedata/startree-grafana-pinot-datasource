@@ -826,20 +826,26 @@ describe('Add variable with Variable Query Editor', () => {
 
                   // Polling mechanism to check if the editor has rendered the value
                   const interval = setInterval(() => {
-                    const isRendered = Cypress.$(editorContainer).text().includes('SELECT');
+                    const isRendered = Cypress.$(editorContainer)
+                      .text()
+                      .replace(/\u00A0/g, ' ')
+                      .trim()
+                      .includes(formData.pinotQuery.trim());
+
                     if (isRendered) {
                       clearInterval(interval);
-                      resolve(true);
+                      resolve(null);
                     }
                   }, 100);
 
                   // Optional timeout to clear interval if the value is not set within a given time
                   setTimeout(() => {
                     clearInterval(interval);
+                    resolve(null);
                   }, 5000);
                 })
               ).then(() => {
-                cy.contains(formData.pinotQuery, { timeout: 10000 });
+                cy.contains(formData.pinotQuery);
                 cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
 
                 // Ensure that the editor reflects the new value
@@ -856,22 +862,22 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.get('@dsQueryResp').then((resp) => {
-      const data = resp as Record<string, any>;
-      const previewValues: string[] = data.results.A.frames[0].data.values[0];
+    cy.contains('Preview of values')
+      .parent()
+      .parent()
+      .within(() => {
+        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-      cy.contains('Preview of values')
-        .parent()
-        .parent()
-        .within(() => {
-          cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
+        cy.get('@dsQueryResp').then((resp: unknown) => {
+          const data = resp as Record<string, any>;
+          const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
           // Check Preview values
           previewValues.forEach((value) => {
             cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
           });
         });
-    });
+      });
 
     /**
      * Delete the newly created data source for the panel
