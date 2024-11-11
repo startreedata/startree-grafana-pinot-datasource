@@ -817,21 +817,38 @@ describe('Add variable with Variable Query Editor', () => {
               // Check the initial query value
               cy.wrap(editorValue).should('be.empty');
 
-              // Set the new pinot query value
-              editor.setValue(formData.pinotQuery.trim());
-              // NOTE: Added custom wait because Monaco Editor takes some time to render the updated value
-              cy.wait(500);
-              cy.contains(formData.pinotQuery, { timeout: 10000 });
-              cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
+              const editorContainer = win.document.querySelector('.monaco-scrollable-element');
 
-              // Ensure that the editor reflects the new value
-              const editorNewValue = editor.getValue();
+              cy.wrap(
+                new Promise((resolve) => {
+                  // Set the editor new value
+                  editor.setValue(formData.pinotQuery.trim());
 
-              // Retry until the editor value is updated
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                'equal',
-                editorNewValue.trim().replace(/ /g, '')
-              );
+                  // Polling mechanism to check if the editor has rendered the value
+                  const interval = setInterval(() => {
+                    const isRendered = Cypress.$(editorContainer).text().includes('SELECT');
+                    if (isRendered) {
+                      clearInterval(interval);
+                      resolve(true);
+                    }
+                  }, 100);
+
+                  // Optional timeout to clear interval if the value is not set within a given time
+                  setTimeout(() => {
+                    clearInterval(interval);
+                  }, 5000);
+                })
+              ).then(() => {
+                cy.contains(formData.pinotQuery, { timeout: 10000 });
+                cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
+
+                // Ensure that the editor reflects the new value
+                const editorNewValue = editor.getValue();
+                cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
+                  'equal',
+                  editorNewValue.trim().replace(/ /g, '')
+                );
+              });
             });
           });
       });
