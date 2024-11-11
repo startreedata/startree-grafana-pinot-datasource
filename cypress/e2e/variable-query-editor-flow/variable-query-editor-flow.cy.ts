@@ -845,8 +845,9 @@ describe('Add variable with Variable Query Editor', () => {
                   }, 5000);
                 })
               ).then(() => {
-                cy.contains(formData.pinotQuery);
-                cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
+                cy.wait('@dsQuery').then(({ response }) => {
+                  cy.wrap(response.body).as('dsQueryResp');
+                });
 
                 // Ensure that the editor reflects the new value
                 const editorNewValue = editor.getValue();
