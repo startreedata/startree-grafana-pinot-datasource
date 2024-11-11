@@ -639,7 +639,7 @@ describe('Add variable with Variable Query Editor', () => {
     });
   });
 
-  it.only('Sql query should show the return data', () => {
+  it('Sql query should show the return data', () => {
     /**
      * All Intercepts
      */
