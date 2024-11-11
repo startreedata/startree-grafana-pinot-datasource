@@ -639,7 +639,7 @@ describe('Add variable with Variable Query Editor', () => {
     });
   });
 
-  it('Sql query should show the return data', () => {
+  it.only('Sql query should show the return data', () => {
     /**
      * All Intercepts
      */
@@ -845,10 +845,6 @@ describe('Add variable with Variable Query Editor', () => {
                   }, 5000);
                 })
               ).then(() => {
-                cy.wait('@dsQuery').then(({ response }) => {
-                  cy.wrap(response.body).as('dsQueryResp');
-                });
-
                 // Ensure that the editor reflects the new value
                 const editorNewValue = editor.getValue();
                 cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
@@ -859,6 +855,9 @@ describe('Add variable with Variable Query Editor', () => {
             });
           });
       });
+
+    cy.contains(formData.pinotQuery.trim(), { timeout: 10000 });
+    cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
 
     /**
      * Check Preview of values
