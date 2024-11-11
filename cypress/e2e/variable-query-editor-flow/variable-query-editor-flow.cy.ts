@@ -755,47 +755,6 @@ describe('Add variable with Variable Query Editor', () => {
       });
 
     /**
-     * Check and fill Pinot Query
-     */
-    cy.getBySel('sql-editor')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Pinot Query');
-
-        // Check the sql editor
-        cy.get('[aria-label="Code editor container"]')
-          .should('exist')
-          .within(() => {
-            cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
-
-            cy.window().then((win) => {
-              // Access the Monaco Editor instance via the window object
-              const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
-              const editorValue = editor.getValue(); // Retrieve the editor's content
-
-              // Check the initial query value
-              cy.wrap(editorValue).should('be.empty');
-
-              // Set the new pinot query value
-              editor.setValue(formData.pinotQuery.trim());
-
-              // Ensure that the editor reflects the new value
-              const editorNewValue = editor.getValue();
-
-              // Retry until the editor value is updated
-              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
-                'equal',
-                editorNewValue.trim().replace(/ /g, '')
-              );
-            });
-          });
-      })
-      .then(() => {
-        cy.contains(formData.pinotQuery, { timeout: 10000 });
-        cy.wait('@dsQuery');
-      });
-
-    /**
      * Check and select Table
      */
     cy.getBySel('select-table')
@@ -822,6 +781,7 @@ describe('Add variable with Variable Query Editor', () => {
 
             // Select the option
             cy.contains(formData.table).click();
+            cy.wait(['@resourcesTablesSchema', '@dsQuery']);
           });
 
         // Check if correct option is selected
@@ -830,7 +790,45 @@ describe('Add variable with Variable Query Editor', () => {
         });
       });
 
-    cy.wait('@resourcesTablesSchema');
+    /**
+     * Check and fill Pinot Query
+     */
+    cy.getBySel('sql-editor')
+      .should('exist')
+      .within(() => {
+        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Pinot Query');
+
+        // Check the sql editor
+        cy.get('[aria-label="Code editor container"]')
+          .should('exist')
+          .within(() => {
+            cy.get('.monaco-editor', { timeout: 5000 }).should('exist');
+
+            cy.window().then((win) => {
+              // Access the Monaco Editor instance via the window object
+              const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
+              const editorValue = editor.getValue(); // Retrieve the editor's content
+
+              // Check the initial query value
+              cy.wrap(editorValue).should('be.empty');
+
+              // Set the new pinot query value
+              editor.setValue(formData.pinotQuery.trim());
+              // NOTE: Added custom wait because Monaco Editor takes some time to render the updated value
+              cy.wait(500);
+              cy.contains(formData.pinotQuery, { timeout: 10000 });
+
+              // Ensure that the editor reflects the new value
+              const editorNewValue = editor.getValue();
+
+              // Retry until the editor value is updated
+              cy.wrap(formData.pinotQuery.trim().replace(/ /g, '')).should(
+                'equal',
+                editorNewValue.trim().replace(/ /g, '')
+              );
+            });
+          });
+      });
 
     /**
      * Check Preview of values
