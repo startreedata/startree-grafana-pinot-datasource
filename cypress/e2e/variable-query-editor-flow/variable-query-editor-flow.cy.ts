@@ -121,23 +121,24 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.contains('Preview of values').parent().parent().as('previewOfValues');
-
     cy.get('@dsQueryResp').then((resp: unknown) => {
       const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
-      cy.get('@previewOfValues').within(() => {
-        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist').as('previewValue');
+      cy.contains('Preview of values')
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-        // Check Preview values
-        previewValues.forEach((value) => {
-          cy.get('@previewValue').contains(value);
+          // Check Preview values
+          previewValues.forEach((value) => {
+            cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+          });
+
+          // Check specifically for complex_website value
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').contains('complex_website');
         });
-
-        // Check specifically for complex_website value
-        cy.get('@previewValue').contains('complex_website');
-      });
     });
 
     /**
@@ -264,7 +265,6 @@ describe('Add variable with Variable Query Editor', () => {
     cy.contains('Preview of values')
       .parent()
       .parent()
-      .as('previewOfValues')
       .within(() => {
         cy.get('label[aria-label="Variable editor Preview of Values option"]')
           .should('exist')
@@ -351,14 +351,17 @@ describe('Add variable with Variable Query Editor', () => {
       const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
-      cy.get('@previewOfValues').within(() => {
-        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist').as('previewValue');
+      cy.contains('Preview of values')
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-        // Check Preview values
-        previewValues.forEach((value) => {
-          cy.get('@previewValue').contains(value);
+          // Check Preview values
+          previewValues.forEach((value) => {
+            cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+          });
         });
-      });
     });
 
     /**
@@ -488,7 +491,6 @@ describe('Add variable with Variable Query Editor', () => {
     cy.contains('Preview of values')
       .parent()
       .parent()
-      .as('previewOfValues')
       .within(() => {
         cy.get('label[aria-label="Variable editor Preview of Values option"]')
           .should('exist')
@@ -611,14 +613,17 @@ describe('Add variable with Variable Query Editor', () => {
       const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
-      cy.get('@previewOfValues').within(() => {
-        cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist').as('previewValue');
+      cy.contains('Preview of values')
+        .parent()
+        .parent()
+        .within(() => {
+          cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
 
-        // Check Preview values
-        previewValues.forEach((value) => {
-          cy.get('@previewValue').contains(value);
+          // Check Preview values
+          previewValues.forEach((value) => {
+            cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
+          });
         });
-      });
     });
 
     /**
@@ -817,6 +822,7 @@ describe('Add variable with Variable Query Editor', () => {
               // NOTE: Added custom wait because Monaco Editor takes some time to render the updated value
               cy.wait(500);
               cy.contains(formData.pinotQuery, { timeout: 10000 });
+              cy.wait('@dsQuery').its('response.body').as('dsQueryResp');
 
               // Ensure that the editor reflects the new value
               const editorNewValue = editor.getValue();
@@ -833,8 +839,8 @@ describe('Add variable with Variable Query Editor', () => {
     /**
      * Check Preview of values
      */
-    cy.wait('@dsQuery').then(({ response }) => {
-      const data = response.body as Record<string, any>;
+    cy.get('@dsQueryResp').then((resp) => {
+      const data = resp as Record<string, any>;
       const previewValues: string[] = data.results.A.frames[0].data.values[0];
 
       cy.contains('Preview of values')
