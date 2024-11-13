@@ -19,7 +19,7 @@ describe('Create and run pinot query using Explore', () => {
     }
   });
 
-  it.only('Graph and Table should rendered using Pinot Query Builder', () => {
+  it('Graph and Table should rendered using Pinot Query Builder', () => {
     /**
      * All Intercepts
      */
