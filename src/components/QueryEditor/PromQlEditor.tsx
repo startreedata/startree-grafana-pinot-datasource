@@ -4,7 +4,6 @@ import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
 import { useTimeSeriesTables } from '../../resources/timeseries';
 import { InputMetricLegend } from './InputMetricLegend';
-import { useCompletionDataProvider } from '../../promql/completionDataProvider';
 import { Button, Icon, Modal } from '@grafana/ui';
 import { useIsPromQlSupported } from '../../resources/isPromQlSupported';
 import { QueryType } from '../../types/QueryType';
@@ -13,12 +12,10 @@ import { PromQlExpressionEditor } from './PromQlExpressionEditor';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const tables = useTimeSeriesTables(props.datasource);
-
   const timeRange = {
     to: props.range?.to,
     from: props.range?.from,
   };
-  const dataProvider = useCompletionDataProvider(props.datasource, props.query.tableName, timeRange);
 
   return (
     <>
@@ -38,10 +35,12 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
         <>
           <FormLabel tooltip={'Query'} label={'Query'} />
           <PromQlExpressionEditor
-              datasource={props.datasource}
-              value={props.query.promQlCode}
-              onExpressionChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
-              onRunQuery={props.onRunQuery}
+            datasource={props.datasource}
+            tableName={props.query.tableName}
+            timeRange={timeRange}
+            value={props.query.promQlCode}
+            onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
+            onRunQuery={props.onRunQuery}
           />
         </>
       </div>

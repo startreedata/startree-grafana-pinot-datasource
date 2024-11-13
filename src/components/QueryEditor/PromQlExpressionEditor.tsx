@@ -1,44 +1,67 @@
-import { PrometheusClient, PromQLExtension } from '@prometheus-io/codemirror-promql';
+import {
+  CompleteStrategy,
+  newCompleteStrategy,
+  PrometheusClient,
+  PromQLExtension,
+} from '@prometheus-io/codemirror-promql';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
 import { EditorView, highlightSpecialChars, keymap, ViewUpdate } from '@codemirror/view';
 import { MetricMetadata } from '@prometheus-io/codemirror-promql/dist/cjs/client/prometheus';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Matcher } from '@prometheus-io/codemirror-promql/dist/esm/types';
 import { bracketMatching, indentOnInput } from '@codemirror/language';
-import { autocompletion, closeBrackets, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete';
+import {
+  autocompletion,
+  closeBrackets,
+  closeBracketsKeymap,
+  CompletionContext,
+  completionKeymap,
+  CompletionResult,
+} from '@codemirror/autocomplete';
 import { lintKeymap } from '@codemirror/lint';
 import { highlightSelectionMatches } from '@codemirror/search';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { useTheme2 } from '@grafana/ui';
-import { GrafanaTheme2 } from '@grafana/data';
-import { DataSource } from '../../datasource'; // Making very good progress on the editor. Needs theming and to remove unsupported functions.
+import { DateTime, GrafanaTheme2 } from '@grafana/data';
+import { DataSource } from '../../datasource';
+import { PinotSupportedKeywords } from '../../promql/pinotSupport';
+import { listTimeSeriesLabels, listTimeSeriesLabelValues, listTimeSeriesMetrics } from '../../resources/timeseries'; // Making very good progress on the editor. Needs theming and to remove unsupported functions.
 
-// Making very good progress on the editor. Needs theming and to remove unsupported functions.
-// I think that I can just wrap the completion strategy object here https://github.com/prometheus/prometheus/blob/main/web/ui/module/codemirror-promql/src/complete/index.ts
-// and filter out the unsupported function suggestions.
-
-const dynamicConfigCompartment = new Compartment();
+// TODO: This is how
+//const dynamicConfigCompartment = new Compartment();
 
 export function PromQlExpressionEditor(props: {
   datasource: DataSource;
+  tableName: string | undefined;
+  timeRange: {
+    to: DateTime | undefined;
+    from: DateTime | undefined;
+  };
   value: string | undefined;
-  onExpressionChange: (v: string) => void;
+  onChange: (v: string) => void;
   onRunQuery: () => void;
 }) {
-  const theme = useTheme2();
+  const { tableName, datasource, timeRange, value, onChange, onRunQuery } = props;
+
+  const grafanaTheme = useTheme2();
+  const [dynamicConfigCompartment] = useState(new Compartment());
+
+  const [editorContent, onExpressionChange] = useState(value || '');
+  useEffect(() => {
+    if (editorContent !== value) {
+      onChange(editorContent);
+    }
+  }, [editorContent, value, onChange]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
-
-  const { value, onExpressionChange, onRunQuery } = props;
-
   useEffect(() => {
-    const promQL = new PromQLExtension().setComplete({ remote: promClient });
+    const promClient = getPrometheusClient(datasource, tableName, timeRange);
+    const promQL = new PromQLExtension().setComplete({
+      completeStrategy: getCompletionStrategy(promClient),
+    });
 
-    const dynamicConfig = [
-      promQL.asExtension(),
-      // TODO: Add theming?
-    ];
+    const dynamicConfig = [promQL.asExtension(), getEditorTheme(grafanaTheme)];
 
     if (viewRef.current != null) {
       const view = viewRef.current;
@@ -52,9 +75,8 @@ export function PromQlExpressionEditor(props: {
 
     const view = new EditorView({
       state: EditorState.create({
-        doc: value,
+        doc: editorContent,
         extensions: [
-          getEditorTheme(theme),
           dynamicConfigCompartment.of(dynamicConfig),
           history(),
           highlightSpecialChars(),
@@ -93,13 +115,33 @@ export function PromQlExpressionEditor(props: {
     <div
       style={{
         flex: '1 1 auto',
-        border: '1px solid ' + theme.colors.border.medium,
+        border: '1px solid ' + grafanaTheme.colors.border.medium,
         width: '100%',
         padding: '6px',
+        background: grafanaTheme.components.input.background,
       }}
       ref={containerRef}
     ></div>
   );
+}
+
+// TODO: This wrapper can be removed once we have full Promql language support in Pinot.
+function getCompletionStrategy(client: PrometheusClient): CompleteStrategy {
+  const base = newCompleteStrategy({ remote: client });
+  return {
+    async promQL(context: CompletionContext): Promise<CompletionResult | null> {
+      return Promise.resolve(base.promQL(context)).then((completionResult) => {
+        console.log({ context, completionResult });
+        if (completionResult === null) {
+          return null;
+        }
+        completionResult.options = completionResult.options.filter(
+          (p) => p.type === 'constant' || p.type === 'text' || PinotSupportedKeywords.includes(p.label)
+        );
+        return completionResult;
+      });
+    },
+  };
 }
 
 export const getEditorTheme = (theme: GrafanaTheme2) =>
@@ -125,8 +167,6 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
 
     '.cm-matchingBracket': {
       color: theme.colors.text.primary,
-      //backgroundColor: theme.colors.background.primary,
-      backgroundColor: '#deff0a',
       fontWeight: 'bold',
       outline: '1px dashed transparent',
     },
@@ -203,15 +243,6 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
       color: '#0066bf',
     },
 
-    '.cm-line': {
-      '&::selection': {
-        backgroundColor: theme.components.textHighlight.background,
-      },
-      '& > span::selection': {
-        backgroundColor: theme.components.textHighlight.background,
-      },
-    },
-
     '.cm-selectionMatch': {
       backgroundColor: '#e6f3ff',
     },
@@ -236,34 +267,55 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
     },
   });
 
-const promClient: PrometheusClient = {
-  labelNames(metricName?: string): Promise<string[]> {
-    console.log({ method: 'labelNames', args: { metricName } });
-    return Promise.resolve(['label1', 'label2']);
-  },
+function getPrometheusClient(
+  datasource: DataSource,
+  tableName: string | undefined,
+  timeRange: {
+    to: DateTime | undefined;
+    from: DateTime | undefined;
+  }
+): PrometheusClient {
+  return {
+    metricNames(prefix?: string): Promise<string[]> {
+      return listTimeSeriesMetrics(datasource, {
+        tableName: tableName,
+        timeRange: timeRange,
+      });
+    },
 
-  labelValues(labelName: string, metricName?: string, matchers?: Matcher[]): Promise<string[]> {
-    console.log({ method: 'labelValues', args: { labelName, metricName, matchers } });
-    return Promise.resolve(['val1', 'val2']);
-  },
+    labelNames(metricName?: string): Promise<string[]> {
+      return listTimeSeriesLabels(datasource, {
+        tableName: tableName,
+        metricName: metricName,
+        timeRange: timeRange,
+      });
+    },
 
-  metricMetadata(): Promise<Record<string, MetricMetadata[]>> {
-    console.log({ method: 'metricMetadata', args: {} });
-    return Promise.resolve({});
-  },
+    labelValues(labelName: string, metricName?: string, matchers?: Matcher[]): Promise<string[]> {
+      return listTimeSeriesLabelValues(datasource, {
+        tableName: tableName,
+        metricName: metricName,
+        labelName: labelName,
+        timeRange: timeRange,
+      });
+    },
 
-  series(metricName: string, matchers?: Matcher[], labelName?: string): Promise<Map<string, string>[]> {
-    console.log({ method: 'series', args: { metricName, matchers, labelName } });
-    return Promise.resolve([new Map<string, string>()]);
-  },
+    // TODO: Implement this handler once metadata api is ready.
+    metricMetadata(): Promise<Record<string, MetricMetadata[]>> {
+      console.log({ method: 'metricMetadata', args: {} });
+      return Promise.resolve({});
+    },
 
-  metricNames(prefix?: string): Promise<string[]> {
-    console.log({ method: 'metricNames', args: { prefix } });
-    return Promise.resolve(['metric1', 'metric2']);
-  },
+    // TODO: Implement this handler once series api is ready.
+    series(metricName: string, matchers?: Matcher[], labelName?: string): Promise<Array<Map<string, string>>> {
+      console.log({ method: 'series', args: { metricName, matchers, labelName } });
+      return Promise.resolve([new Map<string, string>()]);
+    },
 
-  flags(): Promise<Record<string, string>> {
-    console.log({ method: 'flags', args: {} });
-    return Promise.resolve({});
-  },
-};
+    // TODO: I actually have no idea what this is used for.
+    flags(): Promise<Record<string, string>> {
+      console.log({ method: 'flags', args: {} });
+      return Promise.resolve({});
+    },
+  };
+}
