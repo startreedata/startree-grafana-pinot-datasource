@@ -1,8 +1,7 @@
 import { EnvVariables } from 'support/constants/env-variables';
-import type { TestCtx } from './panel-with-pinot-query-builder.cy';
 import { getUniqueString } from 'support/utils/get-unique-string';
 
-interface FormData {
+interface CreatePinotDatasourceFormData {
   name: string;
   controllerUrl: string;
   brokerUrl: string;
@@ -10,19 +9,14 @@ interface FormData {
   authType: 'Bearer' | 'Basic' | 'None';
   authToken: string;
 }
-
-export const createPinotDatasource = (
-  ctx: TestCtx,
-  initialFormData: Partial<FormData> = {}
-): Cypress.Chainable<FormData> => {
-  const formData: FormData = {
+Cypress.Commands.add('createPinotDatasource', (): Cypress.Chainable<{ name: string }> => {
+  const formData: CreatePinotDatasourceFormData = {
     name: `Pinot_e2e_${getUniqueString(5)}`,
     controllerUrl: Cypress.env(EnvVariables.pinotConnectionControllerUrl),
     brokerUrl: Cypress.env(EnvVariables.pinotConnectionBrokerUrl),
     database: Cypress.env(EnvVariables.pinotConnectionDatabase),
     authType: 'Bearer',
     authToken: Cypress.env(EnvVariables.pinotConnectionAuthToken),
-    ...initialFormData,
   };
 
   /**
@@ -126,32 +120,5 @@ export const createPinotDatasource = (
   // Check for page alert
   cy.get('[data-testid="data-testid Alert success"]').contains('Pinot data source is working').should('be.visible');
 
-  return cy.wrap({ ...formData }).then((data: unknown) => {
-    return data as FormData;
-  });
-};
-
-export const deletePinotDatasource = (ctx: TestCtx, datasourceUid: string) => {
-  cy.visit(`/datasources/edit/${datasourceUid}`);
-  cy.location('pathname').should('eq', `/datasources/edit/${datasourceUid}`);
-
-  cy.wait(['@datasourcesUidAccessControl', '@pluginsSettings']);
-
-  // Check for Delete button and click
-  cy.get('button').contains('Delete').click();
-  cy.get('[data-overlay-container="true"]').within(() => {
-    cy.get('button').contains('Delete').click();
-  });
-
-  // Wait for delete request to complete
-  cy.wait('@deleteDatasource').then(({ response }) => {
-    if (response.statusCode === 200) {
-      ctx.newlyCreatedDatasourceUid = null;
-    }
-  });
-
-  // Check for success alert and pathname
-  cy.get('[data-testid="data-testid Alert success"]').contains('Data source deleted').should('be.visible');
-  cy.wait(['@frontendSettings']);
-  cy.location('pathname').should('eq', '/datasources');
-};
+  return cy.wrap({ name: formData.name });
+});

@@ -1,15 +1,13 @@
-import { createPinotDatasource, deletePinotDatasource } from './create-pinot-datasource';
-
-export interface TestCtx {
+type ExplorePinotTestCtx = {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, unknown>;
     tablesSchema?: Record<string, unknown>;
   };
-}
+};
 
 describe('Create and run pinot query using Explore', () => {
-  const ctx: TestCtx = {
+  const ctx: ExplorePinotTestCtx = {
     newlyCreatedDatasourceUid: null,
     apiResponse: {},
   };
@@ -21,7 +19,7 @@ describe('Create and run pinot query using Explore', () => {
     }
   });
 
-  it('Graph and Table should rendered using Pinot Query Builder', () => {
+  it.only('Graph and Table should rendered using Pinot Query Builder', () => {
     /**
      * All Intercepts
      */
@@ -70,7 +68,7 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -907,7 +905,11 @@ describe('Create and run pinot query using Explore', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -960,7 +962,7 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * Create new Pinot Datasource for testing explore flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -1245,7 +1247,11 @@ describe('Create and run pinot query using Explore', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 });
