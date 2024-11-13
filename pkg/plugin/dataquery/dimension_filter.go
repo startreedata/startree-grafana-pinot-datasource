@@ -63,13 +63,21 @@ func dimensionFilterExpr(filter DimensionFilter) string {
 		case FilterOpNotIn:
 			return fmt.Sprintf(`"%s" not in %s`, filter.ColumnName, valueExpr)
 		default:
-			return "1=1"
+			return ""
 		}
 	}
 
-	exprs := make([]string, len(filter.ValueExprs))
-	for i, expr := range filter.ValueExprs {
-		exprs[i] = format(expr)
+	exprs := make([]string, 0, len(filter.ValueExprs))
+	for _, expr := range filter.ValueExprs {
+		filterExpr := format(expr)
+		if filterExpr == "" {
+			continue
+		}
+		exprs = append(exprs, format(expr))
 	}
+	if len(exprs) == 0 {
+		return ""
+	}
+
 	return fmt.Sprintf(`(%s)`, strings.Join(exprs, " OR "))
 }

@@ -1080,6 +1080,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/code').as('previewSqlCode');
+    cy.intercept('GET', 'https://grafana.com/blog/news.xml').as('blogNews');
 
     const formData = {
       table: 'complex_website',
@@ -1608,6 +1609,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('button[aria-label="Undo all changes"]').should('exist').click();
     cy.location('search').should('not.contain', 'editPanel');
+    cy.wait('@blogNews');
+    cy.contains('Welcome to Grafana');
 
     /**
      * Delete the newly created data source for the panel
@@ -1654,6 +1657,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/code').as('previewSqlCode');
+    cy.intercept('GET', 'https://grafana.com/blog/news.xml').as('blogNews');
 
     const formData = {
       table: 'complex_website',
@@ -2258,6 +2262,8 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('button[aria-label="Undo all changes"]').should('exist').click();
     cy.location('search').should('not.contain', 'editPanel');
+    cy.wait('@blogNews');
+    cy.contains('Welcome to Grafana');
 
     /**
      * Delete the newly created data source for the panel
@@ -3192,11 +3198,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
          */
         cy.get('@viewsRunQueryBtn').click();
         cy.wait('@dsQuery', { timeout: 5000 }).then(() => {
-          const fields = ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields;
+          // Fix for github CI issue
+          cy.wrap(null).then(() => {
+            const fields = ctx.apiResponse.dsQuery.results.B.frames[0].schema.fields;
 
-          // Check the result data
-          cy.wrap(fields[0]).should('have.property', 'name', 'views');
-          cy.wrap(fields[1]).should('have.property', 'name', 'time');
+            // Check the result data
+            cy.wrap(fields[0]).should('have.property', 'name', 'views');
+            cy.wrap(fields[1]).should('have.property', 'name', 'time');
+          });
         });
       });
 

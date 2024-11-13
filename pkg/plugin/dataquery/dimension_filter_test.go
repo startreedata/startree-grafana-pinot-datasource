@@ -8,13 +8,6 @@ import (
 )
 
 func TestFilterExprsFrom(t *testing.T) {
-	want := []string{
-		`("AirlineID" = 19393 OR "AirlineID" = 19790)`,
-		`("ArrTime" > -2147483648)`,
-		`("Cancelled" = 0)`,
-		`("Carrier" like 'DL')`,
-	}
-
 	var filters []DimensionFilter
 	assert.NoError(t, json.NewDecoder(strings.NewReader(`[
 	  {
@@ -52,11 +45,39 @@ func TestFilterExprsFrom(t *testing.T) {
 		  "'DL'"
 		]
 	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "in",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "not in",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "invalid",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
 	  {}
 	]`)).Decode(&filters))
 
 	got := FilterExprsFrom(filters)
-	assert.EqualValues(t, want, got)
+	assert.EqualValues(t, []string{
+		`("AirlineID" = 19393 OR "AirlineID" = 19790)`,
+		`("ArrTime" > -2147483648)`,
+		`("Cancelled" = 0)`,
+		`("Carrier" like 'DL')`,
+		`("Carrier" in 'DL')`,
+		`("Carrier" not in 'DL')`,
+	}, got)
 }
 
 func TestDimensionFilter(t *testing.T) {
@@ -74,6 +95,8 @@ func TestDimensionFilter(t *testing.T) {
 		{FilterOpLessThan, `("dim" < 'val1' OR "dim" < 'val2')`},
 		{FilterOpGreaterThanOrEqual, `("dim" >= 'val1' OR "dim" >= 'val2')`},
 		{FilterOpLessThanOrEqual, `("dim" <= 'val1' OR "dim" <= 'val2')`},
+		{FilterOpIn, `("dim" in 'val1' OR "dim" in 'val2')`},
+		{FilterOpNotIn, `("dim" not in 'val1' OR "dim" not in 'val2')`},
 	}
 	for _, args := range testArgs {
 		t.Run(args.operator, func(t *testing.T) {
