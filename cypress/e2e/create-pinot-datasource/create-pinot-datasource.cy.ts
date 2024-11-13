@@ -449,7 +449,7 @@ describe('Create a Pinot Data Source', () => {
     cy.location('pathname').should('eq', '/datasources');
   });
 
-  it.only('Pinot data source test should fail if user pass invalid data to fields', () => {
+  it('Pinot data source test should fail if user pass invalid data to fields', () => {
     /**
      * All Intercepts
      */

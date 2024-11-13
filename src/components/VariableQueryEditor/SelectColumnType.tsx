@@ -21,7 +21,7 @@ export function SelectColumnType({
   const labels = allLabels.components.VariableQueryEditor.columnType;
 
   return (
-    <>
+    <div className={'gf-form'} data-testid="select-column-type">
       <FormLabel label={labels.label} tooltip={labels.tooltip} />
       <Select
         className={`${styles.VariableQueryEditor.inputForm}`}
@@ -30,6 +30,6 @@ export function SelectColumnType({
         value={selected || null}
         onChange={(change) => onChange(change.value)}
       />
-    </>
+    </div>
   );
 }
