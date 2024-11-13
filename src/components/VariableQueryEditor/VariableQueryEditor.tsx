@@ -68,7 +68,7 @@ export function VariableQueryEditor({ datasource, onChange, query }: VariableQue
 
   return (
     <>
-      <div className={'gf-form'}>
+      <div className={'gf-form'} data-testid="select-variable-type">
         <SelectVariableType
           selected={query.variableQuery?.variableType}
           onChange={(variableType) => onChangeVariableQuery({ ...query.variableQuery, variableType })}

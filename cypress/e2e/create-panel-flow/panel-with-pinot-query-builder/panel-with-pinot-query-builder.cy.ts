@@ -1,7 +1,6 @@
 import { getUniqueString } from 'support/utils/get-unique-string';
-import { createPinotDatasource, deletePinotDatasource } from './create-pinot-datasource';
 
-export interface TestCtx {
+interface TestCtx {
   panelTitle: string;
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
@@ -87,7 +86,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -1041,7 +1040,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -1095,7 +1098,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -1611,7 +1614,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -1678,7 +1685,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -2257,7 +2264,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -2302,7 +2313,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -2506,7 +2517,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -2551,7 +2566,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -2774,7 +2789,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 
@@ -2804,7 +2823,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query', (req) => {
-      req.continue((res) => (ctx.apiResponse.dsQuery = res.body));
+      req.continue((res) => (ctx.apiResponse.dsQuery = { ...res.body }));
     }).as('dsQuery');
     cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
       req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
@@ -2815,7 +2834,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
     /**
      * Create new Pinot Datasource for testing create panel flow
      */
-    createPinotDatasource(ctx).then((data) => {
+    cy.createPinotDatasource().then((data) => {
       cy.wrap({
         name: data.name,
         uid: ctx.newlyCreatedDatasourceUid,
@@ -3216,7 +3235,11 @@ describe('Create a Panel with Pinot Query Builder', () => {
      */
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const datasourceUid = (data as any).uid;
-      deletePinotDatasource(ctx, datasourceUid);
+      cy.deletePinotDatasourceWithUi(datasourceUid).then((result) => {
+        if (result.success) {
+          ctx.newlyCreatedDatasourceUid = null;
+        }
+      });
     });
   });
 });
