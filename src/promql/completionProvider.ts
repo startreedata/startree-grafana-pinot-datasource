@@ -33,8 +33,8 @@ export function newCompletionItemProvider(
     const word = model.getWordAtPosition(position);
 
     const adjustedPosition = {
-      column: position.column,
       lineNumber: position.lineNumber,
+      column: position.column,
     };
 
     if (window.getSelection) {
@@ -43,9 +43,9 @@ export function newCompletionItemProvider(
         adjustedPosition.column = adjustedPosition.column - selectedText.length;
       }
     }
-
     const offset = model.getOffsetAt(adjustedPosition);
     const situation = getSituation(model.getValue(), offset);
+    console.log({position, word, adjustedPosition, offset, situation})
 
     return getCompletions(situation, dataProvider).then((items) => {
       const maxIndexDigits = items.length.toString().length;
