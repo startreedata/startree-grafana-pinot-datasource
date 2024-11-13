@@ -8,7 +8,7 @@ export function SqlPreview({ sql }: { sql: string }) {
   return (
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <pre>{sql}</pre>
+      <pre data-testid="sql-preview-value">{sql}</pre>
     </>
   );
 }
