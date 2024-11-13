@@ -32,17 +32,16 @@ func TestPromQlDriver_Execute(t *testing.T) {
 				time.Unix(1726617600, 0).UTC(),
 				time.Unix(1726617660, 0).UTC(),
 				time.Unix(1726617720, 0).UTC(),
-				time.Unix(1726617780, 0).UTC(),
-				time.Unix(1726617840, 0).UTC(),
 			}).SetConfig(&data.FieldConfig{
 				Interval: float64(60 * time.Second.Milliseconds()),
 			}),
 			data.NewField("", data.Labels{
 				"__name__": "http_request_handled",
-				"metric":   "http_request_handled",
-				"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+				"method":   "GET",
+				"path":     "/app",
+				"status":   "200",
 			}, []float64{
-				24022, 48066, 60102, 0, 0,
+				24022, 48066, 60102,
 			}).SetConfig(&data.FieldConfig{
 				DisplayNameFromDS: "legend",
 			}),
@@ -53,17 +52,16 @@ func TestPromQlDriver_Execute(t *testing.T) {
 				time.Unix(1726617600, 0).UTC(),
 				time.Unix(1726617660, 0).UTC(),
 				time.Unix(1726617720, 0).UTC(),
-				time.Unix(1726617780, 0).UTC(),
-				time.Unix(1726617840, 0).UTC(),
 			}).SetConfig(&data.FieldConfig{
 				Interval: float64(60 * time.Second.Milliseconds()),
 			}),
 			data.NewField("", data.Labels{
 				"__name__": "http_request_handled",
-				"metric":   "http_request_handled",
-				"labels":   "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"400\"}",
+				"method":   "GET",
+				"path":     "/app",
+				"status":   "400",
 			}, []float64{
-				4018, 8045, 10061, 0, 0,
+				4018, 8045, 10061,
 			}).SetConfig(&data.FieldConfig{
 				DisplayNameFromDS: "legend",
 			}),

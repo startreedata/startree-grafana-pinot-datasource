@@ -55,8 +55,7 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	x.Metric = data.Metric
-
+	x.Metric = flattenLabels(data.Metric)
 	x.Timestamps = make([]time.Time, 0, len(data.Values))
 	x.Values = make([]float64, 0, len(data.Values))
 	for i := range data.Values {
@@ -82,6 +81,21 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 	x.Values = x.Values[:]
 	x.Timestamps = x.Timestamps[:]
 	return nil
+}
+
+func flattenLabels(metric map[string]string) map[string]string {
+	labelsJson := metric["labels"]
+	if labelsJson == "" {
+		return metric
+	}
+
+	var labels map[string]string
+	err := json.Unmarshal([]byte(metric["labels"]), &labels)
+	if err != nil {
+		logger.Logger.Info(fmt.Sprintf("failed to unmarshal labels `%s`: %s", labelsJson, err))
+	}
+	labels["__name__"] = metric["__name__"]
+	return labels
 }
 
 func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
@@ -372,6 +386,9 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 	var hasTsField bool
 	for _, fieldSpec := range schema.DateTimeFieldSpecs {
 		if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeTimestamp {
+			hasTsField = true
+			break
+		} else if fieldSpec.Name == TimeSeriesTableColumnTimestamp && fieldSpec.DataType == DataTypeLong {
 			hasTsField = true
 			break
 		}
