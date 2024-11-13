@@ -18,7 +18,7 @@ export function DistinctValuesVariableEditor({
 }) {
   return (
     <>
-      <div className={'gf-form'}>
+      <div className={'gf-form'} style={{ marginBottom: '0' }}>
         {selectTable}
         <SelectColumn
           selected={variableQuery?.columnName}
@@ -26,7 +26,7 @@ export function DistinctValuesVariableEditor({
           onChange={(columnName) => onChange({ ...variableQuery, columnName })}
         />
       </div>
-      <div className={'gf-form'}>
+      <div className={'gf-form'} data-testid="sql-preview">
         <SqlPreview sql={sqlPreview.replace(/\n/g, ' ')} />
       </div>
     </>
