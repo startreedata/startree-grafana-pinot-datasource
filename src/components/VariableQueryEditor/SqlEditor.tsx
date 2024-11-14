@@ -1,6 +1,6 @@
 import { InlineFormLabel } from '@grafana/ui';
 import { SQLEditor as GrafanaSqlEditor } from '@grafana/experimental';
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import allLabels from '../../labels';
 
 export function SqlEditor(props: { current: string | undefined; onChange: (val: string) => void }) {
@@ -19,7 +19,7 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
 
   return (
     <>
-      <InlineFormLabel width={10} tooltip={labels.tooltip}>
+      <InlineFormLabel width={10} tooltip={labels.tooltip} data-testid="inline-form-label">
         {labels.label}
       </InlineFormLabel>
       <div style={{ flex: '1 1 auto' }}>
