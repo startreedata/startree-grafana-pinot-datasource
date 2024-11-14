@@ -135,10 +135,20 @@ jobs:
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
           PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
-      - name: Upload cypress screenshots artifact
+      - name: Upload Cypress screenshots
         uses: actions/upload-artifact@v4
         if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
         with:
           name: cypress-screenshots
           path: cypress/screenshots
+          retention-days: 30
+
+      - name: Collect Grafana logs
+        run: docker compose logs grafana > grafana.log
+
+      - name: Upload Grafana logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          path: grafana.log
           retention-days: 30
