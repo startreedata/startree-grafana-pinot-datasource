@@ -2,6 +2,7 @@ package dataquery
 
 import (
 	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
 	"strings"
@@ -73,10 +74,8 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, args[0])
-		if err != nil {
-			return "", err
-		}
+		timeColumn := unquoteObjectName(args[0])
+		builder := getTimeExpressionBuilderOrFallback(x.TableSchema, timeColumn)
 
 		var granularityExpr string
 		if len(args) > 1 {
@@ -92,17 +91,22 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 	})
 }
 
+func getTimeExpressionBuilderOrFallback(tableSchema pinotlib.TableSchema, timeColumn string) pinotlib.TimeExpressionBuilder {
+	builder, err := pinotlib.TimeExpressionBuilderFor(tableSchema, timeColumn)
+	if err != nil {
+		logger.Logger.Info(fmt.Sprintf("Cannot build time expressions for column %s: %s", timeColumn, err.Error()))
+		builder, _ = pinotlib.NewTimeExpressionBuilder(timeColumn, pinotlib.FormatMillisecondsEpoch)
+	}
+	return builder
+}
+
 func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 	return expandMacro(query, MacroTimeGroup, func(args []string) (string, error) {
 		if len(args) < 1 || len(args) > 2 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		timeColumn := args[0]
-
-		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-		if err != nil {
-			return "", err
-		}
+		timeColumn := unquoteObjectName(args[0])
+		builder := getTimeExpressionBuilderOrFallback(x.TableSchema, timeColumn)
 
 		var granularityExpr string
 		if len(args) > 1 {
@@ -123,12 +127,8 @@ func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
-		timeColumn := args[0]
-
-		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-		if err != nil {
-			return "", err
-		}
+		timeColumn := unquoteObjectName(args[0])
+		builder := getTimeExpressionBuilderOrFallback(x.TableSchema, timeColumn)
 		return builder.TimeExpr(x.To), nil
 	})
 }
@@ -138,12 +138,8 @@ func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
-		timeColumn := args[0]
-
-		builder, err := pinotlib.TimeExpressionBuilderFor(x.TableSchema, timeColumn)
-		if err != nil {
-			return "", err
-		}
+		timeColumn := unquoteObjectName(args[0])
+		builder := getTimeExpressionBuilderOrFallback(x.TableSchema, timeColumn)
 		return builder.TimeExpr(x.From), nil
 	})
 }

@@ -37,6 +37,11 @@ export default {
         label: 'Metric Alias',
         placeholder: 'metric',
       },
+      logAlias:{
+        tooltip: 'The name of the log message column in the query result. Required for logs display.',
+        label: 'Message Alias',
+        placeholder: 'message',
+      },
       timeAlias: {
         tooltip:
           'The name of the time column in the query result. The time column should be in 1:MILLISECONDS:EPOCH format. Required for time series display.',

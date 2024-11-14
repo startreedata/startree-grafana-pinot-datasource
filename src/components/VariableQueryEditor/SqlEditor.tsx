@@ -12,10 +12,13 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
 
   const [editorContent, setEditorContent] = useState(current || '');
   useEffect(() => {
-    if (editorContent !== current) {
-      onChange(editorContent);
-    }
-  });
+    const timeoutId = setTimeout(() => {
+      if (editorContent !== current) {
+        onChange(editorContent);
+      }
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  }, [editorContent, current, onChange]);
 
   return (
     <>

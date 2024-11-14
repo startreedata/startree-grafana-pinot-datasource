@@ -4,12 +4,13 @@ import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
 import { SqlPreview } from './SqlPreview';
-import { DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
-import { SelectTable } from './SelectTable';
+import { DisplayTypeLogs, DisplayTypeTable, DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
 import { DateTime, ScopedVars } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
 import { previewSqlCode, PreviewSqlCodeRequest } from '../../resources/previewSql';
+import { InputLogColumnAlias } from './InputLogColumnAlias';
+import {SelectTable} from "./SelectTable";
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -51,17 +52,38 @@ export function PinotQlCode(props: {
           />
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'row' }}>
-        <InputTimeColumnAlias
-          current={query.timeColumnAlias}
-          onChange={(val) => onChange({ ...query, timeColumnAlias: val })}
-        />
-        <InputMetricColumnAlias
-          current={query.metricColumnAlias}
-          onChange={(val) => onChange({ ...query, metricColumnAlias: val })}
-        />
-      </div>
-
+      {query.displayType === DisplayTypeTable && (
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+          <InputTimeColumnAlias
+            current={query.timeColumnAlias}
+            onChange={(val) => onChange({ ...query, timeColumnAlias: val })}
+          />
+        </div>
+      )}
+      {query.displayType === DisplayTypeTimeSeries && (
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+          <InputTimeColumnAlias
+            current={query.timeColumnAlias}
+            onChange={(val) => onChange({ ...query, timeColumnAlias: val })}
+          />
+          <InputMetricColumnAlias
+            current={query.metricColumnAlias}
+            onChange={(val) => onChange({ ...query, metricColumnAlias: val })}
+          />
+        </div>
+      )}
+      {query.displayType === DisplayTypeLogs && (
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+          <InputTimeColumnAlias
+            current={query.timeColumnAlias}
+            onChange={(val) => onChange({ ...query, timeColumnAlias: val })}
+          />
+          <InputLogColumnAlias
+            current={query.logColumnAlias}
+            onChange={(val) => onChange({ ...query, logColumnAlias: val })}
+          />
+        </div>
+      )}
       <SqlEditor current={query.pinotQlCode} onChange={(pinotQlCode) => onChange({ ...query, pinotQlCode })} />
 
       <div>

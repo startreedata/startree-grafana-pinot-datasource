@@ -185,13 +185,8 @@ func ExtractBooleanColumn(results *ResultTable, colIdx int) []bool {
 }
 
 func ExtractStringColumn(results *ResultTable, colIdx int) []string {
-	// Shortcut fields that are string encoded in the response table.
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
-	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
-		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
-			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
-		})
 	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeTimestamp:
 		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
 			return (results.Rows[rowIdx][colIdx]).(string), nil
@@ -199,6 +194,18 @@ func ExtractStringColumn(results *ResultTable, colIdx int) []string {
 	}
 
 	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	case []int64:
+		vals := make([]string, len(results.Rows))
+		for i := range rawVals {
+			vals[i] = fmt.Sprintf("%v", rawVals[i])
+		}
+		return vals
+	case []float64:
+		vals := make([]string, len(results.Rows))
+		for i := range rawVals {
+			vals[i] = fmt.Sprintf("%v", rawVals[i])
+		}
+		return vals
 	case []bool:
 		vals := make([]string, len(results.Rows))
 		for i := range rawVals {

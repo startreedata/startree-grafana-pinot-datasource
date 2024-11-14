@@ -26,8 +26,8 @@ type PinotDataQuery struct {
 	Hide         bool          `json:"hide"`
 	QueryType    QueryType     `json:"queryType"`
 	EditorMode   EditorMode    `json:"editorMode"`
-	DatabaseName string        `json:"databaseName"`
 	TableName    string        `json:"tableName"`
+	DisplayType  string        `json:"displayType"`
 	IntervalSize time.Duration `json:"intervalSize"`
 
 	// Sql builder query
@@ -47,7 +47,7 @@ type PinotDataQuery struct {
 	TimeColumnAlias   string `json:"timeColumnAlias"`
 	TimeColumnFormat  string `json:"timeColumnFormat"`
 	MetricColumnAlias string `json:"metricColumnAlias"`
-	DisplayType       string `json:"displayType"`
+	LogColumnAlias    string `json:"logColumnAlias"`
 
 	// Variable query
 	VariableQuery struct {

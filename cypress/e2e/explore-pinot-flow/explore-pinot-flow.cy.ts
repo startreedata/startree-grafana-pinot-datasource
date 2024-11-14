@@ -1069,7 +1069,7 @@ describe('Create and run pinot query using Explore', () => {
         cy.getBySel('inline-form-label').should('exist').and('have.text', 'Display');
 
         // Check Radio group buttons
-        ['Table', 'Time Series'].forEach((option, i) => {
+        ['Time Series', 'Table'].forEach((option, i) => {
           cy.get('input[type="radio"]')
             .eq(i)
             .should('exist')
