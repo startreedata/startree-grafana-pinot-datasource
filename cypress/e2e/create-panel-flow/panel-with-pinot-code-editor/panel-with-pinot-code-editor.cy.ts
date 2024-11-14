@@ -551,17 +551,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
       });
 
     /**
-     * Check and fill Metric Alias field
-     */
-    cy.getBySel('metric-column-alias')
-      .should('exist')
-      .within(() => {
-        if (formData.metricAlias) {
-          cy.get('input').type(formData.metricAlias);
-        }
-      });
-
-    /**
      * Check and fill Pinot Query field
      */
     cy.getBySel('sql-editor-container')
@@ -816,17 +805,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
       .within(() => {
         if (formData.timeAlias) {
           cy.get('input').type(formData.timeAlias);
-        }
-      });
-
-    /**
-     * Check and fill Metric Alias field
-     */
-    cy.getBySel('metric-column-alias')
-      .should('exist')
-      .within(() => {
-        if (formData.metricAlias) {
-          cy.get('input').type(formData.metricAlias);
         }
       });
 
