@@ -58,39 +58,9 @@ jobs:
       - run: npm run lint
       - run: npm run test:ci
 
-#  build_plugin:
-#    name: Build Plugin
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#
-#      - name: Install Go environment
-#        uses: actions/setup-go@v5
-#        with:
-#          go-version: '1.21'
-#          cache-dependency-path: 'go.sum'
-#
-#      - name: Install Node.js environment
-#        uses: actions/setup-node@v4
-#        with:
-#          node-version: '20'
-#          cache: 'yarn'
-#
-#      - run: go run cmd/release/main.go build_backend
-#      - run: yarn install --frozen-lockfile
-#      - run: yarn run build
-#
-#      - name: Upload plugin
-#        uses: actions/upload-artifact@v4
-#        with:
-#          name: dist
-#          path: dist
-#          retention-days: 30
-
   end_to_end:
     name: Test E2E
     runs-on: ubuntu-latest
-#    needs: [ build_plugin ]
     steps:
       - uses: actions/checkout@v4
 
@@ -100,12 +70,6 @@ jobs:
           registry: repo.startreedata.io/startree-docker-registry
           username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
           password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
-
-#      - name: Download plugin
-#        uses: actions/download-artifact@v4
-#        with:
-#          path: dist
-#          name: dist
 
       - name: Install Go environment
         uses: actions/setup-go@v5
