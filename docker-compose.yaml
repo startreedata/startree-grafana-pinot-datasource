@@ -18,6 +18,12 @@ services:
     user: root
     container_name: 'startree-pinot-datasource'
 
+    healthcheck:
+      test: ["CMD", "/usr/bin/wget", "-O", "/dev/null", "http://localhost:3000"]
+      interval: 5s
+      timeout: 120s
+      retries: 50
+
     platform: 'linux/amd64'
     build:
       context: ./.config
