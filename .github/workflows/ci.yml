@@ -58,18 +58,11 @@ jobs:
       - run: npm run lint
       - run: npm run test:ci
 
-  end_to_end:
-    name: Test E2E
+  build_plugin:
+    name: Build Plugin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to Docker registry
-        uses: docker/login-action@v3
-        with:
-          registry: repo.startreedata.io/startree-docker-registry
-          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
 
       - name: Install Go environment
         uses: actions/setup-go@v5
@@ -86,6 +79,43 @@ jobs:
       - run: go run cmd/release/main.go build_backend
       - run: yarn install --frozen-lockfile
       - run: yarn run build
+
+      - run: tar cf dist.tar dist
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist.tar
+          path: dist.tar
+          retention-days: 30
+
+  end_to_end:
+    name: Test E2E
+    runs-on: ubuntu-latest
+    needs: [ build_plugin ]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+
+      - name: Install Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Download plugin
+        uses: actions/download-artifact@v4
+        with:
+          path: dist.tar
+          name: dist.tar
+
+      - run: tar xf dist.tar
 
       - name: Start Grafana
         run: docker compose up grafana --wait
