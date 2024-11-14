@@ -13,8 +13,8 @@ export function SqlVariableEditor({
 }) {
   return (
     <>
-      <div className={'gf-form'}>{selectTable}</div>
-      <div className={'gf-form'}>
+      {selectTable}
+      <div className={'gf-form'} data-testid="sql-editor">
         <SqlEditor
           current={variableQuery.pinotQlCode}
           onChange={(pinotQlCode) => onChange({ ...variableQuery, pinotQlCode })}
