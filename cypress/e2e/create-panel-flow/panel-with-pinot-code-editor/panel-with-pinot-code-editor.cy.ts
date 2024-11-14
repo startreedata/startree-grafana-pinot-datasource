@@ -628,7 +628,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
       const fields = response.body.results.A.frames[0].schema.fields;
 
       // Check the result data
-      cy.wrap(fields[0]).should('have.property', 'name', 'timetime');
+      cy.wrap(fields[0]).should('have.property', 'name', 'time');
       cy.wrap(fields[1]).should('have.property', 'name', 'metric');
     });
 
