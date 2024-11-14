@@ -1,0 +1,17 @@
+{
+  "tableName": "nginxLogs",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "schemaName": "nginxLogs",
+    "replication" : "1"
+  },
+  "tenants":  {
+    "broker":"DefaultTenant",
+    "server":"DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

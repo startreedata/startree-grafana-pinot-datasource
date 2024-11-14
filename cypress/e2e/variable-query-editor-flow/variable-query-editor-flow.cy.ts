@@ -867,13 +867,8 @@ describe('Add variable with Variable Query Editor', () => {
       .parent()
       .within(() => {
         cy.get('label[aria-label="Variable editor Preview of Values option"]').should('exist');
-
         cy.get('@dsQueryResp').then((resp: unknown) => {
-          const data = resp as Record<string, any>;
-          const previewValues: string[] = data.results.A.frames[0].data.values[0];
-
-          // Check Preview values
-          previewValues.forEach((value) => {
+          ['chrome', 'edge', 'firefox', 'ie', 'safari'].forEach((value) => {
             cy.get('label[aria-label="Variable editor Preview of Values option"]').contains(value);
           });
         });

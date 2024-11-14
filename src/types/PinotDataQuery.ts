@@ -56,6 +56,7 @@ export interface PinotDataQuery extends DataQuery {
   timeColumnAlias?: string;
   timeColumnFormat?: string;
   metricColumnAlias?: string;
+  logColumnAlias?: string;
   displayType?: string;
 
   // Pinot Variable Query

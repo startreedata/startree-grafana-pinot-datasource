@@ -2,6 +2,7 @@ package dataquery
 
 import (
 	"context"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
@@ -14,7 +15,7 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 
 	// TODO: Add tests for error cases
 
-	t.Run(VariableQueryTypeTableList, func(t *testing.T) {
+	t.Run("variableType="+VariableQueryTypeTableList, func(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			params := PinotVariableQueryParams{
 				PinotClient:  client,
@@ -38,7 +39,7 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 			assert.NoError(t, got.Error, "DataResponse.Error")
 		})
 	})
-	t.Run(VariableQueryTypeColumnList, func(t *testing.T) {
+	t.Run("variableType="+VariableQueryTypeColumnList, func(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			params := PinotVariableQueryParams{
 				PinotClient:  client,
@@ -58,46 +59,67 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 			assert.NoError(t, got.Error, "DataResponse.Error")
 		})
 	})
-	t.Run(VariableQueryTypeDistinctValues, func(t *testing.T) {
-		t.Run("happy path", func(t *testing.T) {
-			params := PinotVariableQueryParams{
-				PinotClient:  client,
+
+	t.Run("variableType="+VariableQueryTypeDistinctValues, func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) (Driver, error) {
+			return NewPinotVariableQueryDriver(PinotVariableQueryParams{
+				PinotClient:  testCase.Client,
 				VariableType: VariableQueryTypeDistinctValues,
-				TableName:    "infraMetrics",
-				ColumnName:   "metric",
-			}
+				TableName:    testCase.TableName,
+				ColumnName:   testCase.TargetColumn,
+			}), nil
+		}
 
-			driver := NewPinotVariableQueryDriver(params)
-			got := driver.Execute(context.Background())
+		wantFrames := func(values []string) data.Frames {
+			return data.Frames{data.NewFrame("result",
+				data.NewField("distinctValues", nil, values),
+			)}
+		}
 
-			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
-			assert.Equal(t, data.Frames{data.NewFrame("result",
-				data.NewField("distinctValues", nil, []string{"db_record_write", "http_request_handled"}),
-			)}, got.Frames, "DataResponse.Frames")
-
-			assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
-			assert.NoError(t, got.Error, "DataResponse.Error")
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQueryDistinctValsHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
 		})
 	})
-	t.Run(VariableQueryTypePinotQlCode, func(t *testing.T) {
-		t.Run("happy path", func(t *testing.T) {
-			params := PinotVariableQueryParams{
-				PinotClient:  client,
+
+	t.Run("variableType="+VariableQueryTypePinotQlCode, func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) (Driver, error) {
+			return NewPinotVariableQueryDriver(PinotVariableQueryParams{
+				PinotClient:  testCase.Client,
 				VariableType: VariableQueryTypePinotQlCode,
-				TableName:    "infraMetrics",
-				PinotQlCode:  `select distinct metric from infraMetrics`,
-			}
+				TableName:    testCase.TableName,
+				PinotQlCode: fmt.Sprintf(`SELECT DISTINCT "%s"
+FROM "%s"
+ORDER BY "%s" ASC
+LIMIT 100;`, testCase.TargetColumn, testCase.TableName, testCase.TargetColumn),
+			}), nil
+		}
 
-			driver := NewPinotVariableQueryDriver(params)
-			got := driver.Execute(context.Background())
+		wantFrames := func(values []string) data.Frames {
+			return data.Frames{data.NewFrame("result",
+				data.NewField("codeValues", nil, values),
+			)}
+		}
 
-			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
-			assert.Equal(t, data.Frames{data.NewFrame("result",
-				data.NewField("codeValues", nil, []string{"db_record_write", "http_request_handled"}),
-			)}, got.Frames, "DataResponse.Frames")
-
-			assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
-			assert.NoError(t, got.Error, "DataResponse.Error")
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQueryDistinctValsHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
 		})
 	})
 }

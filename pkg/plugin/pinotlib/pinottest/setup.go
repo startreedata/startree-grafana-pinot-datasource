@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -32,6 +33,7 @@ const (
 	AirlineStatsTableName    = "airlineStats"
 	BenchmarkTableName       = "benchmark"
 	PartialTableName         = "partial"
+	NginxLogsTableName       = "nginxLogs"
 )
 
 var createTestTablesOnce sync.Once
@@ -84,23 +86,33 @@ func CreateTestTables() {
 				configFile: "data/partial_offline_table_config.json",
 				dataFile:   "data/partial_data_1.json",
 			},
+			{
+				tableName:  NginxLogsTableName,
+				schemaFile: "data/nginxLogs_schema.json",
+				configFile: "data/nginxLogs_offline_table_config.json",
+				dataFile:   "data/nginxLogs_data.json",
+			},
 		}
 
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
 
+		var somethingChanged atomic.Bool
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
 			if !schemaExists(job.tableName) {
+				somethingChanged.Store(true)
 				fmt.Printf("Table %s: creating schema...\n", job.tableName)
 				createTableSchema(job.schemaFile)
 				waitForTableSchema(job.tableName, 1*time.Minute)
 			}
 			if !tableExists(job.tableName) {
+				somethingChanged.Store(true)
 				fmt.Printf("Table %s: creating config...\n", job.tableName)
 				createTableConfig(job.configFile)
 			}
 			if !(tableHasData(job.tableName) || job.dataFile == "") {
+				somethingChanged.Store(true)
 				fmt.Printf("Table %s: uploading data...\n", job.tableName)
 				uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
 				waitForSegmentsAllGood(job.tableName, 1*time.Minute)
@@ -125,7 +137,9 @@ func CreateTestTables() {
 		}
 		wg.Wait()
 
-		fmt.Println("Pinot setup complete.")
+		if somethingChanged.Load() {
+			fmt.Println("Pinot setup complete.")
+		}
 	})
 }
 

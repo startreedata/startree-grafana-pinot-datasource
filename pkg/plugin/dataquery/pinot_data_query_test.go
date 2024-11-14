@@ -12,7 +12,6 @@ func TestPinotDataQueryFrom(t *testing.T) {
 	want := PinotDataQuery{
 		QueryType:           "PinotQL",
 		EditorMode:          "Builder",
-		DatabaseName:        "default",
 		TableName:           "m_test_1",
 		IntervalSize:        10 * time.Second,
 		TimeColumn:          "timestampRoundedMinutes",

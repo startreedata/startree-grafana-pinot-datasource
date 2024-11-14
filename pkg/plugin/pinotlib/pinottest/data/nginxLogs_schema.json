@@ -1,0 +1,43 @@
+{
+  "schemaName": "nginxLogs",
+  "dimensionFieldSpecs": [
+    {
+      "name": "message",
+      "dataType": "STRING"
+    },
+    {
+      "name": "ipAddr",
+      "dataType": "STRING"
+    },
+    {
+      "name": "method",
+      "dataType": "STRING"
+    },
+    {
+      "name": "uri",
+      "dataType": "STRING"
+    },
+    {
+      "name": "referrer",
+      "dataType": "STRING"
+    },
+    {
+      "name": "status",
+      "dataType": "INT"
+    }
+  ],
+  "metricFieldSpecs": [
+    {
+      "name": "bytesSent",
+      "dataType": "LONG"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}

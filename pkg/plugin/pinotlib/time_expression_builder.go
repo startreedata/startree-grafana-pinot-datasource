@@ -2,7 +2,6 @@ package pinotlib
 
 import (
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -26,7 +25,6 @@ type TimeExpressionBuilder struct {
 }
 
 func TimeExpressionBuilderFor(tableSchema TableSchema, timeColumn string) (TimeExpressionBuilder, error) {
-	timeColumn = strings.Trim(timeColumn, "\"`")
 	if len(timeColumn) == 0 {
 		return TimeExpressionBuilder{}, fmt.Errorf("time column cannot be empty")
 	}

@@ -1,315 +1,177 @@
 package dataquery
 
 import (
-	"context"
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"encoding/json"
+	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
 
-type DriverTestParams struct {
-	Client    pinotlib.PinotClient
-	TimeRange TimeRange
-	TableName string
-	Schema    pinotlib.TableSchema
-}
-
 func TestPinotQlCodeDriver_Execute(t *testing.T) {
-	client := test_helpers.SetupPinotAndCreateClient(t)
-
-	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
-	require.NoError(t, err)
-
-	partialTableSchema, err := client.GetTableSchema(context.Background(), "partial")
-	require.NoError(t, err)
-
-	unreachableClient, err := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
-		ControllerUrl: "not a url",
-		BrokerUrl:     "not a url",
-	})
-	require.NoError(t, err)
-
-	t.Run("time series", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       client,
-			TableName:         "benchmark",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  benchmarkTableSchema,
-			DisplayType:  DisplayTypeTimeSeries,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("value") AS $__metricAlias()
+	t.Run("display="+DisplayTypeTimeSeries, func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) (Driver, error) {
+			params := PinotQlCodeDriverParams{
+				PinotClient:       testCase.Client,
+				TableName:         testCase.TableName,
+				TimeRange:         testCase.TimeRange,
+				IntervalSize:      testCase.IntervalSize,
+				TableSchema:       testCase.TableSchema,
+				DisplayType:       DisplayTypeTimeSeries,
+				MetricColumnAlias: "value",
+				TimeColumnAlias:   "time",
+				Legend:            "test-legend",
+				Code: fmt.Sprintf(`SELECT
+    $__timeGroup("%s") AS $__timeAlias(),
+    SUM("%s") AS $__metricAlias()
 FROM
     $__table()
 WHERE
-    $__timeFilter("ts")
+    $__timeFilter("%s")
 GROUP BY
-    $__timeGroup("ts")
+    $__timeGroup("%s")
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;`,
+LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
+			}
+			return NewPinotQlCodeDriver(params)
 		}
 
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
+		wantFrames := func(times []time.Time, values []float64) data.Frames {
+			return data.Frames{data.NewFrame("response",
+				data.NewField("value", data.Labels{}, sliceToPointers(values)).SetConfig(&data.FieldConfig{DisplayNameFromDS: "test-legend"}),
+				data.NewField("time", nil, times),
+			)}
+		}
 
-		got := driver.Execute(context.Background())
-
-		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
-		assert.Equal(t, data.Frames{data.NewFrame("response",
-			data.NewField("value", data.Labels{}, sliceToPointers([]float64{
-				4.995000894259197e+07,
-				4.9950041761314005e+07,
-				4.9949916961369045e+07,
-				4.994997804782016e+07,
-				4.995001567005852e+07,
-			})).SetConfig(&data.FieldConfig{DisplayNameFromDS: "test-legend"}),
-			data.NewField("time", nil, []time.Time{
-				time.Date(2024, 10, 1, 0, 4, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 3, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 2, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 1, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-			}),
-		)}, got.Frames, "DataResponse.Frames")
-		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
-		assert.NoError(t, got.Error, "DataResponse.Error")
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQuerySumHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQuerySumPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
+		})
 	})
 
-	t.Run("table", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       client,
-			TableName:         "benchmark",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  benchmarkTableSchema,
-			DisplayType:  DisplayTypeTable,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("value") AS $__metricAlias()
+	t.Run("display="+DisplayTypeTable, func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) (Driver, error) {
+			params := PinotQlCodeDriverParams{
+				PinotClient:       testCase.Client,
+				TableName:         testCase.TableName,
+				TimeRange:         testCase.TimeRange,
+				IntervalSize:      testCase.IntervalSize,
+				TableSchema:       testCase.TableSchema,
+				DisplayType:       DisplayTypeTable,
+				MetricColumnAlias: "value",
+				TimeColumnAlias:   "time",
+				Legend:            "test-legend",
+				Code: fmt.Sprintf(`SELECT
+    $__timeGroup("%s") AS $__timeAlias(),
+    SUM("%s") AS $__metricAlias()
 FROM
     $__table()
 WHERE
-    $__timeFilter("ts")
+    $__timeFilter("%s")
 GROUP BY
-    $__timeGroup("ts")
+    $__timeGroup("%s")
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;`,
+LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
+			}
+			return NewPinotQlCodeDriver(params)
 		}
 
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
+		wantFrames := func(times []time.Time, values []float64) data.Frames {
+			return data.Frames{data.NewFrame("response",
+				data.NewField("time", nil, times),
+				data.NewField("value", nil, values),
+			)}
+		}
 
-		got := driver.Execute(context.Background())
-
-		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
-		assert.Equal(t, data.Frames{data.NewFrame("response",
-			data.NewField("time", nil, []time.Time{
-				time.Date(2024, 10, 1, 0, 4, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 3, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 2, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 1, 0, 0, time.UTC),
-				time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-			}),
-			data.NewField("value", nil, []float64{
-				4.995000894259197e+07,
-				4.9950041761314005e+07,
-				4.9949916961369045e+07,
-				4.994997804782016e+07,
-				4.995001567005852e+07,
-			}),
-		)}, got.Frames, "DataResponse.Frames")
-		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
-		assert.NoError(t, got.Error, "DataResponse.Error")
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQuerySumHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQuerySumPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
+		})
 	})
 
-	t.Run("partial data", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       client,
-			TableName:         "partial",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 10, 2, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  partialTableSchema,
-			DisplayType:  DisplayTypeTimeSeries,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("value") AS $__metricAlias()
+	t.Run("display="+DisplayTypeLogs, func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) (Driver, error) {
+			params := PinotQlCodeDriverParams{
+				PinotClient:     testCase.Client,
+				TableName:       testCase.TableName,
+				TimeRange:       testCase.TimeRange,
+				IntervalSize:    testCase.IntervalSize,
+				TableSchema:     testCase.TableSchema,
+				DisplayType:     DisplayTypeLogs,
+				LogColumnAlias:  "message",
+				TimeColumnAlias: "time",
+				Legend:          "test-legend",
+				Code: fmt.Sprintf(`SELECT
+    $__timeGroup("%s") AS $__timeAlias(),
+    SUM("%s") AS "message"
 FROM
     $__table()
 WHERE
-    $__timeFilter("ts")
+    $__timeFilter("%s")
 GROUP BY
-    $__timeGroup("ts")
+    $__timeGroup("%s")
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;`,
+LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
+			}
+			return NewPinotQlCodeDriver(params)
 		}
 
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
+		wantFrames := func(times []time.Time, values []float64) data.Frames {
+			labels := make([]json.RawMessage, len(times))
+			for i := range labels {
+				labels[i] = json.RawMessage(`{}`)
+			}
 
-		got := driver.Execute(context.Background())
+			frame := data.NewFrame("response",
+				data.NewField("labels", nil, labels),
+				data.NewField("Line", nil, sliceToStrings(values)),
+				data.NewField("Time", nil, times))
+			frame.Meta = &data.FrameMeta{
+				Custom: map[string]interface{}{"frameType": "LabeledTimeValues"},
+			}
 
-		assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
-		assert.Equal(t, data.Frames{data.NewFrame("response",
-			data.NewField("value", data.Labels{}, sliceToPointers([]float64{
-				603.623178859666,
-				598.1350673119193,
-				600.9085597026183,
-				598.2744783346354,
-				601.2399258074636,
-			})).SetConfig(&data.FieldConfig{DisplayNameFromDS: "test-legend"}),
-			data.NewField("time", nil, []time.Time{
-				time.Date(2024, 10, 2, 0, 4, 0, 0, time.UTC),
-				time.Date(2024, 10, 2, 0, 3, 0, 0, time.UTC),
-				time.Date(2024, 10, 2, 0, 2, 0, 0, time.UTC),
-				time.Date(2024, 10, 2, 0, 1, 0, 0, time.UTC),
-				time.Date(2024, 10, 2, 0, 0, 0, 0, time.UTC),
-			}),
-		)}, got.Frames, "DataResponse.Frames")
-		assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
-		assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
-	})
-
-	t.Run("empty table", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       client,
-			TableName:         "benchmark",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 11, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 11, 1, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  benchmarkTableSchema,
-			DisplayType:  DisplayTypeTimeSeries,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("value") AS $__metricAlias()
-FROM
-    $__table()
-WHERE
-    $__timeFilter("ts")
-GROUP BY
-    $__timeGroup("ts")
-ORDER BY
-    $__timeAlias() DESC
-LIMIT 100000;`,
+			return data.Frames{frame}
 		}
 
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
-
-		got := driver.Execute(context.Background())
-
-		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
-		assert.Empty(t, got.Frames, "DataResponse.Frames")
-		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
-		assert.NoError(t, got.Error, "DataResponse.Error")
-	})
-
-	t.Run("bad query", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       client,
-			TableName:         "benchmark",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  benchmarkTableSchema,
-			DisplayType:  DisplayTypeTimeSeries,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("not_a_column") AS $__metricAlias()
-FROM
-    $__table()
-WHERE
-    $__timeFilter("ts")
-GROUP BY
-    $__timeGroup("ts")
-ORDER BY
-    $__timeAlias() DESC
-LIMIT 100000;`,
-		}
-
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
-
-		got := driver.Execute(context.Background())
-
-		assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
-		assert.Empty(t, got.Frames, "DataResponse.Frames")
-		assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
-		assertBrokerExceptionErrorWithCodes(t, got.Error, 710)
-	})
-
-	t.Run("unreachable", func(t *testing.T) {
-		params := PinotQlCodeDriverParams{
-			PinotClient:       unreachableClient,
-			TableName:         "benchmark",
-			TimeColumnAlias:   "time",
-			MetricColumnAlias: "value",
-			TimeRange: TimeRange{
-				From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
-				To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
-			},
-			IntervalSize: 1 * time.Minute,
-			TableSchema:  benchmarkTableSchema,
-			DisplayType:  DisplayTypeTimeSeries,
-			Legend:       "test-legend",
-			Code: `SELECT
-    $__timeGroup("ts") AS $__timeAlias(),
-    SUM("value") AS $__metricAlias()
-FROM
-    $__table()
-WHERE
-    $__timeFilter("ts")
-GROUP BY
-    $__timeGroup("ts")
-ORDER BY
-    $__timeAlias() DESC
-LIMIT 100000;`,
-		}
-
-		driver, err := NewPinotQlCodeDriver(params)
-		require.NoError(t, err)
-
-		got := driver.Execute(context.Background())
-
-		assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
-		assert.Empty(t, got.Frames, "DataResponse.Frames")
-		assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")
-		assert.Error(t, got.Error, "DataResponse.Error")
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQuerySumHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQuerySumPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
+		})
 	})
 }
