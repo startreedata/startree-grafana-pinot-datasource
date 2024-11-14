@@ -198,7 +198,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
         cy.getBySel('inline-form-label').should('exist').and('have.text', 'Display');
 
         // Check Radio group buttons
-        ['Table', 'Time Series'].forEach((option, i) => {
+        ['Time Series', 'Table'].forEach((option, i) => {
           cy.get('input[type="radio"]')
             .eq(i)
             .should('exist')
@@ -225,21 +225,6 @@ describe('Create a Panel with Pinot Code Editor', () => {
 
         if (formData.timeAlias) {
           cy.get('@timeAliasInput').type(formData.timeAlias);
-        }
-      });
-
-    /**
-     * Check and fill Metric Alias field
-     */
-    cy.getBySel('metric-column-alias')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Metric Alias');
-
-        cy.get('input').should('exist').as('metricAliasInput');
-
-        if (formData.metricAlias) {
-          cy.get('@metricAliasInput').type(formData.metricAlias);
         }
       });
 
