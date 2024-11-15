@@ -256,7 +256,7 @@ func (f *LegendFormatter) getRegexpFromCache(key string) *regexp.Regexp {
 	pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		logger.Logger.Debug("Error compiling legend regex", err)
+		logger.WithError(err).Debug("Failed to compile legend regex")
 		return nil
 	}
 	f.regexpCache[key] = re

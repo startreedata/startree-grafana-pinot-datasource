@@ -94,7 +94,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 func getTimeExpressionBuilderOrFallback(tableSchema pinotlib.TableSchema, timeColumn string) pinotlib.TimeExpressionBuilder {
 	builder, err := pinotlib.TimeExpressionBuilderFor(tableSchema, timeColumn)
 	if err != nil {
-		logger.Logger.Info(fmt.Sprintf("Cannot build time expressions for column %s: %s", timeColumn, err.Error()))
+		logger.WithError(err).Info("Cannot build time expressions.", "timeColumn", timeColumn)
 		builder, _ = pinotlib.NewTimeExpressionBuilder(timeColumn, pinotlib.FormatMillisecondsEpoch)
 	}
 	return builder

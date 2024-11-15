@@ -78,7 +78,7 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 			return time.Date(year, month, day, hour, minute, int(second), nanos, time.UTC), err
 		})
 	default:
-		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
+		logger.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
 		return make([]int64, len(results.Rows))
 	}
 }
@@ -92,7 +92,7 @@ func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *
 
 		// Only log the first error.
 		if err != nil && !hasError {
-			logger.Logger.Error("failed to parse column: " + err.Error())
+			logger.WithError(err).Error("Failed to extract column")
 			hasError = true
 		}
 	}

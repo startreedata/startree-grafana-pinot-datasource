@@ -105,7 +105,7 @@ func (x *ResourceHandler) ListDatabases(r *http.Request) *Response {
 	databases, err := x.client.ListDatabases(r.Context())
 
 	if pinotlib.IsStatusForbiddenError(err) {
-		logger.Logger.Error("pinotClient.ListDatabases() failed:", err.Error())
+		logger.WithError(err).Error("PinotClient.ListDatabases() failed.")
 		return newEmptyResponse(http.StatusOK)
 	} else if err != nil {
 		return newInternalServerErrorResponse(err)
@@ -157,7 +157,7 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
 		// No need to surface this error in Grafana.
-		logger.Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		logger.WithError(err).Error("PinotClient.GetTableSchema() failed.")
 		return newEmptyResponse(http.StatusOK)
 	}
 
@@ -177,14 +177,14 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		QueryOptions:        data.QueryOptions,
 	})
 	if err != nil {
-		logger.Logger.Error("newPinotDriver() failed:", err.Error())
+		logger.WithError(err).Error("Failed to build query driver.")
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
 
 	sql, err := driver.RenderPinotSql(data.ExpandMacros)
 	if err != nil {
-		logger.Logger.Error("pinotDriver.RenderSql() failed:", err.Error())
+		logger.WithError(err).Error("PinotDriver.RenderSql() failed.")
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -204,13 +204,13 @@ type PreviewSqlCodeRequest struct {
 
 func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCodeRequest) *Response {
 	if data.TableName == "" {
-		logger.Logger.Info("received code preview request without table selection.")
+		logger.Info("Received code preview request without table selection.")
 		return newEmptyResponse(http.StatusOK)
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
-		logger.Logger.Error("pinotClient.GetTableSchema() failed:", err.Error())
+		logger.WithError(err).Error("PinotClient.GetTableSchema() failed.")
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -226,14 +226,14 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		Code:              data.Code,
 	})
 	if err != nil {
-		logger.Logger.Error("NewPinotQlCodeDriver() failed:", err.Error())
+		logger.WithError(err).Error("NewPinotQlCodeDriver() failed.")
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		logger.Logger.Error("RenderPinotSql() failed:", err.Error())
+		logger.WithError(err).Error("RenderPinotSql() failed.")
 		// No need to surface this error in Grafana.
 		return newEmptyResponse(http.StatusOK)
 	}
@@ -462,6 +462,6 @@ func writeResponse(w http.ResponseWriter, resp *Response) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.Code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		logger.Logger.Error("failed to write http response: ", err)
+		logger.WithError(err).Error("Failed to write http response")
 	}
 }

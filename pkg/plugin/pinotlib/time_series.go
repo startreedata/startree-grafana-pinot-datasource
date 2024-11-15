@@ -92,7 +92,7 @@ func flattenLabels(metric map[string]string) map[string]string {
 	var labels map[string]string
 	err := json.Unmarshal([]byte(metric["labels"]), &labels)
 	if err != nil {
-		logger.Logger.Info(fmt.Sprintf("failed to unmarshal labels `%s`: %s", labelsJson, err))
+		logger.WithError(err).Info("Failed to unmarshal labels", "labelsJson", labelsJson)
 	}
 	labels["__name__"] = metric["__name__"]
 	return labels
@@ -146,7 +146,7 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	var resp TimeSeriesQueryResponse
-	logger.Logger.Info(fmt.Sprintf("pinot/http: executing timeseries query: %s", req.Query))
+	logger.Info("pinot/http: Executing timeseries query", "queryString", req.Query)
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}

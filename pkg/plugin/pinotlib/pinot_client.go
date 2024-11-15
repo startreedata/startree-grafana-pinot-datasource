@@ -122,20 +122,20 @@ func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pinot/http request failed: %s %s %w", req.Method, req.URL.String(), err)
 	}
-	logger.Logger.Info(fmt.Sprintf("pinot/http %s %s %d", req.Method, req.URL.String(), resp.StatusCode))
+	logger.Info("pinot/http: Outgoing http request", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 	return resp, err
 }
 
 func (p *PinotClient) closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		logger.Logger.Error("pinot/http failed to close response body: ", err.Error())
+		logger.WithError(err).Error("pinot/http: Failed to close response body.")
 	}
 }
 
 func (p *PinotClient) newErrorFromResponseBody(resp *http.Response) error {
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(resp.Body); err != nil {
-		logger.Logger.Error("pinot/http failed to read response body: ", err.Error())
+		logger.WithError(err).Error("pinot/http: Failed to read response body.")
 	}
 	return newHttpStatusError(resp.StatusCode, body.String())
 }

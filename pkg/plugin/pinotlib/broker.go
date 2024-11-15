@@ -89,6 +89,8 @@ func NewSqlQuery(sql string) SqlQuery {
 }
 
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
+	ctxLog := logger.FromContext(ctx)
+
 	var body bytes.Buffer
 
 	data := map[string]interface{}{"sql": query.Sql}
@@ -114,7 +116,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	logger.Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query.Sql))
+	ctxLog.Info("pinot/http: executing sql query", "queryString", query.Sql)
 
 	var respData BrokerResponse
 	resp, err := p.doRequest(req)
