@@ -29,3 +29,15 @@ func TestPinotClient_ExecuteSqlQuery(t *testing.T) {
 		},
 	}, resp.ResultTable)
 }
+
+func TestNewBrokerExceptionError(t *testing.T) {
+	got := NewBrokerExceptionError([]BrokerException{{Message: "this is a broker exception", ErrorCode: 1}})
+	assert.Equal(t, &BrokerExceptionError{
+		Exceptions: []BrokerException{{Message: "this is a broker exception", ErrorCode: 1}},
+	}, got)
+}
+
+func TestBrokerExceptionError_Error(t *testing.T) {
+	err := NewBrokerExceptionError([]BrokerException{{Message: "this is a broker exception", ErrorCode: 1}})
+	assert.Equal(t, "Broker request completed with exceptions:\nCode 1: this is a broker exception", err.Error())
+}
