@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/cache"
 	"io"
 	"net/http"
@@ -122,20 +122,20 @@ func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		return nil, fmt.Errorf("pinot/http request failed: %s %s %w", req.Method, req.URL.String(), err)
 	}
-	logger.Info("pinot/http: Outgoing http request", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
+	log.Info("pinot/http: Outgoing http request", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 	return resp, err
 }
 
 func (p *PinotClient) closeResponseBody(resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		logger.WithError(err).Error("pinot/http: Failed to close response body.")
+		log.WithError(err).Error("pinot/http: Failed to close response body.")
 	}
 }
 
 func (p *PinotClient) newErrorFromResponseBody(resp *http.Response) error {
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(resp.Body); err != nil {
-		logger.WithError(err).Error("pinot/http: Failed to read response body.")
+		log.WithError(err).Error("pinot/http: Failed to read response body.")
 	}
 	return newHttpStatusError(resp.StatusCode, body.String())
 }

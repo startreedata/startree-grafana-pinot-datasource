@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"math"
 	"net/http"
@@ -92,7 +92,7 @@ func flattenLabels(metric map[string]string) map[string]string {
 	var labels map[string]string
 	err := json.Unmarshal([]byte(metric["labels"]), &labels)
 	if err != nil {
-		logger.WithError(err).Info("Failed to unmarshal labels", "labelsJson", labelsJson)
+		log.WithError(err).Info("Failed to unmarshal labels", "labelsJson", labelsJson)
 	}
 	labels["__name__"] = metric["__name__"]
 	return labels
@@ -146,7 +146,7 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	var resp TimeSeriesQueryResponse
-	logger.Info("pinot/http: Executing timeseries query", "queryString", req.Query)
+	log.Info("pinot/http: Executing timeseries query", "queryString", req.Query)
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}

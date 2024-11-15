@@ -3,9 +3,9 @@ package pinotlib
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/goccy/go-json"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"io"
 	"net/http"
 	"sort"
@@ -89,7 +89,7 @@ func NewSqlQuery(sql string) SqlQuery {
 }
 
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	ctxLog := logger.FromContext(ctx)
+	ctxLog := log.FromContext(ctx)
 
 	var body bytes.Buffer
 
@@ -116,7 +116,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	ctxLog.Info("pinot/http: executing sql query", "queryString", query.Sql)
+	ctxLog.Info("pinot/http: Executing sql query", "queryString", query.Sql)
 
 	var respData BrokerResponse
 	resp, err := p.doRequest(req)
@@ -132,7 +132,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 	decoder := json.NewDecoder(resp.Body)
 	decoder.UseNumber()
 	if err = decoder.Decode(&respData); err != nil {
-		return nil, fmt.Errorf("pinot/http failed to decode response json: %w", err)
+		return nil, fmt.Errorf("pinot/http: failed to decode response json: %w", err)
 	}
 
 	return &respData, nil

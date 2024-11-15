@@ -2,7 +2,7 @@ package dataquery
 
 import (
 	"context"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"testing"
@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	logger.Disable()
+	log.Disable()
 }
 
 func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
