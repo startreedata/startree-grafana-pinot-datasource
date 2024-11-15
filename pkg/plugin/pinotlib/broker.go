@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"io"
 	"net/http"
 	"sort"
@@ -89,8 +88,6 @@ func NewSqlQuery(sql string) SqlQuery {
 }
 
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	ctxLog := log.FromContext(ctx)
-
 	var body bytes.Buffer
 
 	data := map[string]interface{}{"sql": query.Sql}
@@ -116,17 +113,17 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	ctxLog.Info("pinot/http: Executing sql query", "queryString", query.Sql)
+	p.newLogger(ctx).Info("Executing sql query.", "queryString", query.Sql)
 
 	var respData BrokerResponse
 	resp, err := p.doRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	defer p.closeResponseBody(resp)
+	defer p.closeResponseBody(ctx, resp)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, p.newErrorFromResponseBody(resp)
+		return nil, p.newErrorFromResponseBody(ctx, resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)

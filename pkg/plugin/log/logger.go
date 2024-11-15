@@ -9,6 +9,8 @@ import (
 // Wrap the grafana logger with our own metadata.
 // Ref: https://grafana.com/developers/plugin-tools/how-to-guides/data-source-plugins/add-logs-metrics-traces-for-backend-plugins
 
+type Logger = log.Logger
+
 var logger = log.New()
 
 func Debug(msg string, args ...interface{})      { logger.Debug(msg, args...) }

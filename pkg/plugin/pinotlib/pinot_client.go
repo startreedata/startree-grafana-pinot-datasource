@@ -85,6 +85,14 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }
 
+func (p *PinotClient) newLogger(ctx context.Context) log.Logger {
+	return log.FromContext(ctx).With("pinot-client", "pinot-http")
+}
+
+func (p *PinotClient) newLoggerWithError(ctx context.Context, err error) log.Logger {
+	return log.FromContext(ctx).With("pinot-client", "pinot-http", "error", err)
+}
+
 func (p *PinotClient) newRequest(ctx context.Context, method string, url string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
@@ -103,10 +111,10 @@ func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interfa
 	if err != nil {
 		return err
 	}
-	defer p.closeResponseBody(resp)
+	defer p.closeResponseBody(req.Context(), resp)
 
 	if resp.StatusCode != http.StatusOK {
-		return p.newErrorFromResponseBody(resp)
+		return p.newErrorFromResponseBody(req.Context(), resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -118,24 +126,25 @@ func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interfa
 }
 
 func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
+	p.newLogger(req.Context())
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("pinot/http request failed: %s %s %w", req.Method, req.URL.String(), err)
+		return nil, fmt.Errorf("pinot/http: request failed: %s %s %w", req.Method, req.URL.String(), err)
 	}
-	log.Info("pinot/http: Outgoing http request", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
+	p.newLogger(req.Context()).Info("Outgoing http request completed.", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
 	return resp, err
 }
 
-func (p *PinotClient) closeResponseBody(resp *http.Response) {
+func (p *PinotClient) closeResponseBody(ctx context.Context, resp *http.Response) {
 	if err := resp.Body.Close(); err != nil {
-		log.WithError(err).Error("pinot/http: Failed to close response body.")
+		p.newLoggerWithError(ctx, err).Error("pinot/http: Failed to close response body.")
 	}
 }
 
-func (p *PinotClient) newErrorFromResponseBody(resp *http.Response) error {
+func (p *PinotClient) newErrorFromResponseBody(ctx context.Context, resp *http.Response) error {
 	var body bytes.Buffer
 	if _, err := body.ReadFrom(resp.Body); err != nil {
-		log.WithError(err).Error("pinot/http: Failed to read response body.")
+		p.newLoggerWithError(ctx, err).Error("pinot/http: Failed to read response body.")
 	}
 	return newHttpStatusError(resp.StatusCode, body.String())
 }
