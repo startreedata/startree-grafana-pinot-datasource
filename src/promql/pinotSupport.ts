@@ -16,4 +16,5 @@ export const PinotSupportedKeywords = Object.freeze([
   ...PinotSupportedOperators,
   ...PinotSupportedLabelMatching,
   ...PinotSupportedDurations,
+  'offset',
 ]);
