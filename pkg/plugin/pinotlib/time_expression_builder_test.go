@@ -3,12 +3,17 @@ package pinotlib
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"regexp"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
+
+func TestSqlObjectExpr(t *testing.T) {
+	assert.Equal(t, `"object"`, SqlObjectExpr("object"))
+}
+
+func TestSqlLiteralString(t *testing.T) {
+	assert.Equal(t, `'string'`, SqlLiteralStringExpr("string"))
+}
 
 func TestNewTimeExpressionBuilder(t *testing.T) {
 	exprBuilder, err := NewTimeExpressionBuilder("time", "1:SECONDS:EPOCH")
@@ -544,147 +549,6 @@ func TestTimeExpressionBuilder_TimeGroupExpr(t *testing.T) {
 			exprBuilder, err := NewTimeExpressionBuilder("ts", tt.format)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, exprBuilder.TimeGroupExpr(tt.granularity))
-		})
-	}
-}
-
-func TestEquivalentBucketExpressions(t *testing.T) {
-	testArgs := []struct {
-		expr1, expr2 string
-		col          string
-		want         bool
-	}{
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 1), 1)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '2:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 2), 2)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '5:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 5), 5)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '10:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 10), 10)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '15:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 15), 15)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES')`,
-			expr2: `FromEpochMinutesBucket(ToEpochMinutesBucket("zz_received_timestamp", 30), 30)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')`,
-			expr2: `FromEpochHoursBucket(ToEpochHoursBucket("zz_received_timestamp", 1), 1)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-		{
-			expr1: `DATETIMECONVERT("zz_received_timestamp", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:DAYS')`,
-			expr2: `FromEpochDaysBucket(ToEpochDaysBucket("zz_received_timestamp", 1), 1)`,
-			col:   "zz_received_timestamp",
-			want:  true,
-		},
-	}
-
-	// The general approach is this:
-	// Parse the conversion expr into a DateTimeBucketConversion.
-	// DateTimeConvert → this is basically just parse the args.
-	// FromEpochBucket(ToEpochBucket()) → input&output is always milliseconds epoch.
-	//   Granularity is determined by the function name and int arg.
-	//   Granularity should be the same for FromEpochBucket & ToEpochBucket.
-
-	type DateTimeBucketConversion struct {
-		col          string
-		inputFormat  string
-		outputFormat string
-		granularity  PinotGranularity
-	}
-	const DateTimeConvertFunction = "DATETIMECONVERT"
-
-	getDateTimeBucketConversion := func(expr string) (DateTimeBucketConversion, bool) {
-		expr = strings.TrimSpace(expr)
-
-		dateTimeConvertRegex := regexp.MustCompile(`(?i)^DATETIMECONVERT\s*\(\s*(\S+)\s*,\s*'(\S+)'\s*,\s*'(\S+)'\s*,\s*'(\S+)'\s*\)$`)
-		epochBucketRegex := regexp.MustCompile(`(?i)^FromEpoch(\w+)Bucket\s*\(\s*ToEpoch(\w+)Bucket\s*\(\s*(\S+)\s*,\s*(\d+)\s*\)\s*,\s*(\d+)\s*\)$`)
-
-		matchAndArgs := dateTimeConvertRegex.FindStringSubmatch(expr)
-		if len(matchAndArgs) == 5 {
-			granularity, err := ParsePinotGranularity(matchAndArgs[4])
-			if err != nil {
-				return DateTimeBucketConversion{}, false
-			}
-			return DateTimeBucketConversion{
-				col:          UnquoteObjectName(matchAndArgs[1]),
-				inputFormat:  matchAndArgs[2],
-				outputFormat: matchAndArgs[3],
-				granularity:  granularity,
-			}, true
-		}
-
-		matchAndArgs = epochBucketRegex.FindStringSubmatch(expr)
-		if len(matchAndArgs) == 6 {
-			fromUnit := strings.ToUpper(matchAndArgs[1])
-			toUnit := strings.ToUpper(matchAndArgs[2])
-			col := UnquoteObjectName(matchAndArgs[3])
-			toSize := matchAndArgs[4]
-			fromSize := matchAndArgs[5]
-
-			if fromUnit != toUnit || toSize != fromSize {
-				return DateTimeBucketConversion{}, false
-			}
-
-			size, err := strconv.ParseUint(toSize, 10, 64)
-			if err != nil {
-				return DateTimeBucketConversion{}, false
-			}
-			granularity, err := NewPinotGranularity(fromUnit, uint(size))
-			if err != nil {
-				return DateTimeBucketConversion{}, false
-			}
-
-			return DateTimeBucketConversion{
-				col:          col,
-				inputFormat:  "1:MILLISECONDS:EPOCH",
-				outputFormat: "1:MILLISECONDS:EPOCH",
-				granularity:  granularity,
-			}, true
-		}
-		return DateTimeBucketConversion{}, false
-	}
-
-	convsAreEqual := func(conv1, conv2 DateTimeBucketConversion) bool {
-		return conv1.col == conv2.col &&
-			conv1.inputFormat == conv2.inputFormat &&
-			conv1.outputFormat == conv2.outputFormat &&
-			conv1.granularity.Duration() == conv2.granularity.Duration()
-	}
-
-	for _, tt := range testArgs {
-		t.Run(tt.expr1, func(t *testing.T) {
-			conv1, ok := getDateTimeBucketConversion(tt.expr1)
-			assert.True(t, ok, tt.expr1)
-			conv2, ok := getDateTimeBucketConversion(tt.expr2)
-			assert.True(t, ok, tt.expr2)
-			assert.Equal(t, tt.want, convsAreEqual(conv1, conv2))
 		})
 	}
 }

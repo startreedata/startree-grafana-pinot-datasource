@@ -13,6 +13,14 @@ type PinotDateTimeFormat struct {
 	Format TimeFormat
 }
 
+func (x PinotDateTimeFormat) Equals(dt PinotDateTimeFormat) bool {
+	return x.Format == dt.Format && x.IntervalSize() == dt.IntervalSize()
+}
+
+func (x PinotDateTimeFormat) IntervalSize() time.Duration {
+	return PinotGranularity{Unit: x.Unit, Size: x.Size}.Duration()
+}
+
 func (x PinotDateTimeFormat) FormatTime(ts time.Time) string {
 	switch x.Unit {
 	case TimeUnitNanoseconds:
