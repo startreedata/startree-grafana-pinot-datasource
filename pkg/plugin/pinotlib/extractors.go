@@ -342,3 +342,20 @@ func GetDistinctValues[T comparable](vals []T) []T {
 	}
 	return result[:]
 }
+
+func UnquoteObjectName(s string) string {
+	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
+		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
+}
+
+func UnquoteStringLiteral(s string) string {
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
+}
