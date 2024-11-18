@@ -3,9 +3,8 @@ package pinotlib
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/goccy/go-json"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
 	"io"
 	"net/http"
 	"sort"
@@ -114,23 +113,23 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	logger.Logger.Info(fmt.Sprintf("pinot/http: executing sql query: %s", query.Sql))
+	p.newLogger(ctx).Info("Executing sql query.", "queryString", query.Sql)
 
 	var respData BrokerResponse
 	resp, err := p.doRequest(req)
 	if err != nil {
 		return nil, err
 	}
-	defer p.closeResponseBody(resp)
+	defer p.closeResponseBody(ctx, resp)
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, p.newErrorFromResponseBody(resp)
+		return nil, p.newErrorFromResponseBody(ctx, resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
 	decoder.UseNumber()
 	if err = decoder.Decode(&respData); err != nil {
-		return nil, fmt.Errorf("pinot/http failed to decode response json: %w", err)
+		return nil, fmt.Errorf("pinot/http: failed to decode response json: %w", err)
 	}
 
 	return &respData, nil

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"math"
 	"net/http"
@@ -83,6 +83,7 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// TODO: This can be removed once labels are properly handled by Pinot.
 func flattenLabels(metric map[string]string) map[string]string {
 	labelsJson := metric["labels"]
 	if labelsJson == "" {
@@ -92,7 +93,7 @@ func flattenLabels(metric map[string]string) map[string]string {
 	var labels map[string]string
 	err := json.Unmarshal([]byte(metric["labels"]), &labels)
 	if err != nil {
-		logger.Logger.Info(fmt.Sprintf("failed to unmarshal labels `%s`: %s", labelsJson, err))
+		log.WithError(err).Info("Failed to unmarshal time series labels", "labelsJson", labelsJson)
 	}
 	labels["__name__"] = metric["__name__"]
 	return labels
@@ -112,7 +113,7 @@ func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer p.closeResponseBody(resp)
+	defer p.closeResponseBody(ctx, resp)
 
 	return resp.StatusCode != http.StatusNotFound, nil
 }
@@ -146,7 +147,7 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	var resp TimeSeriesQueryResponse
-	logger.Logger.Info(fmt.Sprintf("pinot/http: executing timeseries query: %s", req.Query))
+	p.newLogger(ctx).Info("Executing timeseries query", "queryString", req.Query)
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}

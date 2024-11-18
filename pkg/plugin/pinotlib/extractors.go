@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"math"
 	"strconv"
 	"strings"
@@ -78,7 +78,7 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 			return time.Date(year, month, day, hour, minute, int(second), nanos, time.UTC), err
 		})
 	default:
-		logger.Logger.Error(fmt.Sprintf("column has unknown type %s", colDataType))
+		log.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
 		return make([]int64, len(results.Rows))
 	}
 }
@@ -92,7 +92,7 @@ func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *
 
 		// Only log the first error.
 		if err != nil && !hasError {
-			logger.Logger.Error("failed to parse column: " + err.Error())
+			log.WithError(err).Error("Failed to extract column")
 			hasError = true
 		}
 	}
