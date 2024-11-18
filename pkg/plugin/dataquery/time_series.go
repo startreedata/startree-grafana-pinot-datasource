@@ -3,7 +3,7 @@ package dataquery
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/logger"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
 	"slices"
@@ -256,7 +256,7 @@ func (f *LegendFormatter) getRegexpFromCache(key string) *regexp.Regexp {
 	pattern := fmt.Sprintf(`\{\{\s*%s\s*}}`, regexp.QuoteMeta(key))
 	re, err := regexp.Compile(pattern)
 	if err != nil {
-		logger.Logger.Debug("Error compiling legend regex", err)
+		log.WithError(err).Debug("Failed to compile legend regex")
 		return nil
 	}
 	f.regexpCache[key] = re
