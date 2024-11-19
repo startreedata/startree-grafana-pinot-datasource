@@ -13,38 +13,14 @@ func TestParsePinotGranularity(t *testing.T) {
 		want        PinotGranularity
 		wantErr     bool
 	}{
-		{
-			granularity: "1:NANOSECONDS",
-			want:        PinotGranularity{Unit: TimeUnitNanoseconds, Size: 1},
-		},
-		{
-			granularity: "2:MICROSECONDS",
-			want:        PinotGranularity{Unit: TimeUnitMicroseconds, Size: 2},
-		},
-		{
-			granularity: "3:MILLISECONDS",
-			want:        PinotGranularity{Unit: TimeUnitMilliseconds, Size: 3},
-		},
-		{
-			granularity: "4:SECONDS",
-			want:        PinotGranularity{Unit: TimeUnitSeconds, Size: 4},
-		},
-		{
-			granularity: "5:MINUTES",
-			want:        PinotGranularity{Unit: TimeUnitMinutes, Size: 5},
-		},
-		{
-			granularity: "6:HOURS",
-			want:        PinotGranularity{Unit: TimeUnitHours, Size: 6},
-		},
-		{
-			granularity: "7:DAYS",
-			want:        PinotGranularity{Unit: TimeUnitDays, Size: 7},
-		},
-		{
-			granularity: "1:NotAUnit",
-			wantErr:     true,
-		},
+		{granularity: "1:NANOSECONDS", want: PinotGranularity{Unit: TimeUnitNanoseconds, Size: 1}},
+		{granularity: "2:MICROSECONDS", want: PinotGranularity{Unit: TimeUnitMicroseconds, Size: 2}},
+		{granularity: "3:MILLISECONDS", want: PinotGranularity{Unit: TimeUnitMilliseconds, Size: 3}},
+		{granularity: "4:SECONDS", want: PinotGranularity{Unit: TimeUnitSeconds, Size: 4}},
+		{granularity: "5:MINUTES", want: PinotGranularity{Unit: TimeUnitMinutes, Size: 5}},
+		{granularity: "6:HOURS", want: PinotGranularity{Unit: TimeUnitHours, Size: 6}},
+		{granularity: "7:DAYS", want: PinotGranularity{Unit: TimeUnitDays, Size: 7}},
+		{granularity: "1:NotAUnit", wantErr: true},
 	}
 
 	for _, tt := range tests {

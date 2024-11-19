@@ -171,183 +171,50 @@ func TestTimeExpressionBuilder_TimeExpr(t *testing.T) {
 		ts     time.Time
 		want   string
 	}{
-		{
-			format: "EPOCH_NANOS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000000`,
-		}, {
-			format: "1:NANOSECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000000`,
-		}, {
-			format: "2:NANOSECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000000000`,
-		}, {
-			format: "EPOCH|NANOSECONDS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000000`,
-		}, {
-			format: "EPOCH|NANOSECONDS|1",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000000`,
-		}, {
-			format: "EPOCH|NANOSECONDS|2",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000000000`,
-		}, {
-			format: "EPOCH_MICROS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000`,
-		}, {
-			format: "1:MICROSECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000`,
-		}, {
-			format: "2:MICROSECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000000`,
-		}, {
-			format: "EPOCH|MICROSECONDS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000`,
-		}, {
-			format: "EPOCH|MICROSECONDS|1",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000000`,
-		}, {
-			format: "EPOCH|MICROSECONDS|2",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000000`,
-		}, {
-			format: "EPOCH_MILLIS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "1:MILLISECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "2:MILLISECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000`,
-		}, {
-			format: "EPOCH|MILLISECONDS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "EPOCH|MILLISECONDS|1",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "EPOCH|MILLISECONDS|2",
-			ts:     time.Unix(3600, 0),
-			want:   `1800000`,
-		}, {
-			format: "EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "TIMESTAMP",
-			ts:     time.Unix(3600, 0),
-			want:   `3600000`,
-		}, {
-			format: "EPOCH_SECONDS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600`,
-		}, {
-			format: "1:SECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `3600`,
-		}, {
-			format: "2:SECONDS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `1800`,
-		}, {
-			format: "EPOCH|SECONDS",
-			ts:     time.Unix(3600, 0),
-			want:   `3600`,
-		}, {
-			format: "EPOCH|SECONDS|1",
-			ts:     time.Unix(3600, 0),
-			want:   `3600`,
-		}, {
-			format: "EPOCH|SECONDS|2",
-			ts:     time.Unix(3600, 0),
-			want:   `1800`,
-		}, {
-			format: "EPOCH_MINUTES",
-			ts:     time.Unix(3600, 0),
-			want:   `60`,
-		}, {
-			format: "1:MINUTES:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `60`,
-		}, {
-			format: "2:MINUTES:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `30`,
-		}, {
-			format: "EPOCH|MINUTES",
-			ts:     time.Unix(3600, 0),
-			want:   `60`,
-		}, {
-			format: "EPOCH|MINUTES|1",
-			ts:     time.Unix(3600, 0),
-			want:   `60`,
-		}, {
-			format: "EPOCH|MINUTES|2",
-			ts:     time.Unix(3600, 0),
-			want:   `30`,
-		}, {
-			format: "EPOCH_HOURS",
-			ts:     time.Unix(3600, 0),
-			want:   `1`,
-		}, {
-			format: "1:HOURS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `1`,
-		}, {
-			format: "2:HOURS:EPOCH",
-			ts:     time.Unix(3600, 0),
-			want:   `0`,
-		}, {
-			format: "EPOCH|HOURS",
-			ts:     time.Unix(3600, 0),
-			want:   `1`,
-		}, {
-			format: "EPOCH|HOURS|1",
-			ts:     time.Unix(3600, 0),
-			want:   `1`,
-		}, {
-			format: "EPOCH|HOURS|2",
-			ts:     time.Unix(3600, 0),
-			want:   `0`,
-		}, {
-			format: "EPOCH_DAYS",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `5`,
-		}, {
-			format: "1:DAYS:EPOCH",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `5`,
-		}, {
-			format: "2:DAYS:EPOCH",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `2`,
-		}, {
-			format: "EPOCH|DAYS",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `5`,
-		}, {
-			format: "EPOCH|DAYS|1",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `5`,
-		}, {
-			format: "EPOCH|DAYS|2",
-			ts:     time.Unix(24*5*3600, 0),
-			want:   `2`,
-		},
+		{ts: time.Unix(3600, 0), format: "EPOCH_NANOS", want: `3600000000000`},
+		{ts: time.Unix(3600, 0), format: "1:NANOSECONDS:EPOCH", want: `3600000000000`},
+		{ts: time.Unix(3600, 0), format: "2:NANOSECONDS:EPOCH", want: `1800000000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|NANOSECONDS", want: `3600000000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|NANOSECONDS|1", want: `3600000000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|NANOSECONDS|2", want: `1800000000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH_MICROS", want: `3600000000`},
+		{ts: time.Unix(3600, 0), format: "1:MICROSECONDS:EPOCH", want: `3600000000`},
+		{ts: time.Unix(3600, 0), format: "2:MICROSECONDS:EPOCH", want: `1800000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MICROSECONDS", want: `3600000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MICROSECONDS|1", want: `3600000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MICROSECONDS|2", want: `1800000000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH_MILLIS", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "1:MILLISECONDS:EPOCH", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "2:MILLISECONDS:EPOCH", want: `1800000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MILLISECONDS", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MILLISECONDS|1", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MILLISECONDS|2", want: `1800000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "TIMESTAMP", want: `3600000`},
+		{ts: time.Unix(3600, 0), format: "EPOCH_SECONDS", want: `3600`},
+		{ts: time.Unix(3600, 0), format: "1:SECONDS:EPOCH", want: `3600`},
+		{ts: time.Unix(3600, 0), format: "2:SECONDS:EPOCH", want: `1800`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|SECONDS", want: `3600`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|SECONDS|1", want: `3600`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|SECONDS|2", want: `1800`},
+		{ts: time.Unix(3600, 0), format: "EPOCH_MINUTES", want: `60`},
+		{ts: time.Unix(3600, 0), format: "1:MINUTES:EPOCH", want: `60`},
+		{ts: time.Unix(3600, 0), format: "2:MINUTES:EPOCH", want: `30`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MINUTES", want: `60`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MINUTES|1", want: `60`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|MINUTES|2", want: `30`},
+		{ts: time.Unix(3600, 0), format: "EPOCH_HOURS", want: `1`},
+		{ts: time.Unix(3600, 0), format: "1:HOURS:EPOCH", want: `1`},
+		{ts: time.Unix(3600, 0), format: "2:HOURS:EPOCH", want: `0`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|HOURS", want: `1`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|HOURS|1", want: `1`},
+		{ts: time.Unix(3600, 0), format: "EPOCH|HOURS|2", want: `0`},
+		{ts: time.Unix(24*5*3600, 0), format: "EPOCH_DAYS", want: `5`},
+		{ts: time.Unix(24*5*3600, 0), format: "1:DAYS:EPOCH", want: `5`},
+		{ts: time.Unix(24*5*3600, 0), format: "2:DAYS:EPOCH", want: `2`},
+		{ts: time.Unix(24*5*3600, 0), format: "EPOCH|DAYS", want: `5`},
+		{ts: time.Unix(24*5*3600, 0), format: "EPOCH|DAYS|1", want: `5`},
+		{ts: time.Unix(24*5*3600, 0), format: "EPOCH|DAYS|2", want: `2`},
 	}
 
 	for _, tt := range testCases {
@@ -365,183 +232,50 @@ func TestTimeExpressionBuilder_TimeGroupExpr(t *testing.T) {
 		granularity string
 		want        string
 	}{
-		{
-			format:      "EPOCH_NANOS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:NANOSECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:NANOSECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|NANOSECONDS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|NANOSECONDS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|NANOSECONDS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_MICROS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:MICROSECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:MICROSECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MICROSECONDS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MICROSECONDS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MICROSECONDS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_MILLIS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:MILLISECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:MILLISECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MILLISECONDS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MILLISECONDS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MILLISECONDS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "TIMESTAMP",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_SECONDS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:SECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:SECONDS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|SECONDS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|SECONDS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|SECONDS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_MINUTES",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:MINUTES:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:MINUTES:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MINUTES",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MINUTES|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|MINUTES|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_HOURS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:HOURS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:HOURS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|HOURS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|HOURS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|HOURS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH_DAYS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "1:DAYS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "2:DAYS:EPOCH",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|DAYS",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|DAYS|1",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		}, {
-			format:      "EPOCH|DAYS|2",
-			granularity: "1:MINUTES",
-			want:        `DATETIMECONVERT("ts", '2:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
-		},
+		{granularity: "1:MINUTES", format: "EPOCH_NANOS", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:NANOSECONDS:EPOCH", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:NANOSECONDS:EPOCH", want: `DATETIMECONVERT("ts", '2:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|NANOSECONDS", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|NANOSECONDS|1", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|NANOSECONDS|2", want: `DATETIMECONVERT("ts", '2:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_MICROS", want: `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:MICROSECONDS:EPOCH", want: `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:MICROSECONDS:EPOCH", want: `DATETIMECONVERT("ts", '2:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MICROSECONDS", want: `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MICROSECONDS|1", want: `DATETIMECONVERT("ts", '1:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MICROSECONDS|2", want: `DATETIMECONVERT("ts", '2:MICROSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_MILLIS", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:MILLISECONDS:EPOCH", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:MILLISECONDS:EPOCH", want: `DATETIMECONVERT("ts", '2:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MILLISECONDS", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MILLISECONDS|1", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MILLISECONDS|2", want: `DATETIMECONVERT("ts", '2:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "TIMESTAMP", want: `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_SECONDS", want: `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:SECONDS:EPOCH", want: `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:SECONDS:EPOCH", want: `DATETIMECONVERT("ts", '2:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|SECONDS", want: `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|SECONDS|1", want: `DATETIMECONVERT("ts", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|SECONDS|2", want: `DATETIMECONVERT("ts", '2:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_MINUTES", want: `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:MINUTES:EPOCH", want: `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:MINUTES:EPOCH", want: `DATETIMECONVERT("ts", '2:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MINUTES", want: `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MINUTES|1", want: `DATETIMECONVERT("ts", '1:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|MINUTES|2", want: `DATETIMECONVERT("ts", '2:MINUTES:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_HOURS", want: `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:HOURS:EPOCH", want: `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:HOURS:EPOCH", want: `DATETIMECONVERT("ts", '2:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|HOURS", want: `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|HOURS|1", want: `DATETIMECONVERT("ts", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|HOURS|2", want: `DATETIMECONVERT("ts", '2:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH_DAYS", want: `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "1:DAYS:EPOCH", want: `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "2:DAYS:EPOCH", want: `DATETIMECONVERT("ts", '2:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|DAYS", want: `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|DAYS|1", want: `DATETIMECONVERT("ts", '1:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{granularity: "1:MINUTES", format: "EPOCH|DAYS|2", want: `DATETIMECONVERT("ts", '2:DAYS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
 	}
 
 	for _, tt := range testCases {
