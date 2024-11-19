@@ -75,11 +75,11 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 			return new(NoOpDriver), nil
 		}
 		return NewPinotQlCodeDriver(PinotQlCodeDriverParams{
+
 			PinotClient:       pinotClient,
 			Code:              query.PinotQlCode,
 			TableName:         query.TableName,
 			TimeColumnAlias:   query.TimeColumnAlias,
-			TimeColumnFormat:  query.TimeColumnFormat,
 			MetricColumnAlias: query.MetricColumnAlias,
 			LogColumnAlias:    query.LogColumnAlias,
 			TimeRange:         TimeRange{To: timeRange.To, From: timeRange.From},

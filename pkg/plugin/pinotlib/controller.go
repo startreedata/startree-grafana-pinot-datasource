@@ -63,6 +63,36 @@ func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
 	return "/mytables"
 }
 
+type TableConfig struct {
+	Realtime struct {
+		TableName string `json:"tableName"`
+		TableType string `json:"tableType"`
+		Query     struct {
+			ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
+		} `json:"query"`
+		IngestionConfig struct {
+			TransformConfigs []struct {
+				ColumnName        string `json:"columnName"`
+				TransformFunction string `json:"transformFunction"`
+			}
+		} `json:"ingestionConfig"`
+	} `json:"REALTIME"`
+}
+
+func (p *PinotClient) GetTableConfig(ctx context.Context, table string) (TableConfig, error) {
+	return p.getTableConfigCache.Get(table, func() (TableConfig, error) {
+		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
+		if err != nil {
+			return TableConfig{}, err
+		}
+		var tableConfig TableConfig
+		if err = p.doRequestAndDecodeResponse(req, &tableConfig); err != nil {
+			return TableConfig{}, err
+		}
+		return tableConfig, nil
+	})
+}
+
 type TableSchema struct {
 	SchemaName          string               `json:"schemaName"`
 	DimensionFieldSpecs []DimensionFieldSpec `json:"dimensionFieldSpecs"`

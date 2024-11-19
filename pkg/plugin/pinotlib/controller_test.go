@@ -3,6 +3,7 @@ package pinotlib
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
@@ -91,6 +92,13 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
+}
+
+func TestPinotClient_GetTableConfig(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+	config, err := client.GetTableConfig(context.Background(), "benchmark")
+	require.NoError(t, err)
+	require.NotNil(t, config)
 }
 
 func TestPinotClient_GetTableMetadata(t *testing.T) {

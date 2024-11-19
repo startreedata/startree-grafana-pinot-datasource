@@ -7,68 +7,68 @@ import (
 	"time"
 )
 
-func TestParsePinotDateTimeFormat(t *testing.T) {
+func TestParseDateTimeFormat(t *testing.T) {
 	testCases := []struct {
 		format  string
-		want    PinotDateTimeFormat
+		want    DateTimeFormat
 		wantErr error
 	}{
-		{format: "EPOCH_NANOS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
-		{format: "1:NANOSECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
-		{format: "2:NANOSECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitNanoseconds}},
-		{format: "EPOCH|NANOSECONDS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
-		{format: "EPOCH|NANOSECONDS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
-		{format: "EPOCH|NANOSECONDS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitNanoseconds}},
-		{format: "EPOCH_MICROS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
-		{format: "1:MICROSECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
-		{format: "2:MICROSECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMicroseconds}},
-		{format: "EPOCH|MICROSECONDS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
-		{format: "EPOCH|MICROSECONDS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
-		{format: "EPOCH|MICROSECONDS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMicroseconds}},
-		{format: "EPOCH_MILLIS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "1:MILLISECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "2:MILLISECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMilliseconds}},
-		{format: "EPOCH|MILLISECONDS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "EPOCH|MILLISECONDS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "EPOCH|MILLISECONDS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMilliseconds}},
-		{format: "EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "TIMESTAMP", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
-		{format: "EPOCH_SECONDS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
-		{format: "1:SECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
-		{format: "2:SECONDS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitSeconds}},
-		{format: "EPOCH|SECONDS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
-		{format: "EPOCH|SECONDS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
-		{format: "EPOCH|SECONDS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitSeconds}},
-		{format: "EPOCH_MINUTES", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
-		{format: "1:MINUTES:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
-		{format: "2:MINUTES:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMinutes}},
-		{format: "EPOCH|MINUTES", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
-		{format: "EPOCH|MINUTES|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
-		{format: "EPOCH|MINUTES|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMinutes}},
-		{format: "EPOCH_HOURS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
-		{format: "1:HOURS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
-		{format: "2:HOURS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitHours}},
-		{format: "EPOCH|HOURS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
-		{format: "EPOCH|HOURS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
-		{format: "EPOCH|HOURS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitHours}},
-		{format: "EPOCH_DAYS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
-		{format: "1:DAYS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
-		{format: "2:DAYS:EPOCH", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitDays}},
-		{format: "EPOCH|DAYS", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
-		{format: "EPOCH|DAYS|1", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
-		{format: "EPOCH|DAYS|2", want: PinotDateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitDays}},
+		{format: "EPOCH_NANOS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
+		{format: "1:NANOSECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
+		{format: "2:NANOSECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitNanoseconds}},
+		{format: "EPOCH|NANOSECONDS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
+		{format: "EPOCH|NANOSECONDS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitNanoseconds}},
+		{format: "EPOCH|NANOSECONDS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitNanoseconds}},
+		{format: "EPOCH_MICROS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
+		{format: "1:MICROSECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
+		{format: "2:MICROSECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMicroseconds}},
+		{format: "EPOCH|MICROSECONDS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
+		{format: "EPOCH|MICROSECONDS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMicroseconds}},
+		{format: "EPOCH|MICROSECONDS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMicroseconds}},
+		{format: "EPOCH_MILLIS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "1:MILLISECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "2:MILLISECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMilliseconds}},
+		{format: "EPOCH|MILLISECONDS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "EPOCH|MILLISECONDS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "EPOCH|MILLISECONDS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMilliseconds}},
+		{format: "EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "TIMESTAMP", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMilliseconds}},
+		{format: "EPOCH_SECONDS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
+		{format: "1:SECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
+		{format: "2:SECONDS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitSeconds}},
+		{format: "EPOCH|SECONDS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
+		{format: "EPOCH|SECONDS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitSeconds}},
+		{format: "EPOCH|SECONDS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitSeconds}},
+		{format: "EPOCH_MINUTES", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
+		{format: "1:MINUTES:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
+		{format: "2:MINUTES:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMinutes}},
+		{format: "EPOCH|MINUTES", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
+		{format: "EPOCH|MINUTES|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitMinutes}},
+		{format: "EPOCH|MINUTES|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitMinutes}},
+		{format: "EPOCH_HOURS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
+		{format: "1:HOURS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
+		{format: "2:HOURS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitHours}},
+		{format: "EPOCH|HOURS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
+		{format: "EPOCH|HOURS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitHours}},
+		{format: "EPOCH|HOURS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitHours}},
+		{format: "EPOCH_DAYS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
+		{format: "1:DAYS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
+		{format: "2:DAYS:EPOCH", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitDays}},
+		{format: "EPOCH|DAYS", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
+		{format: "EPOCH|DAYS|1", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 1, Unit: TimeUnitDays}},
+		{format: "EPOCH|DAYS|2", want: DateTimeFormat{Format: TimeFormatEpoch, Size: 2, Unit: TimeUnitDays}},
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.format, func(t *testing.T) {
-			got, err := ParsePinotDateTimeFormat(tt.format)
+		t.Run("format="+tt.format, func(t *testing.T) {
+			got, err := ParseDateTimeFormat(tt.format)
 			assert.Equal(t, tt.want, got)
 			assert.Equal(t, tt.wantErr, err)
 		})
 	}
 }
 
-func TestPinotDateTimeFormat_LegacyString(t *testing.T) {
+func TestDateTimeFormat_LegacyString(t *testing.T) {
 	testCases := []struct {
 		format string
 		ts     time.Time
@@ -122,14 +122,14 @@ func TestPinotDateTimeFormat_LegacyString(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run("format="+tt.format, func(t *testing.T) {
-			format, err := ParsePinotDateTimeFormat(tt.format)
+			format, err := ParseDateTimeFormat(tt.format)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, format.LegacyString())
 		})
 	}
 }
 
-func TestPinotDateTimeFormat_V0_12String(t *testing.T) {
+func TestDateTimeFormat_V0_12String(t *testing.T) {
 	testCases := []struct {
 		format string
 		ts     time.Time
@@ -183,14 +183,14 @@ func TestPinotDateTimeFormat_V0_12String(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run("format="+tt.format, func(t *testing.T) {
-			format, err := ParsePinotDateTimeFormat(tt.format)
+			format, err := ParseDateTimeFormat(tt.format)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, format.V0_12String())
 		})
 	}
 }
 
-func TestPinotDateTimeFormat_FormatTime(t *testing.T) {
+func TestFormatTime(t *testing.T) {
 	testCases := []struct {
 		format string
 		ts     time.Time
@@ -244,9 +244,9 @@ func TestPinotDateTimeFormat_FormatTime(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run("format="+tt.format, func(t *testing.T) {
-			format, err := ParsePinotDateTimeFormat(tt.format)
+			format, err := ParseDateTimeFormat(tt.format)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, format.FormatTime(tt.ts))
+			assert.Equal(t, tt.want, TimeExpr(tt.ts, format))
 		})
 	}
 }

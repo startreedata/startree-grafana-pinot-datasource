@@ -1,8 +1,10 @@
 package dataquery
 
 import (
+	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -12,6 +14,8 @@ import (
 func TestNewPinotQlBuilderDriver(t *testing.T) {
 	newParams := func() PinotQlBuilderParams {
 		return PinotQlBuilderParams{
+			Ctx:         context.Background(),
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
@@ -42,11 +46,8 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		params := newParams()
 		got, gotErr := NewPinotQlBuilderDriver(newParams())
 		assert.NoError(t, gotErr)
-		assert.Equal(t, params, got.params)
-		assert.NotNil(t, got.timeExprBuilder)
 		assert.Equal(t, DefaultMetricColumnAlias, got.MetricColumnAlias)
 		assert.Equal(t, DefaultTimeColumnAlias, got.TimeColumnAlias)
 	})
@@ -84,6 +85,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 	t.Run("AggregationFunction=SUM", func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
@@ -164,6 +166,7 @@ LIMIT 100000;`
 
 	t.Run("AggregationFunction="+AggregationFunctionCount, func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
@@ -244,6 +247,7 @@ LIMIT 100000;`
 
 	t.Run("AggregationFunction="+AggregationFunctionNone, func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",

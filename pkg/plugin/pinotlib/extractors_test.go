@@ -3,6 +3,7 @@ package pinotlib
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -47,35 +48,26 @@ func TestGetTimeColumnFormat(t *testing.T) {
 			{Name: "public", DataType: "BOOLEAN"},
 		},
 		MetricFieldSpecs: nil,
-		DateTimeFieldSpecs: []DateTimeFieldSpec{
-			{
-				Name:        "created_at",
-				DataType:    "STRING",
-				Format:      "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'",
-				Granularity: "1:SECONDS",
-			},
-			{
-				Name:        "created_at_timestamp",
-				DataType:    "TIMESTAMP",
-				Format:      "TIMESTAMP",
-				Granularity: "1:SECONDS",
-			},
-		},
+		DateTimeFieldSpecs: []DateTimeFieldSpec{{
+			Name:        "created_at_timestamp",
+			DataType:    "TIMESTAMP",
+			Format:      "TIMESTAMP",
+			Granularity: "1:SECONDS",
+		}},
 	}
 
 	testArgs := []struct {
 		colName string
-		want    string
+		want    DateTimeFormat
 		wantErr bool
 	}{
-		{colName: "created_at", want: "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'"},
-		{colName: "created_at_timestamp", want: "TIMESTAMP"},
+		{colName: "created_at_timestamp", want: DateTimeFormatMillisecondsEpoch()},
 		{colName: "actor", wantErr: true},
 	}
 
 	for _, tt := range testArgs {
 		t.Run(tt.colName, func(t *testing.T) {
-			got, err := GetTimeColumnFormat(schema, tt.colName)
+			got, err := GetTimeColumnFormat2(schema, tt.colName)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -129,11 +121,11 @@ func TestExtractColumn(t *testing.T) {
 		},
 		{
 			dataType: DataTypeTimestamp,
-			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 10:11:12.001"},
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 15:11:12.001"},
 			want: []time.Time{
-				time.Date(2024, 10, 24, 10, 11, 12, 0.1*1_000_000_000, time.UTC),
+				time.Date(2024, 10, 24, 10, 11, 12, 0.1e9, time.UTC),
 				time.Date(2024, 10, 25, 10, 11, 12, 0.01e9, time.UTC),
-				time.Date(2024, 10, 26, 10, 11, 12, 0.001e9, time.UTC),
+				time.Date(2024, 10, 26, 15, 11, 12, 0.001e9, time.UTC),
 			},
 		},
 	}
@@ -145,6 +137,31 @@ func TestExtractColumn(t *testing.T) {
 				Rows:       reshapeCols(tt.col),
 			}, 0)
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestParseJodaTime(t *testing.T) {
+	testCases := []struct {
+		ts      string
+		want    time.Time
+		wantErr bool
+	}{
+		{ts: "", wantErr: true},
+		{ts: "2024-10-24 10:11:12.1", want: time.Date(2024, 10, 24, 10, 11, 12, 0.1e9, time.UTC)},
+		{ts: "2024-10-25 10:11:12.01", want: time.Date(2024, 10, 25, 10, 11, 12, 0.01e9, time.UTC)},
+		{ts: "2024-10-26 15:11:12.001", want: time.Date(2024, 10, 26, 15, 11, 12, 0.001e9, time.UTC)},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.ts, func(t *testing.T) {
+			got, err := ParseJodaTime(tt.ts)
+			if tt.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.Equal(t, tt.want, got)
+				assert.NoError(t, err)
+			}
 		})
 	}
 }
@@ -453,114 +470,134 @@ func TestGetDistinctValues(t *testing.T) {
 	assert.Equal(t, []int64{1, 2, 3, 4, 5}, got)
 }
 
-func TestExtractLongTimeColumn(t *testing.T) {
+func TestExtractTimeColumn(t *testing.T) {
 	tests := []struct {
-		format string
-		rows   [][]interface{}
-		want   []time.Time
+		format   string
+		col      []interface{}
+		dataType string
+		want     []time.Time
 	}{
 		{
-			format: "EPOCH_NANOS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
+			format:   "EPOCH_NANOS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
-			format: "1:NANOSECONDS:EPOCH",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
+			format:   "1:NANOSECONDS:EPOCH",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
-			format: "EPOCH|NANOSECONDS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
+			format:   "EPOCH|NANOSECONDS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
-			format: "EPOCH|NANOSECONDS|1",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541).UTC()},
-		},
-		{
-			format: "EPOCH_MICROS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
+			format:   "EPOCH|NANOSECONDS|1",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541).UTC()},
 		}, {
-			format: "1:MICROSECONDS:EPOCH",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
+			format:   "EPOCH_MICROS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		}, {
-			format: "EPOCH|MICROSECONDS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
+			format:   "1:MICROSECONDS:EPOCH",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
 		}, {
-			format: "EPOCH|MICROSECONDS|1",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
-		},
-		{
-			format: "EPOCH_SECONDS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
-		},
-		{
-			format: "1:SECONDS:EPOCH",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
-		},
-		{
-			format: "EPOCH|SECONDS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
-		},
-		{
-			format: "EPOCH|SECONDS|1",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541, 0).UTC()},
-		},
-		{
-			format: "EPOCH_MINUTES",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
-		},
-		{
-			format: "1:MINUTES:EPOCH",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
-		},
-		{
-			format: "EPOCH|MINUTES",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
-		},
-		{
-			format: "EPOCH|MINUTES|1",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*60, 0).UTC()},
-		},
-		{
-			format: "EPOCH_HOURS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
-		},
-		{
-			format: "1:HOURS:EPOCH",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
-		},
-		{
-			format: "EPOCH|HOURS",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
-		},
-		{
-			format: "EPOCH|HOURS|1",
-			rows:   [][]interface{}{{json.Number("11721075541")}},
-			want:   []time.Time{time.Unix(11721075541*3600, 0).UTC()},
+			format:   "EPOCH|MICROSECONDS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
+		}, {
+			format:   "EPOCH|MICROSECONDS|1",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(0, 11721075541*time.Microsecond.Nanoseconds()).UTC()},
+		}, {
+			format:   "EPOCH_SECONDS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541, 0).UTC()},
+		}, {
+			format:   "1:SECONDS:EPOCH",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541, 0).UTC()},
+		}, {
+			format:   "EPOCH|SECONDS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541, 0).UTC()},
+		}, {
+			format:   "EPOCH|SECONDS|1",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541, 0).UTC()},
+		}, {
+			format:   "EPOCH_MINUTES",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*60, 0).UTC()},
+		}, {
+			format:   "1:MINUTES:EPOCH",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*60, 0).UTC()},
+		}, {
+			format:   "EPOCH|MINUTES",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*60, 0).UTC()},
+		}, {
+			format:   "EPOCH|MINUTES|1",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*60, 0).UTC()},
+		}, {
+			format:   "EPOCH_HOURS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*3600, 0).UTC()},
+		}, {
+			format:   "1:HOURS:EPOCH",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*3600, 0).UTC()},
+		}, {
+			format:   "EPOCH|HOURS",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*3600, 0).UTC()},
+		}, {
+			format:   "EPOCH|HOURS|1",
+			col:      []interface{}{json.Number("11721075541")},
+			dataType: DataTypeLong,
+			want:     []time.Time{time.Unix(11721075541*3600, 0).UTC()},
+		}, {
+			format:   "TIMESTAMP",
+			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 15:11:12.001"},
+			dataType: DataTypeTimestamp,
+			want: []time.Time{
+				time.Date(2024, 10, 24, 10, 11, 12, 0.1e9, time.UTC),
+				time.Date(2024, 10, 25, 10, 11, 12, 0.01e9, time.UTC),
+				time.Date(2024, 10, 26, 15, 11, 12, 0.001e9, time.UTC),
+			},
 		},
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.format, func(t *testing.T) {
-			got, err := ExtractLongTimeColumn(&ResultTable{
-				DataSchema: DataSchema{ColumnDataTypes: []string{DataTypeLong}},
-				Rows:       tt.rows,
-			}, 0, tt.format)
+		t.Run("format="+tt.format, func(t *testing.T) {
+			format, err := ParseDateTimeFormat(tt.format)
+			require.NoError(t, err)
+
+			got, err := ExtractTimeColumn(&ResultTable{
+				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
+				Rows:       reshapeCols(tt.col),
+			}, 0, format)
 			assert.NoError(t, err)
 			assertEqualTimeColumns(t, tt.want, got)
 		})

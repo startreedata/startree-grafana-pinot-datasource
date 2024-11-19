@@ -53,6 +53,7 @@ func (unit TimeUnit) Duration() time.Duration {
 	case TimeUnitHours:
 		return time.Hour
 	case TimeUnitDays:
+		// This is mostly ok - leap seconds dont seem to break things.
 		return time.Hour * 24
 	default:
 		return 0

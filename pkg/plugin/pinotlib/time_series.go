@@ -210,16 +210,16 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 		return nil, ctx.Err()
 	}
 
-	timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
-	if err != nil {
-		return nil, err
-	}
-
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName:     TimeSeriesTableColumnMetricName,
-		TableName:      query.TableName,
-		TimeFilterExpr: timeExprBuilder.TimeFilterExpr(query.From, query.To),
-		Limit:          templates.DistinctValuesLimit,
+		ColumnName: TimeSeriesTableColumnMetricName,
+		TableName:  query.TableName,
+		TimeFilterExpr: TimeFilterExpr(TimeFilter{
+			Column: TimeSeriesTableColumnTimestamp,
+			Format: DateTimeFormatMillisecondsEpoch(),
+			From:   query.From,
+			To:     query.To,
+		}),
+		Limit: templates.DistinctValuesLimit,
 	})
 	if err != nil {
 		return nil, err
@@ -300,20 +300,20 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 	return p.timeseriesLabelsCache.Get(cacheKey, func() (LabelsCollection, error) {
 		// TODO: This code can be removed once the pinot apis are implemented.
 
-		timeExprBuilder, err := NewTimeExpressionBuilder(TimeSeriesTableColumnTimestamp, TimeSeriesTimestampFormat)
-		if err != nil {
-			return nil, err
-		}
-
 		var filterExprs []string
 		if metricName != "" {
 			filterExprs = []string{fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName)}
 		}
 
 		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-			ColumnName:           TimeSeriesTableColumnLabels,
-			TableName:            tableName,
-			TimeFilterExpr:       timeExprBuilder.TimeFilterExpr(from, to),
+			ColumnName: TimeSeriesTableColumnLabels,
+			TableName:  tableName,
+			TimeFilterExpr: TimeFilterExpr(TimeFilter{
+				Column: TimeSeriesTableColumnTimestamp,
+				Format: DateTimeFormatMillisecondsEpoch(),
+				From:   from,
+				To:     to,
+			}),
 			DimensionFilterExprs: filterExprs,
 			Limit:                templates.DistinctValuesLimit,
 		})

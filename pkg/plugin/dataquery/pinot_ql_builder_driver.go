@@ -25,13 +25,14 @@ const (
 
 type PinotQlBuilderDriver struct {
 	params            PinotQlBuilderParams
-	timeExprBuilder   pinotlib.TimeExpressionBuilder
 	TimeColumnAlias   string
 	MetricColumnAlias string
-	TimeGranularity   TimeGranularity
+	TimeGroup         pinotlib.DateTimeConversion
+	TableConfig       pinotlib.TableConfig
 }
 
 type PinotQlBuilderParams struct {
+	Ctx                 context.Context
 	PinotClient         *pinotlib.PinotClient
 	TableSchema         pinotlib.TableSchema
 	TimeRange           TimeRange
@@ -61,12 +62,16 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, errors.New("AggregationFunction is required")
 	}
 
-	exprBuilder, err := pinotlib.TimeExpressionBuilderFor(params.TableSchema, params.TimeColumn)
+	if params.Ctx == nil {
+		params.Ctx = context.Background()
+	}
+
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat2(params.TableSchema, params.TimeColumn)
 	if err != nil {
 		return nil, err
 	}
 
-	timeGranularity, err := TimeGranularityFrom(params.Granularity, params.IntervalSize)
+	tableConfig, err := params.PinotClient.GetTableConfig(params.Ctx, params.TableName)
 	if err != nil {
 		return nil, err
 	}
@@ -75,8 +80,13 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		params:            params,
 		TimeColumnAlias:   DefaultTimeColumnAlias,
 		MetricColumnAlias: DefaultMetricColumnAlias,
-		timeExprBuilder:   exprBuilder,
-		TimeGranularity:   timeGranularity,
+		TableConfig:       tableConfig,
+		TimeGroup: pinotlib.DateTimeConversion{
+			TimeColumn:   params.TimeColumn,
+			InputFormat:  timeColumnFormat,
+			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
+			Granularity:  ResolveGranularity(params.Ctx, params.Granularity, params.IntervalSize),
+		},
 	}, nil
 }
 
@@ -134,8 +144,8 @@ func (p *PinotQlBuilderDriver) ExtractResults(results *pinotlib.ResultTable) (*d
 		MetricName:        p.resolveMetricName(),
 		Legend:            p.params.Legend,
 		TimeColumnAlias:   p.TimeColumnAlias,
-		TimeColumnFormat:  p.resolveTimeColumnFormat(),
 		MetricColumnAlias: p.MetricColumnAlias,
+		TimeColumnFormat:  p.resolveTimeColumnFormat(),
 	}, results)
 }
 
@@ -165,25 +175,30 @@ func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
 	if expandMacros {
-		return p.timeExprBuilder.TimeFilterBucketAlignedExpr(p.params.TimeRange.From, p.params.TimeRange.To, p.TimeGranularity.Size)
+		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
+			Column: p.params.TimeColumn,
+			Format: p.TimeGroup.InputFormat,
+			From:   p.params.TimeRange.From,
+			To:     p.params.TimeRange.To,
+		}, p.TimeGroup.Granularity.Duration())
 	} else {
-		return MacroExprFor(MacroTimeFilter, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.SqlLiteralStringExpr(p.TimeGranularity.Expr))
+		return MacroExprFor(MacroTimeFilter, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
 	}
 }
 
 func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
 	if expandMacros {
-		return p.timeExprBuilder.TimeGroupExpr(p.TimeGranularity.Expr)
+		return pinotlib.TimeGroupExpr(p.TableConfig, p.TimeGroup)
 	} else {
-		return MacroExprFor(MacroTimeGroup, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.SqlLiteralStringExpr(p.TimeGranularity.Expr))
+		return MacroExprFor(MacroTimeGroup, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
 	}
 }
 
-func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() string {
+func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() pinotlib.DateTimeFormat {
 	if p.params.AggregationFunction == AggregationFunctionNone {
-		return p.timeExprBuilder.TimeColumnFormat()
+		return p.TimeGroup.InputFormat
 	} else {
-		return pinotlib.TimeGroupExprOutputFormat
+		return p.TimeGroup.OutputFormat
 	}
 }
 

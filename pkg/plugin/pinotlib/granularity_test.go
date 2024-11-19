@@ -10,22 +10,22 @@ import (
 func TestParsePinotGranularity(t *testing.T) {
 	tests := []struct {
 		granularity string
-		want        PinotGranularity
+		want        Granularity
 		wantErr     bool
 	}{
-		{granularity: "1:NANOSECONDS", want: PinotGranularity{Unit: TimeUnitNanoseconds, Size: 1}},
-		{granularity: "2:MICROSECONDS", want: PinotGranularity{Unit: TimeUnitMicroseconds, Size: 2}},
-		{granularity: "3:MILLISECONDS", want: PinotGranularity{Unit: TimeUnitMilliseconds, Size: 3}},
-		{granularity: "4:SECONDS", want: PinotGranularity{Unit: TimeUnitSeconds, Size: 4}},
-		{granularity: "5:MINUTES", want: PinotGranularity{Unit: TimeUnitMinutes, Size: 5}},
-		{granularity: "6:HOURS", want: PinotGranularity{Unit: TimeUnitHours, Size: 6}},
-		{granularity: "7:DAYS", want: PinotGranularity{Unit: TimeUnitDays, Size: 7}},
+		{granularity: "1:NANOSECONDS", want: Granularity{Unit: TimeUnitNanoseconds, Size: 1}},
+		{granularity: "2:MICROSECONDS", want: Granularity{Unit: TimeUnitMicroseconds, Size: 2}},
+		{granularity: "3:MILLISECONDS", want: Granularity{Unit: TimeUnitMilliseconds, Size: 3}},
+		{granularity: "4:SECONDS", want: Granularity{Unit: TimeUnitSeconds, Size: 4}},
+		{granularity: "5:MINUTES", want: Granularity{Unit: TimeUnitMinutes, Size: 5}},
+		{granularity: "6:HOURS", want: Granularity{Unit: TimeUnitHours, Size: 6}},
+		{granularity: "7:DAYS", want: Granularity{Unit: TimeUnitDays, Size: 7}},
 		{granularity: "1:NotAUnit", wantErr: true},
 	}
 
 	for _, tt := range tests {
 		t.Run("granularity="+tt.granularity, func(t *testing.T) {
-			got, err := ParsePinotGranularity(tt.granularity)
+			got, err := ParseGranularityExpr(tt.granularity)
 			assert.Equal(t, tt.want, got)
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -52,7 +52,7 @@ func TestPinotGranularity_String(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("granularity="+tt.granularity, func(t *testing.T) {
-			got, err := ParsePinotGranularity(tt.granularity)
+			got, err := ParseGranularityExpr(tt.granularity)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got.String())
 		})
@@ -75,7 +75,7 @@ func TestPinotGranularity_Duration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("granularity="+tt.granularity, func(t *testing.T) {
-			got, err := ParsePinotGranularity(tt.granularity)
+			got, err := ParseGranularityExpr(tt.granularity)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, got.Duration())
 		})
@@ -113,9 +113,9 @@ func TestPinotGranularity_Equals(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.expr1+"="+tt.expr2, func(t *testing.T) {
-			g1, err := ParsePinotGranularity(tt.expr1)
+			g1, err := ParseGranularityExpr(tt.expr1)
 			require.NoError(t, err)
-			g2, err := ParsePinotGranularity(tt.expr2)
+			g2, err := ParseGranularityExpr(tt.expr2)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, g1.Equals(g2))
 		})

@@ -1,11 +1,27 @@
 package dataquery
 
 import (
+	"context"
 	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func ResolveGranularity(ctx context.Context, expr string, fallback time.Duration) pinotlib.Granularity {
+	if expr == "" || expr == GranularityAuto {
+		return pinotlib.GranularityOf(fallback)
+	}
+
+	granularity, err := pinotlib.ParseGranularityExpr(expr)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Info("Failed to parse user provided granularity; using fallback")
+		return pinotlib.GranularityOf(fallback)
+	}
+	return granularity
+}
 
 const GranularityAuto = "auto"
 

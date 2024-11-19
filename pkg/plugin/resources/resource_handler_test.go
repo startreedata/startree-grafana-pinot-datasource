@@ -122,6 +122,7 @@ LIMIT 1000000`
 }
 
 func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")

@@ -1,37 +1,31 @@
 package dataquery
 
 import (
+	"context"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-func TestTimeGranularityFrom(t *testing.T) {
-	t.Run(`expr=""`, func(t *testing.T) {
-		got, err := TimeGranularityFrom("", time.Hour)
-		assert.NoError(t, err)
-		assert.Equal(t, time.Hour, got.Size)
-		assert.Equal(t, "1:HOURS", got.Expr)
-	})
-
-	t.Run(`expr="auto"`, func(t *testing.T) {
-		got, err := TimeGranularityFrom("auto", time.Hour)
-		assert.NoError(t, err)
-		assert.Equal(t, time.Hour, got.Size)
-		assert.Equal(t, "1:HOURS", got.Expr)
-	})
-
-	t.Run(`expr="1:HOURS"`, func(t *testing.T) {
-		got, err := TimeGranularityFrom("1:HOURS", time.Microsecond)
-		assert.NoError(t, err)
-		assert.Equal(t, time.Hour, got.Size)
-		assert.Equal(t, "1:HOURS", got.Expr)
-	})
-
-	t.Run(`expr="1:GIBBERISH"`, func(t *testing.T) {
-		_, err := TimeGranularityFrom("1:GIBBERISH", time.Microsecond)
-		assert.Error(t, err)
-	})
+func TestResolveGranularity(t *testing.T) {
+	ctx := context.Background()
+	testCases := []struct {
+		expr     string
+		fallback time.Duration
+		want     string
+	}{
+		{expr: "", fallback: time.Hour, want: "1:HOURS"},
+		{expr: "auto", fallback: time.Hour, want: "1:HOURS"},
+		{expr: "1:MINUTES", fallback: time.Hour, want: "1:MINUTES"},
+		{expr: "GIBBERISH", fallback: time.Hour, want: "1:HOURS"},
+	}
+	for _, tt := range testCases {
+		t.Run(fmt.Sprintf("expr=`%s`", tt.expr), func(t *testing.T) {
+			got := ResolveGranularity(ctx, tt.expr, tt.fallback)
+			assert.Equal(t, tt.want, got.String())
+		})
+	}
 }
 
 func TestParseGranularityExpr(t *testing.T) {

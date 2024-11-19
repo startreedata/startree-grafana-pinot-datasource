@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +35,15 @@ func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, er
 	return "", fmt.Errorf("column `%s` is not a date time column", timeColumn)
 }
 
+func GetTimeColumnFormat2(tableSchema TableSchema, timeColumn string) (DateTimeFormat, error) {
+	for _, dtField := range tableSchema.DateTimeFieldSpecs {
+		if dtField.Name == timeColumn {
+			return ParseDateTimeFormat(dtField.Format)
+		}
+	}
+	return DateTimeFormat{}, fmt.Errorf("column `%s` is not a date time column", timeColumn)
+}
+
 func ExtractColumnToField(results *ResultTable, colIdx int) *data.Field {
 	colName := results.DataSchema.ColumnNames[colIdx]
 	return data.NewField(colName, nil, ExtractColumn(results, colIdx))
@@ -64,23 +72,16 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 		})
 	case DataTypeTimestamp:
 		return extractTypedColumn[time.Time](results, func(rowIdx int) (time.Time, error) {
-			var (
-				year   int
-				month  time.Month
-				day    int
-				hour   int
-				minute int
-				second float64
-			)
-			_, err := fmt.Sscanf((results.Rows[rowIdx][colIdx]).(string), "%d-%d-%d %d:%d:%f", &year, &month, &day, &hour, &minute, &second)
-			_, fractional := math.Modf(second)
-			nanos := int(math.Round(fractional * float64(time.Second.Nanoseconds())))
-			return time.Date(year, month, day, hour, minute, int(second), nanos, time.UTC), err
+			return ParseJodaTime((results.Rows[rowIdx][colIdx]).(string))
 		})
 	default:
 		log.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
 		return make([]int64, len(results.Rows))
 	}
+}
+
+func ParseJodaTime(ts string) (time.Time, error) {
+	return time.Parse("2006-01-02 15:04:05", ts)
 }
 
 func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
@@ -254,62 +255,38 @@ func ExtractColumnExpr(results *ResultTable, colIdx int) []string {
 	return exprs
 }
 
-func ExtractTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
-	if IsSimpleTimeColumnFormat(timeColumnFormat) {
-		return ExtractSimpleDateTimeColumn(results, colIdx, timeColumnFormat)
-	} else {
-		return ExtractLongTimeColumn(results, colIdx, timeColumnFormat)
-	}
-}
-
-func ExtractSimpleDateTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
-	simpleDateTimeFormat, ok := SimpleDateTimeFormatFor(timeColumnFormat)
-	if !ok {
-		return nil, fmt.Errorf("invalid time column format: %s", timeColumnFormat)
-	}
-
-	values := make([]time.Time, len(results.Rows))
-	for i, val := range ExtractStringColumn(results, colIdx) {
-		ts, err := time.Parse(simpleDateTimeFormat, val)
-		if err != nil {
-			return nil, err
+func ExtractTimeColumn(results *ResultTable, colIdx int, format DateTimeFormat) ([]time.Time, error) {
+	parseLong := func(v int64) time.Time {
+		switch format.Unit {
+		case TimeUnitDays:
+			return time.Unix(86400*v*int64(format.Size), 0).UTC()
+		case TimeUnitHours:
+			return time.Unix(3600*v*int64(format.Size), 0).UTC()
+		case TimeUnitMinutes:
+			return time.Unix(60*v*int64(format.Size), 0).UTC()
+		case TimeUnitSeconds:
+			return time.Unix(v*int64(format.Size), 0).UTC()
+		case TimeUnitMilliseconds:
+			return time.UnixMilli(v * int64(format.Size)).UTC()
+		case TimeUnitMicroseconds:
+			return time.UnixMicro(v * int64(format.Size)).UTC()
+		default:
+			return time.Unix(0, v*int64(format.Size)).UTC()
 		}
-		values[i] = ts
-	}
-	return values, nil
-}
-
-func SimpleDateTimeFormatFor(timeColumnFormat string) (string, bool) {
-	if !IsSimpleTimeColumnFormat(timeColumnFormat) {
-		return "", false
 	}
 
-	sdfElements := strings.Split(timeColumnFormat, "|")
-	if len(sdfElements) < 2 {
-		return "", false
+	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	case []int64:
+		exprs := make([]time.Time, len(results.Rows))
+		for i := range rawVals {
+			exprs[i] = parseLong(rawVals[i])
+		}
+		return exprs, nil
+	case []time.Time:
+		return rawVals, nil
+	default:
+		return make([]time.Time, len(results.Rows)), nil
 	}
-	sdfPattern := sdfElements[1]
-
-	if _, err := time.Parse(sdfPattern, time.Now().Format(sdfPattern)); err != nil {
-		return "", false
-	}
-	return sdfPattern, true
-}
-
-func ExtractLongTimeColumn(results *ResultTable, colIdx int, timeColumnFormat string) ([]time.Time, error) {
-	timeConverter, ok := getLongTimeConverter(timeColumnFormat)
-	if !ok {
-		return nil, fmt.Errorf("invalid time column format: %s", timeColumnFormat)
-	}
-	values := make([]time.Time, len(results.Rows))
-	for i, val := range ExtractLongColumn(results, colIdx) {
-		values[i] = timeConverter(val)
-	}
-	return values, nil
-}
-
-func IsSimpleTimeColumnFormat(timeColumnFormat string) bool {
-	return strings.HasPrefix(timeColumnFormat, "SIMPLE_DATE_FORMAT|")
 }
 
 func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, bool) {
