@@ -43,7 +43,7 @@ type PinotClient struct {
 
 	listDatabasesCache    *cache.ResourceCache[[]string]
 	listTablesCache       *cache.ResourceCache[[]string]
-	getTableConfigCache   *cache.MultiResourceCache[string, TableConfig]
+	listTableConfigsCache *cache.MultiResourceCache[string, ListTableConfigsResponse]
 	getTableSchemaCache   *cache.MultiResourceCache[string, TableSchema]
 	getTableMetadataCache *cache.MultiResourceCache[string, TableMetadata]
 	timeseriesLabelsCache *cache.MultiResourceCache[string, LabelsCollection]
@@ -78,7 +78,7 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 
 		listDatabasesCache:    cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
 		listTablesCache:       cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
-		getTableConfigCache:   cache.NewMultiResourceCache[string, TableConfig](properties.ControllerCacheTimeout),
+		listTableConfigsCache: cache.NewMultiResourceCache[string, ListTableConfigsResponse](properties.ControllerCacheTimeout),
 		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
 		getTableMetadataCache: cache.NewMultiResourceCache[string, TableMetadata](properties.ControllerCacheTimeout),
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),

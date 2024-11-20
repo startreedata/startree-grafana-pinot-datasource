@@ -162,6 +162,44 @@ LIMIT 100000;`
 			assert.NoError(t, err)
 			assert.Equal(t, want, got)
 		})
+
+		t.Run("derivedTimeCols", func(t *testing.T) {
+			ctx := context.Background()
+			client := test_helpers.SetupPinotAndCreateClient(t)
+			schema, err := client.GetTableSchema(ctx, "derivedTimeBuckets")
+			require.NoError(t, err)
+
+			driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
+				PinotClient:         test_helpers.SetupPinotAndCreateClient(t),
+				TableSchema:         schema,
+				TimeRange:           TimeRange{To: time.Unix(1, 0), From: time.Unix(0, 0)},
+				Granularity:         "1:MINUTES",
+				TableName:           "derivedTimeBuckets",
+				TimeColumn:          "ts",
+				MetricColumn:        "value",
+				AggregationFunction: "SUM",
+				Limit:               1_000,
+				Legend:              "test-legend",
+			})
+			require.NoError(t, err)
+
+			want := `SELECT
+    "ts_1m" AS "time",
+    SUM("value") AS "metric"
+FROM
+    "derivedTimeBuckets"
+WHERE
+    "ts" >= 0 AND "ts" < 60000
+GROUP BY
+    "ts_1m"
+ORDER BY
+    "time" DESC
+LIMIT 1000;`
+
+			got, err := driver.RenderPinotSql(true)
+			assert.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
 	})
 
 	t.Run("AggregationFunction="+AggregationFunctionCount, func(t *testing.T) {

@@ -63,13 +63,16 @@ func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
 	return "/mytables"
 }
 
-type TableConfig struct {
-	RealTime RealTimeTableConfig `json:"REALTIME"`
-}
+type TableType string
 
-type RealTimeTableConfig struct {
-	TableName string `json:"tableName"`
-	TableType string `json:"tableType"`
+const TableTypeRealTime TableType = "REALTIME"
+const TableTypeOffline TableType = "OFFLINE"
+
+type ListTableConfigsResponse map[TableType]TableConfig
+
+type TableConfig struct {
+	TableName string    `json:"tableName"`
+	TableType TableType `json:"tableType"`
 	Query     struct {
 		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
 	} `json:"query"`
@@ -85,17 +88,17 @@ type TransformConfig struct {
 	TransformFunction string `json:"transformFunction"`
 }
 
-func (p *PinotClient) GetTableConfig(ctx context.Context, table string) (TableConfig, error) {
-	return p.getTableConfigCache.Get(table, func() (TableConfig, error) {
+func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
+	return p.listTableConfigsCache.Get(table, func() (ListTableConfigsResponse, error) {
 		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
 		if err != nil {
-			return TableConfig{}, err
+			return ListTableConfigsResponse{}, err
 		}
-		var tableConfig TableConfig
-		if err = p.doRequestAndDecodeResponse(req, &tableConfig); err != nil {
-			return TableConfig{}, err
+		var data ListTableConfigsResponse
+		if err = p.doRequestAndDecodeResponse(req, &data); err != nil {
+			return ListTableConfigsResponse{}, err
 		}
-		return tableConfig, nil
+		return data, nil
 	})
 }
 

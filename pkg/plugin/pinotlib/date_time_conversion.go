@@ -3,6 +3,7 @@ package pinotlib
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -91,9 +92,14 @@ type DerivedTimeColumn struct {
 	Source     DateTimeConversion
 }
 
-func DerivedTimeColumnsFrom(config TableConfig) []DerivedTimeColumn {
+func DerivedTimeColumnsFrom(configs ListTableConfigsResponse) []DerivedTimeColumn {
+	transformConfigs := slices.Concat(
+		configs[TableTypeRealTime].IngestionConfig.TransformConfigs,
+		configs[TableTypeOffline].IngestionConfig.TransformConfigs,
+	)
+
 	var derivedTimeColumns []DerivedTimeColumn
-	for _, transform := range config.RealTime.IngestionConfig.TransformConfigs {
+	for _, transform := range transformConfigs {
 		timeGroup, err := ParseDateTimeConversionExpr(transform.TransformFunction)
 		if err != nil {
 			continue

@@ -142,7 +142,7 @@ func (x *ResourceHandler) GetTableTimeGranularities(r *http.Request) *Response {
 	table := vars["table"]
 	// TODO: Should this also take a time column?
 
-	config, err := x.client.GetTableConfig(r.Context(), table)
+	config, err := x.client.ListTableConfigs(r.Context(), table)
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}

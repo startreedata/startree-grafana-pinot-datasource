@@ -3,8 +3,8 @@ package pinottest
 import (
 	"bytes"
 	"embed"
+	"encoding/json"
 	"fmt"
-	"github.com/goccy/go-json"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,23 +25,27 @@ import _ "embed"
 var dataFS embed.FS
 
 const (
+	Timeout      = 5 * time.Minute
+	PollInterval = 1 * time.Second
+
 	ControllerUrl = "http://localhost:9000"
 	BrokerUrl     = "http://localhost:8000"
 
-	InfraMetricsTableName    = "infraMetrics"
-	GithubEventsTableName    = "githubEvents"
-	StarbucksStoresTableName = "starbucksStores"
-	AirlineStatsTableName    = "airlineStats"
-	BenchmarkTableName       = "benchmark"
-	PartialTableName         = "partial"
-	NginxLogsTableName       = "nginxLogs"
+	InfraMetricsTableName       = "infraMetrics"
+	GithubEventsTableName       = "githubEvents"
+	StarbucksStoresTableName    = "starbucksStores"
+	AirlineStatsTableName       = "airlineStats"
+	BenchmarkTableName          = "benchmark"
+	PartialTableName            = "partial"
+	NginxLogsTableName          = "nginxLogs"
+	DerivedTimeBucketsTableName = "derivedTimeBuckets"
 )
 
 var createTestTablesOnce sync.Once
 
 func CreateTestTables() {
 	createTestTablesOnce.Do(func() {
-		WaitForPinot(5 * time.Minute)
+		WaitForPinot(Timeout)
 
 		type CreateTableJob struct {
 			tableName  string
@@ -92,6 +97,11 @@ func CreateTestTables() {
 				configFile: "data/nginxLogs_offline_table_config.json",
 				dataFile:   "data/nginxLogs_data.json",
 			},
+			{
+				tableName:  DerivedTimeBucketsTableName,
+				schemaFile: "data/derivedTimeBuckets_schema.json",
+				configFile: "data/derivedTimeBuckets_offline_table_config.json",
+			},
 		}
 
 		var wg sync.WaitGroup
@@ -100,35 +110,34 @@ func CreateTestTables() {
 		var somethingChanged atomic.Bool
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
-			if !schemaExists(job.tableName) {
-				somethingChanged.Store(true)
-				fmt.Printf("Table %s: creating schema...\n", job.tableName)
-				createTableSchema(job.schemaFile)
-				waitForTableSchema(job.tableName, 1*time.Minute)
+			if tableExists(job.tableName) {
+				return
 			}
-			if !tableExists(job.tableName) {
-				somethingChanged.Store(true)
-				fmt.Printf("Table %s: creating config...\n", job.tableName)
-				createTableConfig(job.configFile)
-			}
-			if !(tableHasData(job.tableName) || job.dataFile == "") {
-				somethingChanged.Store(true)
-				fmt.Printf("Table %s: uploading data...\n", job.tableName)
-				uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
-				waitForSegmentsAllGood(job.tableName, 1*time.Minute)
 
-				// Delete the partial table's segment and upload a new segment
-				if job.tableName == PartialTableName {
-					uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
-					waitForSegmentsAllGood(job.tableName, 1*time.Minute)
-					segments := listOfflineSegments(job.tableName)
-					if len(segments) != 2 {
-						panic("expected 2 segments")
-					}
-					deleteSegmentFromFilesystem(segments[0])
-					resetSegments(PartialTableName)
-					waitForSegmentStatus(PartialTableName, segments[0], "BAD", 1*time.Minute)
+			fmt.Printf("Creating table %s...\n", job.tableName)
+			somethingChanged.Store(true)
+			deleteTableSchema(job.tableName)
+			createTableSchema(job.schemaFile)
+			waitForTableSchema(job.tableName, Timeout)
+			createTableConfig(job.configFile)
+
+			if job.dataFile == "" {
+				return
+			}
+			uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
+			waitForSegmentsAllGood(job.tableName, Timeout)
+
+			// Delete the partial table's segment and upload a new segment
+			if job.tableName == PartialTableName {
+				uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
+				waitForSegmentsAllGood(job.tableName, Timeout)
+				segments := listOfflineSegments(job.tableName)
+				if len(segments) != 2 {
+					panic("expected 2 segments")
 				}
+				deleteSegmentFromFilesystem(segments[0])
+				resetSegments(PartialTableName)
+				waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
 			}
 		}
 
@@ -144,7 +153,7 @@ func CreateTestTables() {
 }
 
 func waitForSegmentsAllGood(tableName string, timeout time.Duration) {
-	pollTicker := time.NewTicker(time.Second)
+	pollTicker := time.NewTicker(PollInterval)
 	defer pollTicker.Stop()
 
 	timeoutTicker := time.NewTimer(timeout)
@@ -171,7 +180,7 @@ func waitForSegmentsAllGood(tableName string, timeout time.Duration) {
 }
 
 func waitForSegmentStatus(tableName string, segmentName string, segmentStatus string, timeout time.Duration) {
-	pollTicker := time.NewTicker(time.Second)
+	pollTicker := time.NewTicker(PollInterval)
 	defer pollTicker.Stop()
 
 	timeoutTicker := time.NewTimer(timeout)
@@ -254,7 +263,7 @@ func requireNoError(err error) {
 }
 
 func WaitForPinot(timeout time.Duration) {
-	pollTicker := time.NewTicker(time.Second)
+	pollTicker := time.NewTicker(PollInterval)
 	defer pollTicker.Stop()
 
 	timeoutTicker := time.NewTimer(timeout)
@@ -349,8 +358,16 @@ func createTableSchema(schemaFile string) {
 	requireOkStatus(resp)
 }
 
+func deleteTableSchema(schemaName string) {
+	req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/schemas/"+schemaName, nil)
+	resp, err := http.DefaultClient.Do(req)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireStatus(resp, http.StatusOK, http.StatusNotFound)
+}
+
 func waitForTableSchema(schemaName string, timeout time.Duration) {
-	pollTicker := time.NewTicker(time.Second)
+	pollTicker := time.NewTicker(PollInterval)
 	defer pollTicker.Stop()
 
 	timeoutTicker := time.NewTimer(timeout)
@@ -495,7 +512,11 @@ func uploadJsonTableData(tableNameWithType string, dataFile string) {
 }
 
 func requireOkStatus(resp *http.Response) {
-	if resp.StatusCode != http.StatusOK {
+	requireStatus(resp, http.StatusOK)
+}
+
+func requireStatus(resp *http.Response, codes ...int) {
+	if !slices.Contains(codes, resp.StatusCode) {
 		dump, _ := httputil.DumpResponse(resp, true)
 		panic(fmt.Sprintf("Unexpected status code: %d %s", resp.StatusCode, string(dump)))
 	}

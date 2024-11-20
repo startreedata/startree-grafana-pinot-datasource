@@ -19,7 +19,22 @@ func TestExpandMacros(t *testing.T) {
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
 				Granularity: "30:SECONDS", // Unused
+			}, {
+				Name:     "timestamp_1m",
+				DataType: "LONG",
+				Format:   "1:MILLISECONDS:EPOCH",
 			}},
+		},
+		TableConfigs: map[pinotlib.TableType]pinotlib.TableConfig{
+			pinotlib.TableTypeRealTime: {
+				TableName: "CleanLogisticData",
+				TableType: pinotlib.TableTypeRealTime,
+				IngestionConfig: pinotlib.IngestionConfig{
+					TransformConfigs: []pinotlib.TransformConfig{
+						{ColumnName: "timestamp_1m", TransformFunction: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+					},
+				},
+			},
 		},
 		TimeRange:    TimeRange{From: time.Unix(1, 0), To: time.Unix(90_001, 0)},
 		IntervalSize: 1 * time.Hour,
@@ -39,7 +54,8 @@ func TestExpandMacros(t *testing.T) {
 		{expr: `$__timeFilter("timestamp", '1:SECONDS')`, want: `"timestamp" >= 1 AND "timestamp" < 90001`},
 		{expr: `$__timeGroup`, wantErr: "failed to expand macro `timeGroup` (line 1, col 1): expected 1 required argument, got 0"},
 		{expr: `$__timeGroup("timestamp")`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')`},
-		{expr: `$__timeGroup("timestamp", '1:MINUTES')`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
+		{expr: `$__timeGroup("timestamp", '5:MINUTES')`, want: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '5:MINUTES')`},
+		{expr: `$__timeGroup("timestamp", '1:MINUTES')`, want: `"timestamp_1m"`},
 		{expr: `$__timeTo`, wantErr: "failed to expand macro `timeTo` (line 1, col 1): expected 1 argument, got 0"},
 		{expr: `$__timeTo("timestamp")`, want: `90001`},
 		{expr: `$__timeFrom`, wantErr: "failed to expand macro `timeFrom` (line 1, col 1): expected 1 argument, got 0"},

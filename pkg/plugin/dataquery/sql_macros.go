@@ -25,12 +25,12 @@ const (
 )
 
 type MacroEngine struct {
-	Ctx         context.Context
-	TableName   string
-	TimeAlias   string
-	MetricAlias string
-	TableSchema pinotlib.TableSchema
-	TableConfig pinotlib.TableConfig
+	Ctx          context.Context
+	TableName    string
+	TimeAlias    string
+	MetricAlias  string
+	TableSchema  pinotlib.TableSchema
+	TableConfigs pinotlib.ListTableConfigsResponse
 	TimeRange
 	IntervalSize time.Duration
 }
@@ -120,7 +120,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 			return "", err
 		}
 
-		return pinotlib.TimeGroupExpr(x.TableConfig, pinotlib.DateTimeConversion{
+		return pinotlib.TimeGroupExpr(x.TableConfigs, pinotlib.DateTimeConversion{
 			TimeColumn:   timeColumn,
 			InputFormat:  inputFormat,
 			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),

@@ -96,9 +96,26 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 
 func TestPinotClient_GetTableConfig(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
-	config, err := client.GetTableConfig(context.Background(), "benchmark")
+	config, err := client.ListTableConfigs(context.Background(), "derivedTimeBuckets")
 	require.NoError(t, err)
-	require.NotNil(t, config)
+	require.Equal(t, ListTableConfigsResponse{
+		"OFFLINE": TableConfig{
+			TableName: "derivedTimeBuckets_OFFLINE",
+			TableType: "OFFLINE",
+			IngestionConfig: IngestionConfig{
+				TransformConfigs: []TransformConfig{
+					{ColumnName: "ts_1m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 1), 1)"},
+					{ColumnName: "ts_2m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 2), 2)"},
+					{ColumnName: "ts_5m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 5), 5)"},
+					{ColumnName: "ts_10m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 10), 10)"},
+					{ColumnName: "ts_15m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 15), 15)"},
+					{ColumnName: "ts_30m", TransformFunction: "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 30), 30)"},
+					{ColumnName: "ts_1h", TransformFunction: "FromEpochHoursBucket(ToEpochHoursBucket(\"ts\", 1), 1)"},
+					{ColumnName: "ts_1d", TransformFunction: "FromEpochDaysBucket(ToEpochDaysBucket(\"ts\", 1), 1)"},
+				},
+			},
+		},
+	}, config)
 }
 
 func TestPinotClient_GetTableMetadata(t *testing.T) {

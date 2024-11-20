@@ -60,7 +60,7 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 		params.LogColumnAlias = DefaultLogColumnAlias
 	}
 
-	tableConfig, err := params.PinotClient.GetTableConfig(params.Ctx, params.TableName)
+	tableConfigs, err := params.PinotClient.ListTableConfigs(params.Ctx, params.TableName)
 	if err != nil {
 		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
 	}
@@ -71,7 +71,7 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 			Ctx:          params.Ctx,
 			TableName:    params.TableName,
 			TableSchema:  params.TableSchema,
-			TableConfig:  tableConfig,
+			TableConfigs: tableConfigs,
 			TimeRange:    params.TimeRange,
 			IntervalSize: params.IntervalSize,
 			TimeAlias:    params.TimeColumnAlias,

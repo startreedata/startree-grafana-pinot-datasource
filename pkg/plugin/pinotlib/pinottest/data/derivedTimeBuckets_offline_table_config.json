@@ -1,0 +1,53 @@
+{
+  "tableName": "derivedTimeBuckets",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "schemaName": "derivedTimeBuckets",
+    "replication": "1"
+  },
+  "ingestionConfig": {
+    "transformConfigs": [
+      {
+        "columnName": "ts_1m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 1), 1)"
+      },
+      {
+        "columnName": "ts_2m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 2), 2)"
+      },
+      {
+        "columnName": "ts_5m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 5), 5)"
+      },
+      {
+        "columnName": "ts_10m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 10), 10)"
+      },
+      {
+        "columnName": "ts_15m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 15), 15)"
+      },
+      {
+        "columnName": "ts_30m",
+        "transformFunction": "FromEpochMinutesBucket(ToEpochMinutesBucket(\"ts\", 30), 30)"
+      },
+      {
+        "columnName": "ts_1h",
+        "transformFunction": "FromEpochHoursBucket(ToEpochHoursBucket(\"ts\", 1), 1)"
+      },
+      {
+        "columnName": "ts_1d",
+        "transformFunction": "FromEpochDaysBucket(ToEpochDaysBucket(\"ts\", 1), 1)"
+      }
+    ]
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

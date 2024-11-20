@@ -273,8 +273,8 @@ func TestTimeExpr(t *testing.T) {
 
 func TestTimeGroupExpr(t *testing.T) {
 	const outputFormat = "1:MILLISECONDS:EPOCH"
-	tableConfig := TableConfig{
-		RealTime: RealTimeTableConfig{
+	tableConfig := ListTableConfigsResponse{
+		TableTypeRealTime: TableConfig{
 			IngestionConfig: IngestionConfig{
 				TransformConfigs: []TransformConfig{
 					{

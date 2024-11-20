@@ -29,7 +29,7 @@ type PinotQlBuilderDriver struct {
 	TimeColumnAlias   string
 	MetricColumnAlias string
 	TimeGroup         pinotlib.DateTimeConversion
-	TableConfig       pinotlib.TableConfig
+	TableConfigs      pinotlib.ListTableConfigsResponse
 }
 
 type PinotQlBuilderParams struct {
@@ -72,7 +72,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, err
 	}
 
-	tableConfig, err := params.PinotClient.GetTableConfig(params.Ctx, params.TableName)
+	tableConfigs, err := params.PinotClient.ListTableConfigs(params.Ctx, params.TableName)
 	if err != nil {
 		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
 	}
@@ -81,7 +81,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		params:            params,
 		TimeColumnAlias:   DefaultTimeColumnAlias,
 		MetricColumnAlias: DefaultMetricColumnAlias,
-		TableConfig:       tableConfig,
+		TableConfigs:      tableConfigs,
 		TimeGroup: pinotlib.DateTimeConversion{
 			TimeColumn:   params.TimeColumn,
 			InputFormat:  timeColumnFormat,
@@ -189,7 +189,7 @@ func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
 	if expandMacros {
-		return pinotlib.TimeGroupExpr(p.TableConfig, p.TimeGroup)
+		return pinotlib.TimeGroupExpr(p.TableConfigs, p.TimeGroup)
 	} else {
 		return MacroExprFor(MacroTimeGroup, pinotlib.ObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
 	}

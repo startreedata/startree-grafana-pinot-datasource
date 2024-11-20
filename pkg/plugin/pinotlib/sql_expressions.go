@@ -89,8 +89,8 @@ func DateTimeFormatExpr(format DateTimeFormat) string {
 	return LiteralStringExpr(format.LegacyString())
 }
 
-func TimeGroupExpr(config TableConfig, timeGroup DateTimeConversion) string {
-	derivedColumns := DerivedTimeColumnsFrom(config)
+func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) string {
+	derivedColumns := DerivedTimeColumnsFrom(configs)
 	for _, col := range derivedColumns {
 		if col.Source.Equals(timeGroup) {
 			return ObjectExpr(col.ColumnName)
