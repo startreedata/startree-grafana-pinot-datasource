@@ -352,11 +352,6 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
 	t.Helper()
 
-	if t != nil {
-		// TODO: I'm skipping this test for now, but will bring it back shortly.
-		return
-	}
-
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")

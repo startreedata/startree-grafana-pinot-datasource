@@ -13,6 +13,14 @@ func TestParsePinotGranularity(t *testing.T) {
 		want        Granularity
 		wantErr     bool
 	}{
+		{granularity: "NANOSECONDS", want: Granularity{Unit: TimeUnitNanoseconds, Size: 1}},
+		{granularity: "MICROSECONDS", want: Granularity{Unit: TimeUnitMicroseconds, Size: 1}},
+		{granularity: "MILLISECONDS", want: Granularity{Unit: TimeUnitMilliseconds, Size: 1}},
+		{granularity: "SECONDS", want: Granularity{Unit: TimeUnitSeconds, Size: 1}},
+		{granularity: "MINUTES", want: Granularity{Unit: TimeUnitMinutes, Size: 1}},
+		{granularity: "HOURS", want: Granularity{Unit: TimeUnitHours, Size: 1}},
+		{granularity: "DAYS", want: Granularity{Unit: TimeUnitDays, Size: 1}},
+		{granularity: "NotAUnit", wantErr: true},
 		{granularity: "1:NANOSECONDS", want: Granularity{Unit: TimeUnitNanoseconds, Size: 1}},
 		{granularity: "2:MICROSECONDS", want: Granularity{Unit: TimeUnitMicroseconds, Size: 2}},
 		{granularity: "3:MILLISECONDS", want: Granularity{Unit: TimeUnitMilliseconds, Size: 3}},
@@ -20,7 +28,7 @@ func TestParsePinotGranularity(t *testing.T) {
 		{granularity: "5:MINUTES", want: Granularity{Unit: TimeUnitMinutes, Size: 5}},
 		{granularity: "6:HOURS", want: Granularity{Unit: TimeUnitHours, Size: 6}},
 		{granularity: "7:DAYS", want: Granularity{Unit: TimeUnitDays, Size: 7}},
-		{granularity: "1:NotAUnit", wantErr: true},
+		{granularity: "8:NotAUnit", wantErr: true},
 	}
 
 	for _, tt := range tests {

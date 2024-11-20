@@ -95,7 +95,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 }
 
 func getDateTimeFormatOrFallback(tableSchema pinotlib.TableSchema, timeColumn string) pinotlib.DateTimeFormat {
-	format, err := pinotlib.GetTimeColumnFormat2(tableSchema, timeColumn)
+	format, err := pinotlib.GetTimeColumnFormat(tableSchema, timeColumn)
 	if err != nil {
 		return pinotlib.DateTimeFormatMillisecondsEpoch()
 	}
@@ -115,7 +115,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
 		}
 
-		inputFormat, err := pinotlib.GetTimeColumnFormat2(x.TableSchema, timeColumn)
+		inputFormat, err := pinotlib.GetTimeColumnFormat(x.TableSchema, timeColumn)
 		if err != nil {
 			return "", err
 		}

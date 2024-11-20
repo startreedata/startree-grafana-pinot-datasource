@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"time"
 )
@@ -61,23 +62,21 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 
 	tableConfig, err := params.PinotClient.GetTableConfig(params.Ctx, params.TableName)
 	if err != nil {
-		return nil, err
-	}
-
-	macroEngine := MacroEngine{
-		Ctx:          params.Ctx,
-		TableName:    params.TableName,
-		TableSchema:  params.TableSchema,
-		TableConfig:  tableConfig,
-		TimeRange:    params.TimeRange,
-		IntervalSize: params.IntervalSize,
-		TimeAlias:    params.TimeColumnAlias,
-		MetricAlias:  params.MetricColumnAlias,
+		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
 	}
 
 	return &PinotQlCodeDriver{
-		params:      params,
-		macroEngine: macroEngine,
+		params: params,
+		macroEngine: MacroEngine{
+			Ctx:          params.Ctx,
+			TableName:    params.TableName,
+			TableSchema:  params.TableSchema,
+			TableConfig:  tableConfig,
+			TimeRange:    params.TimeRange,
+			IntervalSize: params.IntervalSize,
+			TimeAlias:    params.TimeColumnAlias,
+			MetricAlias:  params.MetricColumnAlias,
+		},
 	}, nil
 }
 

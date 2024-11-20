@@ -2,19 +2,33 @@ package pinotlib
 
 import (
 	"fmt"
+	"strings"
 	"time"
 )
 
-const (
-	FormatMillisecondsEpoch = "1:MILLISECONDS:EPOCH"
-)
-
-func SqlObjectExpr(obj string) string {
+func ObjectExpr(obj string) string {
 	return fmt.Sprintf(`"%s"`, obj)
 }
 
-func SqlLiteralStringExpr(lit string) string {
+func LiteralStringExpr(lit string) string {
 	return fmt.Sprintf(`'%s'`, lit)
+}
+
+func UnquoteObjectName(s string) string {
+	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
+		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
+}
+
+func UnquoteStringLiteral(s string) string {
+	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
+		return s[1 : len(s)-1]
+	} else {
+		return s
+	}
 }
 
 type TimeFilter struct {
@@ -41,8 +55,8 @@ func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) st
 
 func TimeFilterExpr(filter TimeFilter) string {
 	return fmt.Sprintf(`%s >= %s AND %s < %s`,
-		SqlObjectExpr(filter.Column), TimeExpr(filter.From, filter.Format),
-		SqlObjectExpr(filter.Column), TimeExpr(filter.To, filter.Format),
+		ObjectExpr(filter.Column), TimeExpr(filter.From, filter.Format),
+		ObjectExpr(filter.Column), TimeExpr(filter.To, filter.Format),
 	)
 }
 
@@ -68,22 +82,22 @@ func TimeExpr(ts time.Time, format DateTimeFormat) string {
 }
 
 func GranularityExpr(granularity Granularity) string {
-	return SqlLiteralStringExpr(granularity.String())
+	return LiteralStringExpr(granularity.String())
 }
 
 func DateTimeFormatExpr(format DateTimeFormat) string {
-	return SqlLiteralStringExpr(format.LegacyString())
+	return LiteralStringExpr(format.LegacyString())
 }
 
 func TimeGroupExpr(config TableConfig, timeGroup DateTimeConversion) string {
 	derivedColumns := DerivedTimeColumnsFrom(config)
 	for _, col := range derivedColumns {
 		if col.Source.Equals(timeGroup) {
-			return SqlObjectExpr(col.ColumnName)
+			return ObjectExpr(col.ColumnName)
 		}
 	}
 	return fmt.Sprintf(`DATETIMECONVERT(%s, %s, %s, %s)`,
-		SqlObjectExpr(timeGroup.TimeColumn),
+		ObjectExpr(timeGroup.TimeColumn),
 		DateTimeFormatExpr(timeGroup.InputFormat),
 		DateTimeFormatExpr(timeGroup.OutputFormat),
 		GranularityExpr(timeGroup.Granularity))

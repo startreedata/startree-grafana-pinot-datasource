@@ -20,17 +20,12 @@ const (
 
 func ParseTimeUnit(s string) (TimeUnit, error) {
 	unit := TimeUnit(strings.ToUpper(s))
-	// TODO: Unsure if validate should be in this method or stay separate.
-	return unit, unit.Validate()
-}
-
-func (unit TimeUnit) Validate() error {
 	switch unit {
 	case TimeUnitDays, TimeUnitHours, TimeUnitMinutes, TimeUnitSeconds,
 		TimeUnitMilliseconds, TimeUnitMicroseconds, TimeUnitNanoseconds:
-		return nil
+		return unit, nil
 	default:
-		return fmt.Errorf("invalid time unit `%s`", unit)
+		return "", fmt.Errorf("invalid time unit `%s`", unit)
 	}
 }
 

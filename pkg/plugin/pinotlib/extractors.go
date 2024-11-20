@@ -6,7 +6,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -26,16 +25,7 @@ func GetColumnIdx(resultTable *ResultTable, colName string) (int, error) {
 	return -1, fmt.Errorf("column %s not found", colName)
 }
 
-func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (string, error) {
-	for _, dtField := range tableSchema.DateTimeFieldSpecs {
-		if dtField.Name == timeColumn {
-			return dtField.Format, nil
-		}
-	}
-	return "", fmt.Errorf("column `%s` is not a date time column", timeColumn)
-}
-
-func GetTimeColumnFormat2(tableSchema TableSchema, timeColumn string) (DateTimeFormat, error) {
+func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (DateTimeFormat, error) {
 	for _, dtField := range tableSchema.DateTimeFieldSpecs {
 		if dtField.Name == timeColumn {
 			return ParseDateTimeFormat(dtField.Format)
@@ -318,21 +308,4 @@ func GetDistinctValues[T comparable](vals []T) []T {
 		}
 	}
 	return result[:]
-}
-
-func UnquoteObjectName(s string) string {
-	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
-		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
-		return s[1 : len(s)-1]
-	} else {
-		return s
-	}
-}
-
-func UnquoteStringLiteral(s string) string {
-	if strings.HasPrefix(s, "'") && strings.HasSuffix(s, "'") {
-		return s[1 : len(s)-1]
-	} else {
-		return s
-	}
 }

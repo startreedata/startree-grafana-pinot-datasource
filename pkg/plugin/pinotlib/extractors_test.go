@@ -67,7 +67,7 @@ func TestGetTimeColumnFormat(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run(tt.colName, func(t *testing.T) {
-			got, err := GetTimeColumnFormat2(schema, tt.colName)
+			got, err := GetTimeColumnFormat(schema, tt.colName)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

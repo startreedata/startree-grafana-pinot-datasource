@@ -64,19 +64,25 @@ func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
 }
 
 type TableConfig struct {
-	Realtime struct {
-		TableName string `json:"tableName"`
-		TableType string `json:"tableType"`
-		Query     struct {
-			ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
-		} `json:"query"`
-		IngestionConfig struct {
-			TransformConfigs []struct {
-				ColumnName        string `json:"columnName"`
-				TransformFunction string `json:"transformFunction"`
-			}
-		} `json:"ingestionConfig"`
-	} `json:"REALTIME"`
+	RealTime RealTimeTableConfig `json:"REALTIME"`
+}
+
+type RealTimeTableConfig struct {
+	TableName string `json:"tableName"`
+	TableType string `json:"tableType"`
+	Query     struct {
+		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
+	} `json:"query"`
+	IngestionConfig IngestionConfig `json:"ingestionConfig"`
+}
+
+type IngestionConfig struct {
+	TransformConfigs []TransformConfig `json:"transformConfigs"`
+}
+
+type TransformConfig struct {
+	ColumnName        string `json:"columnName"`
+	TransformFunction string `json:"transformFunction"`
 }
 
 func (p *PinotClient) GetTableConfig(ctx context.Context, table string) (TableConfig, error) {

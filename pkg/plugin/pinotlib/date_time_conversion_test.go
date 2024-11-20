@@ -6,14 +6,6 @@ import (
 	"testing"
 )
 
-func TestResolveTimeGroupExpr(t *testing.T) {
-	var config TableConfig
-	config.Realtime.IngestionConfig.TransformConfigs = []struct {
-		ColumnName        string `json:"columnName"`
-		TransformFunction string `json:"transformFunction"`
-	}{{ColumnName: "zz_received_timestamp_1m"}}
-}
-
 func TestParseTimeGroupExpr(t *testing.T) {
 	testCases := []struct {
 		expr    string

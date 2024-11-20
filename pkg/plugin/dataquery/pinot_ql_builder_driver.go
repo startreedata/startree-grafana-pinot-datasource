@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
@@ -66,14 +67,14 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		params.Ctx = context.Background()
 	}
 
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat2(params.TableSchema, params.TimeColumn)
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(params.TableSchema, params.TimeColumn)
 	if err != nil {
 		return nil, err
 	}
 
 	tableConfig, err := params.PinotClient.GetTableConfig(params.Ctx, params.TableName)
 	if err != nil {
-		return nil, err
+		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
 	}
 
 	return &PinotQlBuilderDriver{
@@ -151,7 +152,7 @@ func (p *PinotQlBuilderDriver) ExtractResults(results *pinotlib.ResultTable) (*d
 
 func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
 	if expandMacros {
-		return pinotlib.SqlObjectExpr(p.params.TableName)
+		return pinotlib.ObjectExpr(p.params.TableName)
 	} else {
 		return MacroExprFor(MacroTable)
 	}
@@ -159,7 +160,7 @@ func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
-		return pinotlib.SqlObjectExpr(p.TimeColumnAlias)
+		return pinotlib.ObjectExpr(p.TimeColumnAlias)
 	} else {
 		return MacroExprFor(MacroTimeAlias)
 	}
@@ -167,7 +168,7 @@ func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
 
 func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
 	if expandMacros {
-		return pinotlib.SqlObjectExpr(p.MetricColumnAlias)
+		return pinotlib.ObjectExpr(p.MetricColumnAlias)
 	} else {
 		return MacroExprFor(MacroMetricAlias)
 	}
@@ -182,7 +183,7 @@ func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
 			To:     p.params.TimeRange.To,
 		}, p.TimeGroup.Granularity.Duration())
 	} else {
-		return MacroExprFor(MacroTimeFilter, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
+		return MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
 	}
 }
 
@@ -190,7 +191,7 @@ func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
 	if expandMacros {
 		return pinotlib.TimeGroupExpr(p.TableConfig, p.TimeGroup)
 	} else {
-		return MacroExprFor(MacroTimeGroup, pinotlib.SqlObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
+		return MacroExprFor(MacroTimeGroup, pinotlib.ObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
 	}
 }
 

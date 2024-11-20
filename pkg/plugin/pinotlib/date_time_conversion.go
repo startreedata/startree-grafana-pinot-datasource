@@ -93,7 +93,7 @@ type DerivedTimeColumn struct {
 
 func DerivedTimeColumnsFrom(config TableConfig) []DerivedTimeColumn {
 	var derivedTimeColumns []DerivedTimeColumn
-	for _, transform := range config.Realtime.IngestionConfig.TransformConfigs {
+	for _, transform := range config.RealTime.IngestionConfig.TransformConfigs {
 		timeGroup, err := ParseDateTimeConversionExpr(transform.TransformFunction)
 		if err != nil {
 			continue

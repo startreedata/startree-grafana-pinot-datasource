@@ -75,7 +75,6 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 			return new(NoOpDriver), nil
 		}
 		return NewPinotQlCodeDriver(PinotQlCodeDriverParams{
-
 			PinotClient:       pinotClient,
 			Code:              query.PinotQlCode,
 			TableName:         query.TableName,

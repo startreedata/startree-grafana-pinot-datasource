@@ -62,11 +62,7 @@ func ParseGranularityExpr(granularity string) (Granularity, error) {
 		}
 	}
 
-	pinotGranularity, err := NewPinotGranularity(unit, uint(size))
-	if err != nil {
-		return Granularity{}, fmt.Errorf("failed to parse granularity `%s`: %w", granularity, err)
-	}
-	return pinotGranularity, nil
+	return Granularity{Unit: unit, Size: uint(size)}, nil
 }
 
 func (x Granularity) String() string {

@@ -27,7 +27,7 @@ func TestParseTimeUnit(t *testing.T) {
 		{unit: "hours", want: TimeUnitHours},
 		{unit: "DAYS", want: TimeUnitDays},
 		{unit: "days", want: TimeUnitDays},
-		{unit: "NOT_A_UNIT", want: "NOT_A_UNIT", wantErr: errors.New("invalid time unit `NOT_A_UNIT`")},
+		{unit: "NOT_A_UNIT", wantErr: errors.New("invalid time unit `NOT_A_UNIT`")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.unit, func(t *testing.T) {

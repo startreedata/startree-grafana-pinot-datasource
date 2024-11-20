@@ -316,7 +316,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 			return "", err
 		}
 
-		format, err := pinotlib.GetTimeColumnFormat2(tableSchema, data.TimeColumn)
+		format, err := pinotlib.GetTimeColumnFormat(tableSchema, data.TimeColumn)
 		if err != nil {
 			return "", err
 		}
