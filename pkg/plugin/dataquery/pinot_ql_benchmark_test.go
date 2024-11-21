@@ -21,14 +21,8 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	schema, err := client.GetTableSchema(context.Background(), "benchmark")
-	if err != nil {
-		b.Fatal(err)
-	}
 
 	params := PinotQlBuilderParams{
-		PinotClient: client,
-		TableSchema: schema,
 		TimeRange: TimeRange{
 			From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			To:   time.Date(2024, 10, 1, 5, 0, 0, 0, time.UTC),
@@ -42,7 +36,7 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 		Limit:               1_000_000_000,
 	}
 
-	driver, err := NewPinotQlBuilderDriver(params)
+	driver, err := NewPinotQlBuilderDriver(client, params)
 	if err != nil {
 		b.Fatal(err)
 	}

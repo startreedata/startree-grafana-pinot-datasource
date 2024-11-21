@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
@@ -33,9 +31,6 @@ type PinotQlBuilderDriver struct {
 }
 
 type PinotQlBuilderParams struct {
-	Ctx                 context.Context
-	PinotClient         *pinotlib.PinotClient
-	TableSchema         pinotlib.TableSchema
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
 	TableName           string
@@ -52,193 +47,206 @@ type PinotQlBuilderParams struct {
 	Legend              string
 }
 
-func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver, error) {
-	if params.TableName == "" {
-		return nil, errors.New("TableName is required")
-	} else if params.TimeColumn == "" {
-		return nil, errors.New("TimeColumn is required")
-	} else if params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount {
-		return nil, errors.New("MetricColumn is required")
-	} else if params.AggregationFunction == "" {
-		return nil, errors.New("AggregationFunction is required")
+func ValidateBuilderParams(params PinotQlBuilderParams) error {
+	switch {
+	case params.TableName == "":
+		return errors.New("TableName is required")
+	case params.TimeColumn == "":
+		return errors.New("TimeColumn is required")
+	case params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount:
+		return errors.New("MetricColumn is required")
+	case params.AggregationFunction == "":
+		return errors.New("AggregationFunction is required")
+	default:
+		return nil
 	}
+}
 
-	if params.Ctx == nil {
-		params.Ctx = context.Background()
-	}
-
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(params.TableSchema, params.TimeColumn)
-	if err != nil {
-		return nil, err
-	}
-
-	tableConfigs, err := params.PinotClient.ListTableConfigs(params.Ctx, params.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
-	}
-
-	return &PinotQlBuilderDriver{
-		params:            params,
-		TimeColumnAlias:   DefaultTimeColumnAlias,
-		MetricColumnAlias: DefaultMetricColumnAlias,
-		TableConfigs:      tableConfigs,
-		TimeGroup: pinotlib.DateTimeConversion{
-			TimeColumn:   params.TimeColumn,
-			InputFormat:  timeColumnFormat,
-			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
-			Granularity:  ResolveGranularity(params.Ctx, params.Granularity, params.IntervalSize),
-		},
+func NewPinotQlBuilderDriver(client *pinotlib.PinotClient, params PinotQlBuilderParams) (DriverFunc, error) {
+	return func(ctx context.Context) backend.DataResponse {
+		return ExecutePinotQlBuilderQuery(ctx, client, params)
 	}, nil
 }
 
-func (p *PinotQlBuilderDriver) Execute(ctx context.Context) backend.DataResponse {
-	sql, err := p.RenderPinotSql(true)
+func ExecutePinotQlBuilderQuery(ctx context.Context, client *pinotlib.PinotClient, params PinotQlBuilderParams) backend.DataResponse {
+	if err := ValidateBuilderParams(params); err != nil {
+		return NewPluginErrorResponse(err)
+	}
+
+	tableConfigs, err := client.ListTableConfigs(ctx, params.TableName)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, p.params.PinotClient, pinotlib.NewSqlQuery(sql))
+	granularity := ResolveGranularity(ctx, params.Granularity, params.IntervalSize)
+	timeGroup, err := TimeGroupOf(ctx, client, params.TableName, params.TimeColumn, granularity)
+	if err != nil {
+		return NewPluginErrorResponse(err)
+	}
+
+	sql, err := renderPinotQlBuilderSql(params, timeGroup, tableConfigs, granularity)
+	if err != nil {
+		return NewPluginErrorResponse(err)
+	}
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinotlib.NewSqlQuery(sql))
 	if !ok {
 		return backendResp
 	}
 
-	frame, err := p.ExtractResults(results)
+	frame, err := ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
+		MetricName:        resolveMetricName(params.AggregationFunction, params.MetricColumn),
+		Legend:            params.Legend,
+		TimeColumnAlias:   DefaultTimeColumnAlias,
+		MetricColumnAlias: DefaultMetricColumnAlias,
+		TimeColumnFormat:  resolveTimeColumnFormat(params.AggregationFunction, timeGroup),
+	}, results)
+
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error) {
-	if p.params.AggregationFunction == AggregationFunctionNone {
+func RenderPinotQlBuilderSql(ctx context.Context, client *pinotlib.PinotClient, params PinotQlBuilderParams) (string, error) {
+	if err := ValidateBuilderParams(params); err != nil {
+		return "", err
+	}
+
+	tableConfigs, err := client.ListTableConfigs(ctx, params.TableName)
+	if err != nil {
+		return "", err
+	}
+
+	granularity := ResolveGranularity(ctx, params.Granularity, params.IntervalSize)
+	timeGroup, err := TimeGroupOf(ctx, client, params.TableName, params.TimeColumn, granularity)
+	if err != nil {
+		return "", err
+	}
+
+	return renderPinotQlBuilderSql(params, timeGroup, tableConfigs, granularity)
+}
+
+func renderPinotQlBuilderSql(params PinotQlBuilderParams, timeGroup pinotlib.DateTimeConversion, tableConfigs pinotlib.ListTableConfigsResponse, granularity pinotlib.Granularity) (string, error) {
+	if params.AggregationFunction == AggregationFunctionNone {
 		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
-			TableNameExpr:         p.tableNameExpr(expandMacros),
-			TimeColumn:            p.params.TimeColumn,
-			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
-			MetricColumn:          p.params.MetricColumn,
-			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
-			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
-			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
-			Limit:                 p.resolveLimit(),
-			QueryOptionsExpr:      p.queryOptionsExpr(),
+			TableNameExpr:         pinotlib.ObjectExpr(params.TableName),
+			TimeColumn:            params.TimeColumn,
+			TimeColumnAliasExpr:   pinotlib.ObjectExpr(DefaultTimeColumnAlias),
+			MetricColumn:          params.MetricColumn,
+			MetricColumnAliasExpr: pinotlib.ObjectExpr(DefaultMetricColumnAlias),
+			TimeFilterExpr: pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+				Column: params.TimeColumn,
+				Format: timeGroup.InputFormat,
+				From:   params.TimeRange.From,
+				To:     params.TimeRange.To,
+			}),
+			DimensionFilterExprs: FilterExprsFrom(params.DimensionFilters),
+			Limit:                resolveLimit(params),
+			QueryOptionsExpr:     queryOptionsExpr(params.QueryOptions),
 		})
 	} else {
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-			TableNameExpr:         p.tableNameExpr(expandMacros),
-			TimeGroupExpr:         p.timeGroupExpr(expandMacros),
-			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
-			AggregationFunction:   p.params.AggregationFunction,
-			MetricColumn:          p.resolveMetricColumn(),
-			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
-			GroupByColumns:        p.params.GroupByColumns,
-			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
-			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
-			Limit:                 p.resolveLimit(),
-			OrderByExprs:          p.orderByExprs(),
-			QueryOptionsExpr:      p.queryOptionsExpr(),
+			TableNameExpr:         pinotlib.ObjectExpr(params.TableName),
+			TimeGroupExpr:         pinotlib.TimeGroupExpr(tableConfigs, timeGroup),
+			TimeColumnAliasExpr:   pinotlib.ObjectExpr(DefaultTimeColumnAlias),
+			AggregationFunction:   params.AggregationFunction,
+			MetricColumn:          resolveMetricColumn(params.AggregationFunction, params.MetricColumn),
+			MetricColumnAliasExpr: pinotlib.ObjectExpr(DefaultMetricColumnAlias),
+			GroupByColumns:        params.GroupByColumns,
+			TimeFilterExpr: pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
+				Column: params.TimeColumn,
+				Format: timeGroup.InputFormat,
+				From:   params.TimeRange.From,
+				To:     params.TimeRange.To,
+			}, granularity.Duration()),
+			DimensionFilterExprs: FilterExprsFrom(params.DimensionFilters),
+			Limit:                resolveLimit(params),
+			OrderByExprs:         orderByExprs(params.OrderByClauses),
+			QueryOptionsExpr:     queryOptionsExpr(params.QueryOptions),
 		})
 	}
 }
 
-func (p *PinotQlBuilderDriver) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
-	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
-		MetricName:        p.resolveMetricName(),
-		Legend:            p.params.Legend,
-		TimeColumnAlias:   p.TimeColumnAlias,
-		MetricColumnAlias: p.MetricColumnAlias,
-		TimeColumnFormat:  p.resolveTimeColumnFormat(),
-	}, results)
-}
+func RenderPinotQlBuilderSqlWithMacros(ctx context.Context, params PinotQlBuilderParams) (string, error) {
+	if err := ValidateBuilderParams(params); err != nil {
+		return "", err
+	}
 
-func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
-	if expandMacros {
-		return pinotlib.ObjectExpr(p.params.TableName)
+	granularity := ResolveGranularity(ctx, params.Granularity, params.IntervalSize)
+	if params.AggregationFunction == AggregationFunctionNone {
+		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeColumn:            params.TimeColumn,
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			MetricColumn:          params.MetricColumn,
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(params.TimeColumn), pinotlib.GranularityExpr(granularity)),
+			DimensionFilterExprs:  FilterExprsFrom(params.DimensionFilters),
+			Limit:                 resolveLimit(params),
+			QueryOptionsExpr:      queryOptionsExpr(params.QueryOptions),
+		})
 	} else {
-		return MacroExprFor(MacroTable)
+		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, pinotlib.ObjectExpr(params.TimeColumn), pinotlib.GranularityExpr(granularity)),
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			AggregationFunction:   params.AggregationFunction,
+			MetricColumn:          resolveMetricColumn(params.AggregationFunction, params.MetricColumn),
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			GroupByColumns:        params.GroupByColumns,
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(params.TimeColumn), pinotlib.GranularityExpr(granularity)),
+			DimensionFilterExprs:  FilterExprsFrom(params.DimensionFilters),
+			Limit:                 resolveLimit(params),
+			OrderByExprs:          orderByExprs(params.OrderByClauses),
+			QueryOptionsExpr:      queryOptionsExpr(params.QueryOptions),
+		})
 	}
 }
 
-func (p *PinotQlBuilderDriver) timeColumnAliasExpr(expandMacros bool) string {
-	if expandMacros {
-		return pinotlib.ObjectExpr(p.TimeColumnAlias)
+func resolveTimeColumnFormat(aggregationFunction string, timeGroup pinotlib.DateTimeConversion) pinotlib.DateTimeFormat {
+	if aggregationFunction == AggregationFunctionNone {
+		return timeGroup.InputFormat
 	} else {
-		return MacroExprFor(MacroTimeAlias)
+		return timeGroup.OutputFormat
 	}
 }
 
-func (p *PinotQlBuilderDriver) metricColumnAliasExpr(expandMacros bool) string {
-	if expandMacros {
-		return pinotlib.ObjectExpr(p.MetricColumnAlias)
-	} else {
-		return MacroExprFor(MacroMetricAlias)
-	}
-}
-
-func (p *PinotQlBuilderDriver) timeFilterExpr(expandMacros bool) string {
-	if expandMacros {
-		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
-			Column: p.params.TimeColumn,
-			Format: p.TimeGroup.InputFormat,
-			From:   p.params.TimeRange.From,
-			To:     p.params.TimeRange.To,
-		}, p.TimeGroup.Granularity.Duration())
-	} else {
-		return MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
-	}
-}
-
-func (p *PinotQlBuilderDriver) timeGroupExpr(expandMacros bool) string {
-	if expandMacros {
-		return pinotlib.TimeGroupExpr(p.TableConfigs, p.TimeGroup)
-	} else {
-		return MacroExprFor(MacroTimeGroup, pinotlib.ObjectExpr(p.params.TimeColumn), pinotlib.GranularityExpr(p.TimeGroup.Granularity))
-	}
-}
-
-func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() pinotlib.DateTimeFormat {
-	if p.params.AggregationFunction == AggregationFunctionNone {
-		return p.TimeGroup.InputFormat
-	} else {
-		return p.TimeGroup.OutputFormat
-	}
-}
-
-func (p *PinotQlBuilderDriver) resolveMetricName() string {
-	if p.params.AggregationFunction == AggregationFunctionCount {
+func resolveMetricName(aggregationFunction string, metricColumn string) string {
+	if aggregationFunction == AggregationFunctionCount {
 		return "count"
 	} else {
-		return p.params.MetricColumn
+		return metricColumn
 	}
 }
 
-func (p *PinotQlBuilderDriver) resolveLimit() int64 {
+func resolveMetricColumn(aggregationFunction string, metricColumn string) string {
+	if aggregationFunction == AggregationFunctionCount {
+		return "*"
+	} else {
+		return metricColumn
+	}
+}
+
+func resolveLimit(params PinotQlBuilderParams) int64 {
 	switch true {
-	case p.params.Limit >= 1:
+	case params.Limit >= 1:
 		// Use provided limit if present
-		return p.params.Limit
-	case p.params.AggregationFunction != AggregationFunctionNone && len(p.params.GroupByColumns) > 0:
+		return params.Limit
+	case params.AggregationFunction != AggregationFunctionNone && len(params.GroupByColumns) > 0:
 		// Use default limit for group by queries.
 		// TODO: Resolve more accurate limit in this case.
 		return DefaultLimit
-	case p.params.MaxDataPoints > 0:
+	case params.MaxDataPoints > 0:
 		// Queries with extra dimensions can directly use max data points.
-		return p.params.MaxDataPoints
+		return params.MaxDataPoints
 	default:
 		return DefaultLimit
 	}
 }
 
-func (p *PinotQlBuilderDriver) resolveMetricColumn() string {
-	if p.params.AggregationFunction == AggregationFunctionCount {
-		return "*"
-	} else {
-		return p.params.MetricColumn
-	}
-}
-
-func (p *PinotQlBuilderDriver) orderByExprs() []string {
-	orderByExprs := make([]string, 0, len(p.params.OrderByClauses))
-	for _, o := range p.params.OrderByClauses {
+func orderByExprs(clauses []OrderByClause) []string {
+	exprs := make([]string, 0, len(clauses))
+	for _, o := range clauses {
 		if o.ColumnName == "" {
 			continue
 		}
@@ -250,14 +258,14 @@ func (p *PinotQlBuilderDriver) orderByExprs() []string {
 			direction = "ASC"
 		}
 
-		orderByExprs = append(orderByExprs, fmt.Sprintf(`"%s" %s`, o.ColumnName, direction))
+		exprs = append(exprs, fmt.Sprintf(`"%s" %s`, o.ColumnName, direction))
 	}
-	return orderByExprs[:]
+	return exprs[:]
 }
 
-func (p *PinotQlBuilderDriver) queryOptionsExpr() string {
-	exprs := make([]string, 0, len(p.params.QueryOptions))
-	for _, o := range p.params.QueryOptions {
+func queryOptionsExpr(queryOptions []QueryOption) string {
+	exprs := make([]string, 0, len(queryOptions))
+	for _, o := range queryOptions {
 		if o.Name != "" && o.Value != "" {
 			exprs = append(exprs, fmt.Sprintf(`SET %s=%s;`, o.Name, o.Value))
 		}

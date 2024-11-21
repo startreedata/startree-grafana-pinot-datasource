@@ -99,6 +99,10 @@ func (p *PinotQlCodeDriver) Execute(ctx context.Context) backend.DataResponse {
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
+func RenderPinotQlCodeSql(ctx context.Context, client pinotlib.PinotClient, params PinotQlCodeDriverParams) (string, error) {
+
+}
+
 func (p *PinotQlCodeDriver) RenderPinotSql() (string, error) {
 	rendered, err := p.macroEngine.ExpandMacros(p.params.Code)
 	if err != nil {

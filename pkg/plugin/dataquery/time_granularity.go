@@ -12,6 +12,25 @@ import (
 
 const GranularityAuto = "auto"
 
+func TimeGroupOf(ctx context.Context, client *pinotlib.PinotClient, tableName string, timeColumn string, granularity pinotlib.Granularity) (pinotlib.DateTimeConversion, error) {
+	schema, err := client.GetTableSchema(ctx, tableName)
+	if err != nil {
+		return pinotlib.DateTimeConversion{}, err
+	}
+
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, timeColumn)
+	if err != nil {
+		return pinotlib.DateTimeConversion{}, err
+	}
+
+	return pinotlib.DateTimeConversion{
+		TimeColumn:   timeColumn,
+		InputFormat:  timeColumnFormat,
+		OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
+		Granularity:  granularity,
+	}, nil
+}
+
 func ResolveGranularity(ctx context.Context, expr string, fallback time.Duration) pinotlib.Granularity {
 	if expr == "" || expr == GranularityAuto {
 		return pinotlib.GranularityOf(fallback)

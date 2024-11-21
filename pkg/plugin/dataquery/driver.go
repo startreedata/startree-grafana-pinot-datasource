@@ -53,9 +53,7 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 
 	switch query.EditorMode {
 	case EditorModeBuilder:
-		return NewPinotQlBuilderDriver(PinotQlBuilderParams{
-			PinotClient:         pinotClient,
-			TableSchema:         tableSchema,
+		return NewPinotQlBuilderDriver(pinotClient, PinotQlBuilderParams{
 			TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
 			IntervalSize:        query.IntervalSize,
 			TableName:           query.TableName,
@@ -91,6 +89,10 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 		return new(NoOpDriver), nil
 	}
 }
+
+type DriverFunc func(ctx context.Context) backend.DataResponse
+
+func (f DriverFunc) Execute(ctx context.Context) backend.DataResponse { return f(ctx) }
 
 var _ Driver = &NoOpDriver{}
 

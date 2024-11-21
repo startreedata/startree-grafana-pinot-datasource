@@ -178,16 +178,8 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		return newEmptyResponse(http.StatusOK)
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-	if err != nil {
-		// No need to surface this error in Grafana.
-		log.WithError(err).Error("PinotClient.GetTableSchema() failed.")
-		return newEmptyResponse(http.StatusOK)
-	}
-
 	driver, err := dataquery.NewPinotQlBuilderDriver(dataquery.PinotQlBuilderParams{
 		PinotClient:         x.client,
-		TableSchema:         tableSchema,
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
 		TableName:           data.TableName,
