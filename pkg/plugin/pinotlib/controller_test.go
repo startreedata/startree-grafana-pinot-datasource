@@ -43,7 +43,7 @@ func TestPinotClient_ListTables(t *testing.T) {
 
 		gotTables, err := client.ListTables(ctx)
 		assert.NoError(t, err)
-		assert.Subset(t, gotTables, []string{"infraMetrics", "githubEvents", "starbucksStores"})
+		assert.Subset(t, gotTables, []string{"infraMetrics", "benchmark", "partial"})
 	})
 }
 
@@ -58,37 +58,28 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("githubEvents", func(t *testing.T) {
+	t.Run("benchmark", func(t *testing.T) {
 		ctx := context.Background()
 
 		want := TableSchema{
-			SchemaName: "githubEvents",
+			SchemaName: "benchmark",
 			DimensionFieldSpecs: []DimensionFieldSpec{
-				{Name: "id", DataType: "STRING"},
-				{Name: "type", DataType: "STRING"},
-				{Name: "actor", DataType: "JSON"},
-				{Name: "repo", DataType: "JSON"},
-				{Name: "payload", DataType: "JSON"},
-				{Name: "public", DataType: "BOOLEAN"},
+				{Name: "fabric", DataType: "STRING"},
+				{Name: "pattern", DataType: "STRING"},
 			},
-			MetricFieldSpecs: nil,
-			DateTimeFieldSpecs: []DateTimeFieldSpec{
-				{
-					Name:        "created_at",
-					DataType:    "STRING",
-					Format:      "1:SECONDS:SIMPLE_DATE_FORMAT:yyyy-MM-dd'T'HH:mm:ss'Z'",
-					Granularity: "1:SECONDS",
-				},
-				{
-					Name:        "created_at_timestamp",
-					DataType:    "TIMESTAMP",
-					Format:      "TIMESTAMP",
-					Granularity: "1:SECONDS",
-				},
-			},
+			MetricFieldSpecs: []MetricFieldSpec{{
+				Name:     "value",
+				DataType: "DOUBLE",
+			}},
+			DateTimeFieldSpecs: []DateTimeFieldSpec{{
+				Name:        "ts",
+				DataType:    "TIMESTAMP",
+				Format:      "TIMESTAMP",
+				Granularity: "1:MILLISECONDS",
+			}},
 		}
 
-		got, err := client.GetTableSchema(ctx, "githubEvents")
+		got, err := client.GetTableSchema(ctx, "benchmark")
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -125,18 +116,18 @@ func TestPinotClient_GetTableMetadata(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 
-		_, err := client.GetTableMetadata(ctx, "githubEvents")
+		_, err := client.GetTableMetadata(ctx, "benchmark")
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("githubEvents", func(t *testing.T) {
+	t.Run("benchmark", func(t *testing.T) {
 		ctx := context.Background()
 
 		want := TableMetadata{
-			TableNameAndType: "githubEvents_OFFLINE",
+			TableNameAndType: "benchmark_OFFLINE",
 		}
 
-		got, err := client.GetTableMetadata(ctx, "githubEvents")
+		got, err := client.GetTableMetadata(ctx, "benchmark")
 		assert.NoError(t, err)
 		assert.Equal(t, want.TableNameAndType, got.TableNameAndType)
 	})

@@ -32,9 +32,6 @@ const (
 	BrokerUrl     = "http://localhost:8000"
 
 	InfraMetricsTableName       = "infraMetrics"
-	GithubEventsTableName       = "githubEvents"
-	StarbucksStoresTableName    = "starbucksStores"
-	AirlineStatsTableName       = "airlineStats"
 	BenchmarkTableName          = "benchmark"
 	PartialTableName            = "partial"
 	NginxLogsTableName          = "nginxLogs"
@@ -55,60 +52,35 @@ func CreateTestTables() {
 			dataFile   string
 		}
 
-		jobs := []CreateTableJob{
-			{
-				tableName:  InfraMetricsTableName,
-				schemaFile: "data/infraMetrics_schema.json",
-				configFile: "data/infraMetrics_offline_table_config.json",
-				dataFile:   "data/infraMetrics_data.json",
-			},
-			{
-				tableName:  GithubEventsTableName,
-				schemaFile: "data/githubEvents_schema.json",
-				configFile: "data/githubEvents_offline_table_config.json",
-				dataFile:   "data/githubEvents_data.json",
-			},
-			{
-				tableName:  StarbucksStoresTableName,
-				schemaFile: "data/starbucksStores_schema.json",
-				configFile: "data/starbucksStores_offline_table_config.json",
-				dataFile:   "data/starbucksStores_data.csv",
-			},
-			{
-				tableName:  AirlineStatsTableName,
-				schemaFile: "data/airlineStats_schema.json",
-				configFile: "data/airlineStats_offline_table_config.json",
-				// TODO: Add data file at some point
-			},
-			{
-				tableName:  BenchmarkTableName,
-				schemaFile: "data/benchmark_schema.json",
-				configFile: "data/benchmark_offline_table_config.json",
-				dataFile:   "data/benchmark_data.json",
-			},
-			{
-				tableName:  PartialTableName,
-				schemaFile: "data/partial_schema.json",
-				configFile: "data/partial_offline_table_config.json",
-				dataFile:   "data/partial_data_1.json",
-			},
-			{
-				tableName:  NginxLogsTableName,
-				schemaFile: "data/nginxLogs_schema.json",
-				configFile: "data/nginxLogs_offline_table_config.json",
-				dataFile:   "data/nginxLogs_data.json",
-			},
-			{
-				tableName:  DerivedTimeBucketsTableName,
-				schemaFile: "data/derivedTimeBuckets_schema.json",
-				configFile: "data/derivedTimeBuckets_offline_table_config.json",
-			},
-			{
-				tableName:  EmptyTableName,
-				schemaFile: "data/empty_schema.json",
-				configFile: "data/empty_offline_table_config.json",
-			},
-		}
+		jobs := []CreateTableJob{{
+			tableName:  InfraMetricsTableName,
+			schemaFile: "data/infraMetrics_schema.json",
+			configFile: "data/infraMetrics_offline_table_config.json",
+			dataFile:   "data/infraMetrics_data.json",
+		}, {
+			tableName:  BenchmarkTableName,
+			schemaFile: "data/benchmark_schema.json",
+			configFile: "data/benchmark_offline_table_config.json",
+			dataFile:   "data/benchmark_data.json",
+		}, {
+			tableName:  PartialTableName,
+			schemaFile: "data/partial_schema.json",
+			configFile: "data/partial_offline_table_config.json",
+			dataFile:   "data/partial_data_1.json",
+		}, {
+			tableName:  NginxLogsTableName,
+			schemaFile: "data/nginxLogs_schema.json",
+			configFile: "data/nginxLogs_offline_table_config.json",
+			dataFile:   "data/nginxLogs_data.json",
+		}, {
+			tableName:  DerivedTimeBucketsTableName,
+			schemaFile: "data/derivedTimeBuckets_schema.json",
+			configFile: "data/derivedTimeBuckets_offline_table_config.json",
+		}, {
+			tableName:  EmptyTableName,
+			schemaFile: "data/empty_schema.json",
+			configFile: "data/empty_offline_table_config.json",
+		}}
 
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
@@ -173,7 +145,7 @@ func waitForSegmentsAllGood(tableName string, timeout time.Duration) {
 				goodSegments++
 			}
 		}
-		if len(statuses) == goodSegments {
+		if len(statuses) == goodSegments && len(statuses) > 0 {
 			return
 		}
 

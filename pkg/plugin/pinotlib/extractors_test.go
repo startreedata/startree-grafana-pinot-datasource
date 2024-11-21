@@ -38,21 +38,20 @@ func TestGetColumnIdx(t *testing.T) {
 
 func TestGetTimeColumnFormat(t *testing.T) {
 	schema := TableSchema{
-		SchemaName: "githubEvents",
+		SchemaName: "benchmark",
 		DimensionFieldSpecs: []DimensionFieldSpec{
-			{Name: "id", DataType: "STRING"},
-			{Name: "type", DataType: "STRING"},
-			{Name: "actor", DataType: "JSON"},
-			{Name: "repo", DataType: "JSON"},
-			{Name: "payload", DataType: "JSON"},
-			{Name: "public", DataType: "BOOLEAN"},
+			{Name: "fabric", DataType: "STRING"},
+			{Name: "pattern", DataType: "STRING"},
 		},
-		MetricFieldSpecs: nil,
+		MetricFieldSpecs: []MetricFieldSpec{{
+			Name:     "value",
+			DataType: "DOUBLE",
+		}},
 		DateTimeFieldSpecs: []DateTimeFieldSpec{{
-			Name:        "created_at_timestamp",
+			Name:        "ts",
 			DataType:    "TIMESTAMP",
 			Format:      "TIMESTAMP",
-			Granularity: "1:SECONDS",
+			Granularity: "1:MILLISECONDS",
 		}},
 	}
 
@@ -61,8 +60,8 @@ func TestGetTimeColumnFormat(t *testing.T) {
 		want    DateTimeFormat
 		wantErr bool
 	}{
-		{colName: "created_at_timestamp", want: DateTimeFormatMillisecondsEpoch()},
-		{colName: "actor", wantErr: true},
+		{colName: "ts", want: DateTimeFormatMillisecondsEpoch()},
+		{colName: "fabric", wantErr: true},
 	}
 
 	for _, tt := range testArgs {
