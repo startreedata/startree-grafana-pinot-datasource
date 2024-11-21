@@ -288,9 +288,12 @@ func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDis
 		return newInternalServerErrorResponse(err)
 	}
 
-	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
-		ValueExprs: pinotlib.ExtractColumnExpr(results.ResultTable, 0),
-	}}
+	var valueExprs []string
+	if results.HasData() {
+		valueExprs = pinotlib.ExtractColumnExpr(results.ResultTable, 0)
+	}
+
+	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{ValueExprs: valueExprs}}
 }
 
 type PreviewSqlDistinctValues QueryDistinctValuesRequest

@@ -297,13 +297,13 @@ func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Dr
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
+	schema, err := client.GetTableSchema(context.Background(), "empty")
 	require.NoError(t, err)
 
 	driver, err := newDriver(DriverTestCase{
 		Client:       client,
-		TableName:    "benchmark",
-		TableSchema:  benchmarkTableSchema,
+		TableName:    "empty",
+		TableSchema:  schema,
 		TargetColumn: "value",
 		TimeColumn:   "ts",
 		TimeRange: TimeRange{

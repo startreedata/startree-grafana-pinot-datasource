@@ -82,6 +82,9 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 		t.Run("partial data", func(t *testing.T) {
 			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
 		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
+		})
 		t.Run("column dne", func(t *testing.T) {
 			runSqlQueryColumnDne(t, newDriver)
 		})
@@ -114,6 +117,9 @@ LIMIT 100;`, testCase.TargetColumn, testCase.TableName, testCase.TargetColumn),
 		})
 		t.Run("partial data", func(t *testing.T) {
 			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
 		})
 		t.Run("column dne", func(t *testing.T) {
 			runSqlQueryColumnDne(t, newDriver)

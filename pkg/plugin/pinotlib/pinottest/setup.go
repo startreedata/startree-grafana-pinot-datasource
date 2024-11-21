@@ -39,6 +39,7 @@ const (
 	PartialTableName            = "partial"
 	NginxLogsTableName          = "nginxLogs"
 	DerivedTimeBucketsTableName = "derivedTimeBuckets"
+	EmptyTableName              = "empty"
 )
 
 var createTestTablesOnce sync.Once
@@ -101,6 +102,11 @@ func CreateTestTables() {
 				tableName:  DerivedTimeBucketsTableName,
 				schemaFile: "data/derivedTimeBuckets_schema.json",
 				configFile: "data/derivedTimeBuckets_offline_table_config.json",
+			},
+			{
+				tableName:  EmptyTableName,
+				schemaFile: "data/empty_schema.json",
+				configFile: "data/empty_offline_table_config.json",
 			},
 		}
 
@@ -442,37 +448,6 @@ func createTableConfig(configFile string) {
 	if code != http.StatusOK {
 		panic(fmt.Sprintf("Unexpected status code: %d %s", code, body))
 	}
-}
-
-func tableHasData(tableName string) bool {
-	reqData := struct {
-		Sql string `json:"sql"`
-	}{
-		Sql: fmt.Sprintf("select * from %s limit 1", tableName),
-	}
-
-	var reqBody bytes.Buffer
-	requireNoError(json.NewEncoder(&reqBody).Encode(reqData))
-
-	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/sql", &reqBody)
-	req.Header.Set("Content-Type", "application/json")
-	requireNoError(err)
-
-	resp, err := http.DefaultClient.Do(req)
-	requireNoError(err)
-	defer safeClose(resp.Body)
-
-	var respData struct {
-		ResultTable struct {
-			Rows []interface{} `json:"rows"`
-		} `json:"resultTable"`
-	}
-	if resp.StatusCode != http.StatusOK {
-		panic(fmt.Sprintf("Unexpected status code: %d %s", resp.StatusCode, reqBody.String()))
-	}
-	requireNoError(json.NewDecoder(resp.Body).Decode(&respData))
-
-	return len(respData.ResultTable.Rows) != 0
 }
 
 func uploadJsonTableData(tableNameWithType string, dataFile string) {
