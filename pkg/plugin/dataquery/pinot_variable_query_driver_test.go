@@ -32,7 +32,7 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 				for i := 0; i < field.Len(); i++ {
 					gotTable = append(gotTable, field.At(i).(string))
 				}
-				assert.Subset(t, gotTable, []string{"infraMetrics", "githubEvents", "starbucksStores"}, "DataResponse.Frames[0].Fields[0]")
+				assert.Subset(t, gotTable, []string{"infraMetrics", "benchmark", "partial"}, "DataResponse.Frames[0].Fields[0]")
 			}
 
 			assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")

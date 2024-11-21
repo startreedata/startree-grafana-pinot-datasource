@@ -119,14 +119,14 @@ func TestPinotClient_IsTimeSeriesTable(t *testing.T) {
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("infraMetrics", func(t *testing.T) {
+	t.Run("table=infraMetrics", func(t *testing.T) {
 		got, err := client.IsTimeSeriesTable(context.Background(), "infraMetrics")
 		assert.NoError(t, err)
 		assert.True(t, got)
 	})
 
-	t.Run("githubEvents", func(t *testing.T) {
-		got, err := client.IsTimeSeriesTable(context.Background(), "githubEvents")
+	t.Run("table=benchmark", func(t *testing.T) {
+		got, err := client.IsTimeSeriesTable(context.Background(), "benchmark")
 		assert.NoError(t, err)
 		assert.False(t, got)
 	})
