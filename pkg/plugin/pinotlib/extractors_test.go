@@ -1,6 +1,7 @@
 package pinotlib
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -78,64 +79,35 @@ func TestGetTimeColumnFormat(t *testing.T) {
 }
 
 func TestExtractColumn(t *testing.T) {
-	testArgs := []struct {
-		dataType string
-		col      []interface{}
-		want     interface{}
+	client := setupPinotAndCreateClient(t)
+
+	testCases := []struct {
+		column string
+		want   interface{}
 	}{
-		{
-			dataType: DataTypeInt,
-			col:      []interface{}{json.Number("1"), json.Number("2"), json.Number("3")},
-			want:     []int64{1, 2, 3},
-		},
-		{
-			dataType: DataTypeLong,
-			col:      []interface{}{json.Number("1"), json.Number("2"), json.Number("3")},
-			want:     []int64{1, 2, 3},
-		},
-		{
-			dataType: DataTypeDouble,
-			col:      []interface{}{json.Number("1.1"), json.Number("2.2"), json.Number("3.3")},
-			want:     []float64{1.1, 2.2, 3.3},
-		},
-		{
-			dataType: DataTypeFloat,
-			col:      []interface{}{json.Number("1.1"), json.Number("2.2"), json.Number("3.3")},
-			want:     []float64{1.1, 2.2, 3.3},
-		},
-		{
-			dataType: DataTypeString,
-			col:      []interface{}{"a", "b", "c"},
-			want:     []string{"a", "b", "c"},
-		},
-		{
-			dataType: DataTypeJson,
-			col:      []interface{}{`{"x":"a"}`, `{"x":"b"}`, `{"x":"c"}`},
-			want:     []string{`{"x":"a"}`, `{"x":"b"}`, `{"x":"c"}`},
-		},
-		{
-			dataType: DataTypeBoolean,
-			col:      []interface{}{true, false, true},
-			want:     []bool{true, false, true},
-		},
-		{
-			dataType: DataTypeTimestamp,
-			col:      []interface{}{"2024-10-24 10:11:12.1", "2024-10-25 10:11:12.01", "2024-10-26 15:11:12.001"},
-			want: []time.Time{
-				time.Date(2024, 10, 24, 10, 11, 12, 0.1e9, time.UTC),
-				time.Date(2024, 10, 25, 10, 11, 12, 0.01e9, time.UTC),
-				time.Date(2024, 10, 26, 15, 11, 12, 0.001e9, time.UTC),
-			},
-		},
+		{column: "__double", want: interface{}([]float64{0, 0.1111111111111111, 0.2222222222222222})},
+		{column: "__float", want: interface{}([]float64{0, 0.11111111, 0.22222222})},
+		{column: "__int", want: interface{}([]int64{0, 111_111, 222_222})},
+		{column: "__long", want: interface{}([]int64{0, 111111111111111, 222222222222222})},
+		{column: "__string", want: interface{}([]string{"row_0", "row_1", "row_2"})},
+		{column: "__bytes", want: interface{}([]string{"8445a8345a43b74d9d130cbf28dbeff9", "6373c2b93fb7c22bd893c3bdfeac70f4", "094174861955e2918de963f0103a065a"})},
+		{column: "__json", want: interface{}([]string{"{\"key1\":\"val1\",\"key2\":2,\"key3\":[\"val3_1\",\"val3_2\"]}", "{\"key1\":\"val1\",\"key2\":2,\"key3\":[\"val3_1\",\"val3_2\"]}", "{\"key1\":\"val1\",\"key2\":2,\"key3\":[\"val3_1\",\"val3_2\"]}"})},
+		{column: "__bool", want: interface{}([]bool{true, false, true})},
+		{column: "__timestamp", want: interface{}([]time.Time{time.Date(2024, time.November, 1, 0, 0, 0, 0, time.UTC), time.Date(2024, time.November, 1, 0, 0, 1, 0, time.UTC), time.Date(2024, time.November, 1, 0, 0, 2, 0, time.UTC)})},
+		{column: "__map_string_long", want: interface{}([]map[string]interface{}{{"key1": json.Number("1"), "key2": json.Number("2")}, {"key1": json.Number("1"), "key2": json.Number("2")}, {"key1": json.Number("1"), "key2": json.Number("2")}})},
+		{column: "__map_string_string", want: interface{}([]map[string]interface{}{{"key1": "val1", "key2": "val2"}, {"key1": "val1", "key2": "val2"}, {"key1": "val1", "key2": "val2"}})},
 	}
 
-	for _, tt := range testArgs {
-		t.Run("dataType="+tt.dataType, func(t *testing.T) {
-			got := ExtractColumn(&ResultTable{
-				DataSchema: DataSchema{ColumnDataTypes: []string{tt.dataType}},
-				Rows:       reshapeCols(tt.col),
-			}, 0)
-			assert.Equal(t, tt.want, got)
+	resp, err := client.ExecuteSqlQuery(context.Background(),
+		NewSqlQuery(`select * from "allDataTypes" order by "__timestamp" asc limit 3`))
+	require.NoError(t, err, "client.ExecuteSqlQuery()")
+	require.True(t, resp.HasData(), "resp.HasData()")
+
+	for _, tt := range testCases {
+		t.Run(tt.column, func(t *testing.T) {
+			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, ExtractColumn(resp.ResultTable, colIdx))
 		})
 	}
 }

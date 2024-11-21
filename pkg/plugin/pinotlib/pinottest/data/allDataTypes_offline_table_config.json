@@ -1,0 +1,25 @@
+{
+  "tableName": "allDataTypes",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "__timestamp",
+    "schemaName": "allDataTypes",
+    "replication": "1"
+  },
+  "ingestionConfig": {
+    "transformConfigs": [
+      {
+        "columnName": "__bytes",
+        "transformFunction": "fromBase64(\"__raw_bytes\")"
+      }
+    ]
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

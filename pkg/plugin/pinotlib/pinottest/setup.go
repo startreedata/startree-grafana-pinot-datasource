@@ -80,6 +80,11 @@ func CreateTestTables() {
 			tableName:  EmptyTableName,
 			schemaFile: "data/empty_schema.json",
 			configFile: "data/empty_offline_table_config.json",
+		}, {
+			tableName:  "allDataTypes",
+			schemaFile: "data/allDataTypes_schema.json",
+			configFile: "data/allDataTypes_offline_table_config.json",
+			dataFile:   "data/allDataTypes_data.json",
 		}}
 
 		var wg sync.WaitGroup

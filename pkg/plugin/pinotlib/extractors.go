@@ -64,6 +64,10 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 		return extractTypedColumn[time.Time](results, func(rowIdx int) (time.Time, error) {
 			return ParseJodaTime((results.Rows[rowIdx][colIdx]).(string))
 		})
+	case DataTypeMap:
+		return extractTypedColumn[map[string]interface{}](results, func(rowIdx int) (map[string]interface{}, error) {
+			return (results.Rows[rowIdx][colIdx]).(map[string]interface{}), nil
+		})
 	default:
 		log.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
 		return make([]int64, len(results.Rows))
@@ -74,7 +78,11 @@ func ParseJodaTime(ts string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", ts)
 }
 
-func extractTypedColumn[V int64 | float64 | string | bool | time.Time](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
+type nativeColumnType interface {
+	int64 | float64 | string | bool | time.Time | map[string]interface{}
+}
+
+func extractTypedColumn[V nativeColumnType](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
 	values := make([]V, len(results.Rows))
 	hasError := false
 	for rowIdx := 0; rowIdx < len(results.Rows); rowIdx++ {
@@ -276,25 +284,6 @@ func ExtractTimeColumn(results *ResultTable, colIdx int, format DateTimeFormat) 
 		return rawVals, nil
 	default:
 		return make([]time.Time, len(results.Rows)), nil
-	}
-}
-
-func getLongTimeConverter(timeColumnFormat string) (func(v int64) time.Time, bool) {
-	switch timeColumnFormat {
-	case "EPOCH_NANOS", "1:NANOSECONDS:EPOCH", "EPOCH|NANOSECONDS", "EPOCH|NANOSECONDS|1":
-		return func(v int64) time.Time { return time.Unix(0, v).UTC() }, true
-	case "EPOCH_MICROS", "1:MICROSECONDS:EPOCH", "EPOCH|MICROSECONDS", "EPOCH|MICROSECONDS|1":
-		return func(v int64) time.Time { return time.UnixMicro(v).UTC() }, true
-	case "EPOCH_MILLIS", "1:MILLISECONDS:EPOCH", "EPOCH|MILLISECONDS", "EPOCH|MILLISECONDS|1", "EPOCH", "TIMESTAMP", "1:MILLISECONDS:TIMESTAMP":
-		return func(v int64) time.Time { return time.UnixMilli(v).UTC() }, true
-	case "EPOCH_SECONDS", "1:SECONDS:EPOCH", "EPOCH|SECONDS", "EPOCH|SECONDS|1":
-		return func(v int64) time.Time { return time.Unix(v, 0).UTC() }, true
-	case "EPOCH_MINUTES", "1:MINUTES:EPOCH", "EPOCH|MINUTES", "EPOCH|MINUTES|1":
-		return func(v int64) time.Time { return time.Unix(v*60, 0).UTC() }, true
-	case "EPOCH_HOURS", "1:HOURS:EPOCH", "EPOCH|HOURS", "EPOCH|HOURS|1":
-		return func(v int64) time.Time { return time.Unix(v*3600, 0).UTC() }, true
-	default:
-		return nil, false
 	}
 }
 
