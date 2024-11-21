@@ -27,12 +27,12 @@ const (
 	DataTypeString    = "STRING"
 	DataTypeJson      = "JSON"
 	DataTypeBytes     = "BYTES"
+	DataTypeMap       = "MAP"
 
 	TimeSeriesTableColumnMetricName  = "metric"
 	TimeSeriesTableColumnLabels      = "labels"
 	TimeSeriesTableColumnMetricValue = "value"
 	TimeSeriesTableColumnTimestamp   = "ts"
-	TimeSeriesTimestampFormat        = "1:MILLISECONDS:EPOCH"
 	TimeSeriesQueryLanguagePromQl    = "promql"
 )
 

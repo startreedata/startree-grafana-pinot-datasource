@@ -21,36 +21,33 @@ SET timeoutMs=1;
 
 SELECT
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
-    MAX("AirTime") AS "metric"
+    MAX("value") AS "metric"
 FROM
-    "airlineStats"
+    "benchmark"
 WHERE
     "ts" >= 1388327400000 AND "ts" < 1391281200000
 GROUP BY
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES')
 ORDER BY
     "time" DESC,
-    "metric" DESC
+    "fabric" DESC
 LIMIT 100000;
 `)
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/sql/builder", `{
   "aggregationFunction": "MAX",
-  "databaseName": "default",
   "intervalSize": "30m",
-  "metricColumn": "AirTime",
-  "tableName": "airlineStats",
+  "metricColumn": "value",
+  "tableName": "benchmark",
   "timeColumn": "ts",
   "timeRange": {
     "to": "2014-02-01T18:44:26.214Z",
     "from": "2013-12-29T14:50:28.931Z"
   },
   "limit": -1,
-  "orderBy": [
-    {"columnName": "time", "direction": "DESC"},
-    {"columnName": "metric", "direction": "DESC"}
-  ],
+  "groupBy": ["fabric"],
+  "orderBy": [{"columnName": "time", "direction": "DESC"}, {"columnName": "fabric", "direction": "DESC"}],
   "queryOptions": [{"name":"timeoutMs", "value":"1"}],
   "expandMacros": true
 }`, &got)
@@ -64,17 +61,15 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 
 	var got json.RawMessage
 	doPostRequest(t, server.URL+"/query/distinctValues", `{
-		"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2018-02-01T00:00:00Z"},
-		"databaseName": "default",
-		"tableName":    "githubEvents",
-		"timeColumn":   "created_at_timestamp",
-		"columnName":   "type"
+		"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
+		"tableName":    "benchmark",
+		"timeColumn":   "ts",
+		"columnName":   "fabric"
 	}`, &got)
 
-	want := `{"code":200, "valueExprs":["'CommitCommentEvent'", "'CreateEvent'", "'DeleteEvent'", "'ForkEvent'",
-				"'GollumEvent'", "'IssueCommentEvent'", "'IssuesEvent'", "'MemberEvent'", "'PublicEvent'",
-				"'PullRequestEvent'", "'PullRequestReviewCommentEvent'", "'PushEvent'", "'ReleaseEvent'",
-				"'WatchEvent'"]}`
+	want := `{"code":200,"valueExprs":["'fabric_0000'","'fabric_0001'","'fabric_0002'","'fabric_0003'","'fabric_0004'",
+		"'fabric_0005'","'fabric_0006'","'fabric_0007'","'fabric_0008'","'fabric_0009'","'fabric_0010'","'fabric_0011'",
+		"'fabric_0012'","'fabric_0013'","'fabric_0014'"]}`
 
 	assert.JSONEq(t, want, string(got))
 }
@@ -85,8 +80,8 @@ func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
 
 	var want = `SELECT 
    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES')  AS  "time" ,
-  SUM("AirTime") AS  "metric" 
-FROM  "airlineStats" 
+  SUM("value") AS  "metric" 
+FROM  "benchmark" 
 WHERE  "ts" >= 1388327400000 AND "ts" < 1391281200000 
 GROUP BY  DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') 
 ORDER BY  "time"  DESC
@@ -94,7 +89,7 @@ LIMIT 1000000`
 
 	code := `SELECT 
   $__timeGroup("ts") AS $__timeAlias(),
-  SUM("AirTime") AS $__metricAlias()
+  SUM("value") AS $__metricAlias()
 FROM $__table()
 WHERE $__timeFilter("ts")
 GROUP BY $__timeGroup("ts")
@@ -104,10 +99,9 @@ LIMIT 1000000`
 	var data bytes.Buffer
 	require.NoError(t, json.NewEncoder(&data).Encode(map[string]interface{}{
 		"aggregationFunction": "MAX",
-		"databaseName":        "default",
 		"intervalSize":        "30m",
-		"metricAlias":         "AirTime",
-		"tableName":           "airlineStats",
+		"metricAlias":         "metric",
+		"tableName":           "benchmark",
 		"timeAlias":           "time",
 		"timeRange": map[string]interface{}{
 			"to":   "2014-02-01T18:44:26.214Z",
