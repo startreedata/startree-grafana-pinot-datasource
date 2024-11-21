@@ -16,7 +16,7 @@ type TimeSeriesExtractorParams struct {
 	MetricName        string
 	Legend            string
 	TimeColumnAlias   string
-	TimeColumnFormat  string
+	TimeColumnFormat  pinotlib.DateTimeFormat
 	MetricColumnAlias string
 }
 
@@ -76,7 +76,7 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 	return data.NewFrame("response", fields...), nil
 }
 
-func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeColumnFormat string, metricColumnAlias string) ([]Metric, error) {
+func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeColumnFormat pinotlib.DateTimeFormat, metricColumnAlias string) ([]Metric, error) {
 	timeColIdx, err := pinotlib.GetColumnIdx(results, timeColumnAlias)
 	if err != nil {
 		return nil, err

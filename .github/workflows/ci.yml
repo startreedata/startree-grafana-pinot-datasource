@@ -25,7 +25,7 @@ jobs:
           password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
 
       - name: Start Pinot
-        run: docker compose up pinot --detach
+        run: docker compose up pinot --quiet-pull --detach
 
       - name: Install Go environment
         uses: actions/setup-go@v5

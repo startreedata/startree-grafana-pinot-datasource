@@ -1,0 +1,17 @@
+{
+  "tableName": "empty",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "schemaName": "empty",
+    "replication" : "1"
+  },
+  "tenants":  {
+    "broker":"DefaultTenant",
+    "server":"DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

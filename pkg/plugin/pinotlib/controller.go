@@ -63,6 +63,45 @@ func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
 	return "/mytables"
 }
 
+type TableType string
+
+const TableTypeRealTime TableType = "REALTIME"
+const TableTypeOffline TableType = "OFFLINE"
+
+type ListTableConfigsResponse map[TableType]TableConfig
+
+type TableConfig struct {
+	TableName string    `json:"tableName"`
+	TableType TableType `json:"tableType"`
+	Query     struct {
+		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
+	} `json:"query"`
+	IngestionConfig IngestionConfig `json:"ingestionConfig"`
+}
+
+type IngestionConfig struct {
+	TransformConfigs []TransformConfig `json:"transformConfigs"`
+}
+
+type TransformConfig struct {
+	ColumnName        string `json:"columnName"`
+	TransformFunction string `json:"transformFunction"`
+}
+
+func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
+	return p.listTableConfigsCache.Get(table, func() (ListTableConfigsResponse, error) {
+		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
+		if err != nil {
+			return ListTableConfigsResponse{}, err
+		}
+		var data ListTableConfigsResponse
+		if err = p.doRequestAndDecodeResponse(req, &data); err != nil {
+			return ListTableConfigsResponse{}, err
+		}
+		return data, nil
+	})
+}
+
 type TableSchema struct {
 	SchemaName          string               `json:"schemaName"`
 	DimensionFieldSpecs []DimensionFieldSpec `json:"dimensionFieldSpecs"`

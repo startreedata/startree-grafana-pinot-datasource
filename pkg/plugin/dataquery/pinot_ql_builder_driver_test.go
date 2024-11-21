@@ -1,8 +1,10 @@
 package dataquery
 
 import (
+	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -12,11 +14,13 @@ import (
 func TestNewPinotQlBuilderDriver(t *testing.T) {
 	newParams := func() PinotQlBuilderParams {
 		return PinotQlBuilderParams{
+			Ctx:         context.Background(),
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
-					Format:   pinotlib.FormatMillisecondsEpoch,
+					Format:   "1:MILLISECONDS:EPOCH",
 				}},
 			},
 			TimeRange: TimeRange{
@@ -42,11 +46,8 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		params := newParams()
 		got, gotErr := NewPinotQlBuilderDriver(newParams())
 		assert.NoError(t, gotErr)
-		assert.Equal(t, params, got.params)
-		assert.NotNil(t, got.timeExprBuilder)
 		assert.Equal(t, DefaultMetricColumnAlias, got.MetricColumnAlias)
 		assert.Equal(t, DefaultTimeColumnAlias, got.TimeColumnAlias)
 	})
@@ -84,11 +85,12 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 	t.Run("AggregationFunction=SUM", func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
-					Format:   pinotlib.FormatMillisecondsEpoch,
+					Format:   "1:MILLISECONDS:EPOCH",
 				}},
 			},
 			TimeRange: TimeRange{
@@ -160,15 +162,54 @@ LIMIT 100000;`
 			assert.NoError(t, err)
 			assert.Equal(t, want, got)
 		})
+
+		t.Run("derivedTimeCols", func(t *testing.T) {
+			ctx := context.Background()
+			client := test_helpers.SetupPinotAndCreateClient(t)
+			schema, err := client.GetTableSchema(ctx, "derivedTimeBuckets")
+			require.NoError(t, err)
+
+			driver, err := NewPinotQlBuilderDriver(PinotQlBuilderParams{
+				PinotClient:         test_helpers.SetupPinotAndCreateClient(t),
+				TableSchema:         schema,
+				TimeRange:           TimeRange{To: time.Unix(1, 0), From: time.Unix(0, 0)},
+				Granularity:         "1:MINUTES",
+				TableName:           "derivedTimeBuckets",
+				TimeColumn:          "ts",
+				MetricColumn:        "value",
+				AggregationFunction: "SUM",
+				Limit:               1_000,
+				Legend:              "test-legend",
+			})
+			require.NoError(t, err)
+
+			want := `SELECT
+    "ts_1m" AS "time",
+    SUM("value") AS "metric"
+FROM
+    "derivedTimeBuckets"
+WHERE
+    "ts" >= 0 AND "ts" < 60000
+GROUP BY
+    "ts_1m"
+ORDER BY
+    "time" DESC
+LIMIT 1000;`
+
+			got, err := driver.RenderPinotSql(true)
+			assert.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
 	})
 
 	t.Run("AggregationFunction="+AggregationFunctionCount, func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
-					Format:   pinotlib.FormatMillisecondsEpoch,
+					Format:   "1:MILLISECONDS:EPOCH",
 				}},
 			},
 			TimeRange: TimeRange{
@@ -244,11 +285,12 @@ LIMIT 100000;`
 
 	t.Run("AggregationFunction="+AggregationFunctionNone, func(t *testing.T) {
 		params := PinotQlBuilderParams{
+			PinotClient: test_helpers.SetupPinotAndCreateClient(t),
 			TableSchema: pinotlib.TableSchema{
 				DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
 					Name:     "my_time_column",
 					DataType: "LONG",
-					Format:   pinotlib.FormatMillisecondsEpoch,
+					Format:   "1:MILLISECONDS:EPOCH",
 				}},
 			},
 			TimeRange: TimeRange{

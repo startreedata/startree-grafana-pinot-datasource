@@ -99,6 +99,7 @@ func sliceToStrings[V any](arr []V) []string {
 }
 
 func assertBrokerExceptionErrorWithCodes(t *testing.T, err error, codes ...int) {
+	t.Helper()
 	var brokerError *pinotlib.BrokerExceptionError
 	if assert.ErrorAs(t, err, &brokerError) {
 		assert.NotEmpty(t, brokerError.Exceptions)
@@ -124,6 +125,7 @@ type DriverTestCase struct {
 }
 
 func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(times []time.Time, values []float64) data.Frames) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
@@ -167,6 +169,7 @@ func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCas
 }
 
 func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(times []time.Time, values []float64) data.Frames) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	partialTableSchema, err := client.GetTableSchema(context.Background(), "partial")
@@ -209,6 +212,7 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 }
 
 func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(values []string) data.Frames) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	driver, err := newDriver(DriverTestCase{
@@ -229,6 +233,7 @@ func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase Driv
 }
 
 func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(values []string) data.Frames) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	driver, err := newDriver(DriverTestCase{
@@ -289,15 +294,16 @@ func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase
 }
 
 func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
+	schema, err := client.GetTableSchema(context.Background(), "empty")
 	require.NoError(t, err)
 
 	driver, err := newDriver(DriverTestCase{
 		Client:       client,
-		TableName:    "benchmark",
-		TableSchema:  benchmarkTableSchema,
+		TableName:    "empty",
+		TableSchema:  schema,
 		TargetColumn: "value",
 		TimeColumn:   "ts",
 		TimeRange: TimeRange{
@@ -316,6 +322,7 @@ func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Dr
 }
 
 func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
@@ -343,6 +350,8 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 }
 
 func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+	t.Helper()
+
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
