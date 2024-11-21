@@ -26,6 +26,7 @@ type Response struct {
 	*GetDatabasesResponse
 	*GetTablesResponse
 	*GetTableSchemaResponse
+	*GetTableTimeGranularitiesResponse
 	*DistinctValuesResponse
 	*PreviewSqlResponse
 	*ListTimeSeriesMetricsResponse
@@ -54,6 +55,10 @@ type GetTablesResponse struct {
 
 type GetTableSchemaResponse struct {
 	Schema pinotlib.TableSchema `json:"schema"`
+}
+
+type GetTableTimeGranularitiesResponse struct {
+	Granularities []string `json:"granularities"`
 }
 
 type PreviewSqlResponse struct {
@@ -132,6 +137,25 @@ func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response {
 	return &Response{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
 }
 
+func (x *ResourceHandler) GetTableTimeGranularities(r *http.Request) *Response {
+	vars := mux.Vars(r)
+	table := vars["table"]
+	// TODO: Should this also take a time column?
+
+	config, err := x.client.ListTableConfigs(r.Context(), table)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	derivedColumns := pinotlib.DerivedTimeColumnsFrom(config)
+	granularities := make([]string, len(derivedColumns))
+	for i := range derivedColumns {
+		granularities[i] = derivedColumns[i].Source.Granularity.String()
+	}
+	return &Response{Code: http.StatusOK, GetTableTimeGranularitiesResponse: &GetTableTimeGranularitiesResponse{
+		Granularities: granularities,
+	}}
+}
+
 type PreviewSqlBuilderRequest struct {
 	TimeRange           dataquery.TimeRange         `json:"timeRange"`
 	IntervalSize        string                      `json:"intervalSize"`
@@ -162,6 +186,7 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 	}
 
 	driver, err := dataquery.NewPinotQlBuilderDriver(dataquery.PinotQlBuilderParams{
+		PinotClient:         x.client,
 		TableSchema:         tableSchema,
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
@@ -216,12 +241,12 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 	}
 
 	driver, err := dataquery.NewPinotQlCodeDriver(dataquery.PinotQlCodeDriverParams{
+		PinotClient:       x.client,
 		TableName:         data.TableName,
 		TimeRange:         data.TimeRange,
 		IntervalSize:      parseIntervalSize(data.IntervalSize),
 		TableSchema:       tableSchema,
 		TimeColumnAlias:   data.TimeColumnAlias,
-		TimeColumnFormat:  data.TimeColumnFormat,
 		MetricColumnAlias: data.MetricColumnAlias,
 		Code:              data.Code,
 	})
@@ -263,9 +288,12 @@ func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDis
 		return newInternalServerErrorResponse(err)
 	}
 
-	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{
-		ValueExprs: pinotlib.ExtractColumnExpr(results.ResultTable, 0),
-	}}
+	var valueExprs []string
+	if results.HasData() {
+		valueExprs = pinotlib.ExtractColumnExpr(results.ResultTable, 0)
+	}
+
+	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{ValueExprs: valueExprs}}
 }
 
 type PreviewSqlDistinctValues QueryDistinctValuesRequest
@@ -291,12 +319,17 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 			return "", err
 		}
 
-		exprBuilder, err := pinotlib.TimeExpressionBuilderFor(tableSchema, data.TimeColumn)
+		format, err := pinotlib.GetTimeColumnFormat(tableSchema, data.TimeColumn)
 		if err != nil {
 			return "", err
 		}
 
-		timeFilterExpr = exprBuilder.TimeFilterExpr(data.TimeRange.From, data.TimeRange.To)
+		timeFilterExpr = pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+			Column: data.TimeColumn,
+			Format: format,
+			From:   data.TimeRange.From,
+			To:     data.TimeRange.To,
+		})
 	}
 
 	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{

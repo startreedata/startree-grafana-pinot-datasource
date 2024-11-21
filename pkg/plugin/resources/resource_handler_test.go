@@ -20,14 +20,14 @@ func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
 SET timeoutMs=1;
 
 SELECT
-    DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
+    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
     MAX("AirTime") AS "metric"
 FROM
     "airlineStats"
 WHERE
     "ts" >= 1388327400000 AND "ts" < 1391281200000
 GROUP BY
-    DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES')
+    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES')
 ORDER BY
     "time" DESC,
     "metric" DESC
@@ -84,11 +84,11 @@ func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
 	defer server.Close()
 
 	var want = `SELECT 
-   DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES')  AS  "time" ,
+   DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES')  AS  "time" ,
   SUM("AirTime") AS  "metric" 
 FROM  "airlineStats" 
 WHERE  "ts" >= 1388327400000 AND "ts" < 1391281200000 
-GROUP BY  DATETIMECONVERT("ts", '1:MILLISECONDS:TIMESTAMP', '1:MILLISECONDS:EPOCH', '30:MINUTES') 
+GROUP BY  DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') 
 ORDER BY  "time"  DESC
 LIMIT 1000000`
 
@@ -122,6 +122,7 @@ LIMIT 1000000`
 }
 
 func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
+	t.Helper()
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")

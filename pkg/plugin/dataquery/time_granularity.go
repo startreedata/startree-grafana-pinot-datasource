@@ -1,7 +1,10 @@
 package dataquery
 
 import (
+	"context"
 	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strconv"
 	"strings"
 	"time"
@@ -9,49 +12,17 @@ import (
 
 const GranularityAuto = "auto"
 
-// TimeGranularity stores the Pinot expression and golang duration for a given granularity.
-type TimeGranularity struct {
-	Expr string
-	Size time.Duration
-}
-
-// TimeGranularityFrom returns a new Time Granularity based on the given Pinot expression and default size.
-// If granularityExpr is empty or "auto", then the default size is used.
-// Otherwise, the granularity expression is used.
-func TimeGranularityFrom(granularityExpr string, defaultSize time.Duration) (TimeGranularity, error) {
-	if granularityExpr == "" || granularityExpr == GranularityAuto {
-		return TimeGranularity{
-			Expr: GranularityExprFrom(defaultSize),
-			Size: defaultSize,
-		}, nil
+func ResolveGranularity(ctx context.Context, expr string, fallback time.Duration) pinotlib.Granularity {
+	if expr == "" || expr == GranularityAuto {
+		return pinotlib.GranularityOf(fallback)
 	}
 
-	size, err := ParseGranularityExpr(granularityExpr)
+	granularity, err := pinotlib.ParseGranularityExpr(expr)
 	if err != nil {
-		return TimeGranularity{}, err
+		log.WithError(err).FromContext(ctx).Info("Failed to parse user provided granularity; using fallback")
+		return pinotlib.GranularityOf(fallback)
 	}
-
-	return TimeGranularity{
-		Expr: granularityExpr,
-		Size: size,
-	}, nil
-}
-
-func GranularityExprFrom(bucketSize time.Duration) string {
-	switch {
-	case bucketSize.Hours() >= 1:
-		return fmt.Sprintf("%d:HOURS", int(bucketSize.Hours()))
-	case bucketSize.Minutes() >= 1:
-		return fmt.Sprintf("%d:MINUTES", int(bucketSize.Minutes()))
-	case bucketSize.Seconds() >= 1:
-		return fmt.Sprintf("%d:SECONDS", int(bucketSize.Seconds()))
-	case bucketSize.Milliseconds() >= 1:
-		return fmt.Sprintf("%d:MILLISECONDS", int(bucketSize.Milliseconds()))
-	case bucketSize.Microseconds() >= 1:
-		return fmt.Sprintf("%d:MICROSECONDS", int(bucketSize.Microseconds()))
-	default:
-		return fmt.Sprintf("%d:NANOSECONDS", int(bucketSize.Nanoseconds()))
-	}
+	return granularity
 }
 
 func ParseGranularityExpr(granularity string) (time.Duration, error) {
