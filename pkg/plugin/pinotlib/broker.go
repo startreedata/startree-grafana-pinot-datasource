@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type BrokerResponse struct {
@@ -87,7 +88,12 @@ func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
+var sqlLock sync.Mutex
+
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
+	sqlLock.Lock()
+	defer sqlLock.Unlock()
+
 	var body bytes.Buffer
 
 	data := map[string]interface{}{"sql": query.Sql}

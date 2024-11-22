@@ -226,8 +226,14 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 	}
 
 	resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
-	metrics := ExtractColumnAsStrings(resp.ResultTable, 0)
-	return metrics, nil
+	switch {
+	case err != nil:
+		return nil, err
+	case resp.HasData():
+		return ExtractColumnAsStrings(resp.ResultTable, 0), nil
+	default:
+		return nil, nil
+	}
 }
 
 type TimeSeriesLabelNamesQuery struct {

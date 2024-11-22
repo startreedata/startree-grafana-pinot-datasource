@@ -100,10 +100,6 @@ func ParseJodaTime(ts string) (time.Time, error) {
 	return time.Parse("2006-01-02 15:04:05", ts)
 }
 
-type nativeColumnType interface {
-	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]interface{}
-}
-
 // ExtractColumnAsDoubles returns the column as a slice of float64.
 // Returns an error if the column is not a numeric type.
 func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error) {
@@ -280,6 +276,10 @@ func DecodeJsonFromColumn[V any](results *ResultTable, colIdx int) ([]V, error) 
 		}
 	}
 	return vals, nil
+}
+
+type nativeColumnType interface {
+	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]interface{}
 }
 
 func extractTypedColumn[V nativeColumnType](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
