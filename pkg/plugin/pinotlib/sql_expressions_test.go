@@ -13,7 +13,7 @@ func TestSqlObjectExpr(t *testing.T) {
 }
 
 func TestSqlLiteralString(t *testing.T) {
-	assert.Equal(t, `'string'`, LiteralStringExpr("string"))
+	assert.Equal(t, `'string'`, StringLiteralExpr("string"))
 }
 
 func TestUnquoteObjectName(t *testing.T) {

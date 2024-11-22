@@ -1,9 +1,14 @@
 package dataquery
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -174,4 +179,51 @@ LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn,
 			runSqlQueryPinotUnreachable(t, newDriver)
 		})
 	})
+}
+
+func TestExtractColumnToField(t *testing.T) {
+	testCases := []struct {
+		column string
+		want   *data.Field
+	}{
+		{column: "__double", want: data.NewField("__double", nil, []float64{0, 0.1111111111111111, 0.2222222222222222})},
+		{column: "__float", want: data.NewField("__float", nil, []float32{0, 0.11111111, 0.22222222})},
+		{column: "__int", want: data.NewField("__int", nil, []int32{0, 111111, 222222})},
+		{column: "__long", want: data.NewField("__long", nil, []int64{0, 111111111111111, 222222222222222})},
+		{column: "__string", want: data.NewField("__string", nil, []string{"row_0", "row_1", "row_2"})},
+		{column: "__bytes", want: data.NewField("__bytes", nil, []string{"726f775f30", "726f775f31", "726f775f32"})},
+		{column: "__bool", want: data.NewField("__bool", nil, []bool{true, false, true})},
+		{column: "__big_decimal", want: data.NewField("__big_decimal", nil,
+			[]string{"100000000000000000000", "100000000000000000001", "100000000000000000002"})},
+		{column: "__json", want: data.NewField("__json", nil, []json.RawMessage{
+			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`),
+			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`),
+			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`)})},
+		{column: "__timestamp", want: data.NewField("__timestamp", nil, []time.Time{
+			time.Date(2024, time.November, 1, 0, 0, 0, 0, time.UTC),
+			time.Date(2024, time.November, 1, 0, 0, 1, 0, time.UTC),
+			time.Date(2024, time.November, 1, 0, 0, 2, 0, time.UTC)})},
+		{column: "__map_string_long", want: data.NewField("__map_string_long", nil, []json.RawMessage{
+			json.RawMessage(`{"key1":1,"key2":2}`),
+			json.RawMessage(`{"key1":1,"key2":2}`),
+			json.RawMessage(`{"key1":1,"key2":2}`)})},
+		{column: "__map_string_string", want: data.NewField("__map_string_string", nil, []json.RawMessage{
+			json.RawMessage(`{"key1":"val1","key2":"val2"}`),
+			json.RawMessage(`{"key1":"val1","key2":"val2"}`),
+			json.RawMessage(`{"key1":"val1","key2":"val2"}`)})},
+	}
+
+	client := test_helpers.SetupPinotAndCreateClient(t)
+	resp, err := client.ExecuteSqlQuery(context.Background(),
+		pinotlib.NewSqlQuery(`select * from "allDataTypes" order by "__timestamp" asc limit 3`))
+	require.NoError(t, err, "client.ExecuteSqlQuery()")
+	require.True(t, resp.HasData(), "resp.HasData()")
+
+	for _, tt := range testCases {
+		t.Run(tt.column, func(t *testing.T) {
+			colIdx, err := pinotlib.GetColumnIdx(resp.ResultTable, tt.column)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, ExtractColumnToField(resp.ResultTable, colIdx))
+		})
+	}
 }
