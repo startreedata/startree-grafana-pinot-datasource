@@ -37,7 +37,7 @@ jobs:
         run: go run cmd/testsetup/main.go
 
       - name: Run unit tests
-        run: go test -v ./...
+        run: GOMAXPROCS=1 go test -v ./...
 
       - name: Collect Pinot logs
         if: ${{ failure() }}

@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -40,7 +41,11 @@ type PinotClientProperties struct {
 	ControllerCacheTimeout time.Duration
 }
 
+var clientMap sync.Map
+
 func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
+	//val, ok := clientMap.Load("")
+
 	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
 	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
 
