@@ -87,11 +87,6 @@ func CreateTestTables() {
 	createTestTablesOnce.Do(func() {
 		WaitForPinot(Timeout)
 
-		SetPinotConfig(map[string]interface{}{
-			"pinot.broker.use.fixed.replica":                     true,
-			"pinot.broker.jersey.threadpool.executor.queue.size": 1,
-		})
-
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
 
@@ -138,26 +133,6 @@ func CreateTestTables() {
 			fmt.Println("Pinot setup complete.")
 		}
 	})
-
-	//for _, job := range jobs {
-	//	if slices.Contains([]string{"benchmark", "nginxLogs", "allDataTypes", "infraMetrics"}, job.tableName) {
-	//		WaitForSegmentsAllGood(job.tableName, Timeout)
-	//	}
-	//}
-}
-
-func SetPinotConfig(data map[string]interface{}) {
-	var body bytes.Buffer
-	_ = json.NewEncoder(&body).Encode(data)
-
-	req, err := http.NewRequest(http.MethodPost, ControllerUrl+"/cluster/configs", &body)
-	requireNoError(err)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := http.DefaultClient.Do(req)
-	requireNoError(err)
-	defer safeClose(resp.Body)
-	requireOkStatus(resp)
 }
 
 func WaitForSegmentsAllGood(tableName string, timeout time.Duration) {
