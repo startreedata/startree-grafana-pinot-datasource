@@ -146,6 +146,7 @@ func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCas
 	})
 	require.NoError(t, err)
 
+	pinottest.WaitForSegmentsAllGood("benchmark", 5*time.Minute)
 	got := driver.Execute(context.Background())
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
