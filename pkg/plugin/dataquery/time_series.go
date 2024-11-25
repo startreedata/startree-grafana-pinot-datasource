@@ -82,7 +82,7 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 		return nil, err
 	}
 
-	timeCol, err := pinotlib.ExtractTimeColumn(results, timeColIdx, timeColumnFormat)
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeColIdx, timeColumnFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,11 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 	if err != nil {
 		return nil, err
 	}
-	metCol := pinotlib.ExtractDoubleColumn(results, metColIdx)
+
+	metCol, err := pinotlib.ExtractColumnAsDoubles(results, metColIdx)
+	if err != nil {
+		return nil, err
+	}
 
 	dimensions := make(map[string][]string)
 	for colIdx := 0; colIdx < len(results.DataSchema.ColumnNames); colIdx++ {
@@ -99,7 +103,7 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 			continue
 		}
 		name, _ := pinotlib.GetColumnName(results, colIdx)
-		dimensions[name] = pinotlib.ExtractStringColumn(results, colIdx)
+		dimensions[name] = pinotlib.ExtractColumnAsStrings(results, colIdx)
 	}
 
 	dimensionNames := make([]string, 0, len(dimensions))

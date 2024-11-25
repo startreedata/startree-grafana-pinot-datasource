@@ -290,7 +290,7 @@ func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDis
 
 	var valueExprs []string
 	if results.HasData() {
-		valueExprs = pinotlib.ExtractColumnExpr(results.ResultTable, 0)
+		valueExprs = pinotlib.ExtractColumnAsExprs(results.ResultTable, 0)
 	}
 
 	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{ValueExprs: valueExprs}}

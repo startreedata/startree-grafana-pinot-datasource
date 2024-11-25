@@ -50,9 +50,8 @@ func (x *MultiResourceCache[K, V]) getEntry(key K) *cacheEntry[V] {
 }
 
 type cacheEntry[V any] struct {
-	expireAt time.Time
-	value    V
-	lock     sync.Mutex
+	value *V
+	lock  sync.Mutex
 }
 
 func newCacheEntry[V any]() *cacheEntry[V] { return &cacheEntry[V]{} }
@@ -61,8 +60,8 @@ func (x *cacheEntry[V]) getVal(ttl time.Duration, loader Loader[V]) (V, error) {
 	x.lock.Lock()
 	defer x.lock.Unlock()
 
-	if time.Now().Before(x.expireAt) {
-		return x.value, nil
+	if x.value != nil {
+		return *x.value, nil
 	}
 
 	val, err := loader()
@@ -70,7 +69,14 @@ func (x *cacheEntry[V]) getVal(ttl time.Duration, loader Loader[V]) (V, error) {
 		return val, err
 	}
 
-	x.value = val
-	x.expireAt = time.Now().Add(ttl)
+	x.value = &val
+	go x.expireAfter(ttl)
 	return val, nil
+}
+
+func (x *cacheEntry[V]) expireAfter(ttl time.Duration) {
+	time.Sleep(ttl)
+	x.lock.Lock()
+	defer x.lock.Unlock()
+	x.value = nil
 }

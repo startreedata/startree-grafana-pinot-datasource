@@ -11,11 +11,8 @@ func TestPinotClient_ListDatabases(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
 
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := client.ListDatabases(ctx)
-		assert.Contains(t, err.Error(), context.Canceled.Error())
+		_, err := client.ListDatabases(cancelledCtx())
+		assert.ErrorContains(t, err, context.Canceled.Error())
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -29,12 +26,9 @@ func TestPinotClient_ListDatabases(t *testing.T) {
 
 func TestPinotClient_ListTables(t *testing.T) {
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
 		client := setupPinotAndCreateClient(t)
-		_, err := client.ListTables(ctx)
-		assert.Contains(t, err.Error(), context.Canceled.Error())
+		_, err := client.ListTables(cancelledCtx())
+		assert.ErrorContains(t, err, context.Canceled.Error())
 	})
 
 	t.Run("success", func(t *testing.T) {
@@ -51,11 +45,8 @@ func TestPinotClient_GetTableSchema(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
 
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := client.ListTables(ctx)
-		assert.Contains(t, err.Error(), context.Canceled.Error())
+		_, err := client.GetTableSchema(cancelledCtx(), "benchmark")
+		assert.ErrorContains(t, err, context.Canceled.Error())
 	})
 
 	t.Run("benchmark", func(t *testing.T) {
@@ -113,11 +104,8 @@ func TestPinotClient_GetTableMetadata(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
 
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := client.GetTableMetadata(ctx, "benchmark")
-		assert.Contains(t, err.Error(), context.Canceled.Error())
+		_, err := client.GetTableMetadata(cancelledCtx(), "benchmark")
+		assert.ErrorContains(t, err, context.Canceled.Error())
 	})
 
 	t.Run("benchmark", func(t *testing.T) {
@@ -131,4 +119,11 @@ func TestPinotClient_GetTableMetadata(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, want.TableNameAndType, got.TableNameAndType)
 	})
+}
+
+func cancelledCtx() context.Context {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	<-ctx.Done()
+	return ctx
 }

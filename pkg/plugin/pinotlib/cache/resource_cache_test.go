@@ -40,6 +40,7 @@ func TestResourceCache_Get(t *testing.T) {
 			}(i)
 		}
 
+		time.Sleep(1 * time.Millisecond)
 		gotVal, gotErr := cache.Get(func() (int, error) {
 			return 10, nil
 		})

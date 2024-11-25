@@ -357,11 +357,10 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)
 
-	unreachableClient, err := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
+	unreachableClient := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
 		ControllerUrl: "not a url",
 		BrokerUrl:     "not a url",
 	})
-	require.NoError(t, err)
 
 	driver, err := newDriver(DriverTestCase{
 		TestName:     "pinot unreachable",

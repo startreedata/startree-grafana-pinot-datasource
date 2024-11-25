@@ -2,16 +2,20 @@ package pinotlib
 
 import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
-	"github.com/stretchr/testify/require"
+	"os"
 	"testing"
+	"time"
 )
 
 func setupPinotAndCreateClient(t *testing.T) *PinotClient {
 	pinottest.CreateTestTables()
-	pinotClient, err := NewPinotClient(PinotClientProperties{
-		ControllerUrl: pinottest.ControllerUrl,
-		BrokerUrl:     pinottest.BrokerUrl,
+
+	queryRate, _ := time.ParseDuration(os.Getenv("BROKER_MAX_QUERY_RATE"))
+	pinotClient := NewPinotClient(PinotClientProperties{
+		ControllerUrl:      pinottest.ControllerUrl,
+		BrokerUrl:          pinottest.BrokerUrl,
+		BrokerCacheTimeout: time.Minute,
+		BrokerMaxQueryRate: queryRate,
 	})
-	require.NoError(t, err)
 	return pinotClient
 }

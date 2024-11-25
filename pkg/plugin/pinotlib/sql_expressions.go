@@ -10,7 +10,7 @@ func ObjectExpr(obj string) string {
 	return fmt.Sprintf(`"%s"`, obj)
 }
 
-func LiteralStringExpr(lit string) string {
+func StringLiteralExpr(lit string) string {
 	return fmt.Sprintf(`'%s'`, lit)
 }
 
@@ -82,11 +82,11 @@ func TimeExpr(ts time.Time, format DateTimeFormat) string {
 }
 
 func GranularityExpr(granularity Granularity) string {
-	return LiteralStringExpr(granularity.String())
+	return StringLiteralExpr(granularity.String())
 }
 
 func DateTimeFormatExpr(format DateTimeFormat) string {
-	return LiteralStringExpr(format.LegacyString())
+	return StringLiteralExpr(format.LegacyString())
 }
 
 func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) string {

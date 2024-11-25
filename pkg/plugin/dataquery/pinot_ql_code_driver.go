@@ -2,6 +2,7 @@ package dataquery
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"math/big"
 	"time"
 )
 
@@ -142,7 +144,7 @@ func (p *PinotQlCodeDriver) ExtractTableResults(results *pinotlib.ResultTable) (
 		if colId == timeIdx {
 			continue
 		}
-		frame.Fields = append(frame.Fields, pinotlib.ExtractColumnToField(results, colId))
+		frame.Fields = append(frame.Fields, ExtractColumnToField(results, colId))
 	}
 	return frame, nil
 }
@@ -153,13 +155,13 @@ func (p *PinotQlCodeDriver) ExtractLogResults(results *pinotlib.ResultTable) (*d
 	if err != nil {
 		return nil, fmt.Errorf("could not extract log lines column: %w", err)
 	}
-	linesCol := pinotlib.ExtractStringColumn(results, linesIdx)
+	linesCol := pinotlib.ExtractColumnAsStrings(results, linesIdx)
 
 	timeIdx, err := pinotlib.GetColumnIdx(results, p.params.TimeColumnAlias)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
-	timeCol, err := pinotlib.ExtractTimeColumn(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
@@ -173,7 +175,7 @@ func (p *PinotQlCodeDriver) ExtractLogResults(results *pinotlib.ResultTable) (*d
 			continue
 		}
 		colName := results.DataSchema.ColumnNames[colIdx]
-		dims[colName] = pinotlib.ExtractStringColumn(results, colIdx)
+		dims[colName] = pinotlib.ExtractColumnAsStrings(results, colIdx)
 	}
 
 	labelsCol := make([]json.RawMessage, results.RowCount())
@@ -206,10 +208,37 @@ func (p *PinotQlCodeDriver) extractTableTime(results *pinotlib.ResultTable) (int
 		return -1, nil
 	}
 
-	timeCol, err := pinotlib.ExtractTimeColumn(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
 	if err != nil {
 		return -1, nil
 	}
 
 	return timeIdx, data.NewField(p.params.TimeColumnAlias, nil, timeCol)
+}
+
+func ExtractColumnToField(results *pinotlib.ResultTable, colIdx int) *data.Field {
+	colName := results.DataSchema.ColumnNames[colIdx]
+	switch col := pinotlib.ExtractColumn(results, colIdx).(type) {
+	case [][]byte:
+		vals := make([]string, len(col))
+		for i := range col {
+			vals[i] = hex.EncodeToString(col[i])
+		}
+		return data.NewField(colName, nil, vals)
+	case []map[string]interface{}:
+		vals := make([]json.RawMessage, len(col))
+		for i := range col {
+			vals[i], _ = json.Marshal(col[i])
+		}
+		return data.NewField(colName, nil, vals)
+	case []*big.Int:
+		vals := make([]string, len(col))
+		for i := range col {
+			vals[i] = col[i].String()
+		}
+		return data.NewField(colName, nil, vals)
+
+	default:
+		return data.NewField(colName, nil, col)
+	}
 }

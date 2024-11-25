@@ -36,13 +36,10 @@ LIMIT 1000000000;`
 		b.Fatal(err)
 	}
 
-	pluginClient, err := NewPinotClient(PinotClientProperties{
+	pluginClient := NewPinotClient(PinotClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})
-	if err != nil {
-		b.Fatal(err)
-	}
 
 	b.ResetTimer()
 	b.Run("sdk_client", func(b *testing.B) {

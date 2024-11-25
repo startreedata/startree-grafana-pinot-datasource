@@ -17,7 +17,15 @@ import (
 	"time"
 )
 
-const TimeSeriesEndpoint = "/timeseries/api/v1"
+const (
+	TimeSeriesEndpoint = "/timeseries/api/v1"
+
+	TimeSeriesTableColumnMetricName  = "metric"
+	TimeSeriesTableColumnLabels      = "labels"
+	TimeSeriesTableColumnMetricValue = "value"
+	TimeSeriesTableColumnTimestamp   = "ts"
+	TimeSeriesQueryLanguagePromQl    = "promql"
+)
 
 type TimeSeriesRangeQuery struct {
 	Language  string
@@ -226,8 +234,14 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 	}
 
 	resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
-	metrics := ExtractStringColumn(resp.ResultTable, 0)
-	return metrics, nil
+	switch {
+	case err != nil:
+		return nil, err
+	case resp.HasData():
+		return ExtractColumnAsStrings(resp.ResultTable, 0), nil
+	default:
+		return nil, nil
+	}
 }
 
 type TimeSeriesLabelNamesQuery struct {
@@ -322,23 +336,30 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 		}
 
 		resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
-		if err != nil {
+		switch {
+		case err != nil:
 			return nil, err
+		case resp.HasData():
+			return extractLabels(resp)
+		default:
+			return nil, nil
 		}
-
-		labelRecords, err := ExtractJsonColumn[map[string]string](resp.ResultTable, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		collection := make(LabelsCollection, len(labelRecords))
-		for _, label := range labelRecords {
-			for k, v := range label {
-				collection.Add(k, v)
-			}
-		}
-		return collection, nil
 	})
+}
+
+func extractLabels(resp *BrokerResponse) (LabelsCollection, error) {
+	labelRecords, err := DecodeJsonFromColumn[map[string]string](resp.ResultTable, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	collection := make(LabelsCollection, len(labelRecords))
+	for _, label := range labelRecords {
+		for k, v := range label {
+			collection.Add(k, v)
+		}
+	}
+	return collection, nil
 }
 
 func (p *PinotClient) IsTimeSeriesTable(ctx context.Context, tableName string) (bool, error) {
