@@ -50,7 +50,7 @@ func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSetti
 		CallResourceHandler: NewCallResourceHandler(client),
 		CheckHealthHandler:  NewCheckHealthHandler(client),
 		QueryDataHandler:    NewQueryDataHandler(client),
-		InstanceDisposer:    NewInstanceDisposer(),
+		InstanceDisposer:    NewInstanceDisposer(client),
 	}, nil
 }
 
