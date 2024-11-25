@@ -108,12 +108,12 @@ func CreateTestTables() {
 				return
 			}
 			uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
-			waitForSegmentsAllGood(job.tableName, Timeout)
+			WaitForSegmentsAllGood(job.tableName, Timeout)
 
 			// Delete the partial table's segment and upload a new segment
 			if job.tableName == PartialTableName {
 				uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
-				waitForSegmentsAllGood(job.tableName, Timeout)
+				WaitForSegmentsAllGood(job.tableName, Timeout)
 				segments := listOfflineSegments(job.tableName)
 				if len(segments) != 2 {
 					panic("expected 2 segments")
@@ -135,7 +135,7 @@ func CreateTestTables() {
 	})
 }
 
-func waitForSegmentsAllGood(tableName string, timeout time.Duration) {
+func WaitForSegmentsAllGood(tableName string, timeout time.Duration) {
 	pollTicker := time.NewTicker(PollInterval)
 	defer pollTicker.Stop()
 

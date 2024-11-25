@@ -41,26 +41,48 @@ type PinotClientProperties struct {
 	DatabaseName  string
 	Authorization string
 
-	ControllerCacheTimeout     time.Duration
-	BrokerCacheTimeout         time.Duration
+	ControllerCacheTimeout time.Duration
+	BrokerCacheTimeout     time.Duration
+
 	BrokerMaxConcurrentQueries uint
+	BrokerMaxQueryRate         time.Duration
 }
 
 var clientMap sync.Map
 
 type Limiter struct {
-	ch chan struct{}
+	ch   chan struct{}
+	rate *time.Ticker
 }
 
-func NewLimiter(max uint) *Limiter {
-	if max == 0 {
-		return &Limiter{}
+func NewLimiter(max uint, rate time.Duration) *Limiter {
+	var ch chan struct{}
+	if max != 0 {
+		ch = make(chan struct{}, max)
 	}
 
-	return &Limiter{ch: make(chan struct{}, max)}
+	var ticker *time.Ticker
+	if rate != 0 {
+		ticker = time.NewTicker(rate)
+	}
+
+	return &Limiter{ch: ch, rate: ticker}
+}
+
+func (l *Limiter) Close() {
+	if l.ch != nil {
+		close(l.ch)
+	}
+	if l.rate != nil {
+		l.rate.Stop()
+	}
 }
 
 func (l *Limiter) Do(f func()) {
+	if l.rate != nil {
+		<-l.rate.C
+	}
+
 	if l.ch == nil {
 		f()
 	} else {
@@ -105,7 +127,7 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
 		brokerQueryCache:      cache.NewMultiResourceCache[string, *BrokerResponse](properties.BrokerCacheTimeout),
 
-		brokerLimiter: NewLimiter(properties.BrokerMaxConcurrentQueries),
+		brokerLimiter: NewLimiter(properties.BrokerMaxConcurrentQueries, properties.BrokerMaxQueryRate),
 	}
 	clientMap.Store(key, client)
 	return client
