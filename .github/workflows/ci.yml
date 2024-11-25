@@ -37,10 +37,7 @@ jobs:
         run: go run cmd/testsetup/main.go
 
       - name: Run unit tests
-        uses: magefile/mage-action@v3
-        with:
-          version: latest
-          args: coverage
+        run: go test -v ./...
 
       - name: Collect Pinot logs
         if: ${{ failure() }}

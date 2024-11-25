@@ -118,7 +118,7 @@ func TestExtractColumn(t *testing.T) {
 			{"key1": "val1", "key2": "val2"}})},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -173,7 +173,7 @@ func TestExtractColumnAsDoubles(t *testing.T) {
 		{column: "__map_string_string", wantErr: errors.New("not a numeric column")},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -214,7 +214,7 @@ func TestExtractColumnAsStrings(t *testing.T) {
 			`{"key1":"val1","key2":"val2"}`, `{"key1":"val1","key2":"val2"}`, `{"key1":"val1","key2":"val2"}`}},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -244,7 +244,7 @@ func TestExtractColumnAsExprs(t *testing.T) {
 		{column: "__timestamp", want: []string{"1730419200000", "1730419201000", "1730419202000"}},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -280,7 +280,7 @@ func TestExtractColumnAsTime(t *testing.T) {
 		{column: "__map_string_string", wantErr: errors.New("not a timestamp column")},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -323,7 +323,7 @@ func TestDecodeJsonFromColumn(t *testing.T) {
 		{column: "__map_string_string", wantErr: errors.New("column does not contain json")},
 	}
 
-	resp := selectStarFromAllDataTypes(t, 3)
+	resp := selectStarFromAllDataTypes(t)
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
@@ -340,12 +340,12 @@ func TestDecodeJsonFromColumn(t *testing.T) {
 	}
 }
 
-func selectStarFromAllDataTypes(t *testing.T, limit int) *BrokerResponse {
+func selectStarFromAllDataTypes(t *testing.T) *BrokerResponse {
 	t.Helper()
 
 	client := setupPinotAndCreateClient(t)
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		NewSqlQuery(fmt.Sprintf(`select * from "allDataTypes" order by "__timestamp" asc limit %d`, limit)))
+		NewSqlQuery(fmt.Sprintf(`select * from "allDataTypes" order by "__timestamp" asc limit 3`)))
 	require.NoError(t, err, "client.ExecuteSqlQuery()")
 	require.True(t, resp.HasData(), "resp.HasData()")
 	return resp

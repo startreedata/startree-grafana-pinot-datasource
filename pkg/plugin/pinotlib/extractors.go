@@ -11,6 +11,22 @@ import (
 	"time"
 )
 
+// https://docs.pinot.apache.org/configuration-reference/schema
+
+const (
+	DataTypeInt        = "INT"
+	DataTypeLong       = "LONG"
+	DataTypeFloat      = "FLOAT"
+	DataTypeDouble     = "DOUBLE"
+	DataTypeBoolean    = "BOOLEAN"
+	DataTypeTimestamp  = "TIMESTAMP"
+	DataTypeString     = "STRING"
+	DataTypeJson       = "JSON"
+	DataTypeBytes      = "BYTES"
+	DataTypeBigDecimal = "BIG_DECIMAL"
+	DataTypeMap        = "MAP"
+)
+
 func GetColumnName(resultTable *ResultTable, colIdx int) (string, error) {
 	if colIdx > len(resultTable.DataSchema.ColumnNames) {
 		return "", fmt.Errorf("column index %d out of range", colIdx)

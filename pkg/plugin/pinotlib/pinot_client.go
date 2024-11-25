@@ -16,25 +16,6 @@ import (
 
 const (
 	DefaultDatabase = "default"
-
-	// https://docs.pinot.apache.org/configuration-reference/schema
-	DataTypeInt        = "INT"
-	DataTypeLong       = "LONG"
-	DataTypeFloat      = "FLOAT"
-	DataTypeDouble     = "DOUBLE"
-	DataTypeBoolean    = "BOOLEAN"
-	DataTypeTimestamp  = "TIMESTAMP"
-	DataTypeString     = "STRING"
-	DataTypeJson       = "JSON"
-	DataTypeBytes      = "BYTES"
-	DataTypeBigDecimal = "BIG_DECIMAL"
-	DataTypeMap        = "MAP"
-
-	TimeSeriesTableColumnMetricName  = "metric"
-	TimeSeriesTableColumnLabels      = "labels"
-	TimeSeriesTableColumnMetricValue = "value"
-	TimeSeriesTableColumnTimestamp   = "ts"
-	TimeSeriesQueryLanguagePromQl    = "promql"
 )
 
 type PinotClient struct {

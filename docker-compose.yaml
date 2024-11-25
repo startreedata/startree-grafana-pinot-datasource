@@ -3,11 +3,11 @@ services:
     container_name: 'pinot'
     image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:timeseries-promql-nov-6'
     ports:
-      - '9000:9000/tcp'
-      - '8000:8000/tcp'
-      - '2123:2123/tcp'
-      - '7050:7050/tcp'
-      - '6000:6000/tcp'
+      - '9000:9000/tcp' # Controller
+      - '8000:8000/tcp' # Broker
+      - '2123:2123/tcp' # Zookeeper
+      - '7050:7050/tcp' # Server
+      - '6000:6000/tcp' # Minion
       - '8097:8097/tcp'
     command:
       - 'StarTreeQuickStart'
@@ -19,7 +19,7 @@ services:
     container_name: 'startree-pinot-datasource'
 
     healthcheck:
-      test: ["CMD", "/usr/bin/wget", "-O", "/dev/null", "http://localhost:3000"]
+      test: ['CMD', '/usr/bin/wget', '-O', '/dev/null', 'http://localhost:3000']
       interval: 5s
       timeout: 120s
       retries: 50
