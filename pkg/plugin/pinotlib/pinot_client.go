@@ -64,8 +64,8 @@ func (l *Limiter) Do(f func()) {
 	if l.ch == nil {
 		f()
 	} else {
-		time.Sleep(1 * time.Second)
 		l.ch <- struct{}{}
+		time.Sleep(1 * time.Second)
 		defer func() {
 			time.Sleep(1 * time.Second)
 			<-l.ch
