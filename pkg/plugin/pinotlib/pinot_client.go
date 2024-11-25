@@ -87,9 +87,7 @@ func (l *Limiter) Do(f func()) {
 		f()
 	} else {
 		l.ch <- struct{}{}
-		time.Sleep(1 * time.Second)
 		defer func() {
-			time.Sleep(1 * time.Second)
 			<-l.ch
 		}()
 		f()

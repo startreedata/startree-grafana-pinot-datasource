@@ -135,7 +135,9 @@ func CreateTestTables() {
 	})
 
 	for _, job := range jobs {
-		WaitForSegmentsAllGood(job.tableName, Timeout)
+		if slices.Contains([]string{"benchmark", "nginxLogs", "allDataTypes", "infraMetrics"}, job.tableName) {
+			WaitForSegmentsAllGood(job.tableName, Timeout)
+		}
 	}
 }
 
