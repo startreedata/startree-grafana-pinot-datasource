@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -324,6 +325,8 @@ func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Dr
 func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
+
+	pinottest.WaitForSegmentsAllGood("benchmark", 5*time.Minute)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)

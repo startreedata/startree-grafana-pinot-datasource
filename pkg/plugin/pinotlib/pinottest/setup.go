@@ -42,50 +42,50 @@ const (
 var createTestTablesOnce sync.Once
 
 func CreateTestTables() {
+	type CreateTableJob struct {
+		tableName  string
+		schemaFile string
+		configFile string
+		dataFile   string
+	}
+
+	jobs := []CreateTableJob{{
+		tableName:  InfraMetricsTableName,
+		schemaFile: "data/infraMetrics_schema.json",
+		configFile: "data/infraMetrics_offline_table_config.json",
+		dataFile:   "data/infraMetrics_data.json",
+	}, {
+		tableName:  BenchmarkTableName,
+		schemaFile: "data/benchmark_schema.json",
+		configFile: "data/benchmark_offline_table_config.json",
+		dataFile:   "data/benchmark_data.json",
+	}, {
+		tableName:  PartialTableName,
+		schemaFile: "data/partial_schema.json",
+		configFile: "data/partial_offline_table_config.json",
+		dataFile:   "data/partial_data_1.json",
+	}, {
+		tableName:  NginxLogsTableName,
+		schemaFile: "data/nginxLogs_schema.json",
+		configFile: "data/nginxLogs_offline_table_config.json",
+		dataFile:   "data/nginxLogs_data.json",
+	}, {
+		tableName:  DerivedTimeBucketsTableName,
+		schemaFile: "data/derivedTimeBuckets_schema.json",
+		configFile: "data/derivedTimeBuckets_offline_table_config.json",
+	}, {
+		tableName:  EmptyTableName,
+		schemaFile: "data/empty_schema.json",
+		configFile: "data/empty_offline_table_config.json",
+	}, {
+		tableName:  "allDataTypes",
+		schemaFile: "data/allDataTypes_schema.json",
+		configFile: "data/allDataTypes_offline_table_config.json",
+		dataFile:   "data/allDataTypes_data.json",
+	}}
+
 	createTestTablesOnce.Do(func() {
 		WaitForPinot(Timeout)
-
-		type CreateTableJob struct {
-			tableName  string
-			schemaFile string
-			configFile string
-			dataFile   string
-		}
-
-		jobs := []CreateTableJob{{
-			tableName:  InfraMetricsTableName,
-			schemaFile: "data/infraMetrics_schema.json",
-			configFile: "data/infraMetrics_offline_table_config.json",
-			dataFile:   "data/infraMetrics_data.json",
-		}, {
-			tableName:  BenchmarkTableName,
-			schemaFile: "data/benchmark_schema.json",
-			configFile: "data/benchmark_offline_table_config.json",
-			dataFile:   "data/benchmark_data.json",
-		}, {
-			tableName:  PartialTableName,
-			schemaFile: "data/partial_schema.json",
-			configFile: "data/partial_offline_table_config.json",
-			dataFile:   "data/partial_data_1.json",
-		}, {
-			tableName:  NginxLogsTableName,
-			schemaFile: "data/nginxLogs_schema.json",
-			configFile: "data/nginxLogs_offline_table_config.json",
-			dataFile:   "data/nginxLogs_data.json",
-		}, {
-			tableName:  DerivedTimeBucketsTableName,
-			schemaFile: "data/derivedTimeBuckets_schema.json",
-			configFile: "data/derivedTimeBuckets_offline_table_config.json",
-		}, {
-			tableName:  EmptyTableName,
-			schemaFile: "data/empty_schema.json",
-			configFile: "data/empty_offline_table_config.json",
-		}, {
-			tableName:  "allDataTypes",
-			schemaFile: "data/allDataTypes_schema.json",
-			configFile: "data/allDataTypes_offline_table_config.json",
-			dataFile:   "data/allDataTypes_data.json",
-		}}
 
 		var wg sync.WaitGroup
 		wg.Add(len(jobs))
@@ -133,6 +133,10 @@ func CreateTestTables() {
 			fmt.Println("Pinot setup complete.")
 		}
 	})
+
+	for _, job := range jobs {
+		WaitForSegmentsAllGood(job.tableName, Timeout)
+	}
 }
 
 func WaitForSegmentsAllGood(tableName string, timeout time.Duration) {
