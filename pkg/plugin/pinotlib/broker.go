@@ -9,8 +9,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"sync"
-	"time"
 )
 
 type BrokerResponse struct {
@@ -89,16 +87,7 @@ func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
-var queryLock sync.Mutex
-
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	queryLock.Lock()
-	defer queryLock.Unlock()
-	time.Sleep(1 * time.Second)
-	defer func() {
-		time.Sleep(1 * time.Second)
-	}()
-
 	data := map[string]interface{}{"sql": query.Sql}
 	if query.Trace {
 		data["trace"] = true
@@ -117,31 +106,20 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	req, err := p.newBrokerPostRequest(ctx, "/query/sql", &body)
-	if err != nil {
-		return nil, err
-	}
+	return p.brokerQueryCache.Get(body.String(), func() (*BrokerResponse, error) {
+		req, err := p.newBrokerPostRequest(ctx, "/query/sql", &body)
+		if err != nil {
+			return nil, err
+		}
 
-	p.newLogger(ctx).Info("Executing sql query.", "queryString", query.Sql)
+		p.newLogger(ctx).Info("Executing sql query.", "queryString", query.Sql)
 
-	var respData BrokerResponse
-	resp, err := p.doRequest(req)
-	if err != nil {
-		return nil, err
-	}
-	defer p.closeResponseBody(ctx, resp)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, p.newErrorFromResponseBody(ctx, resp)
-	}
-
-	decoder := json.NewDecoder(resp.Body)
-	decoder.UseNumber()
-	if err = decoder.Decode(&respData); err != nil {
-		return nil, fmt.Errorf("pinot/http: failed to decode response json: %w", err)
-	}
-
-	return &respData, nil
+		var respData BrokerResponse
+		p.brokerLimiter.Do(func() {
+			err = p.doRequestAndDecodeResponse(req, &respData)
+		})
+		return &respData, err
+	})
 }
 
 func (p *PinotClient) newBrokerPostRequest(ctx context.Context, endpoint string, body io.Reader) (*http.Request, error) {

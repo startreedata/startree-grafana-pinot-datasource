@@ -30,6 +30,9 @@ type PinotClient struct {
 	getTableSchemaCache   *cache.MultiResourceCache[string, TableSchema]
 	getTableMetadataCache *cache.MultiResourceCache[string, TableMetadata]
 	timeseriesLabelsCache *cache.MultiResourceCache[string, LabelsCollection]
+	brokerQueryCache      *cache.MultiResourceCache[string, *BrokerResponse]
+
+	brokerLimiter *Limiter
 }
 
 type PinotClientProperties struct {
@@ -38,10 +41,32 @@ type PinotClientProperties struct {
 	DatabaseName  string
 	Authorization string
 
-	ControllerCacheTimeout time.Duration
+	ControllerCacheTimeout     time.Duration
+	BrokerCacheTimeout         time.Duration
+	BrokerMaxConcurrentQueries uint
 }
 
 var clientMap sync.Map
+
+type Limiter struct {
+	ch chan struct{}
+}
+
+func NewLimiter(max uint) *Limiter {
+	if max == 0 {
+		return &Limiter{}
+	}
+
+	return &Limiter{ch: make(chan struct{}, max)}
+}
+
+func (l *Limiter) Do(f func()) {
+	if l.ch != nil {
+		l.ch <- struct{}{}
+		defer func() { <-l.ch }()
+	}
+	f()
+}
 
 func NewPinotClient(properties PinotClientProperties) *PinotClient {
 	key := fmt.Sprintf("%v", properties)
@@ -72,6 +97,9 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
 		getTableMetadataCache: cache.NewMultiResourceCache[string, TableMetadata](properties.ControllerCacheTimeout),
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
+		brokerQueryCache:      cache.NewMultiResourceCache[string, *BrokerResponse](properties.BrokerCacheTimeout),
+
+		brokerLimiter: NewLimiter(properties.BrokerMaxConcurrentQueries),
 	}
 	clientMap.Store(key, client)
 	return client
