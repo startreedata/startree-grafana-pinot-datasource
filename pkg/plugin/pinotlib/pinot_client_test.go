@@ -13,6 +13,7 @@ func setupPinotAndCreateClient(t *testing.T) *PinotClient {
 		BrokerUrl:                  pinottest.BrokerUrl,
 		BrokerCacheTimeout:         time.Minute,
 		BrokerMaxConcurrentQueries: 1,
+		BrokerMaxQueryRate:         1 * time.Second,
 	})
 	return pinotClient
 }
