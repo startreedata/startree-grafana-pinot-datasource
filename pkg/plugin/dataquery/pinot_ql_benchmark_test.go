@@ -14,13 +14,10 @@ func init() {
 }
 
 func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
-	client, err := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
+	client := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})
-	if err != nil {
-		b.Fatal(err)
-	}
 	schema, err := client.GetTableSchema(context.Background(), "benchmark")
 	if err != nil {
 		b.Fatal(err)

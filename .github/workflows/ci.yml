@@ -37,10 +37,18 @@ jobs:
         run: go run cmd/testsetup/main.go
 
       - name: Run unit tests
-        uses: magefile/mage-action@v3
+        run: BROKER_MAX_QUERY_RATE=10s go test -v ./...
+
+      - name: Collect Pinot logs
+        if: ${{ failure() }}
+        run: docker compose logs pinot > pinot.log
+
+      - name: Upload Pinot logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
         with:
-          version: latest
-          args: coverage
+          path: pinot.log
+          retention-days: 30
 
   test_frontend:
     name: Test Frontend
