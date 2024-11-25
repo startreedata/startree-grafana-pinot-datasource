@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 type BrokerResponse struct {
@@ -93,6 +94,9 @@ var queryLock sync.Mutex
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
 	queryLock.Lock()
 	defer queryLock.Unlock()
+	defer func() {
+		time.Sleep(1 * time.Second)
+	}()
 
 	data := map[string]interface{}{"sql": query.Sql}
 	if query.Trace {
