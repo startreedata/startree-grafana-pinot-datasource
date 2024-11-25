@@ -10,7 +10,6 @@ require (
 	github.com/magefile/mage v1.15.0
 	github.com/startreedata/pinot-client-go v0.3.0
 	github.com/stretchr/testify v1.9.0
-	golang.org/x/time v0.8.0
 )
 
 require (
