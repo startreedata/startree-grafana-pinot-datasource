@@ -94,6 +94,7 @@ var queryLock sync.Mutex
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
 	queryLock.Lock()
 	defer queryLock.Unlock()
+	time.Sleep(1 * time.Second)
 	defer func() {
 		time.Sleep(1 * time.Second)
 	}()
