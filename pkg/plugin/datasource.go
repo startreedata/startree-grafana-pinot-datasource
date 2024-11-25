@@ -39,15 +39,12 @@ func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSetti
 		return nil, err
 	}
 
-	client, err := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
+	client := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
 		ControllerUrl: config.ControllerUrl,
 		BrokerUrl:     config.BrokerUrl,
 		DatabaseName:  config.DatabaseName,
 		Authorization: config.Authorization,
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	return &Datasource{
 		CallResourceHandler: NewCallResourceHandler(client),

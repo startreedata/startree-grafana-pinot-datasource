@@ -43,8 +43,12 @@ type PinotClientProperties struct {
 
 var clientMap sync.Map
 
-func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
-	//val, ok := clientMap.Load("")
+func NewPinotClient(properties PinotClientProperties) *PinotClient {
+	key := fmt.Sprintf("%v", properties)
+	val, ok := clientMap.Load(key)
+	if ok {
+		return val.(*PinotClient)
+	}
 
 	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
 	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
@@ -57,11 +61,10 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 		headers["Database"] = properties.DatabaseName
 	}
 
-	httpClient := http.DefaultClient
-	return &PinotClient{
+	client := &PinotClient{
 		properties: properties,
 		headers:    headers,
-		httpClient: httpClient,
+		httpClient: http.DefaultClient,
 
 		listDatabasesCache:    cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
 		listTablesCache:       cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
@@ -69,7 +72,9 @@ func NewPinotClient(properties PinotClientProperties) (*PinotClient, error) {
 		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
 		getTableMetadataCache: cache.NewMultiResourceCache[string, TableMetadata](properties.ControllerCacheTimeout),
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
-	}, nil
+	}
+	clientMap.Store(key, client)
+	return client
 }
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }
