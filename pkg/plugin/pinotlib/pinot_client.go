@@ -61,11 +61,17 @@ func NewLimiter(max uint) *Limiter {
 }
 
 func (l *Limiter) Do(f func()) {
-	if l.ch != nil {
+	if l.ch == nil {
+		f()
+	} else {
+		time.Sleep(1 * time.Second)
 		l.ch <- struct{}{}
-		defer func() { <-l.ch }()
+		defer func() {
+			time.Sleep(1 * time.Second)
+			<-l.ch
+		}()
+		f()
 	}
-	f()
 }
 
 func NewPinotClient(properties PinotClientProperties) *PinotClient {
