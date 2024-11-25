@@ -44,55 +44,35 @@ type PinotClientProperties struct {
 	ControllerCacheTimeout time.Duration
 	BrokerCacheTimeout     time.Duration
 
-	BrokerMaxConcurrentQueries uint
-	BrokerMaxQueryRate         time.Duration
+	BrokerMaxQueryRate time.Duration
+}
+
+type Limiter struct {
+	ticker *time.Ticker
+}
+
+func NewLimiter(every time.Duration) *Limiter {
+	var ticker *time.Ticker
+	if every > 0 {
+		ticker = time.NewTicker(every)
+	}
+	return &Limiter{ticker: ticker}
+}
+
+func (x *Limiter) Do(f func()) {
+	if x.ticker != nil {
+		<-x.ticker.C
+	}
+	f()
+}
+
+func (x *Limiter) Close() {
+	if x.ticker != nil {
+		x.ticker.Stop()
+	}
 }
 
 var clientMap sync.Map
-
-type Limiter struct {
-	ch   chan struct{}
-	rate *time.Ticker
-}
-
-func NewLimiter(max uint, rate time.Duration) *Limiter {
-	var ch chan struct{}
-	if max != 0 {
-		ch = make(chan struct{}, max)
-	}
-
-	var ticker *time.Ticker
-	if rate != 0 {
-		ticker = time.NewTicker(rate)
-	}
-
-	return &Limiter{ch: ch, rate: ticker}
-}
-
-func (l *Limiter) Close() {
-	if l.ch != nil {
-		close(l.ch)
-	}
-	if l.rate != nil {
-		l.rate.Stop()
-	}
-}
-
-func (l *Limiter) Do(f func()) {
-	if l.rate != nil {
-		<-l.rate.C
-	}
-
-	if l.ch == nil {
-		f()
-	} else {
-		l.ch <- struct{}{}
-		defer func() {
-			<-l.ch
-		}()
-		f()
-	}
-}
 
 func NewPinotClient(properties PinotClientProperties) *PinotClient {
 	key := fmt.Sprintf("%v", properties)
@@ -125,10 +105,14 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
 		brokerQueryCache:      cache.NewMultiResourceCache[string, *BrokerResponse](properties.BrokerCacheTimeout),
 
-		brokerLimiter: NewLimiter(properties.BrokerMaxConcurrentQueries, properties.BrokerMaxQueryRate),
+		brokerLimiter: NewLimiter(properties.BrokerMaxQueryRate),
 	}
 	clientMap.Store(key, client)
 	return client
+}
+
+func (p *PinotClient) Close() {
+	p.brokerLimiter.Close()
 }
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }
