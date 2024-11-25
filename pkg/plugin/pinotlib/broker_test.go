@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 func TestPinotClient_ExecuteSqlQuery(t *testing.T) {
-	time.Sleep(10 * time.Second)
 	ctx := context.Background()
 	client := setupPinotAndCreateClient(t)
 	query := NewSqlQuery(`
