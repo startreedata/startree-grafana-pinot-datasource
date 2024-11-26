@@ -55,7 +55,7 @@ func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (DateTimeFo
 
 // ExtractColumn extracts a column from the table.
 // The column data type is mapped to the corresponding golang type.
-func ExtractColumn(results *ResultTable, colIdx int) interface{} {
+func ExtractColumn(results *ResultTable, colIdx int) any {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case DataTypeBoolean:
@@ -104,8 +104,8 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 		})
 	case DataTypeMap:
 		// ref: https://github.com/apache/pinot/pull/13906
-		return extractTypedColumn(results, func(rowIdx int) (map[string]interface{}, error) {
-			return results.Rows[rowIdx][colIdx].(map[string]interface{}), nil
+		return extractTypedColumn(results, func(rowIdx int) (map[string]any, error) {
+			return results.Rows[rowIdx][colIdx].(map[string]any), nil
 		})
 	default:
 		log.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
@@ -189,7 +189,7 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) []string {
 		for i := range rawVals {
 			vals[i] = string(rawVals[i])
 		}
-	case []map[string]interface{}:
+	case []map[string]any:
 		for i := range rawVals {
 			valJson, _ := json.Marshal(rawVals[i])
 			vals[i] = string(valJson)
@@ -267,6 +267,54 @@ func ExtractColumnAsTime(results *ResultTable, colIdx int, format DateTimeFormat
 	}
 }
 
+// ExtractColumnAsMap returns the column as a slice of maps.
+// Returns an error if the column type is not MAP.
+// For JSON columns, use DecodeJsonFromColumn.
+func ExtractColumnAsMap(results *ResultTable, colIdx int) ([]map[string]string, error) {
+	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
+	switch colDataType {
+	case DataTypeMap:
+	default:
+		return nil, errors.New("not a map column")
+	}
+
+	rawVals := ExtractColumn(results, colIdx).([]map[string]any)
+
+	// Use the first map value to determine the value type.
+	var firstVal any
+	for i := range rawVals {
+		if len(rawVals[i]) == 0 {
+			continue
+		}
+		for _, firstVal = range rawVals[i] {
+			break
+		}
+		break
+	}
+	if firstVal == nil {
+		return make([]map[string]string, results.RowCount()), nil
+	}
+
+	var toString func(v any) string
+	switch firstVal.(type) {
+	case json.Number:
+		toString = func(v any) string { return v.(json.Number).String() }
+	case string:
+		toString = func(v any) string { return v.(string) }
+	default:
+		toString = func(v any) string { return fmt.Sprintf("%v", v) }
+	}
+
+	vals := make([]map[string]string, results.RowCount())
+	for i := range rawVals {
+		vals[i] = make(map[string]string, len(rawVals[i]))
+		for k, v := range rawVals[i] {
+			vals[i][k] = toString(v)
+		}
+	}
+	return vals, nil
+}
+
 // DecodeJsonFromColumn decodes each value in the column as type V.
 // Returns the first error encountered.
 // Returns an error if the column type is not STRING, BYTES, or JSON.
@@ -313,7 +361,7 @@ func DecodeJsonFromColumn[V any](results *ResultTable, colIdx int) ([]V, error) 
 }
 
 type nativeColumnType interface {
-	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]interface{}
+	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]any
 }
 
 func extractTypedColumn[V nativeColumnType](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
