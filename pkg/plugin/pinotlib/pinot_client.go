@@ -10,6 +10,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/cache"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -139,15 +140,11 @@ func (p *PinotClient) newRequest(ctx context.Context, method string, url string,
 }
 
 func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interface{}) error {
-	resp, err := p.doRequest(req)
+	resp, err := p.doRequestAndCheckStatus(req)
 	if err != nil {
 		return err
 	}
 	defer p.closeResponseBody(req.Context(), resp)
-
-	if resp.StatusCode != http.StatusOK {
-		return p.newErrorFromResponseBody(req.Context(), resp)
-	}
 
 	decoder := json.NewDecoder(resp.Body)
 	decoder.UseNumber()
@@ -155,6 +152,23 @@ func (p *PinotClient) doRequestAndDecodeResponse(req *http.Request, dest interfa
 		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
 	}
 	return nil
+}
+
+func (p *PinotClient) doRequestAndCheckStatus(req *http.Request, status ...int) (*http.Response, error) {
+	if len(status) == 0 {
+		status = []int{http.StatusOK}
+	}
+
+	resp, err := p.doRequest(req)
+	switch {
+	case err != nil:
+		return nil, err
+	case !slices.Contains(status, resp.StatusCode):
+		defer p.closeResponseBody(req.Context(), resp)
+		return nil, p.newErrorFromResponseBody(req.Context(), resp)
+	default:
+		return resp, nil
+	}
 }
 
 func (p *PinotClient) doRequest(req *http.Request) (*http.Response, error) {
