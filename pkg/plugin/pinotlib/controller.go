@@ -1,8 +1,11 @@
 package pinotlib
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -162,15 +165,98 @@ func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (Table
 	})
 }
 
+func (p *PinotClient) TableSchemaExists(ctx context.Context, schemaName string) (bool, error) {
+	_, err := p.GetTableSchema(ctx, schemaName)
+	switch {
+	case IsStatusNotFoundError(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return true, nil
+	}
+}
+
+func (p *PinotClient) CreateTableSchema(ctx context.Context, schema TableSchema) error {
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(schema); err != nil {
+		return err
+	}
+
+	req, err := p.newControllerRequest(ctx, http.MethodPost, "/schemas", &body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := p.doRequestAndCheckStatus(req)
+	if err != nil {
+		return err
+	}
+	defer p.closeResponseBody(ctx, resp)
+	return nil
+}
+
+func (p *PinotClient) DeleteTableSchema(ctx context.Context, schemaName string, missingOk bool) error {
+	req, err := p.newControllerRequest(ctx, http.MethodDelete, "/schemas/"+url.PathEscape(schemaName), nil)
+
+	expectStatuses := []int{http.StatusOK}
+	if missingOk {
+		expectStatuses = append(expectStatuses, http.StatusNotFound)
+	}
+	resp, err := p.doRequestAndCheckStatus(req, expectStatuses...)
+	if err != nil {
+		return err
+	}
+	defer p.closeResponseBody(ctx, resp)
+	return nil
+}
+
+func (p *PinotClient) TableExists(ctx context.Context, tableName string) (bool, error) {
+	_, err := p.ListTableConfigs(ctx, tableName)
+	switch {
+	case IsStatusNotFoundError(err):
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return true, nil
+	}
+}
+
+func (p *PinotClient) CreateTable(ctx context.Context, tableConfig TableConfig) error {
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(tableConfig); err != nil {
+		return err
+	}
+
+	req, err := p.newControllerRequest(ctx, http.MethodPost, "/tables", &body)
+	if err != nil {
+		return err
+	}
+
+	resp, err := p.doRequestAndCheckStatus(req)
+	if err != nil {
+		return err
+	}
+	defer p.closeResponseBody(ctx, resp)
+	return nil
+}
+
 func (p *PinotClient) newControllerHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {
-	return p.newRequest(ctx, http.MethodHead, p.properties.ControllerUrl+endpoint, nil)
+	return p.newControllerRequest(ctx, http.MethodHead, endpoint, nil)
 }
 
 func (p *PinotClient) newControllerGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
-	req, err := p.newRequest(ctx, http.MethodGet, p.properties.ControllerUrl+endpoint, nil)
+	return p.newControllerRequest(ctx, http.MethodGet, endpoint, nil)
+}
+
+func (p *PinotClient) newControllerRequest(ctx context.Context, method string, endpoint string, body io.Reader) (*http.Request, error) {
+	req, err := p.newRequest(ctx, method, p.properties.ControllerUrl+endpoint, body)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	return req, nil
 }
+
+type ControllerError struct{}
