@@ -18,6 +18,7 @@ import { DataSource } from '../../datasource';
 import { TableSchema } from '../../types/TableSchema';
 import { InputMetricLegend } from './InputMetricLegend';
 import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../../resources/previewSql';
+import { useGranularities } from '../../resources/granularities';
 
 const MetricColumnStar = '*';
 
@@ -35,6 +36,8 @@ export function PinotQlBuilder(props: {
 
   const tableSchema = useTableSchema(datasource, query.tableName);
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
+
+  const granularities = useGranularities(datasource, query.tableName, query.timeColumn);
 
   function canRunQuery(query: PinotDataQuery) {
     return !!(
@@ -79,6 +82,7 @@ export function PinotQlBuilder(props: {
         <SelectGranularity
           selected={query.granularity}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
+          options={granularities}
           onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
         />
       </div>

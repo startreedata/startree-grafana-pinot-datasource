@@ -111,3 +111,22 @@ func DerivedTimeColumnsFrom(configs ListTableConfigsResponse) []DerivedTimeColum
 	}
 	return derivedTimeColumns
 }
+
+func DerivedTimeColumnFor(configs ListTableConfigsResponse, timeGroup DateTimeConversion) (string, bool) {
+	for _, col := range DerivedTimeColumnsFrom(configs) {
+		if col.Source.Equals(timeGroup) {
+			return col.ColumnName, true
+		}
+	}
+	return "", false
+}
+
+func DerivedGranularitiesFor(configs ListTableConfigsResponse, timeColumn string) []Granularity {
+	var granularities []Granularity
+	for _, col := range DerivedTimeColumnsFrom(configs) {
+		if col.Source.TimeColumn == timeColumn {
+			granularities = append(granularities, col.Source.Granularity)
+		}
+	}
+	return granularities
+}

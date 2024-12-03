@@ -13,7 +13,7 @@ import (
 )
 
 func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
+	server := newTestServer(t)
 	defer server.Close()
 
 	want := strings.TrimSpace(`
@@ -56,7 +56,7 @@ LIMIT 100000;
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
+	server := newTestServer(t)
 	defer server.Close()
 
 	var got json.RawMessage
@@ -75,7 +75,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 }
 
 func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
-	server := httptest.NewServer(NewPinotResourceHandler(test_helpers.SetupPinotAndCreateClient(t)))
+	server := newTestServer(t)
 	defer server.Close()
 
 	var want = `SELECT 
@@ -113,6 +113,35 @@ LIMIT 1000000`
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/sql/code", data.String(), &got)
 	assert.Equal(t, want, got["sql"])
+}
+
+func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	want := `{
+		"code":200,
+		"granularities":[
+			{"name":"MILLISECONDS","derived":false,"seconds":0.001},
+			{"name":"SECONDS","derived":false,"seconds":1},
+			{"name":"MINUTES","derived":true,"seconds":60},
+			{"name":"2:MINUTES","derived":true,"seconds":120},
+			{"name":"5:MINUTES","derived":true,"seconds":300},
+			{"name":"10:MINUTES","derived":true,"seconds":600},
+			{"name":"15:MINUTES","derived":true,"seconds":900},
+			{"name":"30:MINUTES","derived":true,"seconds":1800},
+			{"name":"HOURS","derived":true,"seconds":3600},
+			{"name":"DAYS","derived":true,"seconds":86400}
+	]}`
+
+	var got json.RawMessage
+	doPostRequest(t, server.URL+"/granularities", `{"tableName":"derivedTimeBuckets","timeColumn":"ts"}`, &got)
+	assert.JSONEq(t, want, string(got))
+}
+
+func newTestServer(t *testing.T) *httptest.Server {
+	client := test_helpers.SetupPinotAndCreateClient(t)
+	return httptest.NewServer(NewPinotResourceHandler(client))
 }
 
 func doPostRequest(t *testing.T, url string, data string, dest interface{}) {

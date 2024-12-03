@@ -90,12 +90,10 @@ func DateTimeFormatExpr(format DateTimeFormat) string {
 }
 
 func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) string {
-	derivedColumns := DerivedTimeColumnsFrom(configs)
-	for _, col := range derivedColumns {
-		if col.Source.Equals(timeGroup) {
-			return ObjectExpr(col.ColumnName)
-		}
+	if timeCol, ok := DerivedTimeColumnFor(configs, timeGroup); ok {
+		return ObjectExpr(timeCol)
 	}
+
 	return fmt.Sprintf(`DATETIMECONVERT(%s, %s, %s, %s)`,
 		ObjectExpr(timeGroup.TimeColumn),
 		DateTimeFormatExpr(timeGroup.InputFormat),

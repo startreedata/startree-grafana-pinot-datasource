@@ -77,6 +77,9 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		log.WithError(err).FromContext(params.Ctx).Error("failed to fetch table config")
 	}
 
+	derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, params.TimeColumn)
+	granularity := ResolveGranularity(params.Ctx, params.Granularity, params.IntervalSize, derivedGranularities)
+
 	return &PinotQlBuilderDriver{
 		params:            params,
 		TimeColumnAlias:   DefaultTimeColumnAlias,
@@ -86,7 +89,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 			TimeColumn:   params.TimeColumn,
 			InputFormat:  timeColumnFormat,
 			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
-			Granularity:  ResolveGranularity(params.Ctx, params.Granularity, params.IntervalSize),
+			Granularity:  granularity,
 		},
 	}, nil
 }
