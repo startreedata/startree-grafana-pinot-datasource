@@ -33,6 +33,7 @@ type Response struct {
 	*ListTimeSeriesLabelsResponse
 	*ListTimeSeriesLabelValuesResponse
 	*GetTimeSeriesMetricLabelsCollectionResponse
+	*ListTimeGroupSuggestionsResponse
 	IsPromQlSupported *bool `json:"isPromQlSupported,omitempty"`
 }
 
@@ -444,6 +445,37 @@ func (x *ResourceHandler) IsPromQlSupported(r *http.Request) *Response {
 		return newInternalServerErrorResponse(err)
 	}
 	return &Response{Code: http.StatusOK, IsPromQlSupported: &ok}
+}
+
+type ListTimeGroupSuggestionsRequest = struct {
+	TableName  string `json:"tableName"`
+	TimeColumn string `json:"timeColumn"`
+}
+
+type ListTimeGroupSuggestionsResponse struct {
+	TimeGroups []string `json:"timeGroups"`
+}
+
+func (x *ResourceHandler) ListDerivedTimeGroups(ctx context.Context, req ListTimeGroupSuggestionsRequest) *Response {
+	if req.TableName == "" {
+		return newBadRequestResponse(errors.New("tableName is required"))
+	}
+
+	configs, err := x.client.ListTableConfigs(ctx, req.TableName)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	derivedColumns := pinotlib.DerivedTimeColumnsFrom(configs)
+
+	var exprs []string
+	for _, column := range derivedColumns {
+		if column.Source.TimeColumn != req.TimeColumn {
+			continue
+		}
+		exprs = append(exprs, column.Source.Granularity.String())
+	}
+	return &Response{Code: http.StatusOK,
+		ListTimeGroupSuggestionsResponse: &ListTimeGroupSuggestionsResponse{TimeGroups: exprs}}
 }
 
 func newPreviewSqlResponse(sql string) *Response {
