@@ -7,7 +7,7 @@ import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
-import { useTableSchema } from '../../resources/controller';
+import { useTableSchema, useTableTimeColumns } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
@@ -38,6 +38,7 @@ export function PinotQlBuilder(props: {
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
   const granularities = useGranularities(datasource, query.tableName, query.timeColumn);
+  const timeColumns = useTableTimeColumns(datasource, query.tableName);
 
   function canRunQuery(query: PinotDataQuery) {
     return !!(
@@ -57,7 +58,6 @@ export function PinotQlBuilder(props: {
   };
 
   const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
-  const timeColumns = getTimeColumns(tableSchema);
   const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
   const dimensionColumns = getGroupByColumns(tableSchema, query.metricColumn || '');
 
@@ -145,10 +145,6 @@ export function PinotQlBuilder(props: {
       </div>
     </>
   );
-}
-
-function getTimeColumns(tableSchema: TableSchema | undefined): string[] {
-  return (tableSchema?.dateTimeFieldSpecs || []).map(({ name }) => name).sort();
 }
 
 function getMetricColumns(tableSchema: TableSchema | undefined, groupByColumns: string[]): string[] {

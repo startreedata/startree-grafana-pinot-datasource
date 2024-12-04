@@ -13,22 +13,25 @@ import (
 
 const GranularityAuto = "auto"
 
-func ResolveGranularity(ctx context.Context, expr string, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
+func ResolveGranularity(ctx context.Context, expr string, timeColumnFormat pinotlib.DateTimeFormat, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
 	if expr == "" || expr == GranularityAuto {
-		return resolveAutoGranularity(fallback, derived)
+		return resolveAutoGranularity(timeColumnFormat, fallback, derived)
 	}
 
 	granularity, err := pinotlib.ParseGranularityExpr(expr)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Info("Failed to parse user provided granularity; using fallback")
-		return resolveAutoGranularity(fallback, derived)
+		return resolveAutoGranularity(timeColumnFormat, fallback, derived)
 	}
 	return granularity
 }
 
-func resolveAutoGranularity(fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
-	sort.Slice(derived, func(i, j int) bool { return derived[i].Duration() < derived[j].Duration() })
+func resolveAutoGranularity(timeColumnFormat pinotlib.DateTimeFormat, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
+	if fallback <= timeColumnFormat.MinimumGranularity().Duration() {
+		return timeColumnFormat.MinimumGranularity()
+	}
 
+	sort.Slice(derived, func(i, j int) bool { return derived[i].Duration() < derived[j].Duration() })
 	for _, option := range derived {
 		if option.Duration() > fallback {
 			return option

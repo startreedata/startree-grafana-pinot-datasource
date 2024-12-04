@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
@@ -34,6 +35,7 @@ type Response struct {
 	*ListTimeSeriesLabelValuesResponse
 	*GetTimeSeriesMetricLabelsCollectionResponse
 	*ListSuggestedGranularitiesResponse
+	*ListTimeColumnsResponse
 	IsPromQlSupported *bool `json:"isPromQlSupported,omitempty"`
 }
 
@@ -91,6 +93,7 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
 	router.HandleFunc("/tables", adaptHandler(handler.ListTables))
 	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
+	router.HandleFunc("/tables/{table}/timeColumns", adaptHandler(handler.ListTimeColumns))
 	router.HandleFunc("/timeseries/tables", adaptHandler(handler.ListTimeSeriesTables))
 	router.HandleFunc("/timeseries/metrics", adaptHandlerWithBody(handler.ListTimeSeriesMetrics))
 	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
@@ -435,63 +438,119 @@ type ListSuggestedGranularitiesResponse struct {
 }
 
 type Granularity struct {
-	Name    string  `json:"name"`
-	Derived bool    `json:"derived"`
-	Seconds float64 `json:"seconds"`
+	Name      string  `json:"name"`
+	Optimized bool    `json:"optimized"`
+	Seconds   float64 `json:"seconds"`
+}
+
+var commonGranularities = []Granularity{
+	{Name: "auto", Optimized: false, Seconds: 0},
+	{Name: "MILLISECONDS", Optimized: false, Seconds: 0.001},
+	{Name: "SECONDS", Optimized: false, Seconds: 1},
+	{Name: "MINUTES", Optimized: false, Seconds: 60},
+	{Name: "HOURS", Optimized: false, Seconds: 3600},
+	{Name: "DAYS", Optimized: false, Seconds: 86400},
 }
 
 func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req ListSuggestedGranularitiesRequest) *Response {
-	if req.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
-	} else if req.TimeColumn == "" {
-		return newBadRequestResponse(errors.New("timeColumn is required"))
+	if req.TableName == "" || req.TimeColumn == "" {
+		return &Response{Code: http.StatusOK,
+			ListSuggestedGranularitiesResponse: &ListSuggestedGranularitiesResponse{Granularities: commonGranularities}}
 	}
+
+	schema, err := x.client.GetTableSchema(ctx, req.TableName)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+	minPinotGranularity := timeColumnFormat.MinimumGranularity()
 
 	configs, err := x.client.ListTableConfigs(ctx, req.TableName)
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
+	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn)
 
-	suggestions := make(map[float64]Granularity)
-	for _, granularity := range pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn) {
-		suggestions[granularity.Duration().Seconds()] = Granularity{
-			Name:    granularity.ShortString(),
-			Derived: true,
-			Seconds: granularity.Duration().Seconds(),
+	distinctSuggestions := make(map[float64]Granularity)
+	for _, granularity := range commonGranularities {
+		if granularity.Seconds > minPinotGranularity.Duration().Seconds() || granularity.Name == "auto" {
+			distinctSuggestions[granularity.Seconds] = granularity
 		}
 	}
 
-	// Add common granularities.
-	for _, granularity := range []pinotlib.Granularity{
-		pinotlib.GranularityMilliseconds(),
-		pinotlib.GranularitySeconds(),
-		pinotlib.GranularityMinutes(),
-		pinotlib.GranularityHours(),
-		pinotlib.GranularityDays(),
-	} {
-		if _, ok := suggestions[granularity.Duration().Seconds()]; ok {
-			continue
-		}
-		suggestions[granularity.Duration().Seconds()] = Granularity{
-			Name:    granularity.ShortString(),
-			Derived: false,
-			Seconds: granularity.Duration().Seconds(),
+	for _, pinotGranularity := range derivedGranularities {
+		distinctSuggestions[pinotGranularity.Duration().Seconds()] = Granularity{
+			Name:      pinotGranularity.ShortString(),
+			Optimized: true,
+			Seconds:   pinotGranularity.Duration().Seconds(),
 		}
 	}
 
-	results := make([]Granularity, 0, len(suggestions)+1)
-	results = append(results, Granularity{
-		Name:    "auto",
-		Derived: false,
-		Seconds: 0,
-	})
-	for _, granularity := range suggestions {
+	distinctSuggestions[minPinotGranularity.Duration().Seconds()] = Granularity{
+		Name:      minPinotGranularity.ShortString(),
+		Optimized: true,
+		Seconds:   minPinotGranularity.Duration().Seconds(),
+	}
+
+	results := make([]Granularity, 0, len(distinctSuggestions))
+	for _, granularity := range distinctSuggestions {
 		results = append(results, granularity)
 	}
 	sort.Slice(results, func(i, j int) bool { return results[i].Seconds < results[j].Seconds })
 
 	return &Response{Code: http.StatusOK,
 		ListSuggestedGranularitiesResponse: &ListSuggestedGranularitiesResponse{Granularities: results}}
+}
+
+type TimeColumn struct {
+	Name                    string `json:"name"`
+	IsDerived               bool   `json:"isDerived"`
+	HasDerivedGranularities bool   `json:"hasDerivedGranularities"`
+}
+
+type ListTimeColumnsResponse struct {
+	TimeColumns []TimeColumn `json:"timeColumns"`
+}
+
+func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response {
+	vars := mux.Vars(r)
+	table := vars["table"]
+
+	schema, err := x.client.GetTableSchema(r.Context(), table)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+
+	tableConfigs, err := x.client.ListTableConfigs(r.Context(), table)
+	if err != nil {
+		return newInternalServerErrorResponse(err)
+	}
+
+	derivedTimeCols := collections.NewSet[string](0)
+	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
+		derivedTimeCols.Add(col.ColumnName)
+	}
+
+	colsWithDerivedGranularities := collections.NewSet[string](0)
+	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
+		colsWithDerivedGranularities.Add(col.Source.TimeColumn)
+	}
+
+	results := make([]TimeColumn, len(schema.DateTimeFieldSpecs))
+	for i, col := range schema.DateTimeFieldSpecs {
+		results[i] = TimeColumn{
+			Name:                    col.Name,
+			IsDerived:               derivedTimeCols.Contains(col.Name),
+			HasDerivedGranularities: colsWithDerivedGranularities.Contains(col.Name),
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
+	return &Response{Code: http.StatusOK, ListTimeColumnsResponse: &ListTimeColumnsResponse{TimeColumns: results}}
 }
 
 func newPreviewSqlResponse(sql string) *Response {

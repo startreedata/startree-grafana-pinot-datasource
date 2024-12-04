@@ -83,9 +83,9 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
 		}
 
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, x.IntervalSize, derived)
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
+		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
+		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,
 			Format: format,
@@ -116,16 +116,12 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
 		}
 
-		inputFormat, err := pinotlib.GetTimeColumnFormat(x.TableSchema, timeColumn)
-		if err != nil {
-			return "", err
-		}
-
+		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
 		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, x.IntervalSize, derived)
+		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeGroupExpr(x.TableConfigs, pinotlib.DateTimeConversion{
 			TimeColumn:   timeColumn,
-			InputFormat:  inputFormat,
+			InputFormat:  format,
 			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
 			Granularity:  granularity,
 		}), nil
@@ -178,11 +174,12 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
 		}
 
+		format := pinotlib.DateTimeFormatMillisecondsEpoch()
 		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, x.IntervalSize, derived)
+		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,
-			Format: pinotlib.DateTimeFormatMillisecondsEpoch(),
+			Format: format,
 			From:   x.TimeRange.From,
 			To:     x.TimeRange.To,
 		}, granularity.Duration()), nil

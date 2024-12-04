@@ -21,7 +21,7 @@ export function SelectGranularity(props: {
         className={`${styles.QueryEditor.inputForm}`}
         allowCustomValue
         placeholder={'auto'}
-        options={options.map((g) => ({ label: `${g.name}${g.derived ? '*' : ''}`, value: g.name }))}
+        options={options.map((g) => ({ label: `${g.name}${g.optimized ? '*' : ''}`, value: g.name }))}
         value={selected || null}
         disabled={disabled}
         onChange={(change) => (change.value !== 'auto' ? onChange(change.value) : onChange(undefined))}

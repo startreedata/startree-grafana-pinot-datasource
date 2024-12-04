@@ -90,6 +90,11 @@ func DateTimeFormatExpr(format DateTimeFormat) string {
 }
 
 func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) string {
+	if timeGroup.Granularity.Duration() == timeGroup.InputFormat.MinimumGranularity().Duration() &&
+		timeGroup.InputFormat.Equals(timeGroup.OutputFormat) {
+		return ObjectExpr(timeGroup.TimeColumn)
+	}
+
 	if timeCol, ok := DerivedTimeColumnFor(configs, timeGroup); ok {
 		return ObjectExpr(timeCol)
 	}

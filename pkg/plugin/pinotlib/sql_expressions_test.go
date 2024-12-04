@@ -272,7 +272,6 @@ func TestTimeExpr(t *testing.T) {
 }
 
 func TestTimeGroupExpr(t *testing.T) {
-	const outputFormat = "1:MILLISECONDS:EPOCH"
 	tableConfig := ListTableConfigsResponse{
 		TableTypeRealTime: TableConfig{
 			IngestionConfig: IngestionConfig{
@@ -307,6 +306,7 @@ func TestTimeGroupExpr(t *testing.T) {
 		},
 	}
 
+	const outputFormat = "1:MILLISECONDS:EPOCH"
 	testCases := []struct {
 		format      string
 		granularity string
@@ -398,6 +398,11 @@ func TestTimeGroupExpr(t *testing.T) {
 		{granularity: "30:MINUTES", format: "EPOCH|MILLISECONDS|1", want: `"ts_30m"`},
 		{granularity: "1:HOURS", format: "EPOCH|MILLISECONDS|1", want: `"ts_1h"`},
 		{granularity: "1:DAYS", format: "EPOCH|MILLISECONDS|1", want: `"ts_1d"`},
+		{granularity: "1:MILLISECONDS", format: "1:MILLISECONDS:EPOCH", want: `"ts"`},
+		{granularity: "1:MILLISECONDS", format: "EPOCH|MILLISECONDS", want: `"ts"`},
+		{granularity: "1:MILLISECONDS", format: "EPOCH|MILLISECONDS|1", want: `"ts"`},
+		{granularity: "1:MILLISECONDS", format: "EPOCH", want: `"ts"`},
+		{granularity: "1:MILLISECONDS", format: "TIMESTAMP", want: `"ts"`},
 	}
 
 	for _, tt := range testCases {

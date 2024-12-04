@@ -78,7 +78,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 	}
 
 	derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, params.TimeColumn)
-	granularity := ResolveGranularity(params.Ctx, params.Granularity, params.IntervalSize, derivedGranularities)
+	granularity := ResolveGranularity(params.Ctx, params.Granularity, timeColumnFormat, params.IntervalSize, derivedGranularities)
 
 	return &PinotQlBuilderDriver{
 		params:            params,
