@@ -473,15 +473,15 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 	if err != nil {
 		return newInternalServerErrorResponse(err)
 	}
-	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn)
 
 	distinctSuggestions := make(map[float64]Granularity)
 	for _, granularity := range commonGranularities {
-		if granularity.Seconds > minPinotGranularity.Duration().Seconds() || granularity.Name == "auto" {
+		if granularity.Seconds >= minPinotGranularity.Duration().Seconds() || granularity.Name == "auto" {
 			distinctSuggestions[granularity.Seconds] = granularity
 		}
 	}
 
+	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn, dataquery.TimeOutputFormat())
 	for _, pinotGranularity := range derivedGranularities {
 		distinctSuggestions[pinotGranularity.Duration().Seconds()] = Granularity{
 			Name:      pinotGranularity.ShortString(),
@@ -490,10 +490,12 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 		}
 	}
 
-	distinctSuggestions[minPinotGranularity.Duration().Seconds()] = Granularity{
-		Name:      minPinotGranularity.ShortString(),
-		Optimized: true,
-		Seconds:   minPinotGranularity.Duration().Seconds(),
+	if timeColumnFormat.Equals(dataquery.TimeOutputFormat()) {
+		distinctSuggestions[minPinotGranularity.Duration().Seconds()] = Granularity{
+			Name:      minPinotGranularity.ShortString(),
+			Optimized: true,
+			Seconds:   minPinotGranularity.Duration().Seconds(),
+		}
 	}
 
 	results := make([]Granularity, 0, len(distinctSuggestions))

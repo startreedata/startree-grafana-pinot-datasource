@@ -121,10 +121,10 @@ func DerivedTimeColumnFor(configs ListTableConfigsResponse, timeGroup DateTimeCo
 	return "", false
 }
 
-func DerivedGranularitiesFor(configs ListTableConfigsResponse, timeColumn string) []Granularity {
+func DerivedGranularitiesFor(configs ListTableConfigsResponse, timeColumn string, outputFormat DateTimeFormat) []Granularity {
 	var granularities []Granularity
 	for _, col := range DerivedTimeColumnsFrom(configs) {
-		if col.Source.TimeColumn == timeColumn {
+		if col.Source.TimeColumn == timeColumn && col.Source.OutputFormat.Equals(outputFormat) {
 			granularities = append(granularities, col.Source.Granularity)
 		}
 	}

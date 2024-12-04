@@ -1,0 +1,17 @@
+{
+  "schemaName": "hourlyEvents",
+  "metricFieldSpecs": [
+    {
+      "name": "value",
+      "dataType": "DOUBLE"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "LONG",
+      "format": "1:HOURS:EPOCH",
+      "granularity": "1:HOURS"
+    }
+  ]
+}

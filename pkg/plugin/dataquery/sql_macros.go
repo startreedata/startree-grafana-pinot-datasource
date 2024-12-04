@@ -84,7 +84,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 		}
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
+		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, TimeOutputFormat())
 		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,
@@ -117,7 +117,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 		}
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
+		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, TimeOutputFormat())
 		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeGroupExpr(x.TableConfigs, pinotlib.DateTimeConversion{
 			TimeColumn:   timeColumn,
@@ -175,7 +175,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 		}
 
 		format := pinotlib.DateTimeFormatMillisecondsEpoch()
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn)
+		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, TimeOutputFormat())
 		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,

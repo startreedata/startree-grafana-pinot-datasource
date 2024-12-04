@@ -142,6 +142,16 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 				]
 			}`,
 		}, {
+			payload: `{"tableName":"hourlyEvents","timeColumn":"ts"}`,
+			want: `{
+				"code":200,
+				"granularities":[
+					{"name":"auto","optimized":false,"seconds":0},
+					{"name":"HOURS","optimized":false,"seconds":3600},
+					{"name":"DAYS","optimized":false,"seconds":86400}
+				]
+			}`,
+		}, {
 			payload: `{}`,
 			want: `{
 				"code":200,

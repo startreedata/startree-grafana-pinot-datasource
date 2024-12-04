@@ -128,7 +128,7 @@ func (p *PinotQlCodeDriver) ExtractTimeSeriesResults(results *pinotlib.ResultTab
 		Legend:            p.params.Legend,
 		TimeColumnAlias:   p.params.TimeColumnAlias,
 		MetricColumnAlias: p.params.MetricColumnAlias,
-		TimeColumnFormat:  pinotlib.DateTimeFormatMillisecondsEpoch(),
+		TimeColumnFormat:  TimeOutputFormat(),
 	}, results)
 }
 
@@ -161,7 +161,7 @@ func (p *PinotQlCodeDriver) ExtractLogResults(results *pinotlib.ResultTable) (*d
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, TimeOutputFormat())
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
@@ -208,7 +208,7 @@ func (p *PinotQlCodeDriver) extractTableTime(results *pinotlib.ResultTable) (int
 		return -1, nil
 	}
 
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, pinotlib.DateTimeFormatMillisecondsEpoch())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, TimeOutputFormat())
 	if err != nil {
 		return -1, nil
 	}

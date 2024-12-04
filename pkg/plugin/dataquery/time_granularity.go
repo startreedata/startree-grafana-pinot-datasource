@@ -13,6 +13,10 @@ import (
 
 const GranularityAuto = "auto"
 
+func TimeOutputFormat() pinotlib.DateTimeFormat {
+	return pinotlib.DateTimeFormatMillisecondsEpoch()
+}
+
 func ResolveGranularity(ctx context.Context, expr string, timeColumnFormat pinotlib.DateTimeFormat, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
 	if expr == "" || expr == GranularityAuto {
 		return resolveAutoGranularity(timeColumnFormat, fallback, derived)
