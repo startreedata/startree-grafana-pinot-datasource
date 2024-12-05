@@ -13,17 +13,10 @@ export function useTables(datasource: DataSource): string[] | undefined {
   return tables;
 }
 
-interface ListTablesResponse extends PinotResourceResponse {
-  tables: string[] | null;
-}
-
 export async function listTables(datasource: DataSource): Promise<string[]> {
   const endpoint = 'tables';
-  return fetchControllerResource<ListTablesResponse>(datasource, endpoint).then((resp) => resp.tables || []);
-}
-
-interface GetTableSchemaResponse extends PinotResourceResponse {
-  schema: TableSchema | null;
+  type ListTablesResponse = PinotResourceResponse<string[]>;
+  return fetchControllerResource<ListTablesResponse>(datasource, endpoint).then((resp) => resp.result || []);
 }
 
 export function useTableSchema(datasource: DataSource, tableName: string | undefined): TableSchema | undefined {
@@ -40,17 +33,14 @@ export function useTableSchema(datasource: DataSource, tableName: string | undef
 
 export async function fetchTableSchema(datasource: DataSource, tableName: string): Promise<TableSchema | null> {
   const endpoint = 'tables/' + tableName + '/schema';
-  return fetchControllerResource<GetTableSchemaResponse>(datasource, endpoint).then((resp) => resp.schema);
+  type GetTableSchemaResponse = PinotResourceResponse<TableSchema>;
+  return fetchControllerResource<GetTableSchemaResponse>(datasource, endpoint).then((resp) => resp.result);
 }
 
 export interface TimeColumn {
   name: string;
   isDerived: boolean;
   hasDerivedGranularities: boolean;
-}
-
-interface ListTableTimeColumnsResponse extends PinotResourceResponse {
-  timeColumns: TimeColumn[] | null;
 }
 
 export function useTableTimeColumns(datasource: DataSource, tableName: string | undefined): TimeColumn[] {
@@ -67,9 +57,8 @@ export function useTableTimeColumns(datasource: DataSource, tableName: string | 
 
 export async function listTableTimeColumns(datasource: DataSource, tableName: string): Promise<TimeColumn[]> {
   const endpoint = 'tables/' + tableName + '/timeColumns';
-  return fetchControllerResource<ListTableTimeColumnsResponse>(datasource, endpoint).then(
-    (resp) => resp.timeColumns || []
-  );
+  type ListTableTimeColumnsResponse = PinotResourceResponse<TimeColumn[]>;
+  return fetchControllerResource<ListTableTimeColumnsResponse>(datasource, endpoint).then((resp) => resp.result || []);
 }
 
 async function fetchControllerResource<T>(datasource: DataSource, endpoint: string): Promise<T> {

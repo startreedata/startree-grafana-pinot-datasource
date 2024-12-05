@@ -13,10 +13,6 @@ export interface Granularity {
   seconds: number;
 }
 
-export interface ListGranularitiesResponse extends PinotResourceResponse {
-  granularities: Granularity[];
-}
-
 const CommonGranularities: Granularity[] = [
   { name: 'auto', optimized: false, seconds: 0 },
   { name: 'MILLISECONDS', optimized: false, seconds: 0.001 },
@@ -45,9 +41,11 @@ export async function listGranularities(
   request: ListGranularitiesRequest
 ): Promise<Granularity[]> {
   if (request.tableName && request.timeColumn) {
+    type ListGranularitiesResponse = PinotResourceResponse<Granularity[]>;
+
     return datasource
       .postResource<ListGranularitiesResponse>('granularities', request)
-      .then((resp) => resp.granularities || CommonGranularities)
+      .then((resp) => resp.result || CommonGranularities)
       .catch(() => CommonGranularities);
   } else {
     return CommonGranularities;

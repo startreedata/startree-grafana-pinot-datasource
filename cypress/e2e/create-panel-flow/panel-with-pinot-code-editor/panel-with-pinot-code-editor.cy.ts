@@ -294,7 +294,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const tables = ctx.apiResponse.resourcesTables.tables as string[];
+            const tables = ctx.apiResponse.resourcesTables.result as string[];
             tables.forEach((option) => cy.contains(option));
 
             // Select table option
@@ -848,7 +848,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
      * Run query for different types of table and check the results
      */
     cy.get('@resourcesTablesResp').then((resourcesTables: unknown) => {
-      const tables: string[] = (resourcesTables as any).tables;
+      const tables: string[] = (resourcesTables as any).result;
 
       tables.forEach((table) => {
         /**

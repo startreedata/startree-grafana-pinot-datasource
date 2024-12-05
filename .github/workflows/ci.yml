@@ -37,7 +37,7 @@ jobs:
         run: go run cmd/testsetup/main.go
 
       - name: Run unit tests
-        run: BROKER_MAX_QUERY_RATE=10s go test -v ./...
+        run: BROKER_MAX_QUERY_RATE=5s go test -p 1 -v ./...
 
       - name: Collect Pinot logs
         if: ${{ failure() }}

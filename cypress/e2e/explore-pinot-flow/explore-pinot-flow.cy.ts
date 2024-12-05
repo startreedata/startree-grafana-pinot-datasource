@@ -186,7 +186,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
@@ -224,7 +224,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.schema as Record<string, unknown>)
+            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
               .dateTimeFieldSpecs as Array<Record<string, string>>;
 
             selectOptions.forEach((option) => cy.contains(option.name));
@@ -312,7 +312,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.schema as Record<string, unknown>)
+            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
               .metricFieldSpecs as Array<Record<string, string>>;
 
             selectOptions.forEach((option) => cy.contains(option.name));
@@ -398,7 +398,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const schema = ctx.apiResponse.tablesSchema.schema as Record<string, unknown>;
+            const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
             const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
             const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
 
@@ -560,7 +560,7 @@ describe('Create and run pinot query using Explore', () => {
                   .find('[aria-label="Select options menu"]')
                   .should('be.visible')
                   .within(() => {
-                    const schema = ctx.apiResponse.tablesSchema.schema as Record<string, unknown>;
+                    const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
                     const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
                     const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
 
@@ -697,7 +697,7 @@ describe('Create and run pinot query using Explore', () => {
                   cy.get('input').parent().parent().as('valueSelect').click();
 
                   cy.wait('@queryDistinctValues').then(({ response }) => {
-                    const data = response.body as { code: number; valueExprs: string[] };
+                    const data = response.body as { code: number; result: string[] };
                     cy.log('data: ', data);
 
                     cy.get('@body')
@@ -705,7 +705,7 @@ describe('Create and run pinot query using Explore', () => {
                       .should('be.visible')
                       .within(() => {
                         // Check the available options
-                        data.valueExprs.forEach((valueExpr) => {
+                        data.result.forEach((valueExpr) => {
                           cy.contains(valueExpr);
                         });
 
@@ -1175,7 +1175,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const tables = ctx.apiResponse.resourcesTables.tables as string[];
+            const tables = ctx.apiResponse.resourcesTables.result as string[];
             tables.forEach((option) => cy.contains(option));
 
             // Select table option
