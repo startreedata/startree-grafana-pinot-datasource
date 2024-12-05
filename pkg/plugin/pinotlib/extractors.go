@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
+	"math"
 	"math/big"
 	"time"
 )
@@ -72,12 +73,12 @@ func ExtractColumn(results *ResultTable, colIdx int) interface{} {
 		})
 	case DataTypeFloat:
 		return extractTypedColumn(results, func(rowIdx int) (float32, error) {
-			val, err := (results.Rows[rowIdx][colIdx]).(json.Number).Float64()
+			val, err := extractDouble(results.Rows[rowIdx][colIdx])
 			return float32(val), err
 		})
 	case DataTypeDouble:
 		return extractTypedColumn(results, func(rowIdx int) (float64, error) {
-			return (results.Rows[rowIdx][colIdx]).(json.Number).Float64()
+			return extractDouble(results.Rows[rowIdx][colIdx])
 		})
 	case DataTypeBigDecimal:
 		// ref: https://github.com/apache/pinot/issues/8418
@@ -123,7 +124,7 @@ func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error)
 	switch colDataType {
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
 		return extractTypedColumn[float64](results, func(rowIdx int) (float64, error) {
-			return (results.Rows[rowIdx][colIdx]).(json.Number).Float64()
+			return extractDouble(results.Rows[rowIdx][colIdx])
 		}), nil
 	}
 
@@ -137,6 +138,20 @@ func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error)
 	default:
 		return nil, errors.New("not a numeric column")
 	}
+}
+
+func extractDouble(v interface{}) (float64, error) {
+	if rawVal, ok := v.(string); ok {
+		switch rawVal {
+		case "-Infinity":
+			return math.Inf(-1), nil
+		case "Infinity":
+			return math.Inf(1), nil
+		case "NaN":
+			return math.NaN(), nil
+		}
+	}
+	return v.(json.Number).Float64()
 }
 
 // ExtractColumnAsStrings returns the column as a slice of strings.
@@ -190,6 +205,9 @@ func ExtractColumnAsExprs(results *ResultTable, colIdx int) []string {
 	switch colDataType {
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
 		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {
+				return StringLiteralExpr(str), nil
+			}
 			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeBigDecimal:
