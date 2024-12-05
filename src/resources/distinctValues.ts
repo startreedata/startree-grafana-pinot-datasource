@@ -11,18 +11,16 @@ export interface QueryDistinctValuesRequest {
   filters?: DimensionFilter[];
 }
 
-interface QueryDistinctValuesResponse extends PinotResourceResponse {
-  valueExprs: string[] | null;
-}
-
 export async function queryDistinctValuesForFilters(
   datasource: DataSource,
   request: QueryDistinctValuesRequest
 ): Promise<string[]> {
+  type QueryDistinctValuesResponse = PinotResourceResponse<string[]>;
+
   if (request.tableName && request.columnName && request.timeRange && request.timeRange.to && request.timeRange.from) {
     return datasource
       .postResource<QueryDistinctValuesResponse>('query/distinctValues', request)
-      .then((resp) => resp.valueExprs || [])
+      .then((resp) => resp.result || [])
       .catch(() => []);
   } else {
     return [];

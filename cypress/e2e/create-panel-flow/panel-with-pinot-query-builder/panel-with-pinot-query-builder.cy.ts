@@ -212,7 +212,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
@@ -250,7 +250,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.schema as Record<string, unknown>)
+            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
               .dateTimeFieldSpecs as Array<Record<string, string>>;
 
             selectOptions.forEach((option) => cy.contains(option.name));
@@ -338,7 +338,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.schema as Record<string, unknown>)
+            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
               .metricFieldSpecs as Array<Record<string, string>>;
 
             selectOptions.forEach((option) => cy.contains(option.name));
@@ -424,7 +424,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const schema = ctx.apiResponse.tablesSchema.schema as Record<string, unknown>;
+            const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
             const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
             const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
 
@@ -587,7 +587,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
                   .find('[aria-label="Select options menu"]')
                   .should('be.visible')
                   .within(() => {
-                    const schema = ctx.apiResponse.tablesSchema.schema as Record<string, unknown>;
+                    const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
                     const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
                     const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
 
@@ -708,19 +708,19 @@ describe('Create a Panel with Pinot Query Builder', () => {
             cy.get('input').parent().parent().click();
 
             cy.wait('@queryDistinctValues').then(({ response }) => {
-              const data = response.body as { code: number; valueExprs: string[] };
+              const data = response.body as { code: number; result: string[] };
 
               cy.get('@body')
                 .find('[aria-label="Select options menu"]')
                 .should('be.visible')
                 .within(() => {
                   // Check the available options
-                  data.valueExprs.forEach((valueExpr) => {
+                  data.result.forEach((valueExpr) => {
                     cy.contains(valueExpr);
                   });
 
                   // Check the options length should not exceed 100
-                  cy.wrap(data.valueExprs).should('have.length', 100);
+                  cy.wrap(data.result).should('have.length', 100);
 
                   // Close select menu
                   cy.get('@body').click(0, 0);
@@ -797,14 +797,14 @@ describe('Create a Panel with Pinot Query Builder', () => {
                   cy.get('input').parent().parent().as('valueSelect').click();
 
                   cy.wait('@queryDistinctValues').then(({ response }) => {
-                    const data = response.body as { code: number; valueExprs: string[] };
+                    const data = response.body as { code: number; result: string[] };
 
                     cy.get('@body')
                       .find('[aria-label="Select options menu"]')
                       .should('be.visible')
                       .within(() => {
                         // Check the available options
-                        data.valueExprs.forEach((valueExpr) => {
+                        data.result.forEach((valueExpr) => {
                           cy.contains(valueExpr);
                         });
 

@@ -52,7 +52,7 @@ LIMIT 100000;
   "expandMacros": true
 }`, &got)
 
-	assert.Equal(t, want, got["sql"])
+	assert.Equal(t, want, got["result"])
 }
 
 func TestPinotResourceHandler_DistinctValues(t *testing.T) {
@@ -67,7 +67,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 		"columnName":   "fabric"
 	}`, &got)
 
-	want := `{"code":200,"valueExprs":["'fabric_0000'","'fabric_0001'","'fabric_0002'","'fabric_0003'","'fabric_0004'",
+	want := `{"code":200,"result":["'fabric_0000'","'fabric_0001'","'fabric_0002'","'fabric_0003'","'fabric_0004'",
 		"'fabric_0005'","'fabric_0006'","'fabric_0007'","'fabric_0008'","'fabric_0009'","'fabric_0010'","'fabric_0011'",
 		"'fabric_0012'","'fabric_0013'","'fabric_0014'"]}`
 
@@ -112,7 +112,7 @@ LIMIT 1000000`
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/sql/code", data.String(), &got)
-	assert.Equal(t, want, got["sql"])
+	assert.Equal(t, want, got["result"])
 }
 
 func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
@@ -127,7 +127,7 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 			payload: `{"tableName":"derivedTimeBuckets","timeColumn":"ts"}`,
 			want: `{
 				"code":200,
-				"granularities":[
+				"result":[
 					{"name":"auto","optimized":false,"seconds":0},
 					{"name":"MILLISECONDS","optimized":true,"seconds":0.001},
 					{"name":"SECONDS","optimized":false,"seconds":1},
@@ -145,7 +145,7 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 			payload: `{"tableName":"hourlyEvents","timeColumn":"ts"}`,
 			want: `{
 				"code":200,
-				"granularities":[
+				"result":[
 					{"name":"auto","optimized":false,"seconds":0},
 					{"name":"HOURS","optimized":false,"seconds":3600},
 					{"name":"DAYS","optimized":false,"seconds":86400}
@@ -155,7 +155,7 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 			payload: `{}`,
 			want: `{
 				"code":200,
-				"granularities":[
+				"result":[
 					{"name":"auto","optimized":false,"seconds":0},
 					{"name":"MILLISECONDS","optimized":false,"seconds":0.001},
 					{"name":"SECONDS","optimized":false,"seconds":1},
@@ -188,7 +188,7 @@ func TestPinotResourceHandler_ListTimeColumns(t *testing.T) {
 			tableName: "derivedTimeBuckets",
 			want: `{
 				"code":200,
-				"timeColumns":[
+				"result":[
 					{"name":"ts","isDerived":false,"hasDerivedGranularities":true},
 					{"name":"ts_10m","isDerived":true,"hasDerivedGranularities":false},
 					{"name":"ts_15m","isDerived":true,"hasDerivedGranularities":false},
@@ -202,7 +202,7 @@ func TestPinotResourceHandler_ListTimeColumns(t *testing.T) {
 			}`,
 		}, {
 			tableName: "benchmark",
-			want:      `{"code":200,"timeColumns":[{"name":"ts","isDerived":false,"hasDerivedGranularities":false}]}`,
+			want:      `{"code":200,"result":[{"name":"ts","isDerived":false,"hasDerivedGranularities":false}]}`,
 		},
 	}
 
@@ -239,6 +239,7 @@ func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
 }
 
 func assertEqualJson[T1 string | []byte | json.RawMessage, T2 string | []byte | json.RawMessage](t *testing.T, want T1, got T2) {
+	t.Helper()
 	wantPretty, err := json.MarshalIndent(json.RawMessage(want), "", "  ")
 	require.NoError(t, err, "want invalid json")
 	gotPretty, err := json.MarshalIndent(json.RawMessage(got), "", "  ")

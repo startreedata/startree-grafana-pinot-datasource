@@ -294,7 +294,7 @@ describe('Add variable with Variable Query Editor', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
@@ -520,7 +520,7 @@ describe('Add variable with Variable Query Editor', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
@@ -568,7 +568,7 @@ describe('Add variable with Variable Query Editor', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const tableSchema = ctx.apiResponse.resourcesTablesSchema.schema;
+            const tableSchema = ctx.apiResponse.resourcesTablesSchema.result;
 
             const selectOptions = [
               ...(tableSchema?.dateTimeFieldSpecs || []),
@@ -600,7 +600,7 @@ describe('Add variable with Variable Query Editor', () => {
      */
     cy.get('@sqlPreview').within(() => {
       cy.get('@sqlDistinctValuesResp').then((resp: unknown) => {
-        const sqlPreviewValue = (resp as Record<string, any>).sql;
+        const sqlPreviewValue = (resp as Record<string, any>).result;
 
         cy.getBySel('sql-preview-value').should('have.text', sqlPreviewValue.replace(/\n/g, ' '));
       });
@@ -781,7 +781,7 @@ describe('Add variable with Variable Query Editor', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.tables as string[];
+            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
             selectOptions.forEach((option) => cy.contains(option));
 
             // Select the option
