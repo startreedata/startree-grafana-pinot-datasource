@@ -45,7 +45,7 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
 type Response[T any] struct {
 	Code   int    `json:"code"`
 	Error  string `json:"error,omitempty"`
-	Result T      `json:"result"`
+	Result T      `json:"result,omitempty"`
 }
 
 func (x *ResourceHandler) ListDatabases(r *http.Request) *Response[[]string] {
