@@ -18,73 +18,12 @@ import (
 
 type ResourceHandler struct {
 	client *pinotlib.PinotClient
-	router *mux.Router
 }
 
-type Response struct {
-	Code  int    `json:"code"`
-	Error string `json:"error,omitempty"`
-
-	*GetDatabasesResponse
-	*GetTablesResponse
-	*GetTableSchemaResponse
-	*DistinctValuesResponse
-	*PreviewSqlResponse
-	*ListTimeSeriesMetricsResponse
-	*ListTimeSeriesLabelsResponse
-	*ListTimeSeriesLabelValuesResponse
-	*GetTimeSeriesMetricLabelsCollectionResponse
-	*ListSuggestedGranularitiesResponse
-	*ListTimeColumnsResponse
-	IsPromQlSupported *bool `json:"isPromQlSupported,omitempty"`
-}
-
-type LabelAndValues struct {
-	Name   string   `json:"name"`
-	Values []string `json:"values"`
-}
-
-type GetTimeSeriesMetricLabelsCollectionResponse struct {
-	Collection []LabelAndValues `json:"collection"`
-}
-
-type GetDatabasesResponse struct {
-	Databases []string `json:"databases"`
-}
-
-type GetTablesResponse struct {
-	Tables []string `json:"tables"`
-}
-
-type GetTableSchemaResponse struct {
-	Schema pinotlib.TableSchema `json:"schema"`
-}
-
-type PreviewSqlResponse struct {
-	Sql string `json:"sql"`
-}
-
-type DistinctValuesResponse struct {
-	ValueExprs []string `json:"valueExprs"`
-}
-
-type ListTimeSeriesMetricsResponse struct {
-	Metrics []string `json:"metrics"`
-}
-
-type ListTimeSeriesLabelsResponse struct {
-	Labels []string `json:"labels"`
-}
-
-type ListTimeSeriesLabelValuesResponse struct {
-	LabelValues []string `json:"labelValues"`
-}
-
-func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
+func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
 	router := mux.NewRouter()
 
-	handler := ResourceHandler{client: client, router: router}
-
+	handler := ResourceHandler{client: client}
 	router.HandleFunc("/databases", adaptHandler(handler.ListDatabases))
 	router.HandleFunc("/isPromQlSupported", adaptHandler(handler.IsPromQlSupported))
 	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(handler.PreviewSqlBuilder))
@@ -100,42 +39,48 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) *ResourceHandler {
 	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(handler.ListTimeSeriesLabelValues))
 	router.HandleFunc("/granularities", adaptHandlerWithBody(handler.ListSuggestedGranularities))
 
-	return &handler
+	return router
 }
 
-func (x *ResourceHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	x.router.ServeHTTP(w, r)
+type Response[T any] struct {
+	Code   int    `json:"code"`
+	Error  string `json:"error,omitempty"`
+	Result T      `json:"result,omitempty"`
 }
 
-func (x *ResourceHandler) ListDatabases(r *http.Request) *Response {
+func (x *ResourceHandler) ListDatabases(r *http.Request) *Response[[]string] {
 	databases, err := x.client.ListDatabases(r.Context())
 
 	if pinotlib.IsStatusForbiddenError(err) {
 		log.WithError(err).Error("PinotClient.ListDatabases() failed.")
-		return newEmptyResponse(http.StatusOK)
+		return newOkResponse[[]string](nil)
 	} else if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-	return &Response{Code: http.StatusOK, GetDatabasesResponse: &GetDatabasesResponse{Databases: databases}}
+	return newOkResponse(databases)
 }
 
-func (x *ResourceHandler) ListTables(r *http.Request) *Response {
+func (x *ResourceHandler) ListTables(r *http.Request) *Response[[]string] {
 	tables, err := x.client.ListTables(r.Context())
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-	return &Response{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
+	return newOkResponse(tables)
 }
 
-func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response {
+type GetTablesResponse struct {
+	Tables []string `json:"tables"`
+}
+
+func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response[pinotlib.TableSchema] {
 	vars := mux.Vars(r)
 	table := vars["table"]
 
 	schema, err := x.client.GetTableSchema(r.Context(), table)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[pinotlib.TableSchema](err)
 	}
-	return &Response{Code: http.StatusOK, GetTableSchemaResponse: &GetTableSchemaResponse{Schema: schema}}
+	return newOkResponse(schema)
 }
 
 type PreviewSqlBuilderRequest struct {
@@ -155,16 +100,15 @@ type PreviewSqlBuilderRequest struct {
 	ExpandMacros        bool                        `json:"expandMacros"`
 }
 
-func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSqlBuilderRequest) *Response {
+func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSqlBuilderRequest) *Response[string] {
 	if data.TableName == "" {
-		return newEmptyResponse(http.StatusOK)
+		return newOkResponse("")
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
-		// No need to surface this error in Grafana.
-		log.WithError(err).Error("PinotClient.GetTableSchema() failed.")
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
+		return newOkResponse("")
 	}
 
 	driver, err := dataquery.NewPinotQlBuilderDriver(dataquery.PinotQlBuilderParams{
@@ -184,19 +128,19 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		QueryOptions:        data.QueryOptions,
 	})
 	if err != nil {
-		log.WithError(err).Error("Failed to build query driver.")
-		// No need to surface this error in Grafana.
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("Failed to build query driver.")
+		return newOkResponse("")
+
 	}
 
 	sql, err := driver.RenderPinotSql(data.ExpandMacros)
 	if err != nil {
-		log.WithError(err).Error("PinotDriver.RenderSql() failed.")
-		// No need to surface this error in Grafana.
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
+		return newOkResponse("")
+
 	}
 
-	return newPreviewSqlResponse(sql)
+	return newOkResponse(sql)
 }
 
 type PreviewSqlCodeRequest struct {
@@ -209,17 +153,16 @@ type PreviewSqlCodeRequest struct {
 	Code              string              `json:"code"`
 }
 
-func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCodeRequest) *Response {
+func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCodeRequest) *Response[string] {
 	if data.TableName == "" {
-		log.Info("Received code preview request without table selection.")
-		return newEmptyResponse(http.StatusOK)
+		log.FromContext(ctx).Info("Received code preview request without table selection")
+		return newOkResponse("")
 	}
 
 	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 	if err != nil {
-		log.WithError(err).Error("PinotClient.GetTableSchema() failed.")
-		// No need to surface this error in Grafana.
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
+		return newOkResponse("")
 	}
 
 	driver, err := dataquery.NewPinotQlCodeDriver(dataquery.PinotQlCodeDriverParams{
@@ -233,19 +176,16 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		Code:              data.Code,
 	})
 	if err != nil {
-		log.WithError(err).Error("NewPinotQlCodeDriver() failed.")
-		// No need to surface this error in Grafana.
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("NewPinotQlCodeDriver() failed.")
+		return newOkResponse("")
 	}
 
 	sql, err := driver.RenderPinotSql()
 	if err != nil {
-		log.WithError(err).Error("RenderPinotSql() failed.")
-		// No need to surface this error in Grafana.
-		return newEmptyResponse(http.StatusOK)
+		log.WithError(err).FromContext(ctx).Error("RenderPinotSql() failed.")
+		return newOkResponse("")
 	}
-
-	return newPreviewSqlResponse(sql)
+	return newOkResponse(sql)
 }
 
 type QueryDistinctValuesRequest struct {
@@ -256,37 +196,36 @@ type QueryDistinctValuesRequest struct {
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDistinctValuesRequest) *Response {
+func (x *ResourceHandler) QueryDistinctValues(ctx context.Context, data QueryDistinctValuesRequest) *Response[[]string] {
 	sql, err := x.getDistinctValuesSql(ctx, data)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
 	if sql == "" {
-		return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{}}
+		return newOkResponse[[]string](nil)
 	}
 
 	results, err := x.client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
 
 	var valueExprs []string
 	if results.HasData() {
 		valueExprs = pinotlib.ExtractColumnAsExprs(results.ResultTable, 0)
 	}
-
-	return &Response{Code: http.StatusOK, DistinctValuesResponse: &DistinctValuesResponse{ValueExprs: valueExprs}}
+	return newOkResponse(valueExprs)
 }
 
 type PreviewSqlDistinctValues QueryDistinctValuesRequest
 
-func (x *ResourceHandler) PreviewSqlDistinctValues(ctx context.Context, data PreviewSqlDistinctValues) *Response {
+func (x *ResourceHandler) PreviewSqlDistinctValues(ctx context.Context, data PreviewSqlDistinctValues) *Response[string] {
 	sql, err := x.getDistinctValuesSql(ctx, QueryDistinctValuesRequest(data))
 	if err != nil {
-		return newErrorResponse(http.StatusInternalServerError, err)
+		return newErrorResponse[string](http.StatusInternalServerError, err)
 	}
 
-	return newPreviewSqlResponse(sql)
+	return newOkResponse(sql)
 }
 
 func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDistinctValuesRequest) (string, error) {
@@ -322,12 +261,12 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 	})
 }
 
-func (x *ResourceHandler) ListTimeSeriesTables(r *http.Request) *Response {
+func (x *ResourceHandler) ListTimeSeriesTables(r *http.Request) *Response[[]string] {
 	tables, err := x.client.ListTimeSeriesTables(r.Context())
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-	return &Response{Code: http.StatusOK, GetTablesResponse: &GetTablesResponse{Tables: tables}}
+	return newOkResponse(tables)
 }
 
 type ListTimeSeriesMetricsRequest struct {
@@ -335,13 +274,13 @@ type ListTimeSeriesMetricsRequest struct {
 	TimeRange dataquery.TimeRange `json:"timeRange"`
 }
 
-func (x *ResourceHandler) ListTimeSeriesMetrics(ctx context.Context, data ListTimeSeriesMetricsRequest) *Response {
+func (x *ResourceHandler) ListTimeSeriesMetrics(ctx context.Context, data ListTimeSeriesMetricsRequest) *Response[[]string] {
 	if data.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
+		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	} else if !ok {
-		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
 	metrics, err := x.client.ListTimeSeriesMetrics(ctx, pinotlib.TimeSeriesMetricNamesQuery{
@@ -350,12 +289,9 @@ func (x *ResourceHandler) ListTimeSeriesMetrics(ctx context.Context, data ListTi
 		To:        data.TimeRange.To,
 	})
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-
-	return &Response{Code: http.StatusOK, ListTimeSeriesMetricsResponse: &ListTimeSeriesMetricsResponse{
-		Metrics: metrics,
-	}}
+	return newOkResponse(metrics)
 }
 
 type ListTimeSeriesLabelsRequest = struct {
@@ -364,13 +300,13 @@ type ListTimeSeriesLabelsRequest = struct {
 	TimeRange  dataquery.TimeRange `json:"timeRange"`
 }
 
-func (x *ResourceHandler) ListTimeSeriesLabels(ctx context.Context, data ListTimeSeriesLabelsRequest) *Response {
+func (x *ResourceHandler) ListTimeSeriesLabels(ctx context.Context, data ListTimeSeriesLabelsRequest) *Response[[]string] {
 	if data.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
+		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	} else if !ok {
-		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
 	labels, err := x.client.ListTimeSeriesLabelNames(ctx, pinotlib.TimeSeriesLabelNamesQuery{
@@ -380,11 +316,9 @@ func (x *ResourceHandler) ListTimeSeriesLabels(ctx context.Context, data ListTim
 		To:         data.TimeRange.To,
 	})
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-	return &Response{Code: http.StatusOK, ListTimeSeriesLabelsResponse: &ListTimeSeriesLabelsResponse{
-		Labels: labels,
-	}}
+	return newOkResponse(labels)
 }
 
 type ListTimeSeriesLabelValuesRequest struct {
@@ -394,15 +328,15 @@ type ListTimeSeriesLabelValuesRequest struct {
 	TimeRange  dataquery.TimeRange `json:"timeRange"`
 }
 
-func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data ListTimeSeriesLabelValuesRequest) *Response {
+func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data ListTimeSeriesLabelValuesRequest) *Response[[]string] {
 	if data.TableName == "" {
-		return newBadRequestResponse(errors.New("tableName is required"))
+		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if data.LabelName == "" {
-		return newBadRequestResponse(errors.New("labelName is required"))
+		return newBadRequestResponse[[]string](errors.New("labelName is required"))
 	} else if ok, err := x.client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	} else if !ok {
-		return newBadRequestResponse(fmt.Errorf("table `%s` is not a time series table", data.TableName))
+		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
 	values, err := x.client.ListTimeSeriesLabelValues(ctx, pinotlib.TimeSeriesLabelValuesQuery{
@@ -413,28 +347,22 @@ func (x *ResourceHandler) ListTimeSeriesLabelValues(ctx context.Context, data Li
 		To:         data.TimeRange.To,
 	})
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]string](err)
 	}
-	return &Response{Code: http.StatusOK, ListTimeSeriesLabelValuesResponse: &ListTimeSeriesLabelValuesResponse{
-		LabelValues: values,
-	}}
+	return newOkResponse(values)
 }
 
-func (x *ResourceHandler) IsPromQlSupported(r *http.Request) *Response {
+func (x *ResourceHandler) IsPromQlSupported(r *http.Request) *Response[bool] {
 	ok, err := x.client.IsTimeseriesSupported(r.Context())
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[bool](err)
 	}
-	return &Response{Code: http.StatusOK, IsPromQlSupported: &ok}
+	return newOkResponse(ok)
 }
 
 type ListSuggestedGranularitiesRequest = struct {
 	TableName  string `json:"tableName"`
 	TimeColumn string `json:"timeColumn"`
-}
-
-type ListSuggestedGranularitiesResponse struct {
-	Granularities []Granularity `json:"granularities"`
 }
 
 type Granularity struct {
@@ -452,26 +380,25 @@ var commonGranularities = []Granularity{
 	{Name: "DAYS", Optimized: false, Seconds: 86400},
 }
 
-func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req ListSuggestedGranularitiesRequest) *Response {
+func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req ListSuggestedGranularitiesRequest) *Response[[]Granularity] {
 	if req.TableName == "" || req.TimeColumn == "" {
-		return &Response{Code: http.StatusOK,
-			ListSuggestedGranularitiesResponse: &ListSuggestedGranularitiesResponse{Granularities: commonGranularities}}
+		return newOkResponse(commonGranularities)
 	}
 
 	schema, err := x.client.GetTableSchema(ctx, req.TableName)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]Granularity](err)
 	}
 
 	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]Granularity](err)
 	}
 	minPinotGranularity := timeColumnFormat.MinimumGranularity()
 
 	configs, err := x.client.ListTableConfigs(ctx, req.TableName)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]Granularity](err)
 	}
 
 	distinctSuggestions := make(map[float64]Granularity)
@@ -504,8 +431,7 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 	}
 	sort.Slice(results, func(i, j int) bool { return results[i].Seconds < results[j].Seconds })
 
-	return &Response{Code: http.StatusOK,
-		ListSuggestedGranularitiesResponse: &ListSuggestedGranularitiesResponse{Granularities: results}}
+	return newOkResponse(results)
 }
 
 type TimeColumn struct {
@@ -514,22 +440,18 @@ type TimeColumn struct {
 	HasDerivedGranularities bool   `json:"hasDerivedGranularities"`
 }
 
-type ListTimeColumnsResponse struct {
-	TimeColumns []TimeColumn `json:"timeColumns"`
-}
-
-func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response {
+func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response[[]TimeColumn] {
 	vars := mux.Vars(r)
 	table := vars["table"]
 
 	schema, err := x.client.GetTableSchema(r.Context(), table)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]TimeColumn](err)
 	}
 
 	tableConfigs, err := x.client.ListTableConfigs(r.Context(), table)
 	if err != nil {
-		return newInternalServerErrorResponse(err)
+		return newInternalServerErrorResponse[[]TimeColumn](err)
 	}
 
 	derivedTimeCols := collections.NewSet[string](0)
@@ -552,40 +474,36 @@ func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response {
 	}
 
 	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
-	return &Response{Code: http.StatusOK, ListTimeColumnsResponse: &ListTimeColumnsResponse{TimeColumns: results}}
+	return newOkResponse(results)
 }
 
-func newPreviewSqlResponse(sql string) *Response {
-	return &Response{Code: http.StatusOK, PreviewSqlResponse: &PreviewSqlResponse{Sql: sql}}
+func newOkResponse[T any](result T) *Response[T] {
+	return &Response[T]{Code: http.StatusOK, Result: result}
 }
 
-func newEmptyResponse(code int) *Response {
-	return &Response{Code: code}
+func newBadRequestResponse[T any](err error) *Response[T] {
+	return newErrorResponse[T](http.StatusBadRequest, err)
 }
 
-func newBadRequestResponse(err error) *Response {
-	return newErrorResponse(http.StatusBadRequest, err)
+func newInternalServerErrorResponse[T any](err error) *Response[T] {
+	return newErrorResponse[T](http.StatusInternalServerError, err)
 }
 
-func newInternalServerErrorResponse(err error) *Response {
-	return newErrorResponse(http.StatusInternalServerError, err)
+func newErrorResponse[T any](code int, err error) *Response[T] {
+	return &Response[T]{Code: code, Error: err.Error()}
 }
 
-func newErrorResponse(code int, err error) *Response {
-	return &Response{Code: code, Error: err.Error()}
-}
-
-func adaptHandler(handler func(r *http.Request) *Response) http.HandlerFunc {
+func adaptHandler[T any](handler func(r *http.Request) *Response[T]) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		writeResponse(w, handler(r))
 	}
 }
 
-func adaptHandlerWithBody[A any](handler func(ctx context.Context, data A) *Response) http.HandlerFunc {
+func adaptHandlerWithBody[I any, O any](handler func(ctx context.Context, data I) *Response[O]) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var data A
+		var data I
 		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-			writeResponse(w, newBadRequestResponse(err))
+			writeResponse(w, newBadRequestResponse[O](err))
 			return
 		}
 		writeResponse(w, handler(r.Context(), data))
@@ -600,7 +518,7 @@ func parseIntervalSize(intervalSize string) time.Duration {
 	return interval
 }
 
-func writeResponse(w http.ResponseWriter, resp *Response) {
+func writeResponse[T any](w http.ResponseWriter, resp *Response[T]) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.Code)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

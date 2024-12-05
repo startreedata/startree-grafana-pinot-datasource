@@ -13,23 +13,16 @@ export function useTimeSeriesTables(datasource: DataSource): string[] | undefine
   return tables;
 }
 
-interface ListTimeSeriesTablesResponse extends PinotResourceResponse {
-  tables: string[] | null;
-}
-
 export async function listTimeSeriesTables(datasource: DataSource): Promise<string[]> {
   const endpoint = '/timeseries/tables';
 
-  return datasource.getResource<ListTimeSeriesTablesResponse>(endpoint).then((resp) => resp.tables || []);
+  type ListTimeSeriesTablesResponse = PinotResourceResponse<string[]>;
+  return datasource.getResource<ListTimeSeriesTablesResponse>(endpoint).then((resp) => resp.result || []);
 }
 
 export interface ListTimeSeriesMetricsRequest {
   tableName: string | undefined;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-}
-
-interface ListTimeSeriesMetricsResponse extends PinotResourceResponse {
-  metrics: string[] | null;
 }
 
 export async function listTimeSeriesMetrics(
@@ -38,8 +31,9 @@ export async function listTimeSeriesMetrics(
 ): Promise<string[]> {
   const endpoint = 'timeseries/metrics';
 
+  type ListTimeSeriesMetricsResponse = PinotResourceResponse<string[]>;
   if (request.tableName && request.timeRange.from && request.timeRange.to) {
-    return datasource.postResource<ListTimeSeriesMetricsResponse>(endpoint, request).then((resp) => resp.metrics || []);
+    return datasource.postResource<ListTimeSeriesMetricsResponse>(endpoint, request).then((resp) => resp.result || []);
   }
   return [];
 }
@@ -50,10 +44,6 @@ interface ListTimeSeriesLabelsRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
 }
 
-interface ListTimeSeriesLabelsResponse extends PinotResourceResponse {
-  labels: string[] | null;
-}
-
 export async function listTimeSeriesLabels(
   datasource: DataSource,
   request: ListTimeSeriesLabelsRequest
@@ -61,7 +51,8 @@ export async function listTimeSeriesLabels(
   const endpoint = 'timeseries/labels';
 
   if (request.tableName && request.timeRange.from && request.timeRange.to) {
-    return datasource.postResource<ListTimeSeriesLabelsResponse>(endpoint, request).then((resp) => resp.labels || []);
+    type ListTimeSeriesLabelsResponse = PinotResourceResponse<string[]>;
+    return datasource.postResource<ListTimeSeriesLabelsResponse>(endpoint, request).then((resp) => resp.result || []);
   }
   return [];
 }
@@ -73,10 +64,6 @@ interface ListTimeSeriesLabelValuesRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
 }
 
-interface ListTimeSeriesLabelValuesResponse extends PinotResourceResponse {
-  labelValues: string[] | null;
-}
-
 export async function listTimeSeriesLabelValues(
   datasource: DataSource,
   request: ListTimeSeriesLabelValuesRequest
@@ -84,9 +71,10 @@ export async function listTimeSeriesLabelValues(
   const endpoint = 'timeseries/labelValues';
 
   if (request.tableName && request.labelName && request?.timeRange.from && request?.timeRange.to) {
+    type ListTimeSeriesLabelValuesResponse = PinotResourceResponse<string[]>;
     return datasource
       .postResource<ListTimeSeriesLabelValuesResponse>(endpoint, request)
-      .then((resp) => resp.labelValues || []);
+      .then((resp) => resp.result || []);
   }
   return [];
 }

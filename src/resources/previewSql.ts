@@ -6,9 +6,7 @@ import { PinotResourceResponse } from './PinotResourceResponse';
 import { QueryDistinctValuesRequest } from './distinctValues';
 import { DateTime } from '@grafana/data';
 
-export interface PreviewSqlResponse extends PinotResourceResponse {
-  sql: string | null;
-}
+type PreviewSqlResponse = PinotResourceResponse<string>;
 
 export interface PreviewSqlBuilderRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
@@ -38,7 +36,7 @@ export async function previewSqlBuilder(datasource: DataSource, request: Preview
   ) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/builder', request)
-      .then((resp) => resp.sql || '')
+      .then((resp) => resp.result || '')
       .catch(() => '');
   } else {
     return '';
@@ -60,7 +58,7 @@ export async function previewSqlCode(datasource: DataSource, request: PreviewSql
   if (request.intervalSize && request.tableName && request.code) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/code', request)
-      .then((resp) => resp.sql || '')
+      .then((resp) => resp.result || '')
       .catch(() => '');
   } else {
     return '';
@@ -76,7 +74,7 @@ export async function previewSqlDistinctValues(
   if (request.tableName && request.columnName) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/distinctValues', request)
-      .then((resp) => resp.sql || '')
+      .then((resp) => resp.result || '')
       .catch(() => '');
   } else {
     return '';
