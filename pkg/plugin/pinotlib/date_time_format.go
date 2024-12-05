@@ -50,11 +50,11 @@ func ParseDateTimeFormat(format string) (DateTimeFormat, error) {
 }
 
 func (x DateTimeFormat) Equals(dt DateTimeFormat) bool {
-	return x.Format == dt.Format && x.IntervalSize() == dt.IntervalSize()
+	return x.Format == dt.Format && x.MinimumGranularity().Equals(dt.MinimumGranularity())
 }
 
-func (x DateTimeFormat) IntervalSize() time.Duration {
-	return Granularity{Unit: x.Unit, Size: x.Size}.Duration()
+func (x DateTimeFormat) MinimumGranularity() Granularity {
+	return Granularity{Unit: x.Unit, Size: x.Size}
 }
 
 // TODO: This should not be a method on dtf.

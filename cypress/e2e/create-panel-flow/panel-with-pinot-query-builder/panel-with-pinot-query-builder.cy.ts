@@ -293,11 +293,6 @@ describe('Create a Panel with Pinot Query Builder', () => {
               'auto',
               'DAYS',
               'HOURS',
-              'MINUTES',
-              'SECONDS',
-              'MILLISECONDS',
-              'MICROSECONDS',
-              'NANOSECONDS',
             ];
 
             selectOptions.forEach((option) => cy.contains(option));
