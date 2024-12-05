@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"math"
 	"math/big"
 	"testing"
 	"time"
@@ -85,11 +85,18 @@ func TestExtractColumn(t *testing.T) {
 	exp20 := big.NewInt(0).Exp(big.NewInt(10), big.NewInt(20), nil)
 
 	testCases := []struct {
-		column string
-		want   interface{}
+		column   string
+		want     interface{}
+		wantNaNs bool
 	}{
 		{column: "__double", want: interface{}([]float64{0, 0.1111111111111111, 0.2222222222222222})},
+		{column: "__double_inf", want: interface{}([]float64{math.Inf(1), math.Inf(1), math.Inf(1)})},
+		{column: "__double_minus_inf", want: interface{}([]float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)})},
+		{column: "__double_nan", wantNaNs: true},
 		{column: "__float", want: interface{}([]float32{0, 0.11111111, 0.22222222})},
+		{column: "__float_inf", want: interface{}([]float32{float32(math.Inf(1)), float32(math.Inf(1)), float32(math.Inf(1))})},
+		{column: "__float_minus_inf", want: interface{}([]float32{float32(math.Inf(-1)), float32(math.Inf(-1)), float32(math.Inf(-1))})},
+		{column: "__float_nan", wantNaNs: true},
 		{column: "__int", want: interface{}([]int32{0, 111111, 222222})},
 		{column: "__long", want: interface{}([]int64{0, 111111111111111, 222222222222222})},
 		{column: "__string", want: interface{}([]string{"row_0", "row_1", "row_2"})},
@@ -123,7 +130,12 @@ func TestExtractColumn(t *testing.T) {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ExtractColumn(resp.ResultTable, colIdx))
+			got := ExtractColumn(resp.ResultTable, colIdx)
+			if tt.wantNaNs {
+				assertNaNs(t, got, 3)
+			} else {
+				assert.Equal(t, tt.want, got)
+			}
 		})
 	}
 }
@@ -155,12 +167,19 @@ func TestParseJodaTime(t *testing.T) {
 
 func TestExtractColumnAsDoubles(t *testing.T) {
 	testCases := []struct {
-		column  string
-		want    []float64
-		wantErr error
+		column   string
+		want     []float64
+		wantNaNs bool
+		wantErr  error
 	}{
 		{column: "__double", want: []float64{0, 0.1111111111111111, 0.2222222222222222}},
+		{column: "__double_inf", want: []float64{math.Inf(1), math.Inf(1), math.Inf(1)}},
+		{column: "__double_minus_inf", want: []float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)}},
+		{column: "__double_nan", wantNaNs: true},
 		{column: "__float", want: []float64{0, 0.11111111, 0.22222222}},
+		{column: "__float_inf", want: []float64{math.Inf(1), math.Inf(1), math.Inf(1)}},
+		{column: "__float_minus_inf", want: []float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)}},
+		{column: "__float_nan", wantNaNs: true},
 		{column: "__int", want: []float64{0, 111111, 222222}},
 		{column: "__long", want: []float64{0, 111111111111111, 222222222222222}},
 		{column: "__big_decimal", want: []float64{1e20, 1e20 + 1, 1e20 + 2}},
@@ -179,11 +198,15 @@ func TestExtractColumnAsDoubles(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
 			got, gotErr := ExtractColumnAsDoubles(resp.ResultTable, colIdx)
-			assert.Equal(t, tt.want, got)
 			if tt.wantErr != nil {
 				assert.EqualError(t, gotErr, tt.wantErr.Error())
 			} else {
 				assert.NoError(t, gotErr)
+			}
+			if tt.wantNaNs {
+				assertNaNs(t, got, 3)
+			} else {
+				assert.Equal(t, tt.want, got)
 			}
 		})
 	}
@@ -195,7 +218,13 @@ func TestExtractColumnAsStrings(t *testing.T) {
 		want   []string
 	}{
 		{column: "__double", want: []string{"0", "0.1111111111111111", "0.2222222222222222"}},
+		{column: "__double_inf", want: []string{"+Inf", "+Inf", "+Inf"}},
+		{column: "__double_minus_inf", want: []string{"-Inf", "-Inf", "-Inf"}},
+		{column: "__double_nan", want: []string{"NaN", "NaN", "NaN"}},
 		{column: "__float", want: []string{"0", "0.11111111", "0.22222222"}},
+		{column: "__float_inf", want: []string{"+Inf", "+Inf", "+Inf"}},
+		{column: "__float_minus_inf", want: []string{"-Inf", "-Inf", "-Inf"}},
+		{column: "__float_nan", want: []string{"NaN", "NaN", "NaN"}},
 		{column: "__int", want: []string{"0", "111111", "222222"}},
 		{column: "__long", want: []string{"0", "111111111111111", "222222222222222"}},
 		{column: "__bool", want: []string{"true", "false", "true"}},
@@ -230,7 +259,13 @@ func TestExtractColumnAsExprs(t *testing.T) {
 		want   []string
 	}{
 		{column: "__double", want: []string{"0.0", "0.1111111111111111", "0.2222222222222222"}},
+		{column: "__double_inf", want: []string{"'Infinity'", "'Infinity'", "'Infinity'"}},
+		{column: "__double_minus_inf", want: []string{"'-Infinity'", "'-Infinity'", "'-Infinity'"}},
+		{column: "__double_nan", want: []string{"'NaN'", "'NaN'", "'NaN'"}},
 		{column: "__float", want: []string{"0.0", "0.11111111", "0.22222222"}},
+		{column: "__float_inf", want: []string{"'Infinity'", "'Infinity'", "'Infinity'"}},
+		{column: "__float_minus_inf", want: []string{"'-Infinity'", "'-Infinity'", "'-Infinity'"}},
+		{column: "__float_nan", want: []string{"'NaN'", "'NaN'", "'NaN'"}},
 		{column: "__int", want: []string{"0", "111111", "222222"}},
 		{column: "__long", want: []string{"0", "111111111111111", "222222222222222"}},
 		{column: "__bool", want: []string{"true", "false", "true"}},
@@ -342,10 +377,18 @@ func TestDecodeJsonFromColumn(t *testing.T) {
 
 func selectStarFromAllDataTypes(t *testing.T) *BrokerResponse {
 	t.Helper()
-
 	client := setupPinotAndCreateClient(t)
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		NewSqlQuery(fmt.Sprintf(`select * from "allDataTypes" order by "__timestamp" asc limit 3`)))
+		NewSqlQuery(`
+SELECT *,
+    CAST('Infinity' AS DOUBLE) AS '__double_inf',
+    CAST('-Infinity' AS DOUBLE) AS '__double_minus_inf',
+    CAST('NaN' AS DOUBLE) AS '__double_nan',
+    CAST('Infinity' AS FLOAT) AS '__float_inf',
+    CAST('-Infinity' AS FLOAT) AS '__float_minus_inf',
+    CAST('NaN' AS FLOAT) AS '__float_nan'
+FROM "allDataTypes"
+ORDER BY "__timestamp" ASC LIMIT 3`))
 	require.NoError(t, err, "client.ExecuteSqlQuery()")
 	require.True(t, resp.HasData(), "resp.HasData()")
 	return resp
@@ -354,4 +397,21 @@ func selectStarFromAllDataTypes(t *testing.T) *BrokerResponse {
 func TestGetDistinctValues(t *testing.T) {
 	got := GetDistinctValues([]int64{1, 2, 2, 2, 3, 3, 3, 4, 5, 5, 4, 3})
 	assert.Equal(t, []int64{1, 2, 3, 4, 5}, got)
+}
+
+func assertNaNs(t *testing.T, got any, length int) {
+	switch got := got.(type) {
+	case []float64:
+		assert.Len(t, got, length)
+		for i, v := range got {
+			assert.True(t, math.IsNaN(v), i)
+		}
+	case []float32:
+		assert.Len(t, got, length)
+		for i, v := range got {
+			assert.True(t, math.IsNaN(float64(v)), i)
+		}
+	default:
+		t.Errorf("not a float")
+	}
 }
