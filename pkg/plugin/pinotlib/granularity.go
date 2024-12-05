@@ -12,6 +12,12 @@ type Granularity struct {
 	Size uint
 }
 
+func GranularityMilliseconds() Granularity { return Granularity{Unit: TimeUnitMilliseconds, Size: 1} }
+func GranularitySeconds() Granularity      { return Granularity{Unit: TimeUnitSeconds, Size: 1} }
+func GranularityMinutes() Granularity      { return Granularity{Unit: TimeUnitMinutes, Size: 1} }
+func GranularityHours() Granularity        { return Granularity{Unit: TimeUnitHours, Size: 1} }
+func GranularityDays() Granularity         { return Granularity{Unit: TimeUnitDays, Size: 1} }
+
 func NewPinotGranularity(unit TimeUnit, size uint) (Granularity, error) {
 	if size == 0 {
 		return Granularity{}, fmt.Errorf("size must be > 0")
@@ -67,6 +73,14 @@ func ParseGranularityExpr(granularity string) (Granularity, error) {
 
 func (x Granularity) String() string {
 	return fmt.Sprintf("%d:%s", x.Size, x.Unit)
+}
+
+func (x Granularity) ShortString() string {
+	if x.Size == 1 {
+		return x.Unit.String()
+	} else {
+		return x.String()
+	}
 }
 
 func (x Granularity) Duration() time.Duration {

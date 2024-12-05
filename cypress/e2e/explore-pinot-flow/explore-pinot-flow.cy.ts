@@ -267,11 +267,6 @@ describe('Create and run pinot query using Explore', () => {
               'auto',
               'DAYS',
               'HOURS',
-              'MINUTES',
-              'SECONDS',
-              'MILLISECONDS',
-              'MICROSECONDS',
-              'NANOSECONDS',
             ];
 
             selectOptions.forEach((option) => cy.contains(option));

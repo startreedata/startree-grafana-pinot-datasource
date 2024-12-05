@@ -37,7 +37,7 @@ export default {
         label: 'Metric Alias',
         placeholder: 'metric',
       },
-      logAlias:{
+      logAlias: {
         tooltip: 'The name of the log message column in the query result. Required for logs display.',
         label: 'Message Alias',
         placeholder: 'message',
@@ -52,7 +52,8 @@ export default {
         label: 'Time Format',
       },
       granularity: {
-        tooltip: 'Select the granularity of the aggregation. Defaults to the value in query options.',
+        tooltip:
+          'Select the granularity of the aggregation. Custom values are allowed. * Indicates a performance optimized granularity.',
         label: 'Granularity',
       },
       aggregation: {

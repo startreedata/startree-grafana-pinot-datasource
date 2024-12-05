@@ -82,6 +82,10 @@ func CreateTestTables() {
 		schemaFile: "data/allDataTypes_schema.json",
 		configFile: "data/allDataTypes_offline_table_config.json",
 		dataFile:   "data/allDataTypes_data.json",
+	}, {
+		tableName:  "hourlyEvents",
+		schemaFile: "data/hourlyEvents_schema.json",
+		configFile: "data/hourlyEvents_offline_table_config.json",
 	}}
 
 	createTestTablesOnce.Do(func() {
