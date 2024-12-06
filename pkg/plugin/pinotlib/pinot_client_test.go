@@ -3,6 +3,7 @@ package pinotlib
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -23,10 +24,20 @@ func setupPinotAndCreateClient(t *testing.T) *PinotClient {
 	return pinotClient
 }
 
-func createTestTable(t *testing.T, schema TableSchema, config TableConfig, rows []map[string]any) {
+func createTestTable(t *testing.T, prefix string, schema TableSchema, rows []map[string]any) string {
 	t.Helper()
 	ctx := context.Background()
 	client := setupPinotAndCreateClient(t)
+
+	tableName := fmt.Sprintf("%s_%x", prefix, time.Now().UnixNano())
+	schema.SchemaName = tableName
+	config := TableConfig{
+		TableName:      tableName,
+		TableType:      TableTypeOffline,
+		SegmentsConfig: SegmentsConfig{TimeColumnName: schema.DateTimeFieldSpecs[0].Name, Replication: "1"},
+		IndexConfig:    IndexConfig{LoadMode: "MMAP"},
+		Tenants:        TenantsConfig{Broker: "DefaultTenant", Server: "DefaultTenant"},
+	}
 
 	require.NoError(t, client.CreateTableSchema(ctx, schema))
 	require.NoError(t, client.CreateTable(ctx, config))
@@ -35,13 +46,14 @@ func createTestTable(t *testing.T, schema TableSchema, config TableConfig, rows 
 	require.NoError(t, err)
 	require.NoError(t, client.UploadTableJSON(ctx, config.TableName, payload))
 	waitForSegmentsAllGood(t, config.TableName, 1*time.Second, 5*time.Minute)
+	return tableName
 }
 
-func deleteTestTable(t *testing.T, schemaName string, tableName string) {
+func deleteTestTable(t *testing.T, tableName string) {
 	t.Helper()
 	ctx := context.Background()
 	client := setupPinotAndCreateClient(t)
-	require.NoError(t, client.DeleteTableSchema(ctx, schemaName, true))
+	require.NoError(t, client.DeleteTableSchema(ctx, tableName, true))
 	require.NoError(t, client.DeleteTable(ctx, tableName, true))
 }
 
