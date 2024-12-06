@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,22 +75,43 @@ const TableTypeOffline TableType = "OFFLINE"
 
 type ListTableConfigsResponse map[TableType]TableConfig
 
+// TableConfig is a JSON serializable Pinot table config.
+// The fields are not exhaustive, and should be extended as needed.
+// Ref https://docs.pinot.apache.org/configuration-reference/table.
 type TableConfig struct {
 	TableName string    `json:"tableName"`
 	TableType TableType `json:"tableType"`
 	Query     struct {
-		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
+		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap,omitempty"`
 	} `json:"query"`
-	IngestionConfig IngestionConfig `json:"ingestionConfig"`
+	IngestionConfig IngestionConfig   `json:"ingestionConfig"`
+	IndexConfig     IndexConfig       `json:"tableIndexConfig"`
+	SegmentsConfig  SegmentsConfig    `json:"segmentsConfig"`
+	Tenants         TenantsConfig     `json:"tenants"`
+	Metadata        map[string]string `json:"metadata"`
+}
+
+type SegmentsConfig struct {
+	TimeColumnName string `json:"timeColumnName"`
+	Replication    string `json:"replication"`
+}
+
+type TenantsConfig struct {
+	Broker string `json:"broker"`
+	Server string `json:"server"`
 }
 
 type IngestionConfig struct {
-	TransformConfigs []TransformConfig `json:"transformConfigs"`
+	TransformConfigs []TransformConfig `json:"transformConfigs,omitempty"`
 }
 
 type TransformConfig struct {
 	ColumnName        string `json:"columnName"`
 	TransformFunction string `json:"transformFunction"`
+}
+
+type IndexConfig struct {
+	LoadMode string `json:"loadMode"`
 }
 
 func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
@@ -105,11 +128,16 @@ func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListT
 	})
 }
 
+// TableSchema is a JSON serializable Pinot table schema.
+// Ref 	https://docs.pinot.apache.org/configuration-reference/schema.
 type TableSchema struct {
 	SchemaName          string               `json:"schemaName"`
-	DimensionFieldSpecs []DimensionFieldSpec `json:"dimensionFieldSpecs"`
-	MetricFieldSpecs    []MetricFieldSpec    `json:"metricFieldSpecs"`
-	DateTimeFieldSpecs  []DateTimeFieldSpec  `json:"dateTimeFieldSpecs"`
+	DimensionFieldSpecs []DimensionFieldSpec `json:"dimensionFieldSpecs,omitempty"`
+	MetricFieldSpecs    []MetricFieldSpec    `json:"metricFieldSpecs,omitempty"`
+	DateTimeFieldSpecs  []DateTimeFieldSpec  `json:"dateTimeFieldSpecs,omitempty"`
+	ComplexFieldSpecs   []ComplexFieldSpec   `json:"complexFieldSpecs,omitempty"`
+
+	EnableColumnBasedNullHandling bool `json:"enableColumnBasedNullHandling,omitempty"`
 }
 
 type DimensionFieldSpec struct {
@@ -127,6 +155,26 @@ type DateTimeFieldSpec struct {
 	DataType    string `json:"dataType"`
 	Format      string `json:"format"`
 	Granularity string `json:"granularity"`
+}
+
+type ComplexFieldSpec struct {
+	Name            string          `json:"name"`
+	DataType        string          `json:"dataType"`
+	FieldType       string          `json:"fieldType"`
+	NotNull         bool            `json:"notNull"`
+	ChildFieldSpecs ChildFieldSpecs `json:"childFieldSpecs"`
+}
+
+type ChildFieldSpecs struct {
+	Key ChildFieldSpec `json:"key"`
+	Val ChildFieldSpec `json:"val"`
+}
+
+type ChildFieldSpec struct {
+	Name      string `json:"name"`
+	DataType  string `json:"dataType"`
+	FieldType string `json:"fieldType"`
+	NotNull   bool   `json:"notNull"`
 }
 
 func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
@@ -228,6 +276,7 @@ func (p *PinotClient) CreateTable(ctx context.Context, tableConfig TableConfig) 
 	if err := json.NewEncoder(&body).Encode(tableConfig); err != nil {
 		return err
 	}
+	fmt.Println(body.String())
 
 	req, err := p.newControllerRequest(ctx, http.MethodPost, "/tables", &body)
 	if err != nil {
@@ -240,6 +289,76 @@ func (p *PinotClient) CreateTable(ctx context.Context, tableConfig TableConfig) 
 	}
 	defer p.closeResponseBody(ctx, resp)
 	return nil
+}
+
+func (p *PinotClient) DeleteTable(ctx context.Context, tableName string, missingOk bool) error {
+	req, err := p.newControllerRequest(ctx, http.MethodDelete, "/tables/"+url.PathEscape(tableName), nil)
+	expectStatuses := []int{http.StatusOK}
+	if missingOk {
+		expectStatuses = append(expectStatuses, http.StatusNotFound)
+	}
+	resp, err := p.doRequestAndCheckStatus(req, expectStatuses...)
+	if err != nil {
+		return err
+	}
+	defer p.closeResponseBody(ctx, resp)
+	return nil
+}
+
+func (p *PinotClient) UploadTableJSON(ctx context.Context, tableName string, payload json.RawMessage) error {
+
+	values := make(url.Values)
+	values.Add("tableNameWithType", tableName+"_OFFLINE")
+	values.Add("batchConfigMapStr", `{"inputFormat": "json"}`)
+
+	body, contentType, err := createDataUploadBody(ctx, tableName, payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := p.newControllerRequest(ctx, http.MethodPost, "/ingestFromFile?"+values.Encode(), body)
+	req.Header.Set("Content-Type", contentType)
+
+	_, err = p.doRequestAndCheckStatus(req)
+	return err
+}
+
+type SegmentStatus struct {
+	SegmentName   string `json:"segmentName"`
+	SegmentStatus string `json:"segmentStatus"`
+}
+
+func (p *PinotClient) ListSegmentStatusForTable(ctx context.Context, tableName string) ([]SegmentStatus, error) {
+	req, err := p.newControllerRequest(ctx, http.MethodGet, "/tables/"+url.PathEscape(tableName)+"/segmentStatus", nil)
+	if err != nil {
+		return nil, err
+	}
+	var statuses []SegmentStatus
+	if err = p.doRequestAndDecodeResponse(req, &statuses); err != nil {
+		return nil, err
+	}
+	return statuses, nil
+}
+
+func createDataUploadBody(ctx context.Context, tableName string, payload json.RawMessage) (io.Reader, string, error) {
+	var body bytes.Buffer
+	multipartWriter := multipart.NewWriter(&body)
+	defer func() {
+		if err := multipartWriter.Close(); err != nil {
+			log.WithError(err).FromContext(ctx).Error("Failed to close multipart writer during data upload")
+		}
+	}()
+
+	multipartWriter.FormDataContentType()
+
+	formWriter, err := multipartWriter.CreateFormFile("file", tableName+"_data.json")
+	if err != nil {
+		return nil, "", err
+	}
+	if _, err = formWriter.Write(payload); err != nil {
+		return nil, "", err
+	}
+	return &body, multipartWriter.FormDataContentType(), nil
 }
 
 func (p *PinotClient) newControllerHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {

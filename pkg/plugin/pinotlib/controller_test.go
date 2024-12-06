@@ -170,17 +170,10 @@ func TestPinotClient_TableExists(t *testing.T) {
 	}))
 
 	require.NoError(t, client.CreateTable(ctx, TableConfig{
-		TableName: "",
-		TableType: "",
-		Query: struct {
-			ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
-		}{},
+		TableName:       "",
+		TableType:       "",
 		IngestionConfig: IngestionConfig{},
 	}))
-
-	t.Run("context cancelled", func(t *testing.T) {
-		_, err := client.TableExists(cancelledCtx(), "derivedTimeBuckets")
-	})
 }
 
 func TestPinotClient_CreateTable(t *testing.T) {}

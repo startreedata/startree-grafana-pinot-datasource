@@ -75,6 +75,43 @@ func TestPinotClient_ListTimeSeriesLabelNames(t *testing.T) {
 		assert.Equal(t, []string{"method", "path", "status"}, got)
 	})
 
+	t.Run("tsMetrics", func(t *testing.T) {
+		createTestTable(t,
+			TableSchema{
+				SchemaName:          "test_mapType2",
+				DimensionFieldSpecs: []DimensionFieldSpec{{Name: "metric", DataType: DataTypeString}, {Name: "labels", DataType: DataTypeJson}},
+				MetricFieldSpecs:    []MetricFieldSpec{{Name: "value", DataType: DataTypeDouble}},
+				DateTimeFieldSpecs:  []DateTimeFieldSpec{{Name: "ts", DataType: DataTypeLong, Format: "1:MILLISECONDS:EPOCH", Granularity: "1:MILLISECONDS"}},
+			},
+			TableConfig{
+				TableName:      "test_mapType2",
+				TableType:      TableTypeOffline,
+				SegmentsConfig: SegmentsConfig{TimeColumnName: "ts", Replication: "1"},
+				IndexConfig:    IndexConfig{LoadMode: "MMAP"},
+				Tenants:        TenantsConfig{Broker: "DefaultTenant", Server: "DefaultTenant"},
+			},
+			[]map[string]any{
+				{
+					"labels": "{\"method\":\"GET\",\"path\":\"/app\",\"status\":\"200\"}",
+					"metric": "http_request_handled",
+					"ts":     1726617600000,
+					"value":  6003,
+				},
+			},
+		)
+		defer deleteTestTable(t, "test_mapType2", "test_mapType")
+
+		got, err := client.ListTimeSeriesLabelNames(context.Background(), TimeSeriesLabelNamesQuery{
+			TableName:  "test_mapType",
+			MetricName: "http_request_handled",
+			From:       time.Unix(1726617600, 0),
+			To:         time.Unix(1726617735, 0),
+		})
+
+		require.NoError(t, err)
+		sort.Strings(got)
+		assert.Equal(t, []string{"method", "path", "status"}, got)
+	})
 }
 
 func TestPinotClient_ListTimeSeriesLabelValues(t *testing.T) {
