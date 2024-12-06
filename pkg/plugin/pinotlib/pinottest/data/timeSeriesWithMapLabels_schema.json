@@ -1,0 +1,42 @@
+{
+  "schemaName": "timeSeriesWithMapLabels",
+  "dimensionFieldSpecs": [
+    {
+      "name": "metric",
+      "dataType": "STRING"
+    }
+  ],
+  "metricFieldSpecs": [
+    {
+      "name": "value",
+      "dataType": "DOUBLE"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ],
+  "complexFieldSpecs": [
+    {
+      "name": "labels",
+      "dataType": "MAP",
+      "fieldType": "COMPLEX",
+      "childFieldSpecs": {
+        "value": {
+          "name": "value",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        },
+        "key": {
+          "name": "key",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        }
+      }
+    }
+  ]
+}

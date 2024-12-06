@@ -254,7 +254,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 	}
 
 	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName:           data.ColumnName,
+		ColumnExpr:           pinotlib.ObjectExpr(data.ColumnName),
 		TableName:            data.TableName,
 		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),

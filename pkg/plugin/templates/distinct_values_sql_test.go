@@ -15,7 +15,7 @@ WHERE ts >= 10 AND ts < 20
 ORDER BY "dim" ASC
 LIMIT 100;`
 		got, err := RenderDistinctValuesSql(DistinctValuesSqlParams{
-			ColumnName:           "dim",
+			ColumnExpr:           `"dim"`,
 			TableName:            "my_table",
 			TimeFilterExpr:       "ts >= 10 AND ts < 20",
 			DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
@@ -30,7 +30,7 @@ FROM "my_table"
 ORDER BY "dim" ASC
 LIMIT 100;`
 		got, err := RenderDistinctValuesSql(DistinctValuesSqlParams{
-			ColumnName: "dim",
+			ColumnExpr: `"dim"`,
 			TableName:  "my_table",
 		})
 		assert.NoError(t, err)
