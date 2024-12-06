@@ -1,7 +1,10 @@
 package pinotlib
 
 import (
+	"context"
+	"encoding/json"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
+	"github.com/stretchr/testify/require"
 	"os"
 	"testing"
 	"time"
@@ -18,4 +21,55 @@ func setupPinotAndCreateClient(t *testing.T) *PinotClient {
 		BrokerMaxQueryRate: queryRate,
 	})
 	return pinotClient
+}
+
+func createTestTable(t *testing.T, schema TableSchema, config TableConfig, rows []map[string]any) {
+	t.Helper()
+	ctx := context.Background()
+	client := setupPinotAndCreateClient(t)
+
+	require.NoError(t, client.CreateTableSchema(ctx, schema))
+	require.NoError(t, client.CreateTable(ctx, config))
+
+	payload, err := json.Marshal(rows)
+	require.NoError(t, err)
+	require.NoError(t, client.UploadTableJSON(ctx, config.TableName, payload))
+	waitForSegmentsAllGood(t, config.TableName, 1*time.Second, 5*time.Minute)
+}
+
+func deleteTestTable(t *testing.T, schemaName string, tableName string) {
+	t.Helper()
+	ctx := context.Background()
+	client := setupPinotAndCreateClient(t)
+	require.NoError(t, client.DeleteTableSchema(ctx, schemaName, true))
+	require.NoError(t, client.DeleteTable(ctx, tableName, true))
+}
+
+func waitForSegmentsAllGood(t *testing.T, tableName string, poll time.Duration, timeout time.Duration) {
+	pollTicker := time.NewTicker(poll)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	client := setupPinotAndCreateClient(t)
+
+	for {
+		statuses, _ := client.ListSegmentStatusForTable(context.Background(), tableName)
+		goodSegments := 0
+		for _, status := range statuses {
+			if status.SegmentStatus == "GOOD" {
+				goodSegments++
+			}
+		}
+		if len(statuses) == goodSegments && len(statuses) > 0 {
+			return
+		}
+
+		select {
+		case <-timeoutTicker.C:
+			t.Fatalf("Timed out waiting for segments for %s", tableName)
+		case <-pollTicker.C:
+		}
+	}
 }
