@@ -329,7 +329,7 @@ type SegmentStatus struct {
 }
 
 func (p *PinotClient) ListSegmentStatusForTable(ctx context.Context, tableName string) ([]SegmentStatus, error) {
-	req, err := p.newControllerRequest(ctx, http.MethodGet, "/tables/"+url.PathEscape(tableName)+"/segmentStatus", nil)
+	req, err := p.newControllerRequest(ctx, http.MethodGet, "/tables/"+url.PathEscape(tableName)+"/segmentsStatus", nil)
 	if err != nil {
 		return nil, err
 	}
