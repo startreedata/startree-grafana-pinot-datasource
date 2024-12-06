@@ -94,7 +94,7 @@ func (d *PinotVariableQueryDriver) getDistinctValues(ctx context.Context) backen
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName: d.params.ColumnName,
+		ColumnExpr: pinotlib.ObjectExpr(d.params.ColumnName),
 		TableName:  d.params.TableName,
 	})
 	if err != nil {

@@ -332,50 +332,6 @@ func TestExtractColumnAsTime(t *testing.T) {
 	}
 }
 
-func TestExtractColumnAsMap(t *testing.T) {
-	testCases := []struct {
-		column  string
-		want    []map[string]string
-		wantErr error
-	}{
-		{column: "__map_string_string", want: []map[string]string{
-			{"key1": "val1", "key2": "val2"},
-			{"key1": "val1", "key2": "val2"},
-			{"key1": "val1", "key2": "val2"},
-		}},
-		{column: "__map_string_long", want: []map[string]string{
-			{"key1": "1", "key2": "2"},
-			{"key1": "1", "key2": "2"},
-			{"key1": "1", "key2": "2"},
-		}},
-		{column: "__double", wantErr: errors.New("not a map column")},
-		{column: "__float", wantErr: errors.New("not a map column")},
-		{column: "__int", wantErr: errors.New("not a map column")},
-		{column: "__long", wantErr: errors.New("not a map column")},
-		{column: "__bool", wantErr: errors.New("not a map column")},
-		{column: "__string", wantErr: errors.New("not a map column")},
-		{column: "__bytes", wantErr: errors.New("not a map column")},
-		{column: "__big_decimal", wantErr: errors.New("not a map column")},
-		{column: "__json", wantErr: errors.New("not a map column")},
-		{column: "__timestamp", wantErr: errors.New("not a map column")},
-	}
-
-	resp := selectStarFromAllDataTypes(t)
-	for _, tt := range testCases {
-		t.Run(tt.column, func(t *testing.T) {
-			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
-			require.NoError(t, err)
-			got, err := ExtractColumnAsMap(resp.ResultTable, colIdx)
-			if tt.wantErr != nil {
-				assert.EqualError(t, err, tt.wantErr.Error())
-			} else {
-				assert.NoError(t, err)
-				assert.Equal(t, tt.want, got)
-			}
-		})
-	}
-}
-
 func TestDecodeJsonFromColumn(t *testing.T) {
 	testCases := []struct {
 		column  string

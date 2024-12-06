@@ -267,54 +267,6 @@ func ExtractColumnAsTime(results *ResultTable, colIdx int, format DateTimeFormat
 	}
 }
 
-// ExtractColumnAsMap returns the column as a slice of maps.
-// Returns an error if the column type is not MAP.
-// For JSON columns, use DecodeJsonFromColumn.
-func ExtractColumnAsMap(results *ResultTable, colIdx int) ([]map[string]string, error) {
-	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
-	switch colDataType {
-	case DataTypeMap:
-	default:
-		return nil, errors.New("not a map column")
-	}
-
-	rawVals := ExtractColumn(results, colIdx).([]map[string]any)
-
-	// Use the first map value to determine the value type.
-	var firstVal any
-	for i := range rawVals {
-		if len(rawVals[i]) == 0 {
-			continue
-		}
-		for _, firstVal = range rawVals[i] {
-			break
-		}
-		break
-	}
-	if firstVal == nil {
-		return make([]map[string]string, results.RowCount()), nil
-	}
-
-	var toString func(v any) string
-	switch firstVal.(type) {
-	case json.Number:
-		toString = func(v any) string { return v.(json.Number).String() }
-	case string:
-		toString = func(v any) string { return v.(string) }
-	default:
-		toString = func(v any) string { return fmt.Sprintf("%v", v) }
-	}
-
-	vals := make([]map[string]string, results.RowCount())
-	for i := range rawVals {
-		vals[i] = make(map[string]string, len(rawVals[i]))
-		for k, v := range rawVals[i] {
-			vals[i][k] = toString(v)
-		}
-	}
-	return vals, nil
-}
-
 // DecodeJsonFromColumn decodes each value in the column as type V.
 // Returns the first error encountered.
 // Returns an error if the column type is not STRING, BYTES, or JSON.

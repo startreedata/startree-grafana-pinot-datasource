@@ -219,7 +219,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName: TimeSeriesTableColumnMetricName,
+		ColumnExpr: ObjectExpr(TimeSeriesTableColumnMetricName),
 		TableName:  query.TableName,
 		TimeFilterExpr: TimeFilterExpr(TimeFilter{
 			Column: TimeSeriesTableColumnTimestamp,
@@ -227,7 +227,6 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 			From:   query.From,
 			To:     query.To,
 		}),
-		Limit: templates.SingleColumnLimit,
 	})
 	if err != nil {
 		return nil, err
@@ -322,9 +321,15 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 			return nil, err
 		}
 
-		sql, err := templates.RenderSingleColumnSql(templates.SingleColumnSqlParams{
-			Distinct:   dataType == DataTypeJson,
-			ColumnName: TimeSeriesTableColumnLabels,
+		var columnExpr string
+		if dataType == DataTypeJson {
+			columnExpr = ObjectExpr(TimeSeriesTableColumnLabels)
+		} else {
+			columnExpr = fmt.Sprintf(`CAST(%s AS %s)`, ObjectExpr(TimeSeriesTableColumnLabels), DataTypeJson)
+		}
+
+		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+			ColumnExpr: columnExpr,
 			TableName:  tableName,
 			TimeFilterExpr: TimeFilterExpr(TimeFilter{
 				Column: TimeSeriesTableColumnTimestamp,
@@ -333,7 +338,7 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 				To:     to,
 			}),
 			DimensionFilterExprs: filterExprs,
-			Limit:                templates.SingleColumnLimit,
+			Limit:                templates.DistinctValuesLimit,
 		})
 		if err != nil {
 			return nil, err
@@ -371,16 +376,7 @@ func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string)
 }
 
 func extractLabels(results *ResultTable) (LabelsCollection, error) {
-	dataType := results.DataSchema.ColumnDataTypes[0]
-
-	var labelRecords []map[string]string
-	var err error
-	switch dataType {
-	case DataTypeMap:
-		labelRecords, err = ExtractColumnAsMap(results, 0)
-	case DataTypeJson:
-		labelRecords, err = DecodeJsonFromColumn[map[string]string](results, 0)
-	}
+	labelRecords, err := DecodeJsonFromColumn[map[string]string](results, 0)
 	if err != nil {
 		return nil, err
 	}
