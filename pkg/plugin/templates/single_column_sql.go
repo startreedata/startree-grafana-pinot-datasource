@@ -13,7 +13,7 @@ WHERE {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
 {{- end }}
-ORDER BY "{{.ColumnName}}" ASC
+{{if .Distinct}}ORDER BY "{{.ColumnName}}" ASC{{end}}
 LIMIT {{.Limit}};
 `))
 

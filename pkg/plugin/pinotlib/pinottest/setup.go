@@ -86,6 +86,11 @@ func CreateTestTables() {
 		tableName:  "hourlyEvents",
 		schemaFile: "data/hourlyEvents_schema.json",
 		configFile: "data/hourlyEvents_offline_table_config.json",
+	}, {
+		tableName:  "timeSeriesWithMapLabels",
+		schemaFile: "data/timeSeriesWithMapLabels_schema.json",
+		configFile: "data/timeSeriesWithMapLabels_offline_table_config.json",
+		dataFile:   "data/timeSeriesWithMapLabels_data.json",
 	}}
 
 	createTestTablesOnce.Do(func() {

@@ -102,11 +102,14 @@ func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListT
 	})
 }
 
+// TableSchema is a JSON serializable Pinot table schema.
+// Ref 	https://docs.pinot.apache.org/configuration-reference/schema.
 type TableSchema struct {
 	SchemaName          string               `json:"schemaName"`
 	DimensionFieldSpecs []DimensionFieldSpec `json:"dimensionFieldSpecs"`
 	MetricFieldSpecs    []MetricFieldSpec    `json:"metricFieldSpecs"`
 	DateTimeFieldSpecs  []DateTimeFieldSpec  `json:"dateTimeFieldSpecs"`
+	ComplexFieldSpecs   []ComplexFieldSpec   `json:"complexFieldSpecs,omitempty"`
 }
 
 type DimensionFieldSpec struct {
@@ -124,6 +127,26 @@ type DateTimeFieldSpec struct {
 	DataType    string `json:"dataType"`
 	Format      string `json:"format"`
 	Granularity string `json:"granularity"`
+}
+
+type ComplexFieldSpec struct {
+	Name            string          `json:"name"`
+	DataType        string          `json:"dataType"`
+	FieldType       string          `json:"fieldType"`
+	NotNull         bool            `json:"notNull"`
+	ChildFieldSpecs ChildFieldSpecs `json:"childFieldSpecs"`
+}
+
+type ChildFieldSpecs struct {
+	Key ChildFieldSpec `json:"key"`
+	Val ChildFieldSpec `json:"val"`
+}
+
+type ChildFieldSpec struct {
+	Name      string `json:"name"`
+	DataType  string `json:"dataType"`
+	FieldType string `json:"fieldType"`
+	NotNull   bool   `json:"notNull"`
 }
 
 func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {

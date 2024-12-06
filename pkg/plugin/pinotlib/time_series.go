@@ -362,6 +362,11 @@ func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string)
 			return x.DataType, nil
 		}
 	}
+	for _, x := range schema.ComplexFieldSpecs {
+		if x.Name == TimeSeriesTableColumnLabels {
+			return x.DataType, nil
+		}
+	}
 	return "", fmt.Errorf("not a time series table")
 }
 
@@ -415,7 +420,10 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 		if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeJson {
 			hasLabelsField = true
 			break
-		} else if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeJson {
+		}
+	}
+	for _, fieldSpec := range schema.ComplexFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeMap {
 			hasLabelsField = true
 			break
 		}

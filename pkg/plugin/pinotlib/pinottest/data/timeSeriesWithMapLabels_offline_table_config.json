@@ -1,0 +1,16 @@
+{
+  "tableName": "timeSeriesWithMapLabels",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "ts",
+    "replication": "1"
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}
