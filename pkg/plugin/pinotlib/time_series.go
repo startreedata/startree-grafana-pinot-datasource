@@ -219,7 +219,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 	}
 
 	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnName: TimeSeriesTableColumnMetricName,
+		ColumnExpr: ObjectExpr(TimeSeriesTableColumnMetricName),
 		TableName:  query.TableName,
 		TimeFilterExpr: TimeFilterExpr(TimeFilter{
 			Column: TimeSeriesTableColumnTimestamp,
@@ -227,7 +227,6 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 			From:   query.From,
 			To:     query.To,
 		}),
-		Limit: templates.DistinctValuesLimit,
 	})
 	if err != nil {
 		return nil, err
@@ -312,15 +311,25 @@ func (x LabelsCollection) Add(name, value string) {
 func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) (LabelsCollection, error) {
 	cacheKey := fmt.Sprintf("table=%s&metric=%s&from=%s&to=%s", tableName, metricName, from.Format(time.RFC3339), to.Format(time.RFC3339))
 	return p.timeseriesLabelsCache.Get(cacheKey, func() (LabelsCollection, error) {
-		// TODO: This code can be removed once the pinot apis are implemented.
-
 		var filterExprs []string
 		if metricName != "" {
 			filterExprs = []string{fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName)}
 		}
 
+		dataType, err := p.timeSeriesLabelType(ctx, tableName)
+		if err != nil {
+			return nil, err
+		}
+
+		var columnExpr string
+		if dataType == DataTypeJson {
+			columnExpr = ObjectExpr(TimeSeriesTableColumnLabels)
+		} else {
+			columnExpr = fmt.Sprintf(`CAST(%s AS %s)`, ObjectExpr(TimeSeriesTableColumnLabels), DataTypeJson)
+		}
+
 		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-			ColumnName: TimeSeriesTableColumnLabels,
+			ColumnExpr: columnExpr,
 			TableName:  tableName,
 			TimeFilterExpr: TimeFilterExpr(TimeFilter{
 				Column: TimeSeriesTableColumnTimestamp,
@@ -340,15 +349,34 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 		case err != nil:
 			return nil, err
 		case resp.HasData():
-			return extractLabels(resp)
+			return extractLabels(resp.ResultTable)
 		default:
 			return nil, nil
 		}
 	})
 }
 
-func extractLabels(resp *BrokerResponse) (LabelsCollection, error) {
-	labelRecords, err := DecodeJsonFromColumn[map[string]string](resp.ResultTable, 0)
+func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string) (string, error) {
+	schema, err := p.GetTableSchema(ctx, tableName)
+	if err != nil {
+		return "", err
+	}
+
+	for _, x := range schema.DimensionFieldSpecs {
+		if x.Name == TimeSeriesTableColumnLabels {
+			return x.DataType, nil
+		}
+	}
+	for _, x := range schema.ComplexFieldSpecs {
+		if x.Name == TimeSeriesTableColumnLabels {
+			return x.DataType, nil
+		}
+	}
+	return "", fmt.Errorf("not a time series table")
+}
+
+func extractLabels(results *ResultTable) (LabelsCollection, error) {
+	labelRecords, err := DecodeJsonFromColumn[map[string]string](results, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -386,6 +414,12 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 	var hasLabelsField bool
 	for _, fieldSpec := range schema.DimensionFieldSpecs {
 		if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeJson {
+			hasLabelsField = true
+			break
+		}
+	}
+	for _, fieldSpec := range schema.ComplexFieldSpecs {
+		if fieldSpec.Name == TimeSeriesTableColumnLabels && fieldSpec.DataType == DataTypeMap {
 			hasLabelsField = true
 			break
 		}

@@ -34,7 +34,18 @@ func TestPinotClient_ListTimeSeriesMetrics(t *testing.T) {
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("infraMetrics", func(t *testing.T) {
+	t.Run("tableName=infraMetrics", func(t *testing.T) {
+		got, err := client.ListTimeSeriesMetrics(context.Background(), TimeSeriesMetricNamesQuery{
+			TableName: "infraMetrics",
+			From:      time.Unix(1726617600, 0),
+			To:        time.Unix(1726617735, 0),
+		})
+		require.NoError(t, err)
+		sort.Strings(got)
+		assert.Equal(t, []string{"db_record_write", "http_request_handled"}, got)
+	})
+
+	t.Run("tableName=timeSeriesWithMapLabels", func(t *testing.T) {
 		got, err := client.ListTimeSeriesMetrics(context.Background(), TimeSeriesMetricNamesQuery{
 			TableName: "infraMetrics",
 			From:      time.Unix(1726617600, 0),
@@ -62,7 +73,7 @@ func TestPinotClient_ListTimeSeriesLabelNames(t *testing.T) {
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("infraMetrics", func(t *testing.T) {
+	t.Run("tableName=infraMetrics", func(t *testing.T) {
 		got, err := client.ListTimeSeriesLabelNames(context.Background(), TimeSeriesLabelNamesQuery{
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
@@ -75,16 +86,25 @@ func TestPinotClient_ListTimeSeriesLabelNames(t *testing.T) {
 		assert.Equal(t, []string{"method", "path", "status"}, got)
 	})
 
+	t.Run("tableName=timeSeriesWithMapLabels", func(t *testing.T) {
+		got, err := client.ListTimeSeriesLabelNames(context.Background(), TimeSeriesLabelNamesQuery{
+			TableName:  "timeSeriesWithMapLabels",
+			MetricName: "http_request_handled",
+			From:       time.Unix(1726617600, 0),
+			To:         time.Unix(1726617735, 0),
+		})
+
+		require.NoError(t, err)
+		sort.Strings(got)
+		assert.Equal(t, []string{"method", "path", "status"}, got)
+	})
 }
 
 func TestPinotClient_ListTimeSeriesLabelValues(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
 
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := client.ListTimeSeriesLabelValues(ctx, TimeSeriesLabelValuesQuery{
+		_, err := client.ListTimeSeriesLabelValues(cancelledCtx(), TimeSeriesLabelValuesQuery{
 			TableName:  "infraMetrics",
 			MetricName: "http_request_handled",
 			LabelName:  "path",
@@ -94,9 +114,22 @@ func TestPinotClient_ListTimeSeriesLabelValues(t *testing.T) {
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
-	t.Run("", func(t *testing.T) {
+	t.Run("tableName=infraMetrics", func(t *testing.T) {
 		got, err := client.ListTimeSeriesLabelValues(context.Background(), TimeSeriesLabelValuesQuery{
 			TableName:  "infraMetrics",
+			MetricName: "http_request_handled",
+			LabelName:  "path",
+			From:       time.Unix(1726617600, 0),
+			To:         time.Unix(1726617735, 0),
+		})
+		require.NoError(t, err)
+		sort.Strings(got)
+		assert.Equal(t, []string{"/api", "/app"}, got)
+	})
+
+	t.Run("tableName=timeSeriesWithMapLabels", func(t *testing.T) {
+		got, err := client.ListTimeSeriesLabelValues(context.Background(), TimeSeriesLabelValuesQuery{
+			TableName:  "timeSeriesWithMapLabels",
 			MetricName: "http_request_handled",
 			LabelName:  "path",
 			From:       time.Unix(1726617600, 0),
@@ -112,15 +145,18 @@ func TestPinotClient_IsTimeSeriesTable(t *testing.T) {
 	client := setupPinotAndCreateClient(t)
 
 	t.Run("context cancelled", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := client.IsTimeSeriesTable(ctx, "infraMetrics")
+		_, err := client.IsTimeSeriesTable(cancelledCtx(), "infraMetrics")
 		assert.Contains(t, err.Error(), context.Canceled.Error())
 	})
 
 	t.Run("table=infraMetrics", func(t *testing.T) {
 		got, err := client.IsTimeSeriesTable(context.Background(), "infraMetrics")
+		assert.NoError(t, err)
+		assert.True(t, got)
+	})
+
+	t.Run("table=timeSeriesWithMapLabels", func(t *testing.T) {
+		got, err := client.IsTimeSeriesTable(context.Background(), "timeSeriesWithMapLabels")
 		assert.NoError(t, err)
 		assert.True(t, got)
 	})
