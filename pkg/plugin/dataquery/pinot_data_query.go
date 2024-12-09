@@ -41,6 +41,7 @@ type PinotDataQuery struct {
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
 	QueryOptions        []QueryOption     `json:"queryOptions"`
 	Legend              string            `json:"legend"`
+	GroupByColumnsV2    []ComplexField    `json:"groupByColumnsV2"`
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`
@@ -68,12 +69,19 @@ type TimeRange struct {
 
 type DimensionFilter struct {
 	ColumnName string   `json:"columnName"`
+	ColumnKey  string   `json:"columnKey,omitempty"`
 	ValueExprs []string `json:"valueExprs"`
 	Operator   string   `json:"operator"`
 }
 
+type ComplexField struct {
+	Name string `json:"name"`
+	Key  string `json:"key,omitempty"`
+}
+
 type OrderByClause struct {
 	ColumnName string `json:"columnName"`
+	ColumnKey  string `json:"columnKey,omitempty"`
 	Direction  string `json:"direction"`
 }
 

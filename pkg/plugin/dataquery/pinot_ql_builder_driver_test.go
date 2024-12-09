@@ -2,11 +2,13 @@ package dataquery
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"strings"
 	"testing"
 	"time"
 )
@@ -31,7 +33,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
 			MetricColumn:        "my_metric",
-			GroupByColumns:      []string{"dim"},
+			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "SUM",
 			Limit:               -1,
 			Granularity:         "1:SECONDS",
@@ -39,7 +41,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 			DimensionFilters: []DimensionFilter{{
 				ColumnName: "",
 				ValueExprs: []string{},
-				Operator:   FilterOpEquals,
+				Operator:   "=",
 			}},
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
@@ -101,7 +103,7 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
 			MetricColumn:        "my_metric",
-			GroupByColumns:      []string{"dim"},
+			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "SUM",
 			Limit:               -1,
 			Granularity:         "1:SECONDS",
@@ -109,7 +111,7 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 			DimensionFilters: []DimensionFilter{{
 				ColumnName: "",
 				ValueExprs: []string{},
-				Operator:   FilterOpEquals,
+				Operator:   "=",
 			}},
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
@@ -220,7 +222,7 @@ LIMIT 1000;`
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
 			MetricColumn:        "my_metric",
-			GroupByColumns:      []string{"dim"},
+			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "COUNT",
 			Limit:               -1,
 			Granularity:         "1:SECONDS",
@@ -228,7 +230,7 @@ LIMIT 1000;`
 			DimensionFilters: []DimensionFilter{{
 				ColumnName: "",
 				ValueExprs: []string{},
-				Operator:   FilterOpEquals,
+				Operator:   "=",
 			}},
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
@@ -308,7 +310,7 @@ LIMIT 100000;`
 			DimensionFilters: []DimensionFilter{{
 				ColumnName: "",
 				ValueExprs: []string{},
-				Operator:   FilterOpEquals,
+				Operator:   "=",
 			}},
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
@@ -426,4 +428,77 @@ func TestPinotQlBuilderDriver_Execute(t *testing.T) {
 			runSqlQueryPinotUnreachable(t, newDriver)
 		})
 	})
+}
+
+func TestFilterExprsFrom(t *testing.T) {
+	var filters []DimensionFilter
+	assert.NoError(t, json.NewDecoder(strings.NewReader(`[
+	  {
+		"columnName": "AirlineID",
+		"operator": "=",
+		"valueExprs": [
+		  "19393",
+		  "19790"
+		]
+	  },
+	  {
+		"columnName": "ArrTime",
+		"operator": ">",
+		"valueExprs": [
+		  "-2147483648"
+		]
+	  },
+	  {
+		"columnName": "Cancelled",
+		"operator": "=",
+		"valueExprs": [
+		  "0"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "like",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"operator": "like",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "in",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "not in",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {
+		"columnName": "Carrier",
+		"operator": "invalid",
+		"valueExprs": [
+		  "'DL'"
+		]
+	  },
+	  {}
+	]`)).Decode(&filters))
+
+	got := FilterExprsFrom(filters)
+	assert.EqualValues(t, []string{
+		`("AirlineID" = 19393 OR "AirlineID" = 19790)`,
+		`("ArrTime" > -2147483648)`,
+		`("Cancelled" = 0)`,
+		`("Carrier" like 'DL')`,
+		`("Carrier" in 'DL')`,
+		`("Carrier" not in 'DL')`,
+	}, got)
 }

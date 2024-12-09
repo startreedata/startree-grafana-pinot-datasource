@@ -7,8 +7,8 @@ import (
 var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").Parse(`
 {{ .QueryOptionsExpr }}
 
-SELECT{{ range .GroupByColumns }}
-    "{{ . }}",
+SELECT{{ range .GroupByColumnExprs }}
+    {{ . }},
     {{- end }}
     {{.TimeGroupExpr}} AS {{.TimeColumnAliasExpr}},
     {{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAliasExpr}}
@@ -18,8 +18,8 @@ WHERE
     {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
-GROUP BY{{ range .GroupByColumns }}
-    "{{ . }}",
+GROUP BY{{ range .GroupByColumnExprs }}
+    {{ . }},
     {{- end }}
     {{.TimeGroupExpr}}
 {{- $sep := ""}}
@@ -33,7 +33,7 @@ LIMIT {{.Limit}};
 
 type TimeSeriesSqlParams struct {
 	TableNameExpr         string
-	GroupByColumns        []string
+	GroupByColumnExprs    []string
 	MetricColumn          string
 	AggregationFunction   string
 	TimeFilterExpr        string
