@@ -6,7 +6,8 @@ import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
 import { ScopedVars } from '@grafana/data';
-import { PinotVariableQuery } from './PinotVariableQuery'; // TODO: It's not entirely clear to me how these defaults are populated.
+import { PinotVariableQuery } from './PinotVariableQuery';
+import { ComplexField } from './ComplexField'; // TODO: It's not entirely clear to me how these defaults are populated.
 
 // TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
@@ -50,6 +51,7 @@ export interface PinotDataQuery extends DataQuery {
   orderBy?: OrderByClause[];
   queryOptions?: QueryOption[];
   legend?: string;
+  groupByColumnsV2?: ComplexField[];
 
   // PinotQl Code
   pinotQlCode?: string;
@@ -69,41 +71,48 @@ export interface PinotDataQuery extends DataQuery {
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
 
+  const replace = (target: string) => templateSrv.replace(target, scopedVars);
+  const replaceIfExists = (target?: string | null) => (target ? replace(target) : undefined);
+
   return {
     ...query,
 
     // Sql Builder
 
-    timeColumn: templateSrv.replace(query.timeColumn, scopedVars),
-    metricColumn: templateSrv.replace(query.metricColumn, scopedVars),
-    granularity: templateSrv.replace(query.granularity, scopedVars),
-    aggregationFunction: templateSrv.replace(query.aggregationFunction, scopedVars),
-    groupByColumns: (query.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
-    filters: (query.filters || []).map(({ columnName, operator, valueExprs }) => ({
+    timeColumn: replaceIfExists(query.timeColumn),
+    metricColumn: replaceIfExists(query.metricColumn),
+    granularity: replaceIfExists(query.granularity),
+    aggregationFunction: replaceIfExists(query.aggregationFunction),
+    groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),
+    groupByColumnsV2: query.groupByColumnsV2?.map(({ name, key }) => ({
+      name: replace(name),
+      key: replaceIfExists(key),
+    })),
+    filters: query.filters?.map(({ columnName, operator, valueExprs }) => ({
       columnName,
       operator,
-      valueExprs: valueExprs?.map((expr) => templateSrv.replace(expr, scopedVars)),
+      valueExprs: valueExprs?.map((expr) => replace(expr)),
     })),
     queryOptions: (query.queryOptions || []).map(({ name, value }) => ({
       name,
-      value: templateSrv.replace(value, scopedVars),
+      value: replaceIfExists(value),
     })),
 
     // Sql Editor
 
-    pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
+    pinotQlCode: replaceIfExists(query.pinotQlCode),
 
     // PromQl Editor
 
-    promQlCode: templateSrv.replace(query.promQlCode, scopedVars),
+    promQlCode: replaceIfExists(query.promQlCode),
 
     // Variable Query editor
 
     variableQuery: query.variableQuery
       ? {
           ...query.variableQuery,
-          columnName: templateSrv.replace(query.variableQuery.columnName, scopedVars),
-          pinotQlCode: templateSrv.replace(query.variableQuery.pinotQlCode, scopedVars),
+          columnName: replaceIfExists(query.variableQuery.columnName),
+          pinotQlCode: replaceIfExists(query.variableQuery.pinotQlCode),
         }
       : undefined,
   };

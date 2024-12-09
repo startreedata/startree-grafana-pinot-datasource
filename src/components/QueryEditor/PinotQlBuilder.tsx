@@ -20,6 +20,7 @@ import { InputMetricLegend } from './InputMetricLegend';
 import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../../resources/previewSql';
 import { useGranularities } from '../../resources/granularities';
 import { useDimensionColumns } from '../../resources/columns';
+import { ComplexField } from '../../types/ComplexField';
 
 const MetricColumnStar = '*';
 
@@ -67,6 +68,13 @@ export function PinotQlBuilder(props: {
   const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
   const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
 
+  const selectedGroupBys: ComplexField[] = [
+    ...(query.groupByColumns?.map((col) => ({ name: col })) || []),
+    ...(query.groupByColumnsV2 || []),
+  ];
+
+  const allowedOrderBys: ComplexField[] = [{ name: 'time' }, { name: 'metric' }, ...selectedGroupBys];
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -113,15 +121,21 @@ export function PinotQlBuilder(props: {
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
-          selected={query.groupByColumns}
+          selected={selectedGroupBys}
           columns={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           isLoading={isSchemaLoading}
-          onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
+          onChange={(values) =>
+            onChangeAndRun({
+              ...query,
+              groupByColumns: undefined,
+              groupByColumnsV2: values,
+            })
+          }
         />
         <SelectOrderBy
           selected={query.orderBy}
-          columnNames={['time', 'metric', ...(query.groupByColumns || [])]}
+          columns={allowedOrderBys}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           onChange={(orderBy) => onChangeAndRun({ ...query, orderBy })}
         />
@@ -167,12 +181,6 @@ function getMetricColumns(tableSchema: TableSchema | undefined, groupByColumns: 
     .sort();
 }
 
-function getGroupByColumns(tableSchema: TableSchema | undefined, metricColumn: string): string[] {
-  return [...(tableSchema?.dimensionFieldSpecs || []), ...(tableSchema?.metricFieldSpecs || [])]
-    .filter(({ name }) => name && metricColumn !== name)
-    .map(({ name }) => name);
-}
-
 function useSqlPreview(
   datasource: DataSource,
   intervalSize: string | undefined,
@@ -186,6 +194,11 @@ function useSqlPreview(
   const [sqlPreview, setSqlPreview] = useState('');
 
   const interpolated = interpolateVariables(query, scopedVars);
+  const selectedGroupBys: ComplexField[] = [
+    ...(interpolated.groupByColumns?.map((col) => ({ name: col })) || []),
+    ...(interpolated.groupByColumnsV2 || []),
+  ];
+
   const previewRequest: PreviewSqlBuilderRequest = {
     intervalSize: intervalSize,
     timeRange: {
@@ -194,7 +207,7 @@ function useSqlPreview(
     },
     expandMacros: true,
     aggregationFunction: interpolated.aggregationFunction,
-    groupByColumns: interpolated.groupByColumns,
+    groupByColumns: selectedGroupBys,
     metricColumn: interpolated.metricColumn,
     tableName: interpolated.tableName,
     timeColumn: interpolated.timeColumn,

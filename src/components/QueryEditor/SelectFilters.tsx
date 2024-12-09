@@ -7,6 +7,7 @@ import allLabels from '../../labels';
 import { EditFilter } from './EditFilter';
 import { TableSchema } from '../../types/TableSchema';
 import { DimensionFilter } from '../../types/DimensionFilter';
+import { ComplexField, getColumnLabel } from '../../types/ComplexField';
 
 export function SelectFilters(props: {
   datasource: DataSource;
@@ -14,15 +15,19 @@ export function SelectFilters(props: {
   tableName: string | undefined;
   timeColumn: string | undefined;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  dimensionColumns: string[] | undefined;
+  dimensionColumns: ComplexField[] | undefined;
   dimensionFilters: DimensionFilter[];
   onChange: (val: DimensionFilter[]) => void;
 }) {
   const { dimensionColumns, dimensionFilters, onChange } = props;
   const labels = allLabels.components.QueryEditor.filters;
 
-  const filteredColumns = dimensionFilters?.map((f) => f.columnName) || [];
-  const unusedColumns = dimensionColumns?.filter((d) => !filteredColumns.includes(d));
+  const filteredColumns = (dimensionFilters || [])
+    .filter(({ columnName }) => columnName)
+    .map((f) => getColumnLabel(f.columnName || '', f.columnKey));
+  const unusedColumns = dimensionColumns?.filter(
+    ({ name, key }) => !filteredColumns.includes(getColumnLabel(name, key))
+  );
 
   const onChangeFilter = (val: DimensionFilter, idx: number) => {
     onChange(dimensionFilters.map((existing, i) => (i === idx ? val : existing)));

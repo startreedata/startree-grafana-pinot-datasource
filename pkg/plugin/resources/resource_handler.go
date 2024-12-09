@@ -91,7 +91,7 @@ type PreviewSqlBuilderRequest struct {
 	TableName           string                      `json:"tableName"`
 	TimeColumn          string                      `json:"timeColumn"`
 	MetricColumn        string                      `json:"metricColumn"`
-	GroupByColumns      []string                    `json:"groupByColumns"`
+	GroupByColumns      []dataquery.ComplexField    `json:"groupByColumns"`
 	AggregationFunction string                      `json:"aggregationFunction"`
 	DimensionFilters    []dataquery.DimensionFilter `json:"filters"`
 	Limit               int64                       `json:"limit"`
@@ -485,10 +485,7 @@ type ListGroupByColumnsRequest struct {
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-type Column struct {
-	Name string `json:"name"`
-	Key  string `json:"key,omitempty"`
-}
+type Column = dataquery.ComplexField
 
 func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGroupByColumnsRequest) *Response[[]Column] {
 	if req.TableName == "" {

@@ -7,6 +7,7 @@ import { PinotDataType, PinotDataTypes } from '../../types/PinotDataType';
 import { DimensionFilter } from '../../types/DimensionFilter';
 import { TableSchema } from '../../types/TableSchema';
 import { queryDistinctValuesForFilters } from '../../resources/distinctValues';
+import {ComplexField} from "../../types/ComplexField";
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -39,7 +40,7 @@ export function EditFilter(props: {
   tableSchema: TableSchema | undefined;
   thisFilter: DimensionFilter;
   timeColumn: string | undefined;
-  unusedColumns: string[] | undefined;
+  unusedColumns: ComplexField[] | undefined;
   onChange: (filter: DimensionFilter) => void;
   onDelete: () => void;
 }) {
