@@ -216,6 +216,52 @@ func TestPinotResourceHandler_ListTimeColumns(t *testing.T) {
 
 }
 
+func TestPinotResourceHandler_ListDimensionColumns(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+	testCases := []struct {
+		payload string
+		want    string
+	}{
+		{
+			payload: `{}`,
+			want:    `{"code":200,"result":[]}`,
+		},
+		{
+			payload: `{
+				"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
+				"tableName":    "benchmark",
+				"timeColumn":   "ts"
+			}`,
+			want: `{"code":200,"result":[{"name":"fabric"},{"name":"pattern"},{"name":"value"}]}`,
+		},
+		{
+			payload: `{
+				"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
+				"tableName":    "timeSeriesWithMapLabels",
+				"timeColumn":   "ts"
+			}`,
+			want: `{"code":200,"result":[
+				{"name":"metric"},
+				{"name":"value"},
+				{"name":"labels","key":"db"},
+				{"name":"labels","key":"method"},
+				{"name":"labels","key":"path"},
+				{"name":"labels","key":"status"},
+				{"name":"labels","key":"table"}
+			]}`,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.payload, func(t *testing.T) {
+			var got json.RawMessage
+			doPostRequest(t, server.URL+"/columns/dimension", tt.payload, &got)
+			assertEqualJson(t, tt.want, got)
+		})
+	}
+}
+
 func newTestServer(t *testing.T) *httptest.Server {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 	return httptest.NewServer(NewPinotResourceHandler(client))
@@ -223,6 +269,7 @@ func newTestServer(t *testing.T) *httptest.Server {
 
 func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
 	t.Helper()
+
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")

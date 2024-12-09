@@ -19,6 +19,7 @@ import { TableSchema } from '../../types/TableSchema';
 import { InputMetricLegend } from './InputMetricLegend';
 import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../../resources/previewSql';
 import { useGranularities } from '../../resources/granularities';
+import { useDimensionColumns } from '../../resources/columns';
 
 const MetricColumnStar = '*';
 
@@ -39,6 +40,12 @@ export function PinotQlBuilder(props: {
 
   const granularities = useGranularities(datasource, query.tableName, query.timeColumn);
   const timeColumns = useTableTimeColumns(datasource, query.tableName);
+  const dimensionColumns = useDimensionColumns(datasource, {
+    tableName: query.tableName,
+    timeColumn: query.timeColumn,
+    timeRange: timeRange,
+    filters: query.filters || [],
+  });
 
   function canRunQuery(query: PinotDataQuery) {
     return !!(
@@ -59,7 +66,6 @@ export function PinotQlBuilder(props: {
 
   const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
   const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
-  const dimensionColumns = getGroupByColumns(tableSchema, query.metricColumn || '');
 
   return (
     <>
@@ -68,7 +74,13 @@ export function PinotQlBuilder(props: {
           <SelectTable
             options={tables}
             selected={query.tableName}
-            onChange={(value: string | undefined) => onChange({ ...query, tableName: value, filters: undefined })}
+            onChange={(value: string | undefined) =>
+              onChange({
+                ...query,
+                tableName: value,
+                filters: undefined,
+              })
+            }
           />
         </div>
       </div>
@@ -102,7 +114,7 @@ export function PinotQlBuilder(props: {
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
           selected={query.groupByColumns}
-          options={dimensionColumns}
+          columns={dimensionColumns}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           isLoading={isSchemaLoading}
           onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}

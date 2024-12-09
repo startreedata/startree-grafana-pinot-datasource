@@ -38,7 +38,8 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
 	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
 	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(handler.ListTimeSeriesLabelValues))
 	router.HandleFunc("/granularities", adaptHandlerWithBody(handler.ListSuggestedGranularities))
-
+	router.HandleFunc("/columns/dimension", adaptHandlerWithBody(handler.ListDimensionColumns))
+	router.HandleFunc("/columns/metric", adaptHandlerWithBody(handler.ListMetricColumns))
 	return router
 }
 
@@ -475,6 +476,91 @@ func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response[[]TimeColum
 
 	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
 	return newOkResponse(results)
+}
+
+type ListGroupByColumnsRequest struct {
+	TableName        string                      `json:"tableName"`
+	TimeRange        *dataquery.TimeRange        `json:"timeRange"`
+	TimeColumn       string                      `json:"timeColumn"`
+	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
+}
+
+type Column struct {
+	Name string `json:"name"`
+	Key  string `json:"key,omitempty"`
+}
+
+func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGroupByColumnsRequest) *Response[[]Column] {
+	if req.TableName == "" {
+		return newOkResponse[[]Column](nil)
+	}
+
+	schema, err := x.client.GetTableSchema(ctx, req.TableName)
+	if err != nil {
+		return newInternalServerErrorResponse[[]Column](err)
+	}
+
+	var columns []Column
+	for _, spec := range schema.DimensionFieldSpecs {
+		columns = append(columns, Column{Name: spec.Name})
+	}
+	for _, spec := range schema.MetricFieldSpecs {
+		columns = append(columns, Column{Name: spec.Name})
+	}
+	if len(schema.ComplexFieldSpecs) == 0 {
+		return newOkResponse(columns)
+	}
+
+	format, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
+	if err != nil {
+		return newOkResponse(columns)
+	}
+
+	timeFilterExpr := pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+		Column: req.TimeColumn,
+		Format: format,
+		From:   req.TimeRange.From,
+		To:     req.TimeRange.To,
+	})
+	filterExprs := dataquery.FilterExprsFrom(req.DimensionFilters)
+	for _, spec := range schema.ComplexFieldSpecs {
+		keys := x.listMapColumnKeys(ctx, req.TableName, spec.Name, timeFilterExpr, filterExprs)
+		for _, key := range keys {
+			columns = append(columns, Column{Name: spec.Name, Key: key})
+		}
+	}
+	return newOkResponse(columns)
+}
+
+func (x *ResourceHandler) listMapColumnKeys(ctx context.Context, tableName string, columnName string, timeFilterExpr string, filterExprs []string) []string {
+	columnExpr := fmt.Sprintf(`CAST(%s AS %s)`, pinotlib.ObjectExpr(columnName), pinotlib.DataTypeJson)
+	sql, _ := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+		ColumnExpr:           columnExpr,
+		TableName:            tableName,
+		TimeFilterExpr:       timeFilterExpr,
+		DimensionFilterExprs: filterExprs,
+	})
+
+	results, err := x.client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("Query to extract map keys failed")
+		return nil
+	}
+	col, _ := pinotlib.DecodeJsonFromColumn[map[string]any](results.ResultTable, 0)
+
+	keys := collections.NewSet[string](0)
+	for _, entry := range col {
+		for k := range entry {
+			keys.Add(k)
+		}
+	}
+	values := keys.Values()
+	sort.Strings(values)
+	return values
+}
+
+func (x *ResourceHandler) ListMetricColumns(ctx context.Context, data any) *Response[[]Column] {
+	return newOkResponse[[]Column](nil)
 }
 
 func newOkResponse[T any](result T) *Response[T] {
