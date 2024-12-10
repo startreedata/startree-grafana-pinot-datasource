@@ -56,7 +56,7 @@ export function PinotQlBuilder(props: {
       query.tableName &&
       query.timeColumn &&
       query.aggregationFunction &&
-      (query.metricColumn || query.aggregationFunction === AggregationFunction.COUNT)
+      (builderMetricColumnFrom(query)?.name || query.aggregationFunction === AggregationFunction.COUNT)
     );
   }
 
