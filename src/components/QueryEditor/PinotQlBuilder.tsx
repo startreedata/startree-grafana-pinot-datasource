@@ -125,7 +125,7 @@ export function PinotQlBuilder(props: {
         <SelectGroupBy
           selected={selectedGroupBys}
           columns={dimensionColumns.filter(
-            ({ name, key }) => columnLabelOf(metricColumn?.name, metricColumn?.key) != columnLabelOf(name, key)
+            ({ name, key }) => columnLabelOf(metricColumn?.name, metricColumn?.key) !== columnLabelOf(name, key)
           )}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           isLoading={isColumnsLoading}

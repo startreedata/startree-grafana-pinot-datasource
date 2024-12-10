@@ -47,7 +47,7 @@ export function SelectFilters(props: {
               timeRange={timeRange}
               unusedColumns={unusedColumns}
               thisColumn={dimensionColumns?.find(
-                ({ name, key }) => filter.columnName == name && filter.columnKey == key
+                ({ name, key }) => filter.columnName === name && filter.columnKey === key
               )}
               thisFilter={filter}
               isLoadingColumns={dimensionColumns === undefined}
