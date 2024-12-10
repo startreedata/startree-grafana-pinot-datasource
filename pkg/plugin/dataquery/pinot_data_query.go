@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"time"
 )
 
@@ -69,7 +68,6 @@ func builderGroupByColumnsFrom(query PinotDataQuery) []ComplexField {
 	for _, col := range query.GroupByColumns {
 		groupByColumns = append(groupByColumns, ComplexField{Name: col})
 	}
-	log.Info("GROUP BY COLUMNS", "COLUMNS", append(groupByColumns, query.GroupByColumnsV2...))
 	return append(groupByColumns, query.GroupByColumnsV2...)
 }
 

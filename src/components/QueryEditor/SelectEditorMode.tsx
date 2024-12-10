@@ -75,13 +75,12 @@ export function SelectEditorMode(props: {
                   metricColumnAlias: query.metricColumn,
                   pinotQlCode:
                     sql ||
-                    `SELECT
-                                                             $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
-                                                         FROM $__table()
-                                                         WHERE $__timeFilter("timestamp")
-                                                         GROUP BY $__timeGroup("timestamp")
-                                                         ORDER BY $__timeAlias() DESC
-                                                             LIMIT 100000`,
+                      `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("timestamp")
+GROUP BY $__timeGroup("timestamp")
+ORDER BY $__timeAlias() DESC
+LIMIT 100000`,
                 })
               );
             }

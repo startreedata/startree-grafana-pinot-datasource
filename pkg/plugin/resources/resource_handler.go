@@ -465,12 +465,12 @@ func (x *ResourceHandler) ListColumns(ctx context.Context, req ListColumnsReques
 		return newInternalServerErrorResponse[[]Column](err)
 	}
 
-	var columns []Column
-
 	derivedTimeCols := collections.NewSet[string](0)
 	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
 		derivedTimeCols.Add(col.ColumnName)
 	}
+
+	var columns []Column
 
 	for _, spec := range schema.DateTimeFieldSpecs {
 		columns = append(columns, Column{
