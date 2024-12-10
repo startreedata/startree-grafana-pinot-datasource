@@ -32,14 +32,12 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
 	router.HandleFunc("/tables", adaptHandler(handler.ListTables))
 	router.HandleFunc("/tables/{table}/schema", adaptHandler(handler.GetTableSchema))
-	router.HandleFunc("/tables/{table}/timeColumns", adaptHandler(handler.ListTimeColumns))
 	router.HandleFunc("/timeseries/tables", adaptHandler(handler.ListTimeSeriesTables))
 	router.HandleFunc("/timeseries/metrics", adaptHandlerWithBody(handler.ListTimeSeriesMetrics))
 	router.HandleFunc("/timeseries/labels", adaptHandlerWithBody(handler.ListTimeSeriesLabels))
 	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(handler.ListTimeSeriesLabelValues))
 	router.HandleFunc("/granularities", adaptHandlerWithBody(handler.ListSuggestedGranularities))
-	router.HandleFunc("/columns/dimension", adaptHandlerWithBody(handler.ListDimensionColumns))
-	router.HandleFunc("/columns/metric", adaptHandlerWithBody(handler.ListMetricColumns))
+	router.HandleFunc("/columns", adaptHandlerWithBody(handler.ListColumns))
 	return router
 }
 
@@ -90,7 +88,7 @@ type PreviewSqlBuilderRequest struct {
 	DatabaseName        string                      `json:"databaseName"`
 	TableName           string                      `json:"tableName"`
 	TimeColumn          string                      `json:"timeColumn"`
-	MetricColumn        string                      `json:"metricColumn"`
+	MetricColumn        dataquery.ComplexField      `json:"metricColumn"`
 	GroupByColumns      []dataquery.ComplexField    `json:"groupByColumns"`
 	AggregationFunction string                      `json:"aggregationFunction"`
 	DimensionFilters    []dataquery.DimensionFilter `json:"filters"`
@@ -436,50 +434,7 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 	return newOkResponse(results)
 }
 
-type TimeColumn struct {
-	Name                    string `json:"name"`
-	IsDerived               bool   `json:"isDerived"`
-	HasDerivedGranularities bool   `json:"hasDerivedGranularities"`
-}
-
-func (x *ResourceHandler) ListTimeColumns(r *http.Request) *Response[[]TimeColumn] {
-	vars := mux.Vars(r)
-	table := vars["table"]
-
-	schema, err := x.client.GetTableSchema(r.Context(), table)
-	if err != nil {
-		return newInternalServerErrorResponse[[]TimeColumn](err)
-	}
-
-	tableConfigs, err := x.client.ListTableConfigs(r.Context(), table)
-	if err != nil {
-		return newInternalServerErrorResponse[[]TimeColumn](err)
-	}
-
-	derivedTimeCols := collections.NewSet[string](0)
-	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
-		derivedTimeCols.Add(col.ColumnName)
-	}
-
-	colsWithDerivedGranularities := collections.NewSet[string](0)
-	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
-		colsWithDerivedGranularities.Add(col.Source.TimeColumn)
-	}
-
-	results := make([]TimeColumn, len(schema.DateTimeFieldSpecs))
-	for i, col := range schema.DateTimeFieldSpecs {
-		results[i] = TimeColumn{
-			Name:                    col.Name,
-			IsDerived:               derivedTimeCols.Contains(col.Name),
-			HasDerivedGranularities: colsWithDerivedGranularities.Contains(col.Name),
-		}
-	}
-
-	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
-	return newOkResponse(results)
-}
-
-type ListGroupByColumnsRequest struct {
+type ListColumnsRequest struct {
 	TableName        string                      `json:"tableName"`
 	TimeRange        *dataquery.TimeRange        `json:"timeRange"`
 	TimeColumn       string                      `json:"timeColumn"`
@@ -487,12 +442,15 @@ type ListGroupByColumnsRequest struct {
 }
 
 type Column = struct {
-	Name     string `json:"name"`
-	Key      string `json:"key,omitempty"`
-	DataType string `json:"dataType"`
+	Name      string `json:"name"`
+	Key       string `json:"key,omitempty"`
+	DataType  string `json:"dataType"`
+	IsTime    bool   `json:"isTime,omitempty"`
+	IsMetric  bool   `json:"isMetric,omitempty"`
+	IsDerived bool   `json:"isDerived,omitempty"`
 }
 
-func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGroupByColumnsRequest) *Response[[]Column] {
+func (x *ResourceHandler) ListColumns(ctx context.Context, req ListColumnsRequest) *Response[[]Column] {
 	if req.TableName == "" {
 		return newOkResponse[[]Column](nil)
 	}
@@ -502,16 +460,45 @@ func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGrou
 		return newInternalServerErrorResponse[[]Column](err)
 	}
 
+	tableConfigs, err := x.client.ListTableConfigs(ctx, req.TableName)
+	if err != nil {
+		return newInternalServerErrorResponse[[]Column](err)
+	}
+
 	var columns []Column
+
+	derivedTimeCols := collections.NewSet[string](0)
+	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
+		derivedTimeCols.Add(col.ColumnName)
+	}
+
+	for _, spec := range schema.DateTimeFieldSpecs {
+		columns = append(columns, Column{
+			Name:      spec.Name,
+			DataType:  spec.DataType,
+			IsTime:    true,
+			IsDerived: derivedTimeCols.Contains(spec.Name),
+		})
+	}
 	for _, spec := range schema.DimensionFieldSpecs {
-		columns = append(columns, Column{Name: spec.Name, DataType: spec.DataType})
+		columns = append(columns, Column{
+			Name:     spec.Name,
+			DataType: spec.DataType,
+			IsMetric: pinotlib.IsNumericDataType(spec.DataType),
+		})
 	}
 	for _, spec := range schema.MetricFieldSpecs {
-		columns = append(columns, Column{Name: spec.Name, DataType: spec.DataType})
+		columns = append(columns, Column{
+			Name:     spec.Name,
+			DataType: spec.DataType,
+			IsMetric: pinotlib.IsNumericDataType(spec.DataType),
+		})
 	}
 	if len(schema.ComplexFieldSpecs) == 0 {
 		return newOkResponse(columns)
 	}
+
+	// Complex fields
 
 	format, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
 	if err != nil {
@@ -528,10 +515,32 @@ func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGrou
 	for _, spec := range schema.ComplexFieldSpecs {
 		keys := x.listMapColumnKeys(ctx, req.TableName, spec.Name, timeFilterExpr, filterExprs)
 		for _, key := range keys {
-			columns = append(columns, Column{Name: spec.Name, Key: key, DataType: spec.ChildFieldSpecs.Value.DataType})
+			dataType := spec.ChildFieldSpecs.Value.DataType
+			columns = append(columns, Column{
+				Name:     spec.Name,
+				Key:      key,
+				DataType: dataType,
+				IsMetric: pinotlib.IsNumericDataType(dataType),
+			})
 		}
 	}
 	return newOkResponse(columns)
+}
+
+func (x *ResourceHandler) listTimeColumns(schema pinotlib.TableSchema, tableConfigs pinotlib.ListTableConfigsResponse) []Column {
+	derivedTimeCols := collections.NewSet[string](0)
+	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
+		derivedTimeCols.Add(col.ColumnName)
+	}
+
+	results := make([]Column, len(schema.DateTimeFieldSpecs))
+	for i, col := range schema.DateTimeFieldSpecs {
+		results[i] = Column{
+			Name:      col.Name,
+			IsDerived: derivedTimeCols.Contains(col.Name),
+		}
+	}
+	return results
 }
 
 func (x *ResourceHandler) listMapColumnKeys(ctx context.Context, tableName string, columnName string, timeFilterExpr string, filterExprs []string) []string {
@@ -559,10 +568,6 @@ func (x *ResourceHandler) listMapColumnKeys(ctx context.Context, tableName strin
 	values := keys.Values()
 	sort.Strings(values)
 	return values
-}
-
-func (x *ResourceHandler) ListMetricColumns(ctx context.Context, data any) *Response[[]Column] {
-	return newOkResponse[[]Column](nil)
 }
 
 func newOkResponse[T any](result T) *Response[T] {

@@ -42,6 +42,7 @@ type PinotDataQuery struct {
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
 	QueryOptions        []QueryOption     `json:"queryOptions"`
 	Legend              string            `json:"legend"`
+	MetricColumnV2      ComplexField      `json:"metricColumnV2"`
 	GroupByColumnsV2    []ComplexField    `json:"groupByColumnsV2"`
 
 	// Sql code query
@@ -63,13 +64,21 @@ type PinotDataQuery struct {
 	PromQlCode string `json:"promQlCode"`
 }
 
-func groupByColumnsFrom(query PinotDataQuery) []ComplexField {
+func builderGroupByColumnsFrom(query PinotDataQuery) []ComplexField {
 	groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
 	for _, col := range query.GroupByColumns {
 		groupByColumns = append(groupByColumns, ComplexField{Name: col})
 	}
 	log.Info("GROUP BY COLUMNS", "COLUMNS", append(groupByColumns, query.GroupByColumnsV2...))
 	return append(groupByColumns, query.GroupByColumnsV2...)
+}
+
+func builderMetricColumnFrom(query PinotDataQuery) ComplexField {
+	if query.MetricColumnV2.Name != "" {
+		return query.MetricColumnV2
+	} else {
+		return ComplexField{Name: query.MetricColumn}
+	}
 }
 
 type TimeRange struct {

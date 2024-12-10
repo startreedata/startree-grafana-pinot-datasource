@@ -14,7 +14,7 @@ export interface PreviewSqlBuilderRequest {
   intervalSize: string | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
-  metricColumn: string | undefined;
+  metricColumn: ComplexField | undefined;
   groupByColumns: ComplexField[] | undefined;
   aggregationFunction: string | undefined;
   filters: DimensionFilter[] | undefined;

@@ -9,25 +9,25 @@ export interface Column {
   name: string;
   key: string | null;
   dataType: string;
+  isTime: boolean | null;
+  isDerived: boolean | null;
+  isMetric: boolean | null;
 }
 
-export interface ListDimensionColumnsRequest {
+export interface ListColumnsRequest {
   tableName: string | undefined;
   timeColumn: string | undefined;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   filters: DimensionFilter[];
 }
 
-export function useDimensionColumns(
-  datasource: DataSource,
-  request: ListDimensionColumnsRequest
-): UseResourceResult<Column[]> {
+export function useColumns(datasource: DataSource, request: ListColumnsRequest): UseResourceResult<Column[]> {
   const [result, setResult] = useState<Column[]>([]);
   const [loading, setLoading] = useState(false);
   useEffect(() => {
-    if (request.tableName && request.timeColumn) {
+    if (request.tableName) {
       setLoading(true);
-      listDimensionColumns(datasource, request)
+      listColumns(datasource, request)
         .then((res) => setResult(res))
         .finally(() => setLoading(false));
     }
@@ -35,12 +35,9 @@ export function useDimensionColumns(
   return { loading, result };
 }
 
-export async function listDimensionColumns(
-  datasource: DataSource,
-  request: ListDimensionColumnsRequest
-): Promise<Column[]> {
+export async function listColumns(datasource: DataSource, request: ListColumnsRequest): Promise<Column[]> {
   return datasource
-    .postResource<PinotResourceResponse<Column[]>>('columns/dimension', request)
+    .postResource<PinotResourceResponse<Column[]>>('columns', request)
     .then((resp) => resp.result || [])
     .catch(() => []);
 }

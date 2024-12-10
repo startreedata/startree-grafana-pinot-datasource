@@ -28,6 +28,15 @@ const (
 	DataTypeMap        = "MAP"
 )
 
+func IsNumericDataType(dataType string) bool {
+	switch dataType {
+	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble, DataTypeBigDecimal:
+		return true
+	default:
+		return false
+	}
+}
+
 func GetColumnName(resultTable *ResultTable, colIdx int) (string, error) {
 	if colIdx > len(resultTable.DataSchema.ColumnNames) {
 		return "", fmt.Errorf("column index %d out of range", colIdx)

@@ -40,7 +40,7 @@ type PinotQlBuilderParams struct {
 	IntervalSize        time.Duration
 	TableName           string
 	TimeColumn          string
-	MetricColumn        string
+	MetricColumn        ComplexField
 	GroupByColumns      []ComplexField
 	AggregationFunction string
 	DimensionFilters    []DimensionFilter
@@ -57,7 +57,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, errors.New("TableName is required")
 	} else if params.TimeColumn == "" {
 		return nil, errors.New("TimeColumn is required")
-	} else if params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount {
+	} else if params.MetricColumn.Name == "" && params.AggregationFunction != AggregationFunctionCount {
 		return nil, errors.New("MetricColumn is required")
 	} else if params.AggregationFunction == "" {
 		return nil, errors.New("AggregationFunction is required")
@@ -118,7 +118,7 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			TableNameExpr:         p.tableNameExpr(expandMacros),
 			TimeColumn:            p.params.TimeColumn,
 			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
-			MetricColumn:          p.params.MetricColumn,
+			MetricColumnExpr:      pinotlib.ComplexFieldExpr(p.params.MetricColumn.Name, p.params.MetricColumn.Key),
 			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
@@ -141,7 +141,7 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			TimeGroupExpr:         p.timeGroupExpr(expandMacros),
 			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
 			AggregationFunction:   p.params.AggregationFunction,
-			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnExpr:      p.resolveMetricColumnExpr(),
 			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
 			GroupByColumnExprs:    groupByColumns,
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
@@ -244,8 +244,10 @@ func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() pinotlib.DateTimeFormat
 func (p *PinotQlBuilderDriver) resolveMetricName() string {
 	if p.params.AggregationFunction == AggregationFunctionCount {
 		return "count"
+	} else if p.params.MetricColumn.Key != "" {
+		return complexFieldAlias(p.params.MetricColumn.Name, p.params.MetricColumn.Key)
 	} else {
-		return p.params.MetricColumn
+		return p.params.MetricColumn.Name
 	}
 }
 
@@ -266,11 +268,11 @@ func (p *PinotQlBuilderDriver) resolveLimit() int64 {
 	}
 }
 
-func (p *PinotQlBuilderDriver) resolveMetricColumn() string {
+func (p *PinotQlBuilderDriver) resolveMetricColumnExpr() string {
 	if p.params.AggregationFunction == AggregationFunctionCount {
-		return "*"
+		return pinotlib.ObjectExpr("*")
 	} else {
-		return p.params.MetricColumn
+		return pinotlib.ComplexFieldExpr(p.params.MetricColumn.Name, p.params.MetricColumn.Key)
 	}
 }
 

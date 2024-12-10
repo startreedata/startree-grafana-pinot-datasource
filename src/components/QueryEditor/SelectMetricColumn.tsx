@@ -3,24 +3,28 @@ import { styles } from '../../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
+import { Column } from '../../resources/columns';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
 
 export function SelectMetricColumn(props: {
-  selected: string | undefined;
-  metricColumns: string[];
+  selected: ComplexField | undefined;
+  metricColumns: Column[];
+  isCount: boolean;
   isLoading: boolean;
-  onChange: (val: string | undefined) => void;
-  disabled: boolean;
+  onChange: (val: ComplexField | undefined) => void;
 }) {
-  const { disabled, selected, metricColumns, isLoading, onChange } = props;
+  const { isCount, selected, metricColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricColumn;
 
-  if (!selected && metricColumns.length > 0 && selected !== metricColumns[0]) {
-    onChange(metricColumns[0]);
+  if (!isCount && !selected && metricColumns.length > 0) {
+    onChange({ name: metricColumns[0].name, key: metricColumns[0].key || undefined });
   }
 
-  const options = [selected, ...metricColumns]
+  const selectableColumns = selected ? [selected, ...metricColumns] : metricColumns;
+  const options = selectableColumns
+    .map(({ name, key }) => columnLabelOf(name, key))
     .filter((v, i, a) => a.indexOf(v) === i)
-    .map((name) => ({ label: name, value: name }))
+    .map((label) => ({ label, value: label }))
     .sort();
 
   return (
@@ -31,11 +35,12 @@ export function SelectMetricColumn(props: {
         allowCustomValue
         invalid={!selected}
         isLoading={isLoading}
-        options={options}
-        value={selected || null}
-        disabled={disabled}
+        options={isCount ? [{ label: '*', value: '*' }] : options}
+        value={isCount ? '*' : columnLabelOf(selected?.name, selected?.key)}
+        disabled={isCount}
         onChange={(change) => {
-          onChange(change.value);
+          const col = selectableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
+          onChange({ name: col?.name, key: col?.key || undefined });
         }}
       />
     </div>

@@ -63,7 +63,7 @@ export function EditFilter(props: {
   const colOptions = filterableColumns
     .map(({ name, key }) => columnLabelOf(name, key))
     .filter((d, i, a) => a.indexOf(d) === i)
-    .map((label) => ({ label }));
+    .map((label) => ({ label, value: label }));
 
   const operatorOptions = thisColumn?.dataType
     ? FilterOperators.filter((op) => op.types.includes(thisColumn.dataType))

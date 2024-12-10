@@ -2,7 +2,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { EditorMode } from '../../types/EditorMode';
 import { RadioButtonGroup } from '@grafana/ui';
 import React, { useState } from 'react';
-import { groupByColumnsFrom, PinotDataQuery } from '../../types/PinotDataQuery';
+import {builderGroupByColumnsFrom, builderMetricColumnFrom, PinotDataQuery} from '../../types/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { DisplayTypeTimeSeries } from './SelectDisplayType';
@@ -57,8 +57,8 @@ export function SelectEditorMode(props: {
                 timeRange: timeRange,
                 expandMacros: false,
                 aggregationFunction: query.aggregationFunction,
-                groupByColumns: groupByColumnsFrom(query),
-                metricColumn: query.metricColumn,
+                groupByColumns: builderGroupByColumnsFrom(query),
+                metricColumn: builderMetricColumnFrom(query),
                 tableName: query.tableName,
                 timeColumn: query.timeColumn,
                 filters: query.filters,

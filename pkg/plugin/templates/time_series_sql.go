@@ -11,7 +11,7 @@ SELECT{{ range .GroupByColumnExprs }}
     {{ .Expr }}{{if .Alias}} as '{{.Alias}}'{{end}},
     {{- end }}
     {{.TimeGroupExpr}} AS {{.TimeColumnAliasExpr}},
-    {{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAliasExpr}}
+    {{.AggregationFunction}}({{.MetricColumnExpr}}) AS {{.MetricColumnAliasExpr}}
 FROM
     {{.TableNameExpr}}
 WHERE
@@ -39,7 +39,7 @@ type GroupByColumn struct {
 type TimeSeriesSqlParams struct {
 	TableNameExpr         string
 	GroupByColumnExprs    []GroupByColumn
-	MetricColumn          string
+	MetricColumnExpr      string
 	AggregationFunction   string
 	TimeFilterExpr        string
 	TimeGroupExpr         string

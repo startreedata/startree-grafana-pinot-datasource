@@ -32,7 +32,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 			IntervalSize:        100,
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
-			MetricColumn:        "my_metric",
+			MetricColumn:        ComplexField{Name: "my_metric"},
 			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "SUM",
 			Limit:               -1,
@@ -70,7 +70,7 @@ func TestNewPinotQlBuilderDriver(t *testing.T) {
 	})
 	t.Run("no metric column", func(t *testing.T) {
 		params := newParams()
-		params.MetricColumn = ""
+		params.MetricColumn.Name = ""
 		got, gotErr := NewPinotQlBuilderDriver(params)
 		assert.Nil(t, got)
 		assert.Error(t, gotErr)
@@ -102,7 +102,7 @@ func TestPinotQlBuilderDriver_RenderPinotSql(t *testing.T) {
 			IntervalSize:        100,
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
-			MetricColumn:        "my_metric",
+			MetricColumn:        ComplexField{Name: "my_metric"},
 			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "SUM",
 			Limit:               -1,
@@ -178,7 +178,7 @@ LIMIT 100000;`
 				Granularity:         "1:MINUTES",
 				TableName:           "derivedTimeBuckets",
 				TimeColumn:          "ts",
-				MetricColumn:        "value",
+				MetricColumn:        ComplexField{Name: "value"},
 				AggregationFunction: "SUM",
 				Limit:               1_000,
 				Legend:              "test-legend",
@@ -221,7 +221,7 @@ LIMIT 1000;`
 			IntervalSize:        100,
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
-			MetricColumn:        "my_metric",
+			MetricColumn:        ComplexField{Name: "my_metric"},
 			GroupByColumns:      []ComplexField{{Name: "dim"}},
 			AggregationFunction: "COUNT",
 			Limit:               -1,
@@ -302,7 +302,7 @@ LIMIT 100000;`
 			IntervalSize:        100,
 			TableName:           "my_table",
 			TimeColumn:          "my_time_column",
-			MetricColumn:        "my_metric",
+			MetricColumn:        ComplexField{Name: "my_metric"},
 			AggregationFunction: "NONE",
 			Limit:               -1,
 			Granularity:         "1:SECONDS",
@@ -369,7 +369,7 @@ func TestPinotQlBuilderDriver_Execute(t *testing.T) {
 				IntervalSize:        testCase.IntervalSize,
 				TableName:           testCase.TableName,
 				TimeColumn:          testCase.TimeColumn,
-				MetricColumn:        testCase.TargetColumn,
+				MetricColumn:        ComplexField{Name: testCase.TargetColumn},
 				AggregationFunction: AggregationFunctionNone,
 				Limit:               1_000,
 				Legend:              "test-legend",
@@ -398,7 +398,7 @@ func TestPinotQlBuilderDriver_Execute(t *testing.T) {
 				IntervalSize:        testCase.IntervalSize,
 				TableName:           testCase.TableName,
 				TimeColumn:          testCase.TimeColumn,
-				MetricColumn:        testCase.TargetColumn,
+				MetricColumn:        ComplexField{Name: testCase.TargetColumn},
 				AggregationFunction: "SUM",
 				Limit:               1_000,
 				Legend:              "test-legend",

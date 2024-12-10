@@ -33,7 +33,7 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 		IntervalSize:        1 * time.Minute,
 		TableName:           "benchmark",
 		TimeColumn:          "ts",
-		MetricColumn:        "value",
+		MetricColumn:        ComplexField{Name: "value"},
 		GroupByColumns:      []ComplexField{{Name: "pattern"}, {Name: "fabric"}},
 		AggregationFunction: "SUM",
 		Limit:               1_000_000_000,

@@ -38,7 +38,7 @@ LIMIT 100000;
 	doPostRequest(t, server.URL+"/preview/sql/builder", `{
   "aggregationFunction": "MAX",
   "intervalSize": "30m",
-  "metricColumn": "value",
+  "metricColumn": {"name":"value"},
   "tableName": "benchmark",
   "timeColumn": "ts",
   "timeRange": {
@@ -176,74 +176,85 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 	}
 }
 
-func TestPinotResourceHandler_ListTimeColumns(t *testing.T) {
-	server := newTestServer(t)
-	defer server.Close()
-
-	testCases := []struct {
-		tableName string
-		want      string
-	}{
-		{
-			tableName: "derivedTimeBuckets",
-			want: `{
-				"code":200,
-				"result":[
-					{"name":"ts","isDerived":false,"hasDerivedGranularities":true},
-					{"name":"ts_10m","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_15m","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_1d","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_1h","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_1m","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_2m","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_30m","isDerived":true,"hasDerivedGranularities":false},
-					{"name":"ts_5m","isDerived":true,"hasDerivedGranularities":false}
-				]
-			}`,
-		}, {
-			tableName: "benchmark",
-			want:      `{"code":200,"result":[{"name":"ts","isDerived":false,"hasDerivedGranularities":false}]}`,
-		},
-	}
-
-	for _, tt := range testCases {
-		t.Run(tt.tableName, func(t *testing.T) {
-			var got json.RawMessage
-			doPostRequest(t, server.URL+"/tables/"+tt.tableName+"/timeColumns", tt.tableName, &got)
-			assertEqualJson(t, tt.want, got)
-		})
-	}
-
-}
-
-func TestPinotResourceHandler_ListDimensionColumns(t *testing.T) {
+func TestPinotResourceHandler_ListColumns(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 	testCases := []struct {
+		name    string
 		payload string
 		want    string
 	}{
 		{
+			name:    "table=None,ts=None",
 			payload: `{}`,
-			want:    `{"code":200,"result":[]}`,
-		},
-		{
+			want:    `{"code":200}`,
+		}, {
+			name:    "table=benchmark,ts=None",
+			payload: `{"tableName":"benchmark"}`,
+			want: `{"code":200, "result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
+				{"name":"fabric","dataType":"STRING"},
+				{"name":"pattern","dataType":"STRING"},
+				{"name":"value","dataType":"DOUBLE","isMetric":true}
+			]}`,
+		}, {
+			name:    "table=derivedTimeBuckets,ts=None",
+			payload: `{"tableName":"derivedTimeBuckets"}`,
+			want: `{"code":200,"result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
+				{"name":"ts_1m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_2m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_5m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_10m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_15m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_30m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_1h","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_1d","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"value","dataType":"DOUBLE","isMetric":true}
+			]}`,
+		}, {
+			name: "table=derivedTimeBuckets",
+			payload: `{
+				"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
+				"tableName":    "derivedTimeBuckets",
+				"timeColumn":   "ts"
+			}`,
+			want: `{"code":200,"result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
+				{"name":"ts_1m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_2m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_5m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_10m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_15m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_30m","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_1h","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"ts_1d","dataType":"TIMESTAMP","isTime":true,"isDerived":true},
+				{"name":"value","dataType":"DOUBLE","isMetric":true}
+			]}`,
+		}, {
+			name: "table=benchmark",
 			payload: `{
 				"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
 				"tableName":    "benchmark",
 				"timeColumn":   "ts"
 			}`,
-			want: `{"code":200,"result":[{"name":"fabric"},{"name":"pattern"},{"name":"value"}]}`,
-		},
-		{
+			want: `{"code":200,"result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
+				{"name":"fabric","dataType":"STRING"},
+				{"name":"pattern","dataType":"STRING"},
+				{"name":"value","dataType":"DOUBLE","isMetric":true}
+			]}`,
+		}, {
+			name: "table=timeSeriesWithMapLabels",
 			payload: `{
 				"timeRange":    {"from": "2018-01-01T00:00:00Z", "to": "2024-12-31T00:00:00Z"},
 				"tableName":    "timeSeriesWithMapLabels",
 				"timeColumn":   "ts"
 			}`,
 			want: `{"code":200,"result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
 				{"name":"metric","dataType":"STRING"},
-				{"name":"value","dataType":"DOUBLE"},
+				{"name":"value","dataType":"DOUBLE","isMetric":true},
 				{"name":"labels","key":"db","dataType":"STRING"},
 				{"name":"labels","key":"method","dataType":"STRING"},
 				{"name":"labels","key":"path","dataType":"STRING"},
@@ -254,9 +265,9 @@ func TestPinotResourceHandler_ListDimensionColumns(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		t.Run(tt.payload, func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			var got json.RawMessage
-			doPostRequest(t, server.URL+"/columns/dimension", tt.payload, &got)
+			doPostRequest(t, server.URL+"/columns", tt.payload, &got)
 			assertEqualJson(t, tt.want, got)
 		})
 	}
@@ -291,5 +302,6 @@ func assertEqualJson[T1 string | []byte | json.RawMessage, T2 string | []byte | 
 	require.NoError(t, err, "want invalid json")
 	gotPretty, err := json.MarshalIndent(json.RawMessage(got), "", "  ")
 	require.NoError(t, err, "got invalid json")
+	//assert.JSONEq(t, string(wantPretty), string(gotPretty))
 	assert.Equal(t, string(wantPretty), string(gotPretty))
 }

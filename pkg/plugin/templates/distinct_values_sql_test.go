@@ -9,7 +9,8 @@ func TestRenderDistinctValues(t *testing.T) {
 	t.Run("with filters", func(t *testing.T) {
 		want := `SELECT DISTINCT "dim"
 FROM "my_table"
-WHERE ts >= 10 AND ts < 20
+WHERE "dim" IS NOT NULL
+    AND ts >= 10 AND ts < 20
     AND ("dim1" = 'val1')
     AND ("dim2" = 'val2')
 ORDER BY "dim" ASC
@@ -27,6 +28,7 @@ LIMIT 100;`
 	t.Run("without filters", func(t *testing.T) {
 		want := `SELECT DISTINCT "dim"
 FROM "my_table"
+WHERE "dim" IS NOT NULL
 ORDER BY "dim" ASC
 LIMIT 100;`
 		got, err := RenderDistinctValuesSql(DistinctValuesSqlParams{

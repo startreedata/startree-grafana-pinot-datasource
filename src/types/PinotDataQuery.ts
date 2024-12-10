@@ -51,6 +51,7 @@ export interface PinotDataQuery extends DataQuery {
   orderBy?: OrderByClause[];
   queryOptions?: QueryOption[];
   legend?: string;
+  metricColumnV2?: ComplexField;
   groupByColumnsV2?: ComplexField[];
 
   // PinotQl Code
@@ -68,12 +69,26 @@ export interface PinotDataQuery extends DataQuery {
   promQlCode?: string;
 }
 
-export function groupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
+export function builderGroupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
   return [...(query.groupByColumns?.map((col) => ({ name: col })) || []), ...(query.groupByColumnsV2 || [])];
+}
+
+export function builderMetricColumnFrom(query: PinotDataQuery): ComplexField | undefined {
+  if (query.metricColumnV2) {
+    return query.metricColumnV2;
+  } else if (query.metricColumn) {
+    return { name: query.metricColumn };
+  } else {
+    return undefined;
+  }
 }
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
+
+  function mapIfExists<T>(target: T | undefined, mapper: (val: T) => T): T | undefined {
+    return target ? mapper(target) : undefined;
+  }
 
   const replace = (target: string) => templateSrv.replace(target, scopedVars);
   const replaceIfExists = (target?: string | null) => (target ? replace(target) : undefined);
@@ -85,6 +100,10 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
 
     timeColumn: replaceIfExists(query.timeColumn),
     metricColumn: replaceIfExists(query.metricColumn),
+    metricColumnV2: mapIfExists(query.metricColumnV2, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
     granularity: replaceIfExists(query.granularity),
     aggregationFunction: replaceIfExists(query.aggregationFunction),
     groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),
@@ -113,12 +132,10 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
 
     // Variable Query editor
 
-    variableQuery: query.variableQuery
-      ? {
-          ...query.variableQuery,
-          columnName: replaceIfExists(query.variableQuery.columnName),
-          pinotQlCode: replaceIfExists(query.variableQuery.pinotQlCode),
-        }
-      : undefined,
+    variableQuery: mapIfExists(query.variableQuery, (variableQuery) => ({
+      ...variableQuery,
+      columnName: replaceIfExists(variableQuery.columnName),
+      pinotQlCode: replaceIfExists(variableQuery.pinotQlCode),
+    })),
   };
 }
