@@ -242,13 +242,13 @@ func TestPinotResourceHandler_ListDimensionColumns(t *testing.T) {
 				"timeColumn":   "ts"
 			}`,
 			want: `{"code":200,"result":[
-				{"name":"metric"},
-				{"name":"value"},
-				{"name":"labels","key":"db"},
-				{"name":"labels","key":"method"},
-				{"name":"labels","key":"path"},
-				{"name":"labels","key":"status"},
-				{"name":"labels","key":"table"}
+				{"name":"metric","dataType":"STRING"},
+				{"name":"value","dataType":"DOUBLE"},
+				{"name":"labels","key":"db","dataType":"STRING"},
+				{"name":"labels","key":"method","dataType":"STRING"},
+				{"name":"labels","key":"path","dataType":"STRING"},
+				{"name":"labels","key":"status","dataType":"STRING"},
+				{"name":"labels","key":"table","dataType":"STRING"}
 			]}`,
 		},
 	}

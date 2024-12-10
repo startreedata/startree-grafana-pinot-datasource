@@ -1,6 +1,6 @@
 export interface DimensionFilter {
   columnName?: string;
-  columnKey?: string | null;
+  columnKey?: string;
   operator?: string;
   valueExprs?: string[];
 }

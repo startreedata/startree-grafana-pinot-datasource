@@ -7,7 +7,8 @@ import allLabels from '../../labels';
 import { EditFilter } from './EditFilter';
 import { TableSchema } from '../../types/TableSchema';
 import { DimensionFilter } from '../../types/DimensionFilter';
-import { ComplexField, getColumnLabel } from '../../types/ComplexField';
+import { columnLabelOf } from '../../types/ComplexField';
+import { Column } from '../../resources/columns';
 
 export function SelectFilters(props: {
   datasource: DataSource;
@@ -15,7 +16,7 @@ export function SelectFilters(props: {
   tableName: string | undefined;
   timeColumn: string | undefined;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  dimensionColumns: ComplexField[] | undefined;
+  dimensionColumns: Column[] | undefined;
   dimensionFilters: DimensionFilter[];
   onChange: (val: DimensionFilter[]) => void;
 }) {
@@ -24,10 +25,9 @@ export function SelectFilters(props: {
 
   const filteredColumns = (dimensionFilters || [])
     .filter(({ columnName }) => columnName)
-    .map((f) => getColumnLabel(f.columnName || '', f.columnKey));
-  const unusedColumns = dimensionColumns?.filter(
-    ({ name, key }) => !filteredColumns.includes(getColumnLabel(name, key))
-  );
+    .map((f) => columnLabelOf(f.columnName || '', f.columnKey));
+  const unusedColumns =
+    dimensionColumns?.filter(({ name, key }) => !filteredColumns.includes(columnLabelOf(name, key))) || [];
 
   const onChangeFilter = (val: DimensionFilter, idx: number) => {
     onChange(dimensionFilters.map((existing, i) => (i === idx ? val : existing)));
@@ -45,7 +45,11 @@ export function SelectFilters(props: {
             <EditFilter
               {...props}
               unusedColumns={unusedColumns}
+              thisColumn={dimensionColumns?.find(
+                ({ name, key }) => filter.columnName == name && filter.columnKey == key
+              )}
               thisFilter={filter}
+              isLoadingColumns={dimensionColumns === undefined}
               remainingFilters={[...dimensionFilters.slice(0, idx), ...dimensionFilters.slice(idx + 1)]}
               onChange={(val: DimensionFilter) => onChangeFilter(val, idx)}
               onDelete={() => onDeleteFilter(idx)}

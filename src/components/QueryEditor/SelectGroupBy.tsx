@@ -4,11 +4,12 @@ import { SelectableValue } from '@grafana/data';
 import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
-import { ComplexField, getColumnLabel } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { Column } from '../../resources/columns';
 
 export function SelectGroupBy(props: {
   selected: ComplexField[] | undefined;
-  columns: ComplexField[];
+  columns: Column[];
   isLoading: boolean;
   disabled: boolean;
   onChange: (val: ComplexField[] | undefined) => void;
@@ -16,14 +17,22 @@ export function SelectGroupBy(props: {
   const { columns, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
-  const labelToColumnMap = columns
-    .filter((col) => col.name)
-    .reduce((a, b) => a.set(getColumnLabel(b.name, b.key), b), new Map<string, ComplexField>());
-  const getColumn = (label: string | undefined) => labelToColumnMap.get(label || '') || { name: '', key: '' };
+  const selectOptions =
+    selected?.map(({ name, key }) => ({
+      label: columnLabelOf(name, key),
+      value: columnLabelOf(name, key),
+    })) || [];
+  const options = columns.map((col) => ({
+    label: columnLabelOf(col.name, col.key),
+    value: columnLabelOf(col.name, col.key),
+  }));
+
+  const getColumn = (label: string | undefined): Column | undefined => {
+    return columns.find(({ name, key }) => columnLabelOf(name, key) === label);
+  };
 
   useEffect(() => {
-    const valid =
-      selected?.filter((col: ComplexField) => labelToColumnMap.has(getColumnLabel(col.name, col.key))) || [];
+    const valid = selected?.filter((col) => getColumn(columnLabelOf(col.name, col.key))) || [];
     if (valid.length < (selected?.length || 0)) {
       onChange(valid);
     }
@@ -35,13 +44,16 @@ export function SelectGroupBy(props: {
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}
         allowCustomValue
-        options={columns.map((col) => ({ label: getColumnLabel(col.name, col.key) }))}
-        value={selected}
+        options={options}
+        value={selectOptions}
         disabled={disabled}
         isLoading={isLoading}
         onChange={(item: Array<SelectableValue<string>>) => {
-          const selected = item.map((v) => getColumn(v.label)).filter((col) => col.name);
-          onChange(selected);
+          const newSelected = item
+            .map((v) => getColumn(v.label))
+            .map<ComplexField>((col) => ({ name: col?.name || '', key: col?.key || undefined }))
+            .filter(({ name }) => name);
+          onChange(newSelected);
         }}
       />
     </div>

@@ -192,6 +192,7 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 type QueryDistinctValuesRequest struct {
 	TableName        string                      `json:"tableName"`
 	ColumnName       string                      `json:"columnName"`
+	ColumnKey        string                      `json:"columnKey"`
 	TimeRange        *dataquery.TimeRange        `json:"timeRange"`
 	TimeColumn       string                      `json:"timeColumn"`
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
@@ -255,7 +256,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 	}
 
 	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-		ColumnExpr:           pinotlib.ObjectExpr(data.ColumnName),
+		ColumnExpr:           pinotlib.ComplexFieldExpr(data.ColumnName, data.ColumnKey),
 		TableName:            data.TableName,
 		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),
@@ -485,7 +486,11 @@ type ListGroupByColumnsRequest struct {
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-type Column = dataquery.ComplexField
+type Column = struct {
+	Name     string `json:"name"`
+	Key      string `json:"key,omitempty"`
+	DataType string `json:"dataType"`
+}
 
 func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGroupByColumnsRequest) *Response[[]Column] {
 	if req.TableName == "" {
@@ -499,10 +504,10 @@ func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGrou
 
 	var columns []Column
 	for _, spec := range schema.DimensionFieldSpecs {
-		columns = append(columns, Column{Name: spec.Name})
+		columns = append(columns, Column{Name: spec.Name, DataType: spec.DataType})
 	}
 	for _, spec := range schema.MetricFieldSpecs {
-		columns = append(columns, Column{Name: spec.Name})
+		columns = append(columns, Column{Name: spec.Name, DataType: spec.DataType})
 	}
 	if len(schema.ComplexFieldSpecs) == 0 {
 		return newOkResponse(columns)
@@ -523,7 +528,7 @@ func (x *ResourceHandler) ListDimensionColumns(ctx context.Context, req ListGrou
 	for _, spec := range schema.ComplexFieldSpecs {
 		keys := x.listMapColumnKeys(ctx, req.TableName, spec.Name, timeFilterExpr, filterExprs)
 		for _, key := range keys {
-			columns = append(columns, Column{Name: spec.Name, Key: key})
+			columns = append(columns, Column{Name: spec.Name, Key: key, DataType: spec.ChildFieldSpecs.Value.DataType})
 		}
 	}
 	return newOkResponse(columns)

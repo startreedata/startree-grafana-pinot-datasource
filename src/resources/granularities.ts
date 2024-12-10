@@ -1,6 +1,7 @@
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { DataSource } from '../datasource';
 import { useEffect, useState } from 'react';
+import { UseResourceResult } from './UseResourceResult';
 
 export interface ListGranularitiesRequest {
   tableName: string | undefined;
@@ -26,14 +27,23 @@ export function useGranularities(
   datasource: DataSource,
   tableName: string | undefined,
   timeColumn: string | undefined
-): Granularity[] {
-  const [granularities, setGranularities] = useState<Granularity[]>(CommonGranularities);
+): UseResourceResult<Granularity[]> {
+  const [result, setResult] = useState<Granularity[]>(CommonGranularities);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    listGranularities(datasource, { tableName, timeColumn }).then((granularities) => setGranularities(granularities));
+    if (tableName && timeColumn) {
+      setLoading(true);
+      listGranularities(datasource, {
+        tableName,
+        timeColumn,
+      })
+        .then((granularities) => setResult(granularities))
+        .finally(() => setLoading(false));
+    }
   }, [datasource, tableName, timeColumn]);
 
-  return granularities;
+  return { loading, result };
 }
 
 export async function listGranularities(

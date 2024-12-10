@@ -3,7 +3,13 @@ import { DateTime } from '@grafana/data';
 import { DimensionFilter } from '../types/DimensionFilter';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { useEffect, useState } from 'react';
-import { ComplexField } from '../types/ComplexField';
+import { UseResourceResult } from './UseResourceResult';
+
+export interface Column {
+  name: string;
+  key: string | null;
+  dataType: string;
+}
 
 export interface ListDimensionColumnsRequest {
   tableName: string | undefined;
@@ -12,20 +18,29 @@ export interface ListDimensionColumnsRequest {
   filters: DimensionFilter[];
 }
 
-export function useDimensionColumns(datasource: DataSource, request: ListDimensionColumnsRequest): ComplexField[] {
-  const [cols, setCols] = useState<ComplexField[]>([]);
+export function useDimensionColumns(
+  datasource: DataSource,
+  request: ListDimensionColumnsRequest
+): UseResourceResult<Column[]> {
+  const [result, setResult] = useState<Column[]>([]);
+  const [loading, setLoading] = useState(false);
   useEffect(() => {
-    listDimensionColumns(datasource, request).then((res) => setCols(res));
+    if (request.tableName && request.timeColumn) {
+      setLoading(true);
+      listDimensionColumns(datasource, request)
+        .then((res) => setResult(res))
+        .finally(() => setLoading(false));
+    }
   }, [datasource, JSON.stringify(request)]); // eslint-disable-line react-hooks/exhaustive-deps
-  return cols;
+  return { loading, result };
 }
 
 export async function listDimensionColumns(
   datasource: DataSource,
   request: ListDimensionColumnsRequest
-): Promise<ComplexField[]> {
+): Promise<Column[]> {
   return datasource
-    .postResource<PinotResourceResponse<ComplexField[]>>('columns/dimension', request)
+    .postResource<PinotResourceResponse<Column[]>>('columns/dimension', request)
     .then((resp) => resp.result || [])
     .catch(() => []);
 }

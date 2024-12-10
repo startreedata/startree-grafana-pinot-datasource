@@ -126,9 +126,14 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	} else {
-		groupByColumnExprs := make([]string, len(p.params.GroupByColumns))
-		for _, col := range p.params.GroupByColumns {
-			groupByColumnExprs = append(groupByColumnExprs, pinotlib.ComplexFieldExpr(col.Name, col.Key))
+		groupByColumns := make([]templates.GroupByColumn, len(p.params.GroupByColumns))
+		for i, col := range p.params.GroupByColumns {
+			if expr := pinotlib.ComplexFieldExpr(col.Name, col.Key); expr != "" {
+				groupByColumns[i] = templates.GroupByColumn{
+					Expr:  pinotlib.ComplexFieldExpr(col.Name, col.Key),
+					Alias: complexFieldAlias(col.Name, col.Key),
+				}
+			}
 		}
 
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
@@ -138,13 +143,21 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			AggregationFunction:   p.params.AggregationFunction,
 			MetricColumn:          p.resolveMetricColumn(),
 			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
-			GroupByColumnExprs:    groupByColumnExprs,
+			GroupByColumnExprs:    groupByColumns,
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
 			Limit:                 p.resolveLimit(),
 			OrderByExprs:          p.orderByExprs(),
 			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
+	}
+}
+
+func complexFieldAlias(name string, key string) string {
+	if key == "" {
+		return ""
+	} else {
+		return fmt.Sprintf(`%s[%s]`, name, key)
 	}
 }
 

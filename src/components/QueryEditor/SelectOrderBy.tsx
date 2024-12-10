@@ -5,7 +5,7 @@ import React from 'react';
 import { OrderByClause } from '../../types/OrderByClause';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import { ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
 
 export function SelectOrderBy(props: {
   selected: OrderByClause[] | undefined;
@@ -16,9 +16,8 @@ export function SelectOrderBy(props: {
   const { columns, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.orderBy;
 
-  const getColumnLabel = (name: string, key?: string | null) => (key ? `${name}['${key}']` : name);
   const clauseToLabel = ({ columnName, columnKey, direction }: OrderByClause) =>
-    `${getColumnLabel(columnName, columnKey)} ${direction.toLowerCase()}`;
+    `${columnLabelOf(columnName, columnKey)} ${direction.toLowerCase()}`;
 
   const usedOptions = (selected || []).map((clause) => ({
     label: clauseToLabel(clause),
@@ -29,10 +28,10 @@ export function SelectOrderBy(props: {
   const usedLabels = new Set(usedOptions.map(({ label }) => label));
 
   const unusedOptions = (columns || [])
-    .filter((col) => !usedLabels.has(getColumnLabel(col.name, col.key)))
+    .filter((col) => !usedLabels.has(columnLabelOf(col.name, col.key)))
     .flatMap<OrderByClause>((col) => [
-      { columnName: col.name, columnKey: col.key, direction: 'ASC' },
-      { columnName: col.name, columnKey: col.key, direction: 'DESC' },
+      { columnName: col.name, columnKey: col.key || undefined, direction: 'ASC' },
+      { columnName: col.name, columnKey: col.key || undefined, direction: 'DESC' },
     ])
     .map((clause) => ({
       label: clauseToLabel(clause),

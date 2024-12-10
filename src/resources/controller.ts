@@ -2,6 +2,8 @@ import { DataSource } from '../datasource';
 import { TableSchema } from '../types/TableSchema';
 import { useEffect, useState } from 'react';
 import { PinotResourceResponse } from './PinotResourceResponse';
+import {UseResourceResult} from "./UseResourceResult";
+
 
 export function useTables(datasource: DataSource): string[] | undefined {
   const [tables, setTables] = useState<string[] | undefined>();
@@ -43,16 +45,23 @@ export interface TimeColumn {
   hasDerivedGranularities: boolean;
 }
 
-export function useTableTimeColumns(datasource: DataSource, tableName: string | undefined): TimeColumn[] {
-  const [timeColumns, setTimeColumns] = useState<TimeColumn[]>([]);
+export function useTableTimeColumns(
+  datasource: DataSource,
+  tableName: string | undefined
+): UseResourceResult<TimeColumn[]> {
+  const [result, setResult] = useState<TimeColumn[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (tableName) {
-      listTableTimeColumns(datasource, tableName).then((res) => setTimeColumns(res));
+      setLoading(true);
+      listTableTimeColumns(datasource, tableName)
+        .then((res) => setResult(res))
+        .finally(() => setLoading(false));
     }
   }, [datasource, tableName]);
 
-  return timeColumns;
+  return { loading, result };
 }
 
 export async function listTableTimeColumns(datasource: DataSource, tableName: string): Promise<TimeColumn[]> {

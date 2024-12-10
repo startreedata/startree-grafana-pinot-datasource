@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
-import { interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
+import { groupByColumnsFrom, interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
 import { useTableSchema, useTableTimeColumns } from '../../resources/controller';
 import { NumericPinotDataTypes } from '../../types/PinotDataType';
 import { SelectGranularity } from './SelectGranularity';
@@ -39,9 +39,13 @@ export function PinotQlBuilder(props: {
   const tableSchema = useTableSchema(datasource, query.tableName);
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
-  const granularities = useGranularities(datasource, query.tableName, query.timeColumn);
-  const timeColumns = useTableTimeColumns(datasource, query.tableName);
-  const dimensionColumns = useDimensionColumns(datasource, {
+  const { result: granularities, loading: isGranularitiesLoading } = useGranularities(
+    datasource,
+    query.tableName,
+    query.timeColumn
+  );
+  const { result: timeColumns, loading: isTimeColumnsLoading } = useTableTimeColumns(datasource, query.tableName);
+  const { result: dimensionColumns, loading: isDimensionColumnsLoading } = useDimensionColumns(datasource, {
     tableName: query.tableName,
     timeColumn: query.timeColumn,
     timeRange: timeRange,
@@ -68,11 +72,7 @@ export function PinotQlBuilder(props: {
   const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
   const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
 
-  const selectedGroupBys: ComplexField[] = [
-    ...(query.groupByColumns?.map((col) => ({ name: col })) || []),
-    ...(query.groupByColumnsV2 || []),
-  ];
-
+  const selectedGroupBys = groupByColumnsFrom(query);
   const allowedOrderBys: ComplexField[] = [{ name: 'time' }, { name: 'metric' }, ...selectedGroupBys];
 
   return (
@@ -96,13 +96,14 @@ export function PinotQlBuilder(props: {
         <SelectTimeColumn
           selected={query.timeColumn}
           timeColumns={timeColumns}
-          isLoading={isSchemaLoading}
+          isLoading={isTimeColumnsLoading}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
           selected={query.granularity}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           options={granularities}
+          isLoading={isGranularitiesLoading}
           onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
         />
       </div>
@@ -122,9 +123,9 @@ export function PinotQlBuilder(props: {
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
           selected={selectedGroupBys}
-          columns={dimensionColumns}
+          columns={dimensionColumns.filter(({ name }) => query.metricColumn !== name)}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
-          isLoading={isSchemaLoading}
+          isLoading={isDimensionColumnsLoading}
           onChange={(values) =>
             onChangeAndRun({
               ...query,
@@ -194,10 +195,6 @@ function useSqlPreview(
   const [sqlPreview, setSqlPreview] = useState('');
 
   const interpolated = interpolateVariables(query, scopedVars);
-  const selectedGroupBys: ComplexField[] = [
-    ...(interpolated.groupByColumns?.map((col) => ({ name: col })) || []),
-    ...(interpolated.groupByColumnsV2 || []),
-  ];
 
   const previewRequest: PreviewSqlBuilderRequest = {
     intervalSize: intervalSize,
@@ -207,7 +204,7 @@ function useSqlPreview(
     },
     expandMacros: true,
     aggregationFunction: interpolated.aggregationFunction,
-    groupByColumns: selectedGroupBys,
+    groupByColumns: groupByColumnsFrom(interpolated),
     metricColumn: interpolated.metricColumn,
     tableName: interpolated.tableName,
     timeColumn: interpolated.timeColumn,

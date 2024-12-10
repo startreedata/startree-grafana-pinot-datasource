@@ -1,5 +1,5 @@
 export interface OrderByClause {
-  columnName: string;
-  columnKey?: string | null;
+  columnName?: string;
+  columnKey?: string;
   direction: string;
 }

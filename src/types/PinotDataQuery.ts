@@ -68,6 +68,10 @@ export interface PinotDataQuery extends DataQuery {
   promQlCode?: string;
 }
 
+export function groupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
+  return [...(query.groupByColumns?.map((col) => ({ name: col })) || []), ...(query.groupByColumnsV2 || [])];
+}
+
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
 
@@ -85,11 +89,12 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
     aggregationFunction: replaceIfExists(query.aggregationFunction),
     groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),
     groupByColumnsV2: query.groupByColumnsV2?.map(({ name, key }) => ({
-      name: replace(name),
+      name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
-    filters: query.filters?.map(({ columnName, operator, valueExprs }) => ({
-      columnName,
+    filters: query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => ({
+      columnName: replaceIfExists(columnName),
+      columnKey: replaceIfExists(columnKey),
       operator,
       valueExprs: valueExprs?.map((expr) => replace(expr)),
     })),

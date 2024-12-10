@@ -2,7 +2,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { EditorMode } from '../../types/EditorMode';
 import { RadioButtonGroup } from '@grafana/ui';
 import React, { useState } from 'react';
-import { PinotDataQuery } from '../../types/PinotDataQuery';
+import { groupByColumnsFrom, PinotDataQuery } from '../../types/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { DisplayTypeTimeSeries } from './SelectDisplayType';
@@ -57,7 +57,7 @@ export function SelectEditorMode(props: {
                 timeRange: timeRange,
                 expandMacros: false,
                 aggregationFunction: query.aggregationFunction,
-                groupByColumns: query.groupByColumns,
+                groupByColumns: groupByColumnsFrom(query),
                 metricColumn: query.metricColumn,
                 tableName: query.tableName,
                 timeColumn: query.timeColumn,
@@ -67,19 +67,22 @@ export function SelectEditorMode(props: {
                 orderBy: query.orderBy,
                 queryOptions: query.queryOptions,
               }).then((sql) =>
-                  onChange({
-                    ...query,
-                    editorMode: EditorMode.Code,
-                    displayType: DisplayTypeTimeSeries,
-                    timeColumnAlias: 'time',
-                    metricColumnAlias: query.metricColumn,
-                    pinotQlCode: sql || `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("timestamp")
-GROUP BY $__timeGroup("timestamp")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000`,
-                  })
+                onChange({
+                  ...query,
+                  editorMode: EditorMode.Code,
+                  displayType: DisplayTypeTimeSeries,
+                  timeColumnAlias: 'time',
+                  metricColumnAlias: query.metricColumn,
+                  pinotQlCode:
+                    sql ||
+                    `SELECT
+                                                             $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+                                                         FROM $__table()
+                                                         WHERE $__timeFilter("timestamp")
+                                                         GROUP BY $__timeGroup("timestamp")
+                                                         ORDER BY $__timeAlias() DESC
+                                                             LIMIT 100000`,
+                })
               );
             }
           }}

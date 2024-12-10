@@ -53,12 +53,6 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 
 	switch query.EditorMode {
 	case EditorModeBuilder:
-		groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
-		for _, col := range query.GroupByColumns {
-			groupByColumns = append(groupByColumns, ComplexField{Name: col})
-		}
-		groupByColumns = append(groupByColumns, query.GroupByColumnsV2...)
-
 		return NewPinotQlBuilderDriver(PinotQlBuilderParams{
 			PinotClient:         pinotClient,
 			TableSchema:         tableSchema,
@@ -67,7 +61,7 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 			TableName:           query.TableName,
 			TimeColumn:          query.TimeColumn,
 			MetricColumn:        query.MetricColumn,
-			GroupByColumns:      groupByColumns,
+			GroupByColumns:      groupByColumnsFrom(query),
 			AggregationFunction: query.AggregationFunction,
 			DimensionFilters:    query.DimensionFilters,
 			Limit:               query.Limit,

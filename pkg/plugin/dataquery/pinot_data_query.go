@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"time"
 )
 
@@ -60,6 +61,15 @@ type PinotDataQuery struct {
 
 	// PromQl code
 	PromQlCode string `json:"promQlCode"`
+}
+
+func groupByColumnsFrom(query PinotDataQuery) []ComplexField {
+	groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
+	for _, col := range query.GroupByColumns {
+		groupByColumns = append(groupByColumns, ComplexField{Name: col})
+	}
+	log.Info("GROUP BY COLUMNS", "COLUMNS", append(groupByColumns, query.GroupByColumnsV2...))
+	return append(groupByColumns, query.GroupByColumnsV2...)
 }
 
 type TimeRange struct {
