@@ -37,30 +37,6 @@ export async function fetchTableSchema(datasource: DataSource, tableName: string
   return fetchControllerResource<GetTableSchemaResponse>(datasource, endpoint).then((resp) => resp.result);
 }
 
-export interface TimeColumn {
-  name: string;
-  isDerived: boolean;
-  hasDerivedGranularities: boolean;
-}
-
-export function useTableTimeColumns(datasource: DataSource, tableName: string | undefined): TimeColumn[] {
-  const [timeColumns, setTimeColumns] = useState<TimeColumn[]>([]);
-
-  useEffect(() => {
-    if (tableName) {
-      listTableTimeColumns(datasource, tableName).then((res) => setTimeColumns(res));
-    }
-  }, [datasource, tableName]);
-
-  return timeColumns;
-}
-
-export async function listTableTimeColumns(datasource: DataSource, tableName: string): Promise<TimeColumn[]> {
-  const endpoint = 'tables/' + tableName + '/timeColumns';
-  type ListTableTimeColumnsResponse = PinotResourceResponse<TimeColumn[]>;
-  return fetchControllerResource<ListTableTimeColumnsResponse>(datasource, endpoint).then((resp) => resp.result || []);
-}
-
 async function fetchControllerResource<T>(datasource: DataSource, endpoint: string): Promise<T> {
   return datasource.getResource<T>(endpoint);
 }

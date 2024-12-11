@@ -1,23 +1,42 @@
 import { MultiSelect } from '@grafana/ui';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { Column } from '../../resources/columns';
 
 export function SelectGroupBy(props: {
-  selected: string[] | undefined;
-  options: string[];
+  selected: ComplexField[] | undefined;
+  columns: Column[];
   isLoading: boolean;
   disabled: boolean;
-  onChange: (val: string[] | undefined) => void;
+  onChange: (val: ComplexField[] | undefined) => void;
 }) {
-  const { options, selected, disabled, isLoading, onChange } = props;
+  const { columns, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
 
-  if (selected && options.length && selected.filter((val) => options.includes(val)).length !== selected.length) {
-    onChange(selected.filter((val) => options.includes(val)));
-  }
+  const selectOptions =
+    selected?.map(({ name, key }) => ({
+      label: columnLabelOf(name, key),
+      value: columnLabelOf(name, key),
+    })) || [];
+  const options = columns.map((col) => ({
+    label: columnLabelOf(col.name, col.key),
+    value: columnLabelOf(col.name, col.key),
+  }));
+
+  const getColumn = (label: string | undefined): Column | undefined => {
+    return columns.find(({ name, key }) => columnLabelOf(name, key) === label);
+  };
+
+  useEffect(() => {
+    const valid = selected?.filter((col) => getColumn(columnLabelOf(col.name, col.key))) || [];
+    if (valid.length < (selected?.length || 0)) {
+      onChange(valid);
+    }
+  });
 
   return (
     <div className={'gf-form'} data-testid="select-group-by">
@@ -25,13 +44,16 @@ export function SelectGroupBy(props: {
       <MultiSelect
         className={`${styles.QueryEditor.inputForm}`}
         allowCustomValue
-        options={options.map((name) => ({ label: name, value: name }))}
-        value={selected}
+        options={options}
+        value={selectOptions}
         disabled={disabled}
         isLoading={isLoading}
         onChange={(item: Array<SelectableValue<string>>) => {
-          const selected = item.map((v) => v.value).filter((v) => v !== undefined) as string[];
-          onChange(selected);
+          const newSelected = item
+            .map((v) => getColumn(v.label))
+            .map<ComplexField>((col) => ({ name: col?.name || '', key: col?.key || undefined }))
+            .filter(({ name }) => name);
+          onChange(newSelected);
         }}
       />
     </div>

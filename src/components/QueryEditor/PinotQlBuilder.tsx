@@ -6,21 +6,23 @@ import React, { useEffect, useState } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
-import { interpolateVariables, PinotDataQuery } from '../../types/PinotDataQuery';
-import { useTableSchema, useTableTimeColumns } from '../../resources/controller';
-import { NumericPinotDataTypes } from '../../types/PinotDataType';
+import {
+  builderGroupByColumnsFrom,
+  builderMetricColumnFrom,
+  interpolateVariables,
+  PinotDataQuery,
+} from '../../types/PinotDataQuery';
 import { SelectGranularity } from './SelectGranularity';
 import { SelectTable } from './SelectTable';
 import { SelectOrderBy } from './SelectOrderBy';
 import { SelectQueryOptions } from './SelectQueryOptions';
 import { DateTime, ScopedVars } from '@grafana/data';
 import { DataSource } from '../../datasource';
-import { TableSchema } from '../../types/TableSchema';
 import { InputMetricLegend } from './InputMetricLegend';
 import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../../resources/previewSql';
 import { useGranularities } from '../../resources/granularities';
-
-const MetricColumnStar = '*';
+import { useColumns } from '../../resources/columns';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
 
 export function PinotQlBuilder(props: {
   query: PinotDataQuery;
@@ -34,18 +36,27 @@ export function PinotQlBuilder(props: {
 }) {
   const { timeRange, tables, intervalSize, datasource, query, scopedVars, onChange, onRunQuery } = props;
 
-  const tableSchema = useTableSchema(datasource, query.tableName);
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
-  const granularities = useGranularities(datasource, query.tableName, query.timeColumn);
-  const timeColumns = useTableTimeColumns(datasource, query.tableName);
+  const { result: granularities, loading: isGranularitiesLoading } = useGranularities(
+    datasource,
+    query.tableName,
+    query.timeColumn
+  );
+
+  const { result: columns, loading: isColumnsLoading } = useColumns(datasource, {
+    tableName: query.tableName,
+    timeColumn: query.timeColumn,
+    timeRange: timeRange,
+    filters: query.filters || [],
+  });
 
   function canRunQuery(query: PinotDataQuery) {
     return !!(
       query.tableName &&
       query.timeColumn &&
       query.aggregationFunction &&
-      (query.metricColumn || query.aggregationFunction === AggregationFunction.COUNT)
+      (builderMetricColumnFrom(query)?.name || query.aggregationFunction === AggregationFunction.COUNT)
     );
   }
 
@@ -57,9 +68,13 @@ export function PinotQlBuilder(props: {
     }
   };
 
-  const isSchemaLoading = query.tableName !== undefined && tableSchema === undefined;
-  const metricColumns = getMetricColumns(tableSchema, query.groupByColumns || []);
-  const dimensionColumns = getGroupByColumns(tableSchema, query.metricColumn || '');
+  const metricColumn = builderMetricColumnFrom(query);
+  const selectedGroupBys = builderGroupByColumnsFrom(query);
+  const allowedOrderBys: ComplexField[] = [{ name: 'time' }, { name: 'metric' }, ...selectedGroupBys];
+
+  const timeColumns = columns.filter(({ isTime, isDerived }) => isTime && !isDerived);
+  const dimensionColumns = columns.filter(({ isTime }) => !isTime);
+  const metricColumns = columns.filter(({ isTime, isMetric }) => !isTime && isMetric);
 
   return (
     <>
@@ -68,7 +83,13 @@ export function PinotQlBuilder(props: {
           <SelectTable
             options={tables}
             selected={query.tableName}
-            onChange={(value: string | undefined) => onChange({ ...query, tableName: value, filters: undefined })}
+            onChange={(value: string | undefined) =>
+              onChange({
+                ...query,
+                tableName: value,
+                filters: undefined,
+              })
+            }
           />
         </div>
       </div>
@@ -76,23 +97,24 @@ export function PinotQlBuilder(props: {
         <SelectTimeColumn
           selected={query.timeColumn}
           timeColumns={timeColumns}
-          isLoading={isSchemaLoading}
+          isLoading={isColumnsLoading}
           onChange={(value) => onChangeAndRun({ ...query, timeColumn: value })}
         />
         <SelectGranularity
           selected={query.granularity}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           options={granularities}
+          isLoading={isGranularitiesLoading}
           onChange={(value) => onChangeAndRun({ ...query, granularity: value })}
         />
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectMetricColumn
-          selected={query.aggregationFunction === AggregationFunction.COUNT ? MetricColumnStar : query.metricColumn}
-          metricColumns={query.aggregationFunction === AggregationFunction.COUNT ? [MetricColumnStar] : metricColumns}
-          isLoading={isSchemaLoading}
-          disabled={query.aggregationFunction === AggregationFunction.COUNT}
-          onChange={(metricColumn) => onChangeAndRun({ ...query, metricColumn })}
+          selected={metricColumn}
+          metricColumns={metricColumns}
+          isLoading={isColumnsLoading}
+          isCount={query.aggregationFunction === AggregationFunction.COUNT}
+          onChange={(metricColumnV2) => onChangeAndRun({ ...query, metricColumnV2, metricColumn: undefined })}
         />
         <SelectAggregation
           selected={query.aggregationFunction}
@@ -101,15 +123,23 @@ export function PinotQlBuilder(props: {
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectGroupBy
-          selected={query.groupByColumns}
-          options={dimensionColumns}
+          selected={selectedGroupBys}
+          columns={dimensionColumns.filter(
+            ({ name, key }) => columnLabelOf(metricColumn?.name, metricColumn?.key) !== columnLabelOf(name, key)
+          )}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
-          isLoading={isSchemaLoading}
-          onChange={(values) => onChangeAndRun({ ...query, groupByColumns: values })}
+          isLoading={isColumnsLoading}
+          onChange={(groupByColumnsV2) =>
+            onChangeAndRun({
+              ...query,
+              groupByColumnsV2,
+              groupByColumns: undefined,
+            })
+          }
         />
         <SelectOrderBy
           selected={query.orderBy}
-          columnNames={['time', 'metric', ...(query.groupByColumns || [])]}
+          columns={allowedOrderBys}
           disabled={query.aggregationFunction === AggregationFunction.NONE}
           onChange={(orderBy) => onChangeAndRun({ ...query, orderBy })}
         />
@@ -118,7 +148,6 @@ export function PinotQlBuilder(props: {
       <div>
         <SelectFilters
           datasource={datasource}
-          tableSchema={tableSchema}
           tableName={query.tableName}
           timeColumn={query.timeColumn}
           timeRange={timeRange}
@@ -147,20 +176,6 @@ export function PinotQlBuilder(props: {
   );
 }
 
-function getMetricColumns(tableSchema: TableSchema | undefined, groupByColumns: string[]): string[] {
-  return [...(tableSchema?.metricFieldSpecs || []), ...(tableSchema?.dimensionFieldSpecs || [])]
-    .filter(({ name }) => name && !groupByColumns.includes(name))
-    .filter(({ dataType }) => NumericPinotDataTypes.includes(dataType))
-    .map(({ name }) => name)
-    .sort();
-}
-
-function getGroupByColumns(tableSchema: TableSchema | undefined, metricColumn: string): string[] {
-  return [...(tableSchema?.dimensionFieldSpecs || []), ...(tableSchema?.metricFieldSpecs || [])]
-    .filter(({ name }) => name && metricColumn !== name)
-    .map(({ name }) => name);
-}
-
 function useSqlPreview(
   datasource: DataSource,
   intervalSize: string | undefined,
@@ -174,6 +189,7 @@ function useSqlPreview(
   const [sqlPreview, setSqlPreview] = useState('');
 
   const interpolated = interpolateVariables(query, scopedVars);
+
   const previewRequest: PreviewSqlBuilderRequest = {
     intervalSize: intervalSize,
     timeRange: {
@@ -182,8 +198,8 @@ function useSqlPreview(
     },
     expandMacros: true,
     aggregationFunction: interpolated.aggregationFunction,
-    groupByColumns: interpolated.groupByColumns,
-    metricColumn: interpolated.metricColumn,
+    groupByColumns: builderGroupByColumnsFrom(interpolated),
+    metricColumn: builderMetricColumnFrom(interpolated),
     tableName: interpolated.tableName,
     timeColumn: interpolated.timeColumn,
     filters: interpolated.filters,

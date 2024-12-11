@@ -23,7 +23,7 @@ LIMIT 1000;`
 		TableNameExpr:         `"my_table"`,
 		TimeColumn:            "ts",
 		TimeColumnAliasExpr:   `"time"`,
-		MetricColumn:          "met",
+		MetricColumnExpr:      `"met"`,
 		MetricColumnAliasExpr: `"metric"`,
 		TimeFilterExpr:        `"ts" >= 10 AND "ts" <= 20`,
 		DimensionFilterExprs:  []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},

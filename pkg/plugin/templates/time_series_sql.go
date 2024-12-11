@@ -7,19 +7,19 @@ import (
 var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").Parse(`
 {{ .QueryOptionsExpr }}
 
-SELECT{{ range .GroupByColumns }}
-    "{{ . }}",
+SELECT{{ range .GroupByColumnExprs }}
+    {{ .Expr }}{{if .Alias}} as '{{.Alias}}'{{end}},
     {{- end }}
     {{.TimeGroupExpr}} AS {{.TimeColumnAliasExpr}},
-    {{.AggregationFunction}}("{{.MetricColumn}}") AS {{.MetricColumnAliasExpr}}
+    {{.AggregationFunction}}({{.MetricColumnExpr}}) AS {{.MetricColumnAliasExpr}}
 FROM
     {{.TableNameExpr}}
 WHERE
     {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
-GROUP BY{{ range .GroupByColumns }}
-    "{{ . }}",
+GROUP BY{{ range .GroupByColumnExprs }}
+    {{ .Expr }},
     {{- end }}
     {{.TimeGroupExpr}}
 {{- $sep := ""}}
@@ -31,10 +31,15 @@ ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
 LIMIT {{.Limit}};
 `))
 
+type GroupByColumn struct {
+	Expr  string
+	Alias string
+}
+
 type TimeSeriesSqlParams struct {
 	TableNameExpr         string
-	GroupByColumns        []string
-	MetricColumn          string
+	GroupByColumnExprs    []GroupByColumn
+	MetricColumnExpr      string
 	AggregationFunction   string
 	TimeFilterExpr        string
 	TimeGroupExpr         string

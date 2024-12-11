@@ -5,8 +5,9 @@ import { MultiSelect, Select } from '@grafana/ui';
 import React, { useState } from 'react';
 import { PinotDataType, PinotDataTypes } from '../../types/PinotDataType';
 import { DimensionFilter } from '../../types/DimensionFilter';
-import { TableSchema } from '../../types/TableSchema';
 import { queryDistinctValuesForFilters } from '../../resources/distinctValues';
+import { Column } from '../../resources/columns';
+import { columnLabelOf } from '../../types/ComplexField';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -36,10 +37,11 @@ export function EditFilter(props: {
   remainingFilters: DimensionFilter[];
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   tableName: string | undefined;
-  tableSchema: TableSchema | undefined;
   thisFilter: DimensionFilter;
+  thisColumn: Column | undefined;
   timeColumn: string | undefined;
-  unusedColumns: string[] | undefined;
+  unusedColumns: Column[];
+  isLoadingColumns: boolean;
   onChange: (filter: DimensionFilter) => void;
   onDelete: () => void;
 }) {
@@ -48,31 +50,24 @@ export function EditFilter(props: {
     remainingFilters,
     timeRange,
     tableName,
-    tableSchema,
     timeColumn,
     thisFilter,
+    thisColumn,
     unusedColumns,
+    isLoadingColumns,
     onChange,
     onDelete,
   } = props;
 
-  const columnType = [
-    ...(tableSchema?.dateTimeFieldSpecs || []),
-    ...(tableSchema?.dimensionFieldSpecs || []),
-    ...(tableSchema?.metricFieldSpecs || []),
-  ].find((spec) => spec.name === thisFilter.columnName)?.dataType;
+  const filterableColumns = thisColumn ? [thisColumn, ...unusedColumns] : unusedColumns;
+  const colOptions = filterableColumns
+    .map(({ name, key }) => columnLabelOf(name, key))
+    .filter((d, i, a) => a.indexOf(d) === i)
+    .map((label) => ({ label, value: label }));
 
-  const dimOptions = unusedColumns
-    ? [thisFilter.columnName, ...unusedColumns]
-        .filter((d, i, a) => a.indexOf(d) === i)
-        .map((col) => ({
-          label: col,
-          value: col,
-        }))
-    : undefined;
-
-  const operatorOptions = columnType ? FilterOperators.filter((op) => op.types.includes(columnType)) : FilterOperators;
-
+  const operatorOptions = thisColumn?.dataType
+    ? FilterOperators.filter((op) => op.types.includes(thisColumn.dataType))
+    : FilterOperators;
   const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
 
   const [distinctValues, setDistinctValues] = useState<string[]>();
@@ -81,7 +76,8 @@ export function EditFilter(props: {
     setIsLoadingValues(true);
     queryDistinctValuesForFilters(datasource, {
       tableName: tableName,
-      columnName: thisFilter.columnName,
+      columnName: thisColumn?.name,
+      columnKey: thisColumn?.key || undefined,
       timeColumn: timeColumn,
       timeRange: timeRange,
       filters: remainingFilters,
@@ -102,11 +98,14 @@ export function EditFilter(props: {
         width="auto"
         value={thisFilter.columnName}
         allowCustomValue
-        options={dimOptions}
+        options={colOptions}
+        isLoading={isLoadingColumns}
         onChange={(change) => {
+          const col = filterableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
           onChange({
             ...thisFilter,
-            columnName: change.value,
+            columnName: col?.name,
+            columnKey: col?.key || undefined,
             operator: thisFilter.operator ?? DefaultFilterOperator.value,
           });
         }}

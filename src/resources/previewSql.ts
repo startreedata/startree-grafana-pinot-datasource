@@ -5,6 +5,7 @@ import { QueryOption } from '../types/QueryOption';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { QueryDistinctValuesRequest } from './distinctValues';
 import { DateTime } from '@grafana/data';
+import { ComplexField } from '../types/ComplexField';
 
 type PreviewSqlResponse = PinotResourceResponse<string>;
 
@@ -13,8 +14,8 @@ export interface PreviewSqlBuilderRequest {
   intervalSize: string | undefined;
   tableName: string | undefined;
   timeColumn: string | undefined;
-  metricColumn: string | undefined;
-  groupByColumns: string[] | undefined;
+  metricColumn: ComplexField | undefined;
+  groupByColumns: ComplexField[] | undefined;
   aggregationFunction: string | undefined;
   filters: DimensionFilter[] | undefined;
   limit: number | undefined;

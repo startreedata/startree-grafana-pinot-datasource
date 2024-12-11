@@ -138,8 +138,8 @@ type ComplexFieldSpec struct {
 }
 
 type ChildFieldSpecs struct {
-	Key ChildFieldSpec `json:"key"`
-	Val ChildFieldSpec `json:"val"`
+	Key   ChildFieldSpec `json:"key"`
+	Value ChildFieldSpec `json:"value"`
 }
 
 type ChildFieldSpec struct {

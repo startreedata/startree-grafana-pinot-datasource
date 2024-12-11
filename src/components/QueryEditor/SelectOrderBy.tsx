@@ -5,17 +5,19 @@ import React from 'react';
 import { OrderByClause } from '../../types/OrderByClause';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
+import { columnLabelOf, ComplexField } from '../../types/ComplexField';
 
 export function SelectOrderBy(props: {
   selected: OrderByClause[] | undefined;
-  columnNames: string[] | undefined;
+  columns: ComplexField[] | undefined;
   disabled: boolean;
   onChange: (val: OrderByClause[] | undefined) => void;
 }) {
-  const { columnNames, selected, disabled, onChange } = props;
+  const { columns, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.orderBy;
 
-  const clauseToLabel = ({ columnName, direction }: OrderByClause) => `${columnName} ${direction.toLowerCase()}`;
+  const clauseToLabel = ({ columnName, columnKey, direction }: OrderByClause) =>
+    `${columnLabelOf(columnName, columnKey)} ${direction.toLowerCase()}`;
 
   const usedOptions = (selected || []).map((clause) => ({
     label: clauseToLabel(clause),
@@ -23,12 +25,13 @@ export function SelectOrderBy(props: {
     clause,
   }));
 
-  const usedColumns = new Set((selected || []).map(({ columnName }) => columnName));
-  const unusedOptions = (columnNames || [])
-    .filter((columnNames) => !usedColumns.has(columnNames))
-    .flatMap((val) => [
-      { columnName: val, direction: 'ASC' },
-      { columnName: val, direction: 'DESC' },
+  const usedLabels = new Set(usedOptions.map(({ label }) => label));
+
+  const unusedOptions = (columns || [])
+    .filter((col) => !usedLabels.has(columnLabelOf(col.name, col.key)))
+    .flatMap<OrderByClause>((col) => [
+      { columnName: col.name, columnKey: col.key || undefined, direction: 'ASC' },
+      { columnName: col.name, columnKey: col.key || undefined, direction: 'DESC' },
     ])
     .map((clause) => ({
       label: clauseToLabel(clause),

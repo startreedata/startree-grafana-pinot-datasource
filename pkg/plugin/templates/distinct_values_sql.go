@@ -9,11 +9,10 @@ const DistinctValuesLimit = 100
 var distinctValuesSqlTemplate = template.Must(template.New("pinot/distinct-values-sql").Parse(`
 SELECT DISTINCT {{.ColumnExpr}}
 FROM "{{.TableName}}"
-{{- if .TimeFilterExpr }}
-{{- /* At this time, there is no need for dimension filters without a time filter. */}}
-WHERE {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
+WHERE {{.ColumnExpr}} IS NOT NULL {{- if .TimeFilterExpr }}
+    AND {{.TimeFilterExpr}}{{end}}
+    {{- range .DimensionFilterExprs }}
     AND {{ . }}
-{{- end }}
 {{- end }}
 ORDER BY {{.ColumnExpr}} ASC
 LIMIT {{.Limit}};

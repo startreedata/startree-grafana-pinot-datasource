@@ -3,11 +3,11 @@ import { styles } from '../../styles';
 import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
-import { TimeColumn } from '../../resources/controller';
+import { Column } from '../../resources/columns';
 
 export function SelectTimeColumn(props: {
   selected: string | undefined;
-  timeColumns: TimeColumn[];
+  timeColumns: Column[];
   isLoading: boolean;
   onChange: (val: string | undefined) => void;
 }) {
@@ -16,8 +16,6 @@ export function SelectTimeColumn(props: {
 
   const candidates = timeColumns
     .filter((t) => !t.isDerived)
-    // Time columns with derived granularities should come first.
-    .sort((a, b) => Number(b.hasDerivedGranularities) - Number(a.hasDerivedGranularities))
     .map((t) => ({
       label: t.name,
       value: t.name,
@@ -36,7 +34,7 @@ export function SelectTimeColumn(props: {
         invalid={!selected}
         isLoading={isLoading}
         options={candidates}
-        value={selected || null}
+        value={selected}
         onChange={(change) => {
           onChange(change.value);
         }}
