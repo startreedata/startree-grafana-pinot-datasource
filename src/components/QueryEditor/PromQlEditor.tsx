@@ -26,8 +26,8 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
 
       <div className={'gf-form'}>
         <SelectTable
-          selected={props.query.tableName}
-          options={tables}
+          selected={props.query.tableName || ''}
+          options={tables || []}
           onChange={(tableName) => props.onChange({ ...props.query, tableName })}
         />
       </div>
