@@ -54,13 +54,13 @@
       "dataType": "MAP",
       "fieldType": "COMPLEX",
       "childFieldSpecs": {
-        "value": {
-          "name": "value",
+        "key": {
+          "name": "key",
           "dataType": "STRING",
           "fieldType": "DIMENSION"
         },
-        "key": {
-          "name": "key",
+        "value": {
+          "name": "value",
           "dataType": "LONG",
           "fieldType": "METRIC"
         }

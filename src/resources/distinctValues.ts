@@ -6,6 +6,7 @@ import { PinotResourceResponse } from './PinotResourceResponse';
 export interface QueryDistinctValuesRequest {
   tableName: string | undefined;
   columnName: string | undefined;
+  columnKey?: string;
   timeColumn?: string;
   timeRange?: { to: DateTime | undefined; from: DateTime | undefined };
   filters?: DimensionFilter[];

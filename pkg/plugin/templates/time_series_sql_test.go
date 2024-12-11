@@ -8,7 +8,7 @@ import (
 func TestRenderTimeSeriesSql(t *testing.T) {
 	want := `SELECT
     "dim1",
-    "dim2",
+    "dim2" as 'dim2Alias',
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS') AS "time",
     sum("met") AS "metric"
 FROM
@@ -28,8 +28,8 @@ LIMIT 10000;`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
 		TableNameExpr:         `"my_table"`,
-		GroupByColumns:        []string{"dim1", "dim2"},
-		MetricColumn:          "met",
+		GroupByColumnExprs:    []GroupByColumn{{Expr: `"dim1"`}, {Expr: `"dim2"`, Alias: `dim2Alias`}},
+		MetricColumnExpr:      `"met"`,
 		AggregationFunction:   "sum",
 		TimeFilterExpr:        `"ts" >= 10 AND "ts" <= 20`,
 		TimeGroupExpr:         `DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')`,

@@ -1,11 +1,16 @@
 import { getUniqueString } from 'support/utils/get-unique-string';
 
+interface ResourceResponse<T> {
+  code: number;
+  result: T;
+}
+
 interface TestCtx {
   panelTitle: string;
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, any>;
-    tablesSchema?: Record<string, any>;
+    columns?: ResourceResponse<Array<Record<string, string>>>;
     dsQuery?: Record<string, any>;
   };
 }
@@ -50,9 +55,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
@@ -225,7 +230,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -250,8 +255,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
-              .dateTimeFieldSpecs as Array<Record<string, string>>;
+            const selectOptions = ctx.apiResponse.columns.result.filter((r) => r.isTime && !r.IsDerived);
 
             selectOptions.forEach((option) => cy.contains(option.name));
 
@@ -289,11 +293,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = [
-              'auto',
-              'DAYS',
-              'HOURS',
-            ];
+            const selectOptions = ['auto', 'DAYS', 'HOURS'];
 
             selectOptions.forEach((option) => cy.contains(option));
 
@@ -338,9 +338,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
-              .metricFieldSpecs as Array<Record<string, string>>;
-
+            const selectOptions = ctx.apiResponse.columns.result.filter((column) => column.isMetric);
             selectOptions.forEach((option) => cy.contains(option.name));
 
             // Select the option
@@ -424,14 +422,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
-            const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
-            const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
-
-            const selectOptions = [...dimensionFieldSpecs, ...metricFieldSpecs].filter(
-              (item) => item.name !== formData.metricColumn
+            const selectOptions = ctx.apiResponse.columns.result.filter(
+              (column) => !column.isTime && column.name !== formData.metricColumn
             );
-
             selectOptions.forEach((option) => cy.contains(option.name));
 
             // Select the first option
@@ -587,14 +580,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
                   .find('[aria-label="Select options menu"]')
                   .should('be.visible')
                   .within(() => {
-                    const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
-                    const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
-                    const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
-
-                    const selectOptions = [...dimensionFieldSpecs, ...metricFieldSpecs].filter(
-                      (item) => item.name !== formData.metricColumn
+                    const selectOptions = ctx.apiResponse.columns.result.filter(
+                      (col) => col.name !== formData.metricColumn && !col.isTime
                     );
-
                     selectOptions.forEach((option) => cy.contains(option.name));
 
                     // Close select menu
@@ -1069,9 +1057,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/code').as('previewSqlCode');
@@ -1207,7 +1195,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -1646,9 +1634,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/code').as('previewSqlCode');
@@ -1807,7 +1795,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -2230,7 +2218,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
 
     // Check for dialog close and wait for api calls to finish
     cy.getBySel('modal-header-title').should('not.exist');
-    cy.wait(['@tablesSchema', '@previewSqlBuilder']);
+    cy.wait(['@columns', '@previewSqlBuilder']);
 
     /**
      * Check the Query Builder Sql Preview
@@ -2299,9 +2287,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
@@ -2423,7 +2411,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -2552,9 +2540,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
@@ -2676,7 +2664,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -2826,9 +2814,9 @@ describe('Create a Panel with Pinot Query Builder', () => {
     cy.intercept('POST', '/api/ds/query', (req) => {
       req.continue((res) => (ctx.apiResponse.dsQuery = { ...res.body }));
     }).as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
@@ -2954,7 +2942,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             });
           });
 
-        cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+        cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
         /**
          * Check and select Time Column field
@@ -3114,7 +3102,7 @@ describe('Create a Panel with Pinot Query Builder', () => {
             });
           });
 
-        cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+        cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
         /**
          * Check and select Time Column field

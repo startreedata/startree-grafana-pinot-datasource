@@ -40,8 +40,8 @@ type PinotQlBuilderParams struct {
 	IntervalSize        time.Duration
 	TableName           string
 	TimeColumn          string
-	MetricColumn        string
-	GroupByColumns      []string
+	MetricColumn        ComplexField
+	GroupByColumns      []ComplexField
 	AggregationFunction string
 	DimensionFilters    []DimensionFilter
 	Limit               int64
@@ -57,7 +57,7 @@ func NewPinotQlBuilderDriver(params PinotQlBuilderParams) (*PinotQlBuilderDriver
 		return nil, errors.New("TableName is required")
 	} else if params.TimeColumn == "" {
 		return nil, errors.New("TimeColumn is required")
-	} else if params.MetricColumn == "" && params.AggregationFunction != AggregationFunctionCount {
+	} else if params.MetricColumn.Name == "" && params.AggregationFunction != AggregationFunctionCount {
 		return nil, errors.New("MetricColumn is required")
 	} else if params.AggregationFunction == "" {
 		return nil, errors.New("AggregationFunction is required")
@@ -118,7 +118,7 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			TableNameExpr:         p.tableNameExpr(expandMacros),
 			TimeColumn:            p.params.TimeColumn,
 			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
-			MetricColumn:          p.params.MetricColumn,
+			MetricColumnExpr:      pinotlib.ComplexFieldExpr(p.params.MetricColumn.Name, p.params.MetricColumn.Key),
 			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
@@ -126,20 +126,38 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
 	} else {
+		groupByColumns := make([]templates.GroupByColumn, len(p.params.GroupByColumns))
+		for i, col := range p.params.GroupByColumns {
+			if expr := pinotlib.ComplexFieldExpr(col.Name, col.Key); expr != "" {
+				groupByColumns[i] = templates.GroupByColumn{
+					Expr:  pinotlib.ComplexFieldExpr(col.Name, col.Key),
+					Alias: complexFieldAlias(col.Name, col.Key),
+				}
+			}
+		}
+
 		return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
 			TableNameExpr:         p.tableNameExpr(expandMacros),
 			TimeGroupExpr:         p.timeGroupExpr(expandMacros),
 			TimeColumnAliasExpr:   p.timeColumnAliasExpr(expandMacros),
 			AggregationFunction:   p.params.AggregationFunction,
-			MetricColumn:          p.resolveMetricColumn(),
+			MetricColumnExpr:      p.resolveMetricColumnExpr(),
 			MetricColumnAliasExpr: p.metricColumnAliasExpr(expandMacros),
-			GroupByColumns:        p.params.GroupByColumns,
+			GroupByColumnExprs:    groupByColumns,
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
 			Limit:                 p.resolveLimit(),
 			OrderByExprs:          p.orderByExprs(),
 			QueryOptionsExpr:      p.queryOptionsExpr(),
 		})
+	}
+}
+
+func complexFieldAlias(name string, key string) string {
+	if key == "" {
+		return ""
+	} else {
+		return fmt.Sprintf(`%s[%s]`, name, key)
 	}
 }
 
@@ -151,6 +169,23 @@ func (p *PinotQlBuilderDriver) ExtractResults(results *pinotlib.ResultTable) (*d
 		MetricColumnAlias: p.MetricColumnAlias,
 		TimeColumnFormat:  p.resolveTimeColumnFormat(),
 	}, results)
+}
+
+func FilterExprsFrom(filters []DimensionFilter) []string {
+	exprs := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		expr := pinotlib.ColumnFilterExpr(pinotlib.ColumnFilter{
+			ColumnName: filter.ColumnName,
+			ColumnKey:  filter.ColumnKey,
+			ValueExprs: filter.ValueExprs,
+			Operator:   pinotlib.FilterOperator(filter.Operator),
+		})
+		if expr == "" {
+			continue
+		}
+		exprs = append(exprs, expr)
+	}
+	return exprs[:]
 }
 
 func (p *PinotQlBuilderDriver) tableNameExpr(expandMacros bool) string {
@@ -209,8 +244,10 @@ func (p *PinotQlBuilderDriver) resolveTimeColumnFormat() pinotlib.DateTimeFormat
 func (p *PinotQlBuilderDriver) resolveMetricName() string {
 	if p.params.AggregationFunction == AggregationFunctionCount {
 		return "count"
+	} else if p.params.MetricColumn.Key != "" {
+		return complexFieldAlias(p.params.MetricColumn.Name, p.params.MetricColumn.Key)
 	} else {
-		return p.params.MetricColumn
+		return p.params.MetricColumn.Name
 	}
 }
 
@@ -231,11 +268,11 @@ func (p *PinotQlBuilderDriver) resolveLimit() int64 {
 	}
 }
 
-func (p *PinotQlBuilderDriver) resolveMetricColumn() string {
+func (p *PinotQlBuilderDriver) resolveMetricColumnExpr() string {
 	if p.params.AggregationFunction == AggregationFunctionCount {
-		return "*"
+		return pinotlib.ObjectExpr("*")
 	} else {
-		return p.params.MetricColumn
+		return pinotlib.ComplexFieldExpr(p.params.MetricColumn.Name, p.params.MetricColumn.Key)
 	}
 }
 
@@ -245,6 +282,7 @@ func (p *PinotQlBuilderDriver) orderByExprs() []string {
 		if o.ColumnName == "" {
 			continue
 		}
+		columnExpr := pinotlib.ComplexFieldExpr(o.ColumnName, o.ColumnKey)
 
 		var direction string
 		if strings.ToUpper(o.Direction) == "DESC" {
@@ -253,7 +291,7 @@ func (p *PinotQlBuilderDriver) orderByExprs() []string {
 			direction = "ASC"
 		}
 
-		orderByExprs = append(orderByExprs, fmt.Sprintf(`"%s" %s`, o.ColumnName, direction))
+		orderByExprs = append(orderByExprs, fmt.Sprintf(`%s %s`, columnExpr, direction))
 	}
 	return orderByExprs[:]
 }

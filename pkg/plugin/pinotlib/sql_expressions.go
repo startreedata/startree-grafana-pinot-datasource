@@ -31,6 +31,14 @@ func UnquoteStringLiteral(s string) string {
 	}
 }
 
+func ComplexFieldExpr(column string, key string) string {
+	if key == "" {
+		return ObjectExpr(column)
+	} else {
+		return fmt.Sprintf("%s[%s]", ObjectExpr(column), StringLiteralExpr(key))
+	}
+}
+
 type TimeFilter struct {
 	Column string
 	Format DateTimeFormat

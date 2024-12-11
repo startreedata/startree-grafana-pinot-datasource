@@ -6,7 +6,8 @@ import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
 import { ScopedVars } from '@grafana/data';
-import { PinotVariableQuery } from './PinotVariableQuery'; // TODO: It's not entirely clear to me how these defaults are populated.
+import { PinotVariableQuery } from './PinotVariableQuery';
+import { ComplexField } from './ComplexField'; // TODO: It's not entirely clear to me how these defaults are populated.
 
 // TODO: It's not entirely clear to me how these defaults are populated.
 export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
@@ -50,6 +51,8 @@ export interface PinotDataQuery extends DataQuery {
   orderBy?: OrderByClause[];
   queryOptions?: QueryOption[];
   legend?: string;
+  metricColumnV2?: ComplexField;
+  groupByColumnsV2?: ComplexField[];
 
   // PinotQl Code
   pinotQlCode?: string;
@@ -66,45 +69,73 @@ export interface PinotDataQuery extends DataQuery {
   promQlCode?: string;
 }
 
+export function builderGroupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
+  return [...(query.groupByColumns?.map((col) => ({ name: col })) || []), ...(query.groupByColumnsV2 || [])];
+}
+
+export function builderMetricColumnFrom(query: PinotDataQuery): ComplexField | undefined {
+  if (query.metricColumnV2) {
+    return query.metricColumnV2;
+  } else if (query.metricColumn) {
+    return { name: query.metricColumn };
+  } else {
+    return undefined;
+  }
+}
+
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
+
+  function mapIfExists<T>(target: T | undefined, mapper: (val: T) => T): T | undefined {
+    return target ? mapper(target) : undefined;
+  }
+
+  const replace = (target: string) => templateSrv.replace(target, scopedVars);
+  const replaceIfExists = (target?: string | null) => (target ? replace(target) : undefined);
 
   return {
     ...query,
 
     // Sql Builder
 
-    timeColumn: templateSrv.replace(query.timeColumn, scopedVars),
-    metricColumn: templateSrv.replace(query.metricColumn, scopedVars),
-    granularity: templateSrv.replace(query.granularity, scopedVars),
-    aggregationFunction: templateSrv.replace(query.aggregationFunction, scopedVars),
-    groupByColumns: (query.groupByColumns || []).map((columnName) => templateSrv.replace(columnName, scopedVars)),
-    filters: (query.filters || []).map(({ columnName, operator, valueExprs }) => ({
-      columnName,
+    timeColumn: replaceIfExists(query.timeColumn),
+    metricColumn: replaceIfExists(query.metricColumn),
+    metricColumnV2: mapIfExists(query.metricColumnV2, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    granularity: replaceIfExists(query.granularity),
+    aggregationFunction: replaceIfExists(query.aggregationFunction),
+    groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),
+    groupByColumnsV2: query.groupByColumnsV2?.map(({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    filters: query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => ({
+      columnName: replaceIfExists(columnName),
+      columnKey: replaceIfExists(columnKey),
       operator,
-      valueExprs: valueExprs?.map((expr) => templateSrv.replace(expr, scopedVars)),
+      valueExprs: valueExprs?.map((expr) => replace(expr)),
     })),
     queryOptions: (query.queryOptions || []).map(({ name, value }) => ({
       name,
-      value: templateSrv.replace(value, scopedVars),
+      value: replaceIfExists(value),
     })),
 
     // Sql Editor
 
-    pinotQlCode: templateSrv.replace(query.pinotQlCode, scopedVars),
+    pinotQlCode: replaceIfExists(query.pinotQlCode),
 
     // PromQl Editor
 
-    promQlCode: templateSrv.replace(query.promQlCode, scopedVars),
+    promQlCode: replaceIfExists(query.promQlCode),
 
     // Variable Query editor
 
-    variableQuery: query.variableQuery
-      ? {
-          ...query.variableQuery,
-          columnName: templateSrv.replace(query.variableQuery.columnName, scopedVars),
-          pinotQlCode: templateSrv.replace(query.variableQuery.pinotQlCode, scopedVars),
-        }
-      : undefined,
+    variableQuery: mapIfExists(query.variableQuery, (variableQuery) => ({
+      ...variableQuery,
+      columnName: replaceIfExists(variableQuery.columnName),
+      pinotQlCode: replaceIfExists(variableQuery.pinotQlCode),
+    })),
   };
 }

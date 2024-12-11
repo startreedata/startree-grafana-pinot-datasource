@@ -8,12 +8,12 @@ var singleMetricSqlTemplate = template.Must(template.New("pinot/single-metric-sq
 {{.QueryOptionsExpr}}
 
 SELECT
-    "{{.MetricColumn}}" AS {{.MetricColumnAliasExpr}},
+    {{.MetricColumnExpr}} AS {{.MetricColumnAliasExpr}},
     "{{.TimeColumn}}" AS {{.TimeColumnAliasExpr}}
 FROM
     {{.TableNameExpr}}
 WHERE
-    "{{.MetricColumn}}" IS NOT NULL
+    {{.MetricColumnExpr}} IS NOT NULL
     AND {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
     AND {{ . }}
 {{- end }}
@@ -25,7 +25,7 @@ type SingleMetricSqlParams struct {
 	TableNameExpr         string
 	TimeColumn            string
 	TimeColumnAliasExpr   string
-	MetricColumn          string
+	MetricColumnExpr      string
 	MetricColumnAliasExpr string
 	TimeFilterExpr        string
 	DimensionFilterExprs  []string
