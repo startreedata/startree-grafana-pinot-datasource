@@ -27,7 +27,7 @@ export function builderParamsFrom(query: PinotDataQuery): BuilderParams {
     timeColumn: query.timeColumn || '',
     metricColumn: metricColumnFrom(query) || {},
     granularity: query.granularity || '',
-    aggregationFunction: query.aggregationFunction || '',
+    aggregationFunction: query.aggregationFunction || AggregationFunction.SUM,
     limit: query.limit || 0,
     filters: query.filters || [],
     orderBy: query.orderBy || [],
@@ -75,10 +75,6 @@ export function applyBuilderDefaults(
 
   if (!params.metricColumn?.name && resources.metricColumns.length > 0) {
     params.metricColumn = { name: resources.metricColumns[0].name, key: resources.metricColumns[0].key || undefined };
-  }
-
-  if (!params.aggregationFunction) {
-    params.aggregationFunction = AggregationFunction.SUM;
   }
 }
 

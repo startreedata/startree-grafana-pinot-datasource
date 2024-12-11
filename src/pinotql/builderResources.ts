@@ -32,7 +32,10 @@ export function useBuilderResources(
   const tablesResult = useTables(datasource);
 
   const columnsResult = useColumns(datasource, {
-    timeRange: timeRange,
+    timeRange: {
+      to: timeRange.to?.endOf('second'),
+      from: timeRange.from?.startOf('second'),
+    },
     tableName: interpolatedParams.tableName,
     timeColumn: interpolatedParams.timeColumn,
     filters: interpolatedParams.filters,

@@ -49,7 +49,6 @@ export interface PreviewSqlCodeRequest {
   intervalSize: string | undefined;
   tableName: string | undefined;
   timeColumnAlias: string | undefined;
-  timeColumnFormat: string | undefined;
   metricColumnAlias: string | undefined;
   code: string | undefined;
 }

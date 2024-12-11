@@ -56,6 +56,22 @@ describe('builderParamsFrom', () => {
     });
   });
 
+  test('aggregationFunction is absent', () => {
+    expect(builderParamsFrom({ ...query, aggregationFunction: undefined })).toEqual<BuilderParams>({
+      tableName: 'test_table_name',
+      timeColumn: 'test_time_column',
+      metricColumn: { name: 'test_metric_column2', key: 'test_metric_column_key' },
+      granularity: 'auto',
+      aggregationFunction: 'SUM',
+      limit: 100,
+      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
+      orderBy: [{ columnName: 'test_order_column', direction: 'asc' }],
+      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
+      legend: '{{test_dim_column}}',
+      groupByColumns: [{ name: 'test_dim_column_1' }, { name: 'test_dim_column2', key: 'test_dim_column2_key' }],
+    });
+  });
+
   test('metricColumnV2 is absent', () => {
     expect(builderParamsFrom({ ...query, metricColumnV2: undefined })).toEqual<BuilderParams>({
       tableName: 'test_table_name',
@@ -69,6 +85,22 @@ describe('builderParamsFrom', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column_1' }, { name: 'test_dim_column2', key: 'test_dim_column2_key' }],
+    });
+  });
+
+  test('query is empty', () => {
+    expect(builderParamsFrom({ refId: 'test_id' })).toEqual<BuilderParams>({
+      tableName: '',
+      timeColumn: '',
+      metricColumn: {},
+      granularity: '',
+      aggregationFunction: 'SUM',
+      limit: 0,
+      filters: [],
+      orderBy: [],
+      queryOptions: [],
+      legend: '',
+      groupByColumns: [],
     });
   });
 });
@@ -159,7 +191,7 @@ describe('applyBuilderDefaults', () => {
       timeColumn: 'ts',
       metricColumn: { name: 'met', key: undefined },
       granularity: '',
-      aggregationFunction: 'SUM',
+      aggregationFunction: '',
       limit: 0,
       filters: [],
       orderBy: [],
@@ -202,7 +234,7 @@ describe('applyBuilderDefaults', () => {
 });
 
 describe('dataQueryWithBuilderParams', () => {
-  test('emptyParams', () => {
+  test('params are empty', () => {
     const query = dataQueryWithBuilderParams({ refId: 'test_id' }, newEmptyParams());
     expect(query).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -220,7 +252,7 @@ describe('dataQueryWithBuilderParams', () => {
     });
   });
 
-  test('populatedParams', () => {
+  test('params are fully populated', () => {
     const params: BuilderParams = {
       tableName: 'test_table',
       timeColumn: 'test_time_column',
