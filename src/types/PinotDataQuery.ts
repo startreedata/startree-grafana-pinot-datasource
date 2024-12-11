@@ -35,6 +35,12 @@ LIMIT 100000
 `.trim(),
 });
 
+// PinotDataQuery serves as both the saved data model and data query API model.
+// And it's also overloaded as the primary data model that powers the ui components. 😬
+// Since this is also the saved data model, we have to be careful to maintain backwards compability.
+// Grafana does provide a data migration js api, however it's not available for Grafana 10.
+// Ref https://grafana.com/developers/plugin-tools/how-to-guides/data-source-plugins/add-migration-handler-for-backend-data-source.
+// TODO: Make unit-testable data conversions and data models for UI components instead of re-using this data model.
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
   editorMode?: string;

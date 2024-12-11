@@ -6,11 +6,11 @@ import { styles } from '../../styles';
 import { Granularity } from '../../resources/granularities';
 
 export function SelectGranularity(props: {
-  selected: string | undefined;
+  selected: string;
   options: Granularity[];
   isLoading: boolean;
   disabled: boolean;
-  onChange: (val: string | undefined) => void;
+  onChange: (val: string) => void;
 }) {
   const { selected, disabled, options, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.granularity;
@@ -26,7 +26,7 @@ export function SelectGranularity(props: {
         value={selected || null}
         disabled={disabled}
         isLoading={isLoading}
-        onChange={(change) => (change.value !== 'auto' ? onChange(change.value) : onChange(undefined))}
+        onChange={(change) => (change.value === 'auto' ? onChange('') : onChange(change.value || ''))}
       />
     </div>
   );

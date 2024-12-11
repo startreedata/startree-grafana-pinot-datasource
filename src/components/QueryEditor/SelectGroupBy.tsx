@@ -12,7 +12,7 @@ export function SelectGroupBy(props: {
   columns: Column[];
   isLoading: boolean;
   disabled: boolean;
-  onChange: (val: ComplexField[] | undefined) => void;
+  onChange: (val: ComplexField[]) => void;
 }) {
   const { columns, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;

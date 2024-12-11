@@ -15,10 +15,7 @@ export const AggregationFunction = Object.freeze({
 
 const DefaultAggregationFunction = AggregationFunction.SUM;
 
-export function SelectAggregation(props: {
-  selected: string | undefined;
-  onChange: (val: string | undefined) => void;
-}) {
+export function SelectAggregation(props: { selected: string; onChange: (val: string) => void }) {
   const { selected, onChange } = props;
   const labels = allLabels.components.QueryEditor.aggregation;
 
@@ -37,7 +34,7 @@ export function SelectAggregation(props: {
         invalid={!selected}
         options={Object.values(AggregationFunction).map((val) => ({ label: val, value: val }))}
         value={selected}
-        onChange={(change) => onChange(change.value)}
+        onChange={(change) => onChange(change.value || '')}
       />
     </div>
   );

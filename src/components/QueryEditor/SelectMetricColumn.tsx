@@ -11,7 +11,7 @@ export function SelectMetricColumn(props: {
   metricColumns: Column[];
   isCount: boolean;
   isLoading: boolean;
-  onChange: (val: ComplexField | undefined) => void;
+  onChange: (val: ComplexField) => void;
 }) {
   const { isCount, selected, metricColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricColumn;

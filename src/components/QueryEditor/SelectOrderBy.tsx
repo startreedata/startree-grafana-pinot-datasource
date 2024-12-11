@@ -8,10 +8,10 @@ import { SelectableValue } from '@grafana/data';
 import { columnLabelOf, ComplexField } from '../../types/ComplexField';
 
 export function SelectOrderBy(props: {
-  selected: OrderByClause[] | undefined;
-  columns: ComplexField[] | undefined;
+  selected: OrderByClause[];
+  columns: ComplexField[];
   disabled: boolean;
-  onChange: (val: OrderByClause[] | undefined) => void;
+  onChange: (val: OrderByClause[]) => void;
 }) {
   const { columns, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.orderBy;
@@ -27,7 +27,7 @@ export function SelectOrderBy(props: {
 
   const usedLabels = new Set(usedOptions.map(({ label }) => label));
 
-  const unusedOptions = (columns || [])
+  const unusedOptions = columns
     .filter((col) => !usedLabels.has(columnLabelOf(col.name, col.key)))
     .flatMap<OrderByClause>((col) => [
       { columnName: col.name, columnKey: col.key || undefined, direction: 'ASC' },
