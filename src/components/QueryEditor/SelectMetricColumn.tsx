@@ -16,6 +16,9 @@ export function SelectMetricColumn(props: {
   const { isCount, selected, metricColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricColumn;
 
+  // TODO: Does sorting make sense here?
+  metricColumns.sort((a, b) => columnLabelOf(a.name, a.key).localeCompare(columnLabelOf(b.name, b.key)));
+
   if (!isCount && !selected && metricColumns.length > 0) {
     onChange({ name: metricColumns[0].name, key: metricColumns[0].key || undefined });
   }
@@ -24,8 +27,7 @@ export function SelectMetricColumn(props: {
   const options = selectableColumns
     .map(({ name, key }) => columnLabelOf(name, key))
     .filter((v, i, a) => a.indexOf(v) === i)
-    .map((label) => ({ label, value: label }))
-    .sort();
+    .map((label) => ({ label, value: label }));
 
   return (
     <div className={'gf-form'} data-testid="select-metric-column">

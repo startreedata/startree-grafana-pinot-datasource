@@ -1,8 +1,13 @@
+interface ResourceResponse<T> {
+  code: number;
+  result: T;
+}
+
 type ExplorePinotTestCtx = {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, unknown>;
-    tablesSchema?: Record<string, unknown>;
+    columns?: ResourceResponse<Record<string, string>[]>;
   };
 };
 
@@ -19,7 +24,7 @@ describe('Create and run pinot query using Explore', () => {
     }
   });
 
-  it('Graph and Table should rendered using Pinot Query Builder', () => {
+  it('Graph and Table should render using Pinot Query Builder', () => {
     /**
      * All Intercepts
      */
@@ -45,9 +50,9 @@ describe('Create and run pinot query using Explore', () => {
     cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
     cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
-    cy.intercept('GET', '/api/datasources/*/resources/tables/*/schema', (req) => {
-      req.continue((res) => (ctx.apiResponse.tablesSchema = res.body));
-    }).as('tablesSchema');
+    cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
+      req.continue((res) => (ctx.apiResponse.columns = res.body));
+    }).as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
@@ -199,7 +204,7 @@ describe('Create and run pinot query using Explore', () => {
         });
       });
 
-    cy.wait(['@tablesSchema', '@previewSqlBuilder', '@dsQuery']);
+    cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
@@ -224,9 +229,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
-              .dateTimeFieldSpecs as Array<Record<string, string>>;
-
+            const selectOptions = ctx.apiResponse.columns.result.filter((r) => r.isTime && !r.IsDerived);
             selectOptions.forEach((option) => cy.contains(option.name));
 
             // Select the option
@@ -263,11 +266,7 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = [
-              'auto',
-              'DAYS',
-              'HOURS',
-            ];
+            const selectOptions = ['auto', 'DAYS', 'HOURS'];
 
             selectOptions.forEach((option) => cy.contains(option));
 
@@ -312,12 +311,9 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const selectOptions = (ctx.apiResponse.tablesSchema.result as Record<string, unknown>)
-              .metricFieldSpecs as Array<Record<string, string>>;
-
+            const selectOptions = ctx.apiResponse.columns.result.filter((column) => column.isMetric);
             selectOptions.forEach((option) => cy.contains(option.name));
 
-            // Select the option
             cy.contains(formData.metricColumn).click();
             cy.wait('@dsQuery');
           });
@@ -398,14 +394,9 @@ describe('Create and run pinot query using Explore', () => {
           .find('[aria-label="Select options menu"]')
           .should('be.visible')
           .within(() => {
-            const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
-            const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
-            const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
-
-            const selectOptions = [...dimensionFieldSpecs, ...metricFieldSpecs].filter(
-              (item) => item.name !== formData.metricColumn
+            const selectOptions = ctx.apiResponse.columns.result.filter(
+              (column) => !column.isTime && column.name !== formData.metricColumn
             );
-
             selectOptions.forEach((option) => cy.contains(option.name));
 
             // Select the first option
@@ -560,14 +551,9 @@ describe('Create and run pinot query using Explore', () => {
                   .find('[aria-label="Select options menu"]')
                   .should('be.visible')
                   .within(() => {
-                    const schema = ctx.apiResponse.tablesSchema.result as Record<string, unknown>;
-                    const dimensionFieldSpecs = schema.dimensionFieldSpecs as Array<Record<string, string>>;
-                    const metricFieldSpecs = schema.metricFieldSpecs as Array<Record<string, string>>;
-
-                    const selectOptions = [...dimensionFieldSpecs, ...metricFieldSpecs].filter(
-                      (item) => item.name !== formData.metricColumn
+                    const selectOptions = ctx.apiResponse.columns.result.filter(
+                      (col) => col.name !== formData.metricColumn && !col.isTime
                     );
-
                     selectOptions.forEach((option) => cy.contains(option.name));
 
                     // Close select menu
@@ -941,6 +927,7 @@ describe('Create and run pinot query using Explore', () => {
       table: 'complex_website',
       timeAlias: 'time',
       metricAlias: 'metric',
+      // language=text
       pinotQuery: `
         SELECT
             $__timeGroup("hoursSinceEpoch") AS $__timeAlias(),
@@ -1127,7 +1114,7 @@ describe('Create and run pinot query using Explore', () => {
               // Access the Monaco Editor instance via the window object
               const editor = (win as any).monaco.editor.getModels()[0]; // Get the first model instance
               const editorValue = editor.getValue(); // Retrieve the editor's content
-
+              // language=text
               const defaultValue = `
                 SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
                 FROM $__table()
