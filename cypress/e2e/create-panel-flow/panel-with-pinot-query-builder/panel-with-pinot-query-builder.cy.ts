@@ -10,7 +10,7 @@ interface TestCtx {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, any>;
-    columns?: ResourceResponse<Record<string, string>[]>;
+    columns?: ResourceResponse<Array<Record<string, string>>>;
     dsQuery?: Record<string, any>;
   };
 }

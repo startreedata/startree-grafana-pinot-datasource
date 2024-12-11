@@ -7,7 +7,7 @@ type ExplorePinotTestCtx = {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
     resourcesTables?: Record<string, unknown>;
-    columns?: ResourceResponse<Record<string, string>[]>;
+    columns?: ResourceResponse<Array<Record<string, string>>>;
   };
 };
 
