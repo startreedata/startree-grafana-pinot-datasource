@@ -21,7 +21,7 @@ export function VariableQueryEditor({ datasource, onChange, query }: VariableQue
     onChange({ ...query, variableQuery });
   };
 
-  const tables = useTables(datasource);
+  const { result: tables } = useTables(datasource);
   const tableSchema = useTableSchema(datasource, query.tableName);
 
   const columns = [
