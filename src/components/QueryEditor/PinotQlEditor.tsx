@@ -8,8 +8,6 @@ import { interpolateVariables } from '../../types/PinotDataQuery';
 import { codeParamsFrom, dataQueryWithCodeParams } from '../../pinotql/codeParams';
 
 export function PinotQlEditor(props: PinotQueryEditorProps) {
-  const scopedVars = props.data?.request?.scopedVars || {};
-
   return (
     <div>
       {props.query.editorMode === EditorMode.Code ? (
@@ -22,7 +20,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           }}
           intervalSize={props.data?.request?.interval}
           savedParams={codeParamsFrom(props.query)}
-          interpolatedParams={codeParamsFrom(interpolateVariables(props.query, scopedVars))}
+          interpolatedParams={codeParamsFrom(interpolateVariables(props.query, props.data?.request?.scopedVars))}
           onChange={(params) => dataQueryWithCodeParams(props.query, params)}
           onRunQuery={props.onRunQuery}
         />
@@ -35,7 +33,7 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
           }}
           intervalSize={props.data?.request?.interval}
           savedParams={builderParamsFrom(props.query)}
-          interpolatedParams={builderParamsFrom(interpolateVariables(props.query, scopedVars))}
+          interpolatedParams={builderParamsFrom(interpolateVariables(props.query, props.data?.request?.scopedVars))}
           onChange={(params) => dataQueryWithBuilderParams(props.query, params)}
           onRunQuery={props.onRunQuery}
         />

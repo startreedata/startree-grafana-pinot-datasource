@@ -6,6 +6,8 @@ import { PinotDataQuery } from '../types/PinotDataQuery';
 import { AggregationFunction } from '../components/QueryEditor/SelectAggregation';
 import { Column } from '../resources/columns';
 import { isEmpty } from 'lodash';
+import { QueryType } from '../types/QueryType';
+import { EditorMode } from '../types/EditorMode';
 
 export interface BuilderParams {
   tableName: string;
@@ -81,6 +83,8 @@ export function applyBuilderDefaults(
 export function dataQueryWithBuilderParams(query: PinotDataQuery, params: BuilderParams): PinotDataQuery {
   return {
     ...query,
+    queryType: QueryType.PinotQL,
+    editorMode: EditorMode.Builder,
     tableName: params.tableName || undefined,
     timeColumn: params.timeColumn || undefined,
     metricColumnV2: params.metricColumn.name ? params.metricColumn : undefined,

@@ -7,6 +7,8 @@ import {
 } from './builderParams';
 import { Column } from '../resources/columns';
 import { PinotDataQuery } from '../types/PinotDataQuery';
+import { QueryType } from '../types/QueryType';
+import { EditorMode } from '../types/EditorMode';
 
 const newEmptyParams = (): BuilderParams => ({
   tableName: '',
@@ -215,7 +217,6 @@ describe('applyBuilderDefaults', () => {
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column' }],
     };
-
     applyBuilderDefaults(params, { timeColumns, metricColumns });
     expect(params).toEqual<BuilderParams>({
       tableName: 'test_table',
@@ -234,10 +235,13 @@ describe('applyBuilderDefaults', () => {
 });
 
 describe('dataQueryWithBuilderParams', () => {
+  const query = { refId: 'test_id' };
+
   test('params are empty', () => {
-    const query = dataQueryWithBuilderParams({ refId: 'test_id' }, newEmptyParams());
-    expect(query).toEqual<PinotDataQuery>({
+    expect(dataQueryWithBuilderParams(query, newEmptyParams())).toEqual<PinotDataQuery>({
       refId: 'test_id',
+      queryType: QueryType.PinotQL,
+      editorMode: EditorMode.Builder,
       tableName: undefined,
       timeColumn: undefined,
       metricColumn: undefined,
@@ -253,23 +257,24 @@ describe('dataQueryWithBuilderParams', () => {
   });
 
   test('params are fully populated', () => {
-    const params: BuilderParams = {
-      tableName: 'test_table',
-      timeColumn: 'test_time_column',
-      metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
-      granularity: 'auto',
-      aggregationFunction: 'AVG',
-      limit: 100,
-      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-      orderBy: [{ columnName: 'test_order_column', direction: 'asc' }],
-      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-      legend: '{{test_dim_column}}',
-      groupByColumns: [{ name: 'test_dim_column' }],
-    };
-
-    const query = dataQueryWithBuilderParams({ refId: 'test_id' }, params);
-    expect(query).toEqual<PinotDataQuery>({
+    expect(
+      dataQueryWithBuilderParams(query, {
+        tableName: 'test_table',
+        timeColumn: 'test_time_column',
+        metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
+        granularity: 'auto',
+        aggregationFunction: 'AVG',
+        limit: 100,
+        filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
+        orderBy: [{ columnName: 'test_order_column', direction: 'asc' }],
+        queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
+        legend: '{{test_dim_column}}',
+        groupByColumns: [{ name: 'test_dim_column' }],
+      })
+    ).toEqual<PinotDataQuery>({
       refId: 'test_id',
+      queryType: QueryType.PinotQL,
+      editorMode: EditorMode.Builder,
       tableName: 'test_table',
       timeColumn: 'test_time_column',
       metricColumnV2: { name: 'test_metric_column', key: 'test_metric_column_key' },

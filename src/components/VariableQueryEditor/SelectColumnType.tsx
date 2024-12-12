@@ -11,13 +11,7 @@ export const ColumnTypes = Object.freeze({
   All: 'ALL',
 });
 
-export function SelectColumnType({
-  onChange,
-  selected,
-}: {
-  selected: string | undefined;
-  onChange: (val: string | undefined) => void;
-}) {
+export function SelectColumnType({ onChange, selected }: { selected: string; onChange: (val: string) => void }) {
   const labels = allLabels.components.VariableQueryEditor.columnType;
 
   return (
@@ -28,7 +22,7 @@ export function SelectColumnType({
         invalid={!selected}
         options={Object.values(ColumnTypes)?.map((name) => ({ label: name, value: name }))}
         value={selected || null}
-        onChange={(change) => onChange(change.value)}
+        onChange={(change) => onChange(change.value || '')}
       />
     </div>
   );

@@ -16,9 +16,9 @@ export interface Column {
 
 export interface ListColumnsRequest {
   tableName: string | undefined;
-  timeColumn: string | undefined;
-  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  filters: DimensionFilter[];
+  timeColumn?: string;
+  timeRange?: { to: DateTime | undefined; from: DateTime | undefined };
+  filters?: DimensionFilter[];
 }
 
 export function useColumns(datasource: DataSource, request: ListColumnsRequest): UseResourceResult<Column[]> {

@@ -494,7 +494,12 @@ func (x *ResourceHandler) ListColumns(ctx context.Context, req ListColumnsReques
 			IsMetric: pinotlib.IsNumericDataType(spec.DataType),
 		})
 	}
-	if len(schema.ComplexFieldSpecs) == 0 {
+
+	if len(schema.ComplexFieldSpecs) == 0 ||
+		req.TimeColumn == "" ||
+		req.TimeRange.To.IsZero() ||
+		req.TimeRange.To.Equal(req.TimeRange.From) ||
+		req.TimeRange.To.Before(req.TimeRange.From) {
 		return newOkResponse(columns)
 	}
 

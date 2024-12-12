@@ -1,5 +1,7 @@
 import { PinotDataQuery } from '../types/PinotDataQuery';
 import { DisplayTypeTimeSeries } from '../components/QueryEditor/SelectDisplayType';
+import { QueryType } from '../types/QueryType';
+import { EditorMode } from '../types/EditorMode';
 
 export interface CodeParams {
   displayType: string;
@@ -36,6 +38,8 @@ export function canRunCodeQuery(params: CodeParams): boolean {
 export function dataQueryWithCodeParams(query: PinotDataQuery, params: CodeParams): PinotDataQuery {
   return {
     ...query,
+    queryType: QueryType.PinotQL,
+    editorMode: EditorMode.Code,
     displayType: params.displayType || undefined,
     tableName: params.tableName || undefined,
     pinotQlCode: params.pinotQlCode || undefined,

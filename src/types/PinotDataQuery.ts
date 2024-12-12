@@ -89,7 +89,7 @@ export function builderMetricColumnFrom(query: PinotDataQuery): ComplexField | u
   }
 }
 
-export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars): PinotDataQuery {
+export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars | undefined): PinotDataQuery {
   const templateSrv = getTemplateSrv();
 
   function mapIfExists<T>(target: T | undefined, mapper: (val: T) => T): T | undefined {
