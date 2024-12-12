@@ -19,7 +19,7 @@ export function SelectColumn(props: {
       <Select
         className={`${styles.VariableQueryEditor.inputForm}`}
         invalid={!selected}
-        options={options.map((name) => ({ label: name, value: name }))}
+        options={options.sort().map((name) => ({ label: name, value: name }))}
         isLoading={isLoading}
         value={selected || null}
         onChange={(change) => onChange(change.value || '')}
