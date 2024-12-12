@@ -8,12 +8,15 @@ Cypress.Commands.add('deletePinotDatasource', (uid: string) => {
     if (response.status >= 500) {
       cy.log('Error on deleting pinot data source');
     }
-
-    return;
   });
 });
 
 Cypress.Commands.add('deletePinotDatasourceWithUi', (uid: string): Cypress.Chainable<{ success: boolean }> => {
+  cy.intercept('GET', '/api/datasources/uid/*?accesscontrol=true').as('datasourcesUidAccessControl');
+  cy.intercept('GET', '/api/plugins/startree-pinot-datasource/settings').as('pluginsSettings');
+  cy.intercept('DELETE', '/api/datasources/uid/*').as('deleteDatasource');
+  cy.intercept('GET', '/api/frontend/settings').as('frontendSettings');
+
   cy.visit(`/datasources/edit/${uid}`);
   cy.location('pathname').should('eq', `/datasources/edit/${uid}`);
 

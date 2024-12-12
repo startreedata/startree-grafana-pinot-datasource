@@ -8,7 +8,7 @@ const config: CypressConfigOptions = {
   projectId: 'startree-grafana-pinot-datasource',
   experimentalMemoryManagement: true,
   retries: {
-    runMode: 2,
+    runMode: 0,
   },
   e2e: {
     viewportWidth: 1366,

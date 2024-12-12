@@ -21,15 +21,40 @@ declare namespace Cypress {
       dataTestAttribute: string,
       options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
     ): Chainable<JQuery<HTMLElement>>;
+
     getBySelLike(
       dataTestPrefixAttribute: string,
       options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
     ): Chainable<JQuery<HTMLElement>>;
 
-    // Pinot Data Source
-    createPinotDatasource(): Cypress.Chainable<{ name: string }>;
+    createPinotDatasource(params: {
+      controllerUrl: string;
+      brokerUrl: string;
+      databaseName: string;
+      authType: string;
+      authToken: string;
+    }): Cypress.Chainable<{ name: string; uid: string }>;
+
     deletePinotDatasourceWithUi(uid: string): Cypress.Chainable<{ success: boolean }>;
+
     deletePinotDatasource(uid: string): Cypress.Chainable<void>;
+
+    selectDatasource(name: string): Cypress.Chainable<void>;
+
+    setDashboardTimeRange(timeRange: { from: string; to: string }): Cypress.Chainable<void>;
+
+    checkDropdown(params: {
+      testId: string;
+      wantLabel: string;
+      wantSelected: string;
+      wantOptions: string[];
+    }): Cypress.Chainable<void>;
+
+    selectFromDropdown(params: { testId: string; value: string }): Cypress.Chainable<void>;
+
+    pinotQlBuilder_CheckSqlPreview(want?: string): Cypress.Chainable<void>;
+
+    fillLegend(legend?: string): Cypress.Chainable<void>;
   }
 }
 

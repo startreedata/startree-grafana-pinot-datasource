@@ -3,13 +3,13 @@ interface ResourceResponse<T> {
   result: T;
 }
 
-type ExplorePinotTestCtx = {
+interface ExplorePinotTestCtx {
   newlyCreatedDatasourceUid: null | string;
   apiResponse: {
-    resourcesTables?: Record<string, unknown>;
+    resourcesTables?: ResourceResponse<string[]>;
     columns?: ResourceResponse<Array<Record<string, string>>>;
   };
-};
+}
 
 describe('Create and run pinot query using Explore', () => {
   const ctx: ExplorePinotTestCtx = {
@@ -28,27 +28,12 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * All Intercepts
      */
-    cy.intercept('GET', '/api/datasources').as('getDatasources');
-    cy.intercept('GET', '/api/plugins?embedded=0').as('pluginsEmbedded');
-    cy.intercept('GET', '/api/plugins/errors').as('pluginsErrors');
-    cy.intercept('GET', '/api/gnet/plugins').as('gnetPlugins');
-    cy.intercept('GET', '/api/plugins?enabled=1&type=datasource').as('pluginsTypeDatasource');
     cy.intercept('POST', '/api/datasources', (req) => {
       req.continue((res) => (ctx.newlyCreatedDatasourceUid = res.body.datasource.uid));
-    }).as('postDatasources');
-    cy.intercept('GET', '/api/frontend/settings').as('frontendSettings');
-    cy.intercept('GET', '/api/plugins/startree-pinot-datasource/settings').as('pluginsSettings');
-    cy.intercept('GET', '/api/access-control/user/permissions?reloadcache=true').as('userPermissions');
-    cy.intercept('PUT', '/api/datasources/uid/*').as('datasourcesUid');
-    cy.intercept('GET', '/api/datasources/uid/*?accesscontrol=true').as('datasourcesUidAccessControl');
-    cy.intercept('GET', '/api/datasources/*/health').as('datasourcesHealth');
+    });
     cy.intercept('GET', '/api/datasources/*/resources/tables', (req) => {
       req.continue((res) => (ctx.apiResponse.resourcesTables = res.body));
     }).as('resourcesTables');
-    cy.intercept('DELETE', '/api/datasources/uid/*').as('deleteDatasource');
-    cy.intercept('GET', '/api/dashboards/home').as('dashboardsHome');
-    cy.intercept('GET', '/api/prometheus/grafana/api/v1/rules').as('apiV1Rules');
-    cy.intercept('GET', '/api/ruler/grafana/api/v1/rules?subtype=cortex').as('apiV1RulesSubtypeCortex');
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
     cy.intercept('POST', '/api/datasources/*/resources/columns', (req) => {
       req.continue((res) => (ctx.apiResponse.columns = res.body));
@@ -93,12 +78,13 @@ describe('Create and run pinot query using Explore', () => {
     cy.get('@newlyCreatedDatasource').then((data: unknown) => {
       const pinotDatasourceName: string = (data as any).name;
 
-      cy.get('#data-source-picker').should('be.visible').parent().parent().as('dataSourcePicker').click();
-      cy.get('[aria-label="Select options menu"]')
-        .should('be.visible')
-        .within(() => {
-          cy.contains(pinotDatasourceName).click();
-        });
+      cy.get('#data-source-picker').should('be.visible');
+      cy.get('#data-source-picker').parent().parent().as('dataSourcePicker').click();
+
+      cy.get('[aria-label="Select options menu"]').should('be.visible');
+      cy.get('[aria-label="Select options menu"]').within(() => {
+        cy.contains(pinotDatasourceName).click();
+      });
 
       // Check the selected data source
       cy.get('@dataSourcePicker').should('contain.text', pinotDatasourceName);
@@ -107,19 +93,24 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * Change the Time Range
      */
-    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
-    cy.get('#TimePickerContent')
-      .should('be.visible')
-      .within(() => {
-        // Fill from time field
-        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+    cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').as('timePickerButton');
+    cy.get('@timePickerButton').click();
 
-        // Fill to time field
-        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+    cy.get('#TimePickerContent').should('be.visible').as('timePickerContent');
+    cy.get('@timePickerContent').within(() => {
+      // Fill from time field
+      cy.get('input[aria-label="Time Range from field"]').should('exist').as('timeFromField');
+      cy.get('@timeFromField').clear();
+      cy.get('@timeFromField').type('2024-04-01 00:00:00');
 
-        // Apply time range
-        cy.get('button').contains('Apply time range').click();
-      });
+      // Fill to time field
+      cy.get('input[aria-label="Time Range to field"]').should('exist').as('timeToField');
+      cy.get('@timeToField').clear();
+      cy.get('@timeToField').type('2024-09-30 23:59:59');
+
+      // Apply time range
+      cy.get('button').contains('Apply time range').click();
+    });
 
     /**
      * Check if No data message for graph and table is exist
@@ -129,200 +120,191 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * Check Select Query Type
      */
-    cy.getBySel('select-query-type')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Query Type');
+    cy.getBySel('select-query-type').should('exist');
+    cy.getBySel('select-query-type').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Query Type');
 
-        // Check Radio group
-        cy.get('input[type="radio"]')
-          .should('exist')
-          .parent()
-          .within(() => {
-            cy.get('label').eq(0).should('exist').and('contain.text', 'PinotQL');
-            cy.get('label').eq(1).should('exist').and('contain.text', 'PromQL');
-          });
-      });
+      // Check Radio group
+      cy.get('input[type="radio"]').should('exist');
+      cy.get('input[type="radio"]')
+        .parent()
+        .within(() => {
+          cy.get('label').eq(0).should('exist').and('contain.text', 'PinotQL');
+          cy.get('label').eq(1).should('exist').and('contain.text', 'PromQL');
+        });
+    });
 
     /**
      * Check and Select Editor Mode
      */
-    cy.getBySel('select-editor-mode')
-      .should('exist')
-      .within(() => {
-        // Check Radio group
-        cy.get('input[type="radio"]')
-          .eq(0)
-          .should('exist')
-          .invoke('attr', 'id')
-          .then((id) => {
-            cy.get(`label[for="${id}"]`).should('exist').and('contain.text', 'Builder').click();
-          });
-      });
+    cy.getBySel('select-editor-mode').should('exist');
+    cy.getBySel('select-editor-mode').within(() => {
+      // Check Radio group
+      cy.get('input[type="radio"]')
+        .eq(0)
+        .should('exist')
+        .invoke('attr', 'id')
+        .then((id) => {
+          cy.get(`label[for="${id}"]`).should('exist').and('contain.text', 'Builder');
+          cy.get(`label[for="${id}"]`).click();
+        });
+    });
 
     /**
      * Check Run query button
      */
-    cy.getBySel('query-editor-header')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query').as('runQueryBtn');
-      });
+    cy.getBySel('query-editor-header').should('exist');
+    cy.getBySel('query-editor-header').within(() => {
+      cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query').as('runQueryBtn');
+    });
 
     /**
      * Check and select Table field
      */
-    cy.getBySel('select-table')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Table');
+    cy.getBySel('select-table').should('exist');
+    cy.getBySel('select-table').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Table');
 
-        // Check select list options
-        cy.get('input')
-          .parent()
-          .parent()
-          .as('tableSelect')
-          .within(() => {
-            cy.contains('Choose');
-          })
-          .click();
+      // Check select list options
+      cy.get('input').parent().parent().as('tableSelect');
 
-        cy.wrap(cy.$$('body'))
-          .find('[aria-label="Select options menu"]')
-          .should('be.visible')
-          .within(() => {
-            const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
-            selectOptions.forEach((option) => cy.contains(option));
+      cy.get('@tableSelect').within(() => cy.contains('Choose'));
+      cy.get('@tableSelect').click();
 
-            // Select the option
-            cy.contains(formData.table).click();
-          });
+      cy.wrap(cy.$$('body'))
+        .find('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          const selectOptions = ctx.apiResponse.resourcesTables.result as string[];
+          selectOptions.forEach((option) => cy.contains(option));
 
-        // Check if correct option is selected
-        cy.get('@tableSelect').within(() => {
-          cy.contains(formData.table);
+          // Select the option
+          cy.contains(formData.table).click();
         });
+
+      // Check if correct option is selected
+      cy.get('@tableSelect').within(() => {
+        cy.contains(formData.table);
       });
+    });
 
     cy.wait(['@columns', '@previewSqlBuilder', '@dsQuery']);
 
     /**
      * Check and select Time Column field
      */
-    cy.getBySel('select-time-column')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Time Column');
+    cy.getBySel('select-time-column').should('exist');
+    cy.getBySel('select-time-column').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Time Column');
 
-        // Check select list options
-        cy.get('input')
-          .parent()
-          .parent()
-          .as('timeColumnSelect')
-          .within(() => {
-            // Check already selected option
-            cy.contains('hoursSinceEpoch');
-          })
-          .click();
-
-        cy.wrap(cy.$$('body'))
-          .find('[aria-label="Select options menu"]')
-          .should('be.visible')
-          .within(() => {
-            const selectOptions = ctx.apiResponse.columns.result.filter((r) => r.isTime && !r.IsDerived);
-            selectOptions.forEach((option) => cy.contains(option.name));
-
-            // Select the option
-            cy.contains(formData.timeColumn).click();
-          });
-
-        // Check if correct option is selected
-        cy.get('@timeColumnSelect').within(() => {
-          cy.contains(formData.timeColumn);
+      // Check select list options
+      cy.get('input')
+        .parent()
+        .parent()
+        .as('timeColumnSelect')
+        .within(() => {
+          // Check already selected option
+          cy.contains('hoursSinceEpoch');
         });
+      cy.get('@timeColumnSelect').click();
+
+      cy.wrap(cy.$$('body'))
+        .find('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          const selectOptions = ctx.apiResponse.columns.result.filter((r) => r.isTime && !r.IsDerived);
+          selectOptions.forEach((option) => cy.contains(option.name));
+
+          // Select the option
+          cy.contains(formData.timeColumn).click();
+        });
+
+      // Check if correct option is selected
+      cy.get('@timeColumnSelect').within(() => {
+        cy.contains(formData.timeColumn);
       });
+    });
 
     /**
      * Check and select Granularity field
      */
-    cy.getBySel('select-granularity')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Granularity');
+    cy.getBySel('select-granularity').should('exist');
+    cy.getBySel('select-granularity').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Granularity');
 
-        // Check select list options
-        cy.get('input')
-          .parent()
-          .parent()
-          .as('granularitySelect')
-          .within(() => {
-            // Check already selected option
-            cy.contains('auto');
-          })
-          .click();
+      // Check select list options
+      cy.get('input')
+        .parent()
+        .parent()
+        .as('granularitySelect')
+        .within(() => {
+          // Check already selected option
+          cy.contains('auto');
+        });
+      cy.get('@granularitySelect').click();
 
-        cy.wrap(cy.$$('body'))
-          .as('body')
-          .find('[aria-label="Select options menu"]')
-          .should('be.visible')
-          .within(() => {
-            const selectOptions = ['auto', 'DAYS', 'HOURS'];
+      cy.wrap(cy.$$('body'))
+        .as('body')
+        .find('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          const selectOptions = ['auto', 'DAYS', 'HOURS'];
 
-            selectOptions.forEach((option) => cy.contains(option));
+          selectOptions.forEach((option) => cy.contains(option));
 
-            // Select the option
-            if (formData.granularity) {
-              cy.contains(formData.granularity).click();
-              cy.wait('@dsQuery');
-            } else {
-              // Close the select menu
-              cy.get('@body').click(0, 0);
-            }
-          });
+          // Select the option
+          if (formData.granularity) {
+            cy.contains(formData.granularity).click();
+            cy.wait('@dsQuery');
+          } else {
+            // Close the select menu
+            cy.get('@body').click(0, 0);
+          }
+        });
 
-        // Check if correct option is selected
-        if (formData.granularity) {
-          cy.get('@granularitySelect').within(() => {
-            cy.contains(formData.granularity);
-          });
-        }
-      });
+      // Check if correct option is selected
+      if (formData.granularity) {
+        cy.get('@granularitySelect').within(() => {
+          cy.contains(formData.granularity);
+        });
+      }
+    });
 
     /**
      * Check and select Metric Column field
      */
-    cy.getBySel('select-metric-column')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Metric Column');
+    cy.getBySel('select-metric-column').should('exist');
+    cy.getBySel('select-metric-column').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Metric Column');
 
-        // Check select list options
-        cy.get('input')
-          .parent()
-          .parent()
-          .as('metricColumnSelect')
-          .within(() => {
-            // Check already selected option
-            cy.contains('clicks');
-          })
-          .click();
+      // Check select list options
+      cy.get('input')
+        .parent()
+        .parent()
+        .as('metricColumnSelect')
+        .within(() => {
+          // Check already selected option
+          cy.contains('clicks');
+        })
+        .click();
 
-        cy.wrap(cy.$$('body'))
-          .find('[aria-label="Select options menu"]')
-          .should('be.visible')
-          .within(() => {
-            const selectOptions = ctx.apiResponse.columns.result.filter((column) => column.isMetric);
-            selectOptions.forEach((option) => cy.contains(option.name));
+      cy.wrap(cy.$$('body'))
+        .find('[aria-label="Select options menu"]')
+        .should('be.visible')
+        .within(() => {
+          // TODO: Hard code the expected columns
+          const selectOptions = ctx.apiResponse.columns.result.filter((column) => column.isMetric);
+          selectOptions.forEach((option) => cy.contains(option.name));
 
-            cy.contains(formData.metricColumn).click();
-            cy.wait('@dsQuery');
-          });
-
-        // Check if correct option is selected
-        cy.get('@metricColumnSelect').within(() => {
-          cy.contains(formData.metricColumn);
+          cy.contains(formData.metricColumn).click();
+          cy.wait('@dsQuery');
         });
+
+      // Check if correct option is selected
+      cy.get('@metricColumnSelect').within(() => {
+        cy.contains(formData.metricColumn);
       });
+    });
 
     /**
      * Check and select Aggregation field
@@ -827,43 +809,37 @@ describe('Create and run pinot query using Explore', () => {
     /**
      * Check and fill Limit field
      */
-    cy.getBySel('input-limit')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
-
-        cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto').as('limitInput');
-
-        if (formData.limit != null) {
-          cy.get('@limitInput').type(formData.limit.toString());
-        }
-      });
+    cy.getBySel('input-limit').should('exist');
+    cy.getBySel('input-limit').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
+      cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto');
+      if (formData.limit != null) {
+        cy.get('input').type(formData.limit.toString());
+      }
+    });
 
     /**
      * Check Sql Preview Container
      */
-    cy.getBySel('sql-preview-container')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Sql Preview');
-
-        cy.getBySel('sql-preview').should('exist').and('not.be.empty');
-      });
+    cy.getBySel('sql-preview-container').should('exist');
+    cy.getBySel('sql-preview-container').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Sql Preview');
+      cy.getBySel('sql-preview').should('exist').and('not.be.empty');
+    });
 
     /**
      * Check and fill Metric Legend field
      */
-    cy.getBySel('metric-legend')
-      .should('exist')
-      .within(() => {
-        cy.getBySel('inline-form-label').should('exist').and('have.text', 'Legend');
+    cy.getBySel('metric-legend').should('exist');
+    cy.getBySel('metric-legend').within(() => {
+      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Legend');
 
-        cy.get('input').should('exist').as('metricLegendInput');
+      cy.get('input').should('exist').as('metricLegendInput');
 
-        if (formData.legend) {
-          cy.get('@metricLegendInput').type(formData.legend);
-        }
-      });
+      if (formData.legend) {
+        cy.get('@metricLegendInput').type(formData.legend);
+      }
+    });
 
     /**
      * Finally Run Query and check results
@@ -979,18 +955,17 @@ describe('Create and run pinot query using Explore', () => {
      * Change the Time Range
      */
     cy.get('[data-testid="data-testid TimePicker Open Button"]').should('exist').click();
-    cy.get('#TimePickerContent')
-      .should('be.visible')
-      .within(() => {
-        // Fill from time field
-        cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
+    cy.get('#TimePickerContent').should('be.visible');
+    cy.get('#TimePickerContent').within(() => {
+      // Fill from time field
+      cy.get('input[aria-label="Time Range from field"]').should('exist').clear().type('2024-04-01 00:00:00');
 
-        // Fill to time field
-        cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
+      // Fill to time field
+      cy.get('input[aria-label="Time Range to field"]').should('exist').clear().type('2024-09-30 23:59:59');
 
-        // Apply time range
-        cy.get('button').contains('Apply time range').click();
-      });
+      // Apply time range
+      cy.get('button').contains('Apply time range').click();
+    });
 
     /**
      * Check if No data message for graph and table is exist
