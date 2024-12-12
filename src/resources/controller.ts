@@ -1,5 +1,5 @@
 import { DataSource } from '../datasource';
-import { TableSchema } from '../types/TableSchema';
+import { TableSchema } from '../dataquery/TableSchema';
 import { useEffect, useState } from 'react';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { UseResourceResult } from './UseResourceResult';

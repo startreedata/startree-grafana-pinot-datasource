@@ -1,5 +1,5 @@
-import { PinotDataQuery } from '../types/PinotDataQuery';
-import { QueryType } from '../types/QueryType';
+import { PinotDataQuery } from '../dataquery/PinotDataQuery';
+import { QueryType } from '../dataquery/QueryType';
 import { VariableType } from '../components/VariableQueryEditor/SelectVariableType';
 import { ColumnTypes } from '../components/VariableQueryEditor/SelectColumnType';
 

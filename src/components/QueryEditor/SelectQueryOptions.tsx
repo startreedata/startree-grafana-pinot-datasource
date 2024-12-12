@@ -2,7 +2,7 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import { AccessoryButton } from '@grafana/experimental';
 import allLabels from '../../labels';
-import { QueryOption } from '../../types/QueryOption';
+import { QueryOption } from '../../dataquery/QueryOption';
 import { EditQueryOption } from './EditQueryOption';
 
 // ref https://docs.pinot.apache.org/users/user-guide-query/query-options

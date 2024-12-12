@@ -1,6 +1,6 @@
 import { FormLabel } from './FormLabel';
 import { RadioButtonGroup } from '@grafana/ui';
-import { QueryType } from '../../types/QueryType';
+import { QueryType } from '../../dataquery/QueryType';
 import React from 'react';
 import allLabels from '../../labels';
 

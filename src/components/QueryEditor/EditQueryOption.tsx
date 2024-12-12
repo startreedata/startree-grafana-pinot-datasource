@@ -1,5 +1,5 @@
 import React, { ChangeEvent, useEffect, useState } from 'react';
-import { QueryOption } from '../../types/QueryOption';
+import { QueryOption } from '../../dataquery/QueryOption';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { Input, Select } from '@grafana/ui';
 import { styles } from '../../styles';

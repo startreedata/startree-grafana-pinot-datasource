@@ -2,7 +2,7 @@ import { SqlEditor } from './SqlEditor';
 import React from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
-import { PinotDataQuery } from '../../types/PinotDataQuery';
+import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { SqlPreview } from './SqlPreview';
 import { DisplayTypeLogs, DisplayTypeTable, DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
 import { DateTime } from '@grafana/data';
@@ -44,6 +44,7 @@ export function PinotQlCode(props: {
           <SelectTable
             options={resources.tables}
             selected={savedParams.tableName}
+            isLoading={resources.isTablesLoading}
             onChange={(tableName) => onChange({ ...savedParams, tableName })}
           />
         </div>

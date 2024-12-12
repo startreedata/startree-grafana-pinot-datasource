@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { PinotConnectionConfig, PinotSecureConfig } from '../../types/PinotConnectionConfig';
+import { PinotConnectionConfig, PinotSecureConfig } from '../../dataquery/PinotConnectionConfig';
 import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';

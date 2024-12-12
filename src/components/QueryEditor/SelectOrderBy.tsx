@@ -2,10 +2,10 @@ import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 import { MultiSelect } from '@grafana/ui';
 import React from 'react';
-import { OrderByClause } from '../../types/OrderByClause';
+import { OrderByClause } from '../../dataquery/OrderByClause';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
 
 export function SelectOrderBy(props: {
   selected: OrderByClause[];

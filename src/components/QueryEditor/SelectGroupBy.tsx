@@ -4,7 +4,7 @@ import { SelectableValue } from '@grafana/data';
 import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
-import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
 import { Column } from '../../resources/columns';
 
 export function SelectGroupBy(props: {

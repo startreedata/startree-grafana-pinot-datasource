@@ -1,11 +1,11 @@
-import { DimensionFilter } from '../types/DimensionFilter';
+import { DimensionFilter } from '../dataquery/DimensionFilter';
 import { DataSource } from '../datasource';
-import { OrderByClause } from '../types/OrderByClause';
-import { QueryOption } from '../types/QueryOption';
+import { OrderByClause } from '../dataquery/OrderByClause';
+import { QueryOption } from '../dataquery/QueryOption';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { QueryDistinctValuesRequest } from './distinctValues';
 import { DateTime } from '@grafana/data';
-import { ComplexField } from '../types/ComplexField';
+import { ComplexField } from '../dataquery/ComplexField';
 
 type PreviewSqlResponse = PinotResourceResponse<string>;
 

@@ -1,6 +1,6 @@
 import { DataSource } from '../datasource';
 import { DateTime } from '@grafana/data';
-import { DimensionFilter } from '../types/DimensionFilter';
+import { DimensionFilter } from '../dataquery/DimensionFilter';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { useEffect, useState } from 'react';
 import { UseResourceResult } from './UseResourceResult';
@@ -21,9 +21,24 @@ export interface ListColumnsRequest {
   filters?: DimensionFilter[];
 }
 
-export function useColumns(datasource: DataSource, request: ListColumnsRequest): UseResourceResult<Column[]> {
+export function useColumns(
+  datasource: DataSource,
+  { tableName, timeColumn, timeRange, filters }: ListColumnsRequest
+): UseResourceResult<Column[]> {
   const [result, setResult] = useState<Column[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const request: ListColumnsRequest = {
+    tableName: tableName,
+  };
+
+  // Only need these params if the table has map columns.
+  if (result.length === 0 || result.filter(({ key }) => !key).length === 0) {
+    request.timeColumn = timeColumn;
+    request.timeRange = timeRange;
+    request.filters = filters;
+  }
+
   useEffect(() => {
     if (request.tableName) {
       setLoading(true);

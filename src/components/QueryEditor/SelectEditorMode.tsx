@@ -1,13 +1,24 @@
 import { ConfirmModal } from './ConfirmModal';
-import { EditorMode } from '../../types/EditorMode';
+import { EditorMode } from '../../dataquery/EditorMode';
 import { RadioButtonGroup } from '@grafana/ui';
 import React, { useState } from 'react';
-import {builderGroupByColumnsFrom, builderMetricColumnFrom, PinotDataQuery} from '../../types/PinotDataQuery';
+import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { DisplayTypeTimeSeries } from './SelectDisplayType';
 import { previewSqlBuilder } from '../../resources/previewSql';
-import { QueryType } from '../../types/QueryType';
+import { QueryType } from '../../dataquery/QueryType';
+import { builderParamsFrom } from '../../pinotql/builderParams';
+import { dataQueryWithCodeParams } from '../../pinotql/codeParams';
+import { columnLabelOf } from '../../dataquery/ComplexField';
+
+//language=text
+const defaultSql = `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("timestamp")
+GROUP BY $__timeGroup("timestamp")
+ORDER BY $__timeAlias() DESC
+LIMIT 100000`;
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
@@ -50,38 +61,35 @@ export function SelectEditorMode(props: {
             if (value === EditorMode.Builder) {
               setShowConfirm(true);
             }
+            const builderParams = builderParamsFrom(query);
 
             if (value === EditorMode.Code) {
               previewSqlBuilder(datasource, {
                 intervalSize: intervalSize,
                 timeRange: timeRange,
                 expandMacros: false,
-                aggregationFunction: query.aggregationFunction,
-                groupByColumns: builderGroupByColumnsFrom(query),
-                metricColumn: builderMetricColumnFrom(query),
-                tableName: query.tableName,
-                timeColumn: query.timeColumn,
-                filters: query.filters,
-                limit: query.limit,
-                granularity: query.granularity,
-                orderBy: query.orderBy,
-                queryOptions: query.queryOptions,
+                aggregationFunction: builderParams.aggregationFunction,
+                groupByColumns: builderParams.groupByColumns,
+                metricColumn: builderParams.metricColumn,
+                tableName: builderParams.tableName,
+                timeColumn: builderParams.timeColumn,
+                filters: builderParams.filters,
+                limit: builderParams.limit,
+                granularity: builderParams.granularity,
+                orderBy: builderParams.orderBy,
+                queryOptions: builderParams.queryOptions,
               }).then((sql) =>
-                onChange({
-                  ...query,
-                  editorMode: EditorMode.Code,
-                  displayType: DisplayTypeTimeSeries,
-                  timeColumnAlias: 'time',
-                  metricColumnAlias: query.metricColumn,
-                  pinotQlCode:
-                    sql ||
-                      `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("timestamp")
-GROUP BY $__timeGroup("timestamp")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000`,
-                })
+                onChange(
+                  dataQueryWithCodeParams(query, {
+                    displayType: DisplayTypeTimeSeries,
+                    tableName: builderParams.tableName,
+                    timeColumnAlias: 'time',
+                    metricColumnAlias: columnLabelOf(builderParams.metricColumn.name, builderParams.metricColumn.key),
+                    logColumnAlias: '',
+                    legend: builderParams.legend,
+                    pinotQlCode: sql || defaultSql,
+                  })
+                )
               );
             }
           }}

@@ -1,6 +1,6 @@
 import { canRunCodeQuery, CodeParams, codeParamsFrom, dataQueryWithCodeParams } from './codeParams';
 import { DisplayTypeLogs, DisplayTypeTimeSeries } from '../components/QueryEditor/SelectDisplayType';
-import { PinotDataQuery } from '../types/PinotDataQuery';
+import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 
 const newEmptyParams = (): CodeParams => {
   return {

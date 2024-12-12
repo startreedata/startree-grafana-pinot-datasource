@@ -1,7 +1,7 @@
-import { PinotDataQuery } from '../types/PinotDataQuery';
+import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import { DisplayTypeTimeSeries } from '../components/QueryEditor/SelectDisplayType';
-import { QueryType } from '../types/QueryType';
-import { EditorMode } from '../types/EditorMode';
+import { QueryType } from '../dataquery/QueryType';
+import { EditorMode } from '../dataquery/EditorMode';
 
 export interface CodeParams {
   displayType: string;

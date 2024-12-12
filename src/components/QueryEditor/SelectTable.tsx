@@ -4,8 +4,13 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 
-export function SelectTable(props: { selected: string; options: string[]; onChange: (val: string) => void }) {
-  const { selected, options, onChange } = props;
+export function SelectTable(props: {
+  selected: string;
+  options: string[];
+  isLoading: boolean;
+  onChange: (val: string) => void;
+}) {
+  const { selected, options, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.table;
 
   if (options && options?.length === 1 && selected !== options[0]) {
@@ -22,6 +27,7 @@ export function SelectTable(props: { selected: string; options: string[]; onChan
         invalid={!selected}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected || null}
+        isLoading={isLoading}
         onChange={(change) => onChange(change.value || '')}
       />
     </>

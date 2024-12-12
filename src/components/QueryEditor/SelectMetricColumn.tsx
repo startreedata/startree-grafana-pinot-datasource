@@ -4,7 +4,7 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { Column } from '../../resources/columns';
-import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
 
 export function SelectMetricColumn(props: {
   selected: ComplexField | undefined;

@@ -1,13 +1,13 @@
-import { ComplexField } from '../types/ComplexField';
-import { DimensionFilter } from '../types/DimensionFilter';
-import { OrderByClause } from '../types/OrderByClause';
-import { QueryOption } from '../types/QueryOption';
-import { PinotDataQuery } from '../types/PinotDataQuery';
+import { ComplexField } from '../dataquery/ComplexField';
+import { DimensionFilter } from '../dataquery/DimensionFilter';
+import { OrderByClause } from '../dataquery/OrderByClause';
+import { QueryOption } from '../dataquery/QueryOption';
+import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import { AggregationFunction } from '../components/QueryEditor/SelectAggregation';
 import { Column } from '../resources/columns';
 import { isEmpty } from 'lodash';
-import { QueryType } from '../types/QueryType';
-import { EditorMode } from '../types/EditorMode';
+import { QueryType } from '../dataquery/QueryType';
+import { EditorMode } from '../dataquery/EditorMode';
 
 export interface BuilderParams {
   tableName: string;
@@ -70,14 +70,18 @@ export function applyBuilderDefaults(
     timeColumns: Column[];
     metricColumns: Column[];
   }
-) {
+) :boolean {
+  let changed = false
   if (!params.timeColumn && resources.timeColumns.length > 0) {
+    changed = true;
     params.timeColumn = resources.timeColumns[0].name;
   }
 
   if (!params.metricColumn?.name && resources.metricColumns.length > 0) {
+    changed = true;
     params.metricColumn = { name: resources.metricColumns[0].name, key: resources.metricColumns[0].key || undefined };
   }
+  return changed
 }
 
 export function dataQueryWithBuilderParams(query: PinotDataQuery, params: BuilderParams): PinotDataQuery {

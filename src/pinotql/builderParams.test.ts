@@ -6,9 +6,9 @@ import {
   dataQueryWithBuilderParams,
 } from './builderParams';
 import { Column } from '../resources/columns';
-import { PinotDataQuery } from '../types/PinotDataQuery';
-import { QueryType } from '../types/QueryType';
-import { EditorMode } from '../types/EditorMode';
+import { PinotDataQuery } from '../dataquery/PinotDataQuery';
+import { QueryType } from '../dataquery/QueryType';
+import { EditorMode } from '../dataquery/EditorMode';
 
 const newEmptyParams = (): BuilderParams => ({
   tableName: '',
@@ -187,7 +187,7 @@ describe('applyBuilderDefaults', () => {
 
   test('emptyParams', () => {
     const params = newEmptyParams();
-    applyBuilderDefaults(params, { timeColumns, metricColumns });
+    expect(applyBuilderDefaults(params, { timeColumns, metricColumns })).toEqual(true);
     expect(params).toEqual<BuilderParams>({
       tableName: '',
       timeColumn: 'ts',
@@ -217,7 +217,7 @@ describe('applyBuilderDefaults', () => {
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column' }],
     };
-    applyBuilderDefaults(params, { timeColumns, metricColumns });
+    expect(applyBuilderDefaults(params, { timeColumns, metricColumns })).toEqual(false);
     expect(params).toEqual<BuilderParams>({
       tableName: 'test_table',
       timeColumn: 'test_time_column',

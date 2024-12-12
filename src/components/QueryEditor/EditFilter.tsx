@@ -3,11 +3,11 @@ import { DateTime, SelectableValue } from '@grafana/data';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { MultiSelect, Select } from '@grafana/ui';
 import React, { useState } from 'react';
-import { PinotDataType, PinotDataTypes } from '../../types/PinotDataType';
-import { DimensionFilter } from '../../types/DimensionFilter';
+import { PinotDataType, PinotDataTypes } from '../../dataquery/PinotDataType';
+import { DimensionFilter } from '../../dataquery/DimensionFilter';
 import { queryDistinctValuesForFilters } from '../../resources/distinctValues';
 import { Column } from '../../resources/columns';
-import { columnLabelOf } from '../../types/ComplexField';
+import { columnLabelOf } from '../../dataquery/ComplexField';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },

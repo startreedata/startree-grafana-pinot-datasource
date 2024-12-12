@@ -13,8 +13,8 @@ import { SelectQueryOptions } from './SelectQueryOptions';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
-import { columnLabelOf } from '../../types/ComplexField';
-import { applyBuilderDefaults, canRunBuilderQuery, BuilderParams } from '../../pinotql/builderParams';
+import { columnLabelOf } from '../../dataquery/ComplexField';
+import { applyBuilderDefaults, BuilderParams, canRunBuilderQuery } from '../../pinotql/builderParams';
 import { useBuilderResources } from '../../pinotql/builderResources';
 
 export function PinotQlBuilder(props: {
@@ -29,7 +29,6 @@ export function PinotQlBuilder(props: {
   const { timeRange, intervalSize, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
 
   const resources = useBuilderResources(datasource, timeRange, intervalSize, interpolatedParams);
-  applyBuilderDefaults(savedParams, resources);
 
   const onChangeAndRun = (newParams: BuilderParams) => {
     onChange(newParams);
@@ -38,6 +37,10 @@ export function PinotQlBuilder(props: {
     }
   };
 
+  if (applyBuilderDefaults(savedParams, resources)) {
+    onChangeAndRun({ ...savedParams });
+  }
+
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -45,6 +48,7 @@ export function PinotQlBuilder(props: {
           <SelectTable
             options={resources.tables}
             selected={savedParams.tableName}
+            isLoading={resources.isTablesLoading}
             onChange={(tableName) => onChange({ ...savedParams, tableName })}
           />
         </div>
