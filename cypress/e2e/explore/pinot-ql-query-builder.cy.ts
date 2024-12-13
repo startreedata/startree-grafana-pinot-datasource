@@ -1,11 +1,6 @@
 import { EnvVariables } from '../../support/constants/env-variables';
 
 describe('Visualize With Query Builder in Explore', () => {
-  const ctx: ExplorePinotTestCtx = {
-    newlyCreatedDatasourceUid: null,
-    apiResponse: {},
-  };
-
   beforeEach(() => {
     cy.createPinotDatasource({
       controllerUrl: Cypress.env(EnvVariables.pinotConnectionControllerUrl),
@@ -36,7 +31,7 @@ describe('Visualize With Query Builder in Explore', () => {
 
     cy.getBySel('select-query-type').should('exist');
     cy.getBySel('select-query-type').within(() => {
-      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Query Type');
+      cy.checkFormLabel({ wantLabel: 'Query Type' });
       cy.get('input[type="radio"]').should('exist');
       cy.get('input[type="radio"]')
         .parent()
@@ -58,21 +53,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   };
 
-  const formData = {
-    table: 'complex_website',
-    timeColumn: 'hoursSinceEpoch',
-    granularity: null,
-    metricColumn: 'views',
-    aggregation: 'SUM',
-    groupBy: ['country'],
-    orderBy: [],
-    filters: [{ column: 'country', operator: '=', value: 'CN' }],
-    queryOptions: [],
-    limit: 1000,
-    legend: null,
-  };
-
-  it('Fully populates the table dropdown', () => {
+  it('Populates the table dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
 
     cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
@@ -88,7 +69,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the time column dropdown', () => {
+  it('Populates the time column dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
@@ -108,7 +89,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the granularity dropdown', () => {
+  it('Populates the granularity dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
     cy.intercept('POST', '/api/datasources/*/resources/granularities').as('resourcesGranularities');
@@ -132,7 +113,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the metric column dropdown', () => {
+  it('Populates the metric column dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
@@ -152,7 +133,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the aggregation dropdown', () => {
+  it('Populates the aggregation dropdown', () => {
     cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
       setupExplore(ds.name);
     });
@@ -164,7 +145,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the group by dropdown', () => {
+  it('Populates the group by dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
@@ -186,7 +167,7 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Fully populates the order by dropdown', () => {
+  it('Populates the order by dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
@@ -205,12 +186,114 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.checkDropdown({
       testId: 'select-order-by',
       wantLabel: 'Order By',
-      wantSelected: '',
       wantOptions: ['country asc', 'country desc', 'browser asc', 'browser desc'],
     });
   });
 
-  it('Renders graph with minimum selected fields', () => {
+  it('Populates all dropdowns for the query options editor', () => {
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
+      setupExplore(ds.name);
+    });
+
+    cy.getBySel('select-query-options').should('exist');
+    cy.getBySel('select-query-options').within(() => {
+      cy.wrap(cy.$$('body')).as('body');
+
+      // Check form label
+      cy.checkFormLabel({ wantLabel: 'Query Options' });
+
+      // Check add query option button
+      cy.getBySel('add-query-option-btn').should('exist').as('addQueryOptionBtn');
+      cy.getBySel('add-query-option-btn').click();
+
+      // -- Check query option row --
+      cy.getBySel('query-option-row').should('exist');
+      cy.getBySel('query-option-row').within(() => {
+        cy.getBySel('set-label').should('exist').and('have.text', 'SET');
+
+        // Check query option select
+        cy.checkDropdown({
+          testId: 'query-option-select-name',
+          wantOptions: [
+            'timeoutMs',
+            'enableNullHandling',
+            'explainPlanVerbose',
+            'useMultistageEngine',
+            'maxExecutionThreads',
+            'numReplicaGroupsToQuery',
+            'minSegmentGroupTrimSize',
+            'minServerGroupTrimSize',
+            'skipIndexes',
+            'skipUpsert',
+            'useStarTree',
+            'maxRowsInJoin',
+            'inPredicatePreSorted',
+            'inPredicateLookupAlgorithm',
+            'maxServerResponseSizeBytes',
+            'maxQueryResponseSizeBytes',
+          ],
+        });
+
+        cy.getBySel('operator-label').should('exist').and('have.text', '=');
+
+        cy.checkTextField({ testId: 'query-option-value-input', wantContent: '' });
+
+        cy.getBySel('delete-query-option-btn').should('exist');
+        cy.getBySel('delete-query-option-btn').click({ force: true });
+      });
+      cy.getBySel('query-option-row').should('not.exist');
+    });
+  });
+
+  it('Populates all dropdowns for the filter editor', () => {
+    cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
+    cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
+    cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
+
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
+      setupExplore(ds.name);
+    });
+
+    cy.wait('@resourcesTables');
+    cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
+
+    cy.wait('@resourcesColumns');
+    cy.selectFromDropdown({ testId: 'select-time-column', value: 'hoursSinceEpoch' });
+
+    cy.getBySel('select-filters').should('exist');
+    cy.getBySel('select-filters').within(() => {
+      cy.wrap(cy.$$('body')).as('body');
+      cy.checkFormLabel({ wantLabel: 'Filters' });
+
+      cy.getBySel('add-filter-btn').should('exist').as('addFilterBtn');
+      cy.getBySel('add-filter-btn').click();
+
+      cy.getBySel('filter-row').should('exist');
+      cy.getBySel('filter-row').within(() => {
+        cy.checkDropdown({ testId: 'query-filter-column-select', wantOptions: [`country`, `browser`] });
+        cy.selectFromDropdown({ testId: 'query-filter-column-select', value: `country` });
+
+        cy.checkDropdown({
+          testId: 'query-filter-operator-select',
+          wantOptions: ['=', '!=', '>', '>=', '<', '<=', 'like', 'not like'],
+        });
+        cy.selectFromDropdown({ testId: 'query-filter-operator-select', value: '!=' });
+
+        cy.checkDropdown({
+          testId: 'query-filter-value-select',
+          wantOptions: [`'US'`, `'CN'`],
+        });
+        cy.selectFromDropdown({ testId: 'query-filter-value-select', value: `'US'` });
+
+        cy.getBySel('delete-filter-btn').should('exist');
+        cy.getBySel('delete-filter-btn').click();
+      });
+
+      cy.getBySel('filter-row').should('not.exist');
+    });
+  });
+
+  it('Renders graph and table with minimum fields', () => {
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
@@ -232,7 +315,7 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.get('[aria-label="Explore Table"]').should('exist');
   });
 
-  it('Graph and Table should render using Pinot Query Builder', () => {
+  it('Renders graph and tables with all fields', () => {
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
@@ -253,367 +336,68 @@ describe('Visualize With Query Builder in Explore', () => {
 
     cy.wait('@resourcesGranularities');
     cy.selectFromDropdown({ testId: 'select-granularity', value: 'HOURS' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
 
     cy.selectFromDropdown({ testId: 'select-metric-column', value: 'clicks' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
     cy.selectFromDropdown({ testId: 'select-aggregation', value: 'AVG' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
     cy.selectFromDropdown({ testId: 'select-group-by', value: 'country' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
     cy.selectFromDropdown({ testId: 'select-group-by', value: 'browser' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
     cy.selectFromDropdown({ testId: 'select-order-by', value: 'browser asc' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
+
     cy.selectFromDropdown({ testId: 'select-order-by', value: 'country asc' });
+    cy.wait(['@dsQuery', '@previewSqlBuilder']);
 
-    /**
-     * Check and select Filters field
-     */
-    cy.getBySel('select-filters').should('exist');
-    cy.getBySel('select-filters').within(() => {
-      cy.wrap(cy.$$('body')).as('body');
+    cy.pinotQlBuilder_AddQueryFilter({ columnName: 'country', operator: '!=', values: ['US'] });
+    cy.pinotQlBuilder_AddQueryOptions({ name: 'timeoutMs', value: '1000' });
 
-      // Check form label
-      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Filters');
+    cy.checkTextField({ testId: 'input-limit', wantLabel: 'Limit', wantContent: '', wantPlaceholder: 'auto' });
+    cy.fillTextField({ testId: 'input-limit', content: '100' });
 
-      // Check add filter button
-      cy.getBySel('add-filter-btn').should('exist').as('addFilterBtn');
-      cy.getBySel('add-filter-btn').click();
-      cy.wait(['@dsQuery', '@previewSqlBuilder']);
+    cy.checkTextField({ testId: 'metric-legend', wantLabel: 'Legend', wantContent: '' });
+    cy.fillTextField({ testId: 'metric-legend', content: 'legend' });
 
-      // -- Check filter row --
-      cy.getBySel('filter-row').should('exist');
-      cy.getBySel('filter-row').within(() => {
-        // -- Check select column --
-        cy.get('#column-select').should('exist');
-        cy.get('#column-select').within(() => {
-          cy.get('input').should('exist');
-          cy.get('input')
-            .parent()
-            .parent()
-            .within(() => {
-              cy.contains('Select column');
-            });
-          cy.get('input').parent().parent().click();
+    cy.pinotQlBuilder_CheckSqlPreview(`SET timeoutMs=1000;
 
-          cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-          cy.get('@body')
-            .find('[aria-label="Select options menu"]')
-            .within(() => {
-              const selectOptions = ctx.apiResponse.columns.result.filter(
-                (col) => col.name !== formData.metricColumn && !col.isTime
-              );
-              selectOptions.forEach((option) => cy.contains(option.name));
-
-              // Close select menu
-              cy.get('@body').click(0, 0);
-            });
-        });
-
-        // -- Check query segment operator select --
-        cy.get('#query-segment-operator-select').should('exist');
-        cy.get('#query-segment-operator-select').within(() => {
-          cy.get('input').should('exist');
-          cy.get('input')
-            .parent()
-            .parent()
-            .within(() => {
-              cy.contains('Choose');
-            });
-          cy.get('input').parent().parent().click();
-
-          cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-          cy.get('@body')
-            .find('[aria-label="Select options menu"]')
-            .within(() => {
-              const selectOptions = ['=', '!=', '>', '>=', '<', '<=', 'like', 'not like'];
-
-              selectOptions.forEach((option) => cy.contains(option));
-
-              // Close select menu
-              cy.get('@body').click(0, 0);
-            });
-        });
-
-        // -- Check value select --
-        cy.get('#value-select').should('exist');
-        cy.get('#value-select').within(() => {
-          cy.get('input').should('exist');
-          cy.get('input')
-            .parent()
-            .parent()
-            .within(() => {
-              cy.contains('Select value');
-            });
-          cy.get('input').parent().parent().click();
-
-          cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-          cy.get('@body')
-            .find('[aria-label="Select options menu"]')
-            .within(() => {
-              const selectOptions = ['No options found'];
-
-              selectOptions.forEach((option) => cy.contains(option));
-
-              // Close select menu
-              cy.get('@body').click(0, 0);
-            });
-        });
-
-        // -- Check filter delete button --
-        cy.getBySel('delete-filter-btn').should('exist');
-        cy.getBySel('delete-filter-btn').click();
-        cy.wait(['@dsQuery', '@previewSqlBuilder']);
-      });
-
-      // Check filter row should not exits after deleting the row
-      cy.getBySel('filter-row').should('not.exist');
-
-      // -- Add the form data if any --
-      if (formData.filters && formData.filters.length > 0) {
-        formData.filters.forEach((filterOption) => {
-          // Add filter row
-          cy.get('@addFilterBtn').click();
-          cy.wait(['@dsQuery', '@previewSqlBuilder']);
-
-          // -- Check filter row --
-          cy.getBySel('filter-row').should('exist');
-          cy.getBySel('filter-row').within(() => {
-            // Select column
-            cy.get('#column-select').within(() => {
-              cy.get('input').parent().parent().as('columnSelect').click();
-
-              cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-              cy.get('@body')
-                .find('[aria-label="Select options menu"]')
-                .within(() => {
-                  // Select the option
-                  cy.contains(filterOption.column).click();
-                  cy.wait('@dsQuery');
-                });
-
-              // Check if the option is selected
-              cy.get('@columnSelect').within(() => {
-                cy.contains(filterOption.column);
-              });
-            });
-
-            // Select query segment operator
-            cy.get('#query-segment-operator-select').within(() => {
-              cy.get('input')
-                .parent()
-                .parent()
-                .as('querySegmentOperatorSelect')
-                .within(() => {
-                  // Check pre selected option
-                  cy.contains('=');
-                });
-              cy.get('@querySegmentOperatorSelect').click();
-
-              cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-              cy.get('@body')
-                .find('[aria-label="Select options menu"]')
-                .within(() => {
-                  // Select the option
-                  cy.contains(filterOption.operator).click();
-                  cy.wait('@dsQuery');
-                });
-
-              // Check if the option is selected
-              cy.get('@querySegmentOperatorSelect').within(() => {
-                cy.contains(filterOption.operator);
-              });
-            });
-
-            // Select value
-            cy.get('#value-select').within(() => {
-              cy.get('input').parent().parent().as('valueSelect').click();
-
-              cy.wait('@queryDistinctValues').then(({ response }) => {
-                const data = response.body as { code: number; result: string[] };
-                cy.log('data: ', data);
-
-                cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-                cy.get('@body')
-                  .find('[aria-label="Select options menu"]')
-                  .within(() => {
-                    // Check the available options
-                    data.result.forEach((valueExpr) => {
-                      cy.contains(valueExpr);
-                    });
-
-                    // Select the option
-                    cy.contains(filterOption.value).click();
-                    cy.wait('@dsQuery');
-                  });
-              });
-
-              // Check if the option is selected
-              cy.get('@valueSelect').within(() => {
-                cy.contains(filterOption.value);
-              });
-            });
-          });
-        });
-      }
-    });
-
-    /**
-     * Check and select Query Option field
-     */
-    cy.getBySel('select-query-options').should('exist');
-    cy.getBySel('select-query-options').within(() => {
-      cy.wrap(cy.$$('body')).as('body');
-
-      // Check form label
-      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Query Options');
-
-      // Check add query option button
-      cy.getBySel('add-query-option-btn').should('exist').as('addQueryOptionBtn');
-      cy.getBySel('add-query-option-btn').click();
-      cy.wait(['@dsQuery', '@previewSqlBuilder']);
-
-      // -- Check query option row --
-      cy.getBySel('query-option-row').should('exist');
-      cy.getBySel('query-option-row').within(() => {
-        // Check SET label
-        cy.getBySel('set-label').should('exist').and('have.text', 'SET');
-
-        // Check query option select
-        cy.get('#query-option-select').should('exist');
-        cy.get('#query-option-select').within(() => {
-          cy.get('input').should('exist');
-          cy.get('input')
-            .parent()
-            .parent()
-            .within(() => {
-              cy.contains('Choose');
-            });
-          cy.get('input').click();
-
-          cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-          cy.get('@body')
-            .find('[aria-label="Select options menu"]')
-            .within(() => {
-              const selectOptions = [
-                'timeoutMs',
-                'enableNullHandling',
-                'explainPlanVerbose',
-                'useMultistageEngine',
-                'maxExecutionThreads',
-                'numReplicaGroupsToQuery',
-                'minSegmentGroupTrimSize',
-                'minServerGroupTrimSize',
-                'skipIndexes',
-                'skipUpsert',
-                'useStarTree',
-                'maxRowsInJoin',
-                'inPredicatePreSorted',
-                'inPredicateLookupAlgorithm',
-                'maxServerResponseSizeBytes',
-                'maxQueryResponseSizeBytes',
-              ];
-
-              selectOptions.forEach((option) => cy.contains(option));
-
-              // Close select menu
-              cy.get('@body').click(0, 0);
-            });
-        });
-
-        // Check operator label
-        cy.getBySel('operator-label').should('exist').and('have.text', '=');
-
-        // Check query option input value
-        cy.get('#query-option-value-input').should('exist');
-
-        // Check query option delete button
-        cy.getBySel('delete-query-option-btn').should('exist');
-        cy.getBySel('delete-query-option-btn').click();
-        cy.wait(['@dsQuery', '@previewSqlBuilder']);
-      });
-
-      // Check query option row should not exits after deleting the row
-      cy.getBySel('query-option-row').should('not.exist');
-
-      // -- Add the form data if any --
-      if (formData.queryOptions && formData.queryOptions.length > 0) {
-        formData.queryOptions.forEach((queryOption) => {
-          // Add query option row
-          cy.get('@addQueryOptionBtn').click();
-          cy.wait(['@dsQuery', '@previewSqlBuilder']);
-
-          // -- Check query option row --
-          cy.getBySel('query-option-row').should('exist');
-          cy.getBySel('query-option-row').within(() => {
-            // Select the query option
-            cy.get('#query-option-select').within(() => {
-              cy.get('input').parent().parent().click();
-
-              cy.get('@body').find('[aria-label="Select options menu"]').should('be.visible');
-              cy.get('@body')
-                .find('[aria-label="Select options menu"]')
-                .within(() => {
-                  // Select the option
-                  cy.contains(queryOption.option).click();
-                  cy.wait('@dsQuery');
-                });
-            });
-
-            // Fill the input value
-            cy.get('#query-option-value-input').type(queryOption.value.toString());
-            cy.wait(['@dsQuery', '@previewSqlBuilder']);
-          });
-        });
-      }
-    });
-
-    /**
-     * Check and fill Limit field
-     */
-    cy.getBySel('input-limit').should('exist');
-    cy.getBySel('input-limit').within(() => {
-      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Limit');
-      cy.get('input').should('exist').and('have.attr', 'placeholder', 'auto');
-      if (formData.limit != null) {
-        cy.get('input').type(formData.limit.toString());
-      }
-    });
-
-    /**
-     * Check Sql Preview Container
-     */
-    cy.pinotQlBuilder_CheckSqlPreview();
-
-    /**
-     * Check and fill Metric Legend field
-     */
-    cy.getBySel('metric-legend').should('exist');
-    cy.getBySel('metric-legend').within(() => {
-      cy.getBySel('inline-form-label').should('exist').and('have.text', 'Legend');
-
-      cy.get('input').should('exist').as('metricLegendInput');
-
-      if (formData.legend) {
-        cy.get('@metricLegendInput').type(formData.legend);
-      }
-    });
-
-    /**
-     * Finally Run Query and check results
-     */
+SELECT
+    "country",
+    "browser",
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "time",
+    AVG("clicks") AS "metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 475540 AND "hoursSinceEpoch" < 479932
+    AND ("country" != 'US')
+GROUP BY
+    "country",
+    "browser",
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')
+ORDER BY
+    "browser" ASC,
+    "country" ASC
+LIMIT 100;`);
 
     cy.getBySel('query-editor-header').should('exist');
     cy.getBySel('query-editor-header').within(() => {
-      cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query').as('runQueryBtn');
-
-      cy.get('@runQueryBtn').click();
-      cy.wait('@dsQuery', { timeout: 5000 });
-      cy.wait('@previewSqlBuilder');
-
-      // Check the No data message for graph and table should not exist
-      cy.getBySel('explore-no-data').should('not.exist');
-
-      // Check the Graph div
-      cy.get('div').contains('Graph').should('exist');
-
-      // Check the Table div
-      cy.get('[aria-label="Explore Table"]').should('exist');
+      cy.getBySel('run-query-btn').should('exist').and('have.text', 'Run Query');
+      cy.getBySel('run-query-btn').click();
     });
+
+    cy.wait('@dsQuery', { timeout: 5000 });
+    cy.wait('@previewSqlBuilder');
+
+    cy.getBySel('explore-no-data').should('not.exist');
+
+    cy.get('div').contains('Graph').should('exist');
+    cy.get('[aria-label="Explore Table"]').should('exist');
   });
 });

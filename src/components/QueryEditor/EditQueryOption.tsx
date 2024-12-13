@@ -25,24 +25,26 @@ export function EditQueryOption(props: {
       <div style={{ padding: 6 }} data-testid="set-label">
         <span>SET</span>
       </div>
-      <Select
-        id="query-option-select"
-        width="auto"
-        value={queryOption.name}
-        allowCustomValue
-        options={selectableNames.map((name) => ({ label: name, value: name }))}
-        onChange={(change) => onChange({ ...queryOption, name: change.value })}
-      />
+      <div data-testid="query-option-select-name">
+        <Select
+          width="auto"
+          value={queryOption.name}
+          allowCustomValue
+          options={selectableNames.map((name) => ({ label: name, value: name }))}
+          onChange={(change) => onChange({ ...queryOption, name: change.value })}
+        />
+      </div>
       <div style={{ padding: 6 }} data-testid="operator-label">
         <span>=</span>
       </div>
-      <Input
-        id="query-option-value-input"
-        className={`${styles.QueryEditor.inputForm}`}
-        value={value}
-        onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
-      />
-      <AccessoryButton data-testid="delete-query-option-btn" icon="times" variant="secondary" onClick={onDelete} />
+      <div data-testid="query-option-value-input">
+        <Input
+          className={`${styles.QueryEditor.inputForm}`}
+          value={value}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
+        />
+        <AccessoryButton data-testid="delete-query-option-btn" icon="times" variant="secondary" onClick={onDelete} />
+      </div>
     </InputGroup>
   );
 }

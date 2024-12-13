@@ -45,16 +45,33 @@ declare namespace Cypress {
 
     checkDropdown(params: {
       testId: string;
-      wantLabel: string;
-      wantSelected: string;
-      wantOptions: string[];
+      wantLabel?: string;
+      wantSelected?: string;
+      wantOptions?: string[];
     }): Cypress.Chainable<void>;
 
     selectFromDropdown(params: { testId: string; value: string }): Cypress.Chainable<void>;
 
     pinotQlBuilder_CheckSqlPreview(want?: string): Cypress.Chainable<void>;
 
-    fillLegend(legend?: string): Cypress.Chainable<void>;
+    fillTextField(params: { testId: string; content: string }): Cypress.Chainable<void>;
+
+    checkTextField(params: {
+      testId: string;
+      wantLabel?: string;
+      wantContent?: string;
+      wantPlaceholder?: string;
+    }): Cypress.Chainable<void>;
+
+    checkFormLabel(params: { wantLabel: string }): Cypress.Chainable<void>;
+
+    pinotQlBuilder_AddQueryOptions(params: { name: string; value: string }): Cypress.Chainable<void>;
+
+    pinotQlBuilder_AddQueryFilter(params: {
+      columnName: string;
+      operator: string;
+      values: string[];
+    }): Cypress.Chainable<void>;
   }
 }
 
