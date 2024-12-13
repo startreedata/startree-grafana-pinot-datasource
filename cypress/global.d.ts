@@ -27,13 +27,7 @@ declare namespace Cypress {
       options?: Partial<Loggable & Timeoutable & Withinable & Shadow>
     ): Chainable<JQuery<HTMLElement>>;
 
-    createPinotDatasource(params: {
-      controllerUrl: string;
-      brokerUrl: string;
-      databaseName: string;
-      authType: string;
-      authToken: string;
-    }): Cypress.Chainable<{ name: string; uid: string }>;
+    createPinotDatasource(): Cypress.Chainable<{ name: string; uid: string }>;
 
     deletePinotDatasourceWithUi(uid: string): Cypress.Chainable<{ success: boolean }>;
 
@@ -72,6 +66,22 @@ declare namespace Cypress {
       operator: string;
       values: string[];
     }): Cypress.Chainable<void>;
+
+    setupExplore(params: {
+      dsName: string;
+      queryType: 'PinotQL' | 'PromQL';
+      editorMode: 'Builder' | 'Code';
+    }): Cypress.Chainable<void>;
+
+    checkRadio(params: { testId: string; wantLabel?: string; wantOptions?: string[] }): Cypress.Chainable<void>;
+
+    selectFromRadio(params: { testId: string; option: string }): Cypress.Chainable<void>;
+
+    checkSqlEditor(params: { wantContent?: string }): Cypress.Chainable<void>;
+
+    fillSqlEditor(params: { content: string }): Cypress.Chainable<void>;
+
+    clickRunQuery(): Cypress.Chainable<void>;
   }
 }
 

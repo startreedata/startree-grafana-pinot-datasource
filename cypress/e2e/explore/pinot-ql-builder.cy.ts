@@ -1,64 +1,22 @@
-import { EnvVariables } from '../../support/constants/env-variables';
-
 describe('Visualize With Query Builder in Explore', () => {
   beforeEach(() => {
-    cy.createPinotDatasource({
-      controllerUrl: Cypress.env(EnvVariables.pinotConnectionControllerUrl),
-      brokerUrl: Cypress.env(EnvVariables.pinotConnectionBrokerUrl),
-      databaseName: Cypress.env(EnvVariables.pinotConnectionDatabase),
-      authType: 'Bearer',
-      authToken: Cypress.env(EnvVariables.pinotConnectionAuthToken),
-    }).as('newlyCreatedDatasource');
+    cy.createPinotDatasource().as('newlyCreatedDatasource');
   });
 
   afterEach(() => {
-    cy.get<{ uid: string }>('@newlyCreatedDatasource').then(({ uid }) => {
-      cy.deletePinotDatasource(uid);
-    });
+    cy.get<{ uid: string }>('@newlyCreatedDatasource').then(({ uid }) => cy.deletePinotDatasource(uid));
   });
-
-  const setupExplore = (dsName: string) => {
-    // Visit the Explore page.
-    cy.visit('/explore');
-    cy.location('pathname').should('eq', '/explore');
-
-    // Set up the query editor.
-    cy.selectDatasource(dsName);
-    cy.setDashboardTimeRange({ from: '2024-04-01 00:00:00', to: '2024-09-30 23:59:59' });
-
-    // At this point, there should be no data.
-    cy.getBySel('explore-no-data').should('exist').and('have.text', 'No data');
-
-    cy.getBySel('select-query-type').should('exist');
-    cy.getBySel('select-query-type').within(() => {
-      cy.checkFormLabel({ wantLabel: 'Query Type' });
-      cy.get('input[type="radio"]').should('exist');
-      cy.get('input[type="radio"]')
-        .parent()
-        .within(() => {
-          cy.get('label').eq(0).should('exist').and('contain.text', 'PinotQL');
-          cy.get('label').eq(1).should('exist').and('contain.text', 'PromQL');
-        });
-    });
-
-    cy.get('[data-testid=select-editor-mode]').should('exist');
-    cy.getBySel('select-editor-mode').within(() => {
-      cy.get('input[type="radio"]').should('exist');
-      cy.get('input[type="radio"]')
-        .parent()
-        .within(() => {
-          cy.get('label').eq(0).should('exist').and('contain.text', 'Builder');
-          cy.get('label').eq(0).click({ force: true });
-        });
-    });
-  };
 
   it('Populates the table dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.checkDropdown({
@@ -69,34 +27,62 @@ describe('Visualize With Query Builder in Explore', () => {
     });
   });
 
-  it('Populates the time column dropdown', () => {
-    cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
-    cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
+  describe('Time column dropdown', () => {
+    it('Says no options found before a table is chosen', () => {
+      cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+          cy.setupExplore({
+            dsName: ds.name,
+            queryType: 'PinotQL',
+            editorMode: 'Builder',
+          })
+      );
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
+      cy.checkDropdown({
+        testId: 'select-time-column',
+        wantLabel: 'Time Column',
+        wantOptions: ['No options found'],
+      });
+    })
+
+    it('Populates the dropdown after a table is chosen', () => {
+      cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
+      cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
+
+      cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+          cy.setupExplore({
+            dsName: ds.name,
+            queryType: 'PinotQL',
+            editorMode: 'Builder',
+          })
+      );
+
+      cy.wait('@resourcesTables');
+      cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
+
+      cy.wait('@resourcesColumns');
+      cy.checkDropdown({
+        testId: 'select-time-column',
+        wantLabel: 'Time Column',
+        wantSelected: 'hoursSinceEpoch',
+        wantOptions: ['hoursSinceEpoch'],
+      });
     });
+  })
 
-    cy.wait('@resourcesTables');
-    cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
 
-    cy.wait('@resourcesColumns');
-    cy.checkDropdown({
-      testId: 'select-time-column',
-      wantLabel: 'Time Column',
-      wantSelected: 'hoursSinceEpoch',
-      wantOptions: ['hoursSinceEpoch'],
-    });
-  });
 
   it('Populates the granularity dropdown', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
     cy.intercept('POST', '/api/datasources/*/resources/granularities').as('resourcesGranularities');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -117,9 +103,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -134,9 +124,13 @@ describe('Visualize With Query Builder in Explore', () => {
   });
 
   it('Populates the aggregation dropdown', () => {
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
     cy.checkDropdown({
       testId: 'select-aggregation',
       wantLabel: 'Aggregation',
@@ -149,9 +143,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -171,9 +169,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -191,9 +193,13 @@ describe('Visualize With Query Builder in Explore', () => {
   });
 
   it('Populates all dropdowns for the query options editor', () => {
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.getBySel('select-query-options').should('exist');
     cy.getBySel('select-query-options').within(() => {
@@ -250,9 +256,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('resourcesColumns');
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -300,9 +310,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });
@@ -315,7 +329,7 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.get('[aria-label="Explore Table"]').should('exist');
   });
 
-  it('Renders graph and tables with all fields', () => {
+  it('Renders graph and table with all fields', () => {
     cy.intercept('POST', '/api/ds/query').as('dsQuery');
     cy.intercept('POST', '/api/datasources/*/resources/columns').as('columns');
     cy.intercept('POST', '/api/datasources/*/resources/preview/sql/builder').as('previewSqlBuilder');
@@ -323,9 +337,13 @@ describe('Visualize With Query Builder in Explore', () => {
     cy.intercept('POST', '/api/datasources/*/resources/query/distinctValues').as('queryDistinctValues');
     cy.intercept('GET', '/api/datasources/*/resources/tables').as('resourcesTables');
 
-    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) => {
-      setupExplore(ds.name);
-    });
+    cy.get<{ name: string }>('@newlyCreatedDatasource').then((ds) =>
+      cy.setupExplore({
+        dsName: ds.name,
+        queryType: 'PinotQL',
+        editorMode: 'Builder',
+      })
+    );
 
     cy.wait('@resourcesTables');
     cy.selectFromDropdown({ testId: 'select-table', value: 'complex_website' });

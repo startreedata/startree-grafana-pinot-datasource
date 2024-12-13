@@ -23,7 +23,7 @@ export function SelectMetricColumn(props: {
     onChange({ name: metricColumns[0].name, key: metricColumns[0].key || undefined });
   }
 
-  const selectableColumns = selected ? [selected, ...metricColumns] : metricColumns;
+  const selectableColumns = selected?.name ? [selected, ...metricColumns] : metricColumns;
   const options = selectableColumns
     .map(({ name, key }) => columnLabelOf(name, key))
     .filter((v, i, a) => a.indexOf(v) === i)
@@ -38,7 +38,7 @@ export function SelectMetricColumn(props: {
         invalid={!selected}
         isLoading={isLoading}
         options={isCount ? [{ label: '*', value: '*' }] : options}
-        value={isCount ? '*' : columnLabelOf(selected?.name, selected?.key)}
+        value={isCount ? '*' : columnLabelOf(selected?.name, selected?.key) || null}
         disabled={isCount}
         onChange={(change) => {
           const col = selectableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
