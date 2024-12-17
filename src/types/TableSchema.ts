@@ -3,6 +3,7 @@ export interface TableSchema {
   dimensionFieldSpecs: DimensionFieldSpec[] | null;
   metricFieldSpecs: MetricFieldSpec[] | null;
   dateTimeFieldSpecs: DateTimeFieldSpec[] | null;
+  complexFieldSpecs: ComplexFieldSpec[] | null;
 }
 
 export interface DimensionFieldSpec {
@@ -21,3 +22,5 @@ export interface DateTimeFieldSpec {
   format: string;
   granularity: string;
 }
+
+export interface ComplexFieldSpec {}

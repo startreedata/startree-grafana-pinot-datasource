@@ -4,6 +4,7 @@ import { DimensionFilter } from '../types/DimensionFilter';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { useEffect, useState } from 'react';
 import { UseResourceResult } from './UseResourceResult';
+import { useTableSchema } from './controller';
 
 export interface Column {
   name: string;
@@ -16,14 +17,30 @@ export interface Column {
 
 export interface ListColumnsRequest {
   tableName: string | undefined;
-  timeColumn: string | undefined;
-  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  filters: DimensionFilter[];
+  timeColumn?: string;
+  timeRange?: { to: DateTime | undefined; from: DateTime | undefined };
+  filters?: DimensionFilter[];
 }
 
-export function useColumns(datasource: DataSource, request: ListColumnsRequest): UseResourceResult<Column[]> {
+export function useColumns(
+  datasource: DataSource,
+  { tableName, timeColumn, timeRange, filters }: ListColumnsRequest
+): UseResourceResult<Column[]> {
   const [result, setResult] = useState<Column[]>([]);
   const [loading, setLoading] = useState(false);
+  const tableSchema = useTableSchema(datasource, tableName);
+
+  const request: ListColumnsRequest = {
+    tableName: tableName,
+  };
+
+  // Only need these params if the table has map columns.
+  if (tableSchema?.complexFieldSpecs?.length !== 0) {
+    request.timeColumn = timeColumn;
+    request.timeRange = timeRange;
+    request.filters = filters;
+  }
+
   useEffect(() => {
     if (request.tableName) {
       setLoading(true);

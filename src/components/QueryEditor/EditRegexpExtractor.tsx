@@ -1,0 +1,96 @@
+import { RegexpExtractor } from '../../types/PinotDataQuery';
+import { Column } from '../../resources/columns';
+import { columnLabelOf } from '../../types/ComplexField';
+import { AccessoryButton, InputGroup } from '@grafana/experimental';
+import { Input, Select } from '@grafana/ui';
+import React, { ChangeEvent, useState } from 'react';
+
+export function EditRegexpExtractor(props: {
+  extractor: RegexpExtractor;
+  isLoadingColumns: boolean;
+  columns: Column[];
+  onChange: (v: RegexpExtractor) => void;
+  onDelete: () => void;
+}) {
+  const { extractor, columns, isLoadingColumns, onChange, onDelete } = props;
+  const colOptions = columns.map(({ name, key }) => columnLabelOf(name, key)).map((label) => ({ label, value: label }));
+  const [pattern, setPattern] = useState<string>(extractor.pattern || '');
+  const [isPatternValid, setIsPatternValid] = useState<boolean>(true);
+
+  const groupOptions = () => {
+    try {
+      const pattern = new RegExp(extractor.pattern + '|');
+      const nGroups = pattern.exec('')?.length || 0;
+      return new Array(nGroups).fill(null).map((_, i) => ({ label: i.toString(), value: i }));
+    } catch (e) {
+      return [{ label: '0', value: 0 }];
+    }
+  };
+
+  return (
+    <InputGroup data-testid={'edit-regexp-extractor'}>
+      <Select
+        data-testid="regexp-extractor-select-column"
+        placeholder="Column"
+        value={columnLabelOf(extractor.source?.name, extractor.source?.key)}
+        allowCustomValue
+        options={colOptions}
+        isLoading={isLoadingColumns}
+        onChange={(change) => {
+          const col = columns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
+          onChange({
+            ...extractor,
+            source: { name: col?.name, key: col?.key || undefined },
+          });
+        }}
+      />
+      <div>
+        <Input
+          data-testid="regexp-extractor-input-pattern"
+          width={30}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => {
+            const newPattern = event.target.value;
+            setPattern(newPattern);
+            try {
+              new RegExp(newPattern);
+              setIsPatternValid(true);
+              onChange({ ...extractor, pattern: newPattern });
+            } catch (e) {
+              setIsPatternValid(false);
+              onChange({ ...extractor, pattern: '' });
+            }
+          }}
+          placeholder={'.*'}
+          invalid={!isPatternValid}
+          value={pattern}
+        />
+      </div>
+      <div>
+        <Select
+          data-testid="regexp-extractor-select-group"
+          placeholder="Group"
+          width={12}
+          value={extractor.group}
+          allowCustomValue
+          options={groupOptions()}
+          onChange={(change) => onChange({ ...extractor, group: change.value })}
+        />
+      </div>
+      <div>
+        <Input
+          data-testid="regexp-extractor-input-alias"
+          width={15}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onChange({
+              ...extractor,
+              alias: event.target.value,
+            })
+          }
+          placeholder={'Alias'}
+          value={extractor.alias}
+        />
+      </div>
+      <AccessoryButton data-testid="delete-metadata-field-btn" icon="times" variant="secondary" onClick={onDelete} />
+    </InputGroup>
+  );
+}

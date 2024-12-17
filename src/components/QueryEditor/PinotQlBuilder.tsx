@@ -23,6 +23,8 @@ import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../../resources/pre
 import { useGranularities } from '../../resources/granularities';
 import { useColumns } from '../../resources/columns';
 import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { DisplayTypeLogs, DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
+import { PinotQlLogsBuilder } from './PinotQlLogsBuilder';
 
 export function PinotQlBuilder(props: {
   query: PinotDataQuery;
@@ -35,6 +37,10 @@ export function PinotQlBuilder(props: {
   onRunQuery: () => void;
 }) {
   const { timeRange, tables, intervalSize, datasource, query, scopedVars, onChange, onRunQuery } = props;
+
+  if (query.displayType == DisplayTypeLogs) {
+    return <PinotQlLogsBuilder {...props} />;
+  }
 
   const sqlPreview = useSqlPreview(datasource, intervalSize, timeRange, query, scopedVars);
 
@@ -79,6 +85,14 @@ export function PinotQlBuilder(props: {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <SelectDisplayType
+          value={query.displayType}
+          displayTypes={[DisplayTypeTimeSeries, DisplayTypeLogs]}
+          onChange={(val) => {
+            onChange({ ...query, displayType: val });
+            onRunQuery();
+          }}
+        />
         <div className={'gf-form'} data-testid="select-table">
           <SelectTable
             options={tables}

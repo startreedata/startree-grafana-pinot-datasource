@@ -53,6 +53,10 @@ export interface PinotDataQuery extends DataQuery {
   legend?: string;
   metricColumnV2?: ComplexField;
   groupByColumnsV2?: ComplexField[];
+  logColumn?: ComplexField;
+  metadataColumns?: ComplexField[];
+  jsonExtractors?: JsonExtractor[];
+  regexpExtractors?: RegexpExtractor[];
 
   // PinotQl Code
   pinotQlCode?: string;
@@ -67,6 +71,20 @@ export interface PinotDataQuery extends DataQuery {
 
   // PromQl
   promQlCode?: string;
+}
+
+export interface RegexpExtractor {
+  source?: ComplexField;
+  pattern?: string;
+  group?: number;
+  alias?: string;
+}
+
+export interface JsonExtractor {
+  source?: ComplexField;
+  path?: string;
+  resultType?: string;
+  alias?: string;
 }
 
 export function builderGroupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
