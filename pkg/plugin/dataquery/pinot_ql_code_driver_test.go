@@ -223,7 +223,7 @@ func TestExtractColumnToField(t *testing.T) {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := pinotlib.GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ExtractColumnToField(resp.ResultTable, colIdx))
+			assert.Equal(t, tt.want, ExtractColumnAsField(resp.ResultTable, colIdx))
 		})
 	}
 }

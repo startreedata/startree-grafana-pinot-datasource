@@ -1,0 +1,36 @@
+{
+  "schemaName": "nginxLogsWithMap",
+  "dimensionFieldSpecs": [
+    {
+      "name": "message",
+      "dataType": "STRING"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ],
+  "complexFieldSpecs": [
+    {
+      "name": "metadata",
+      "dataType": "MAP",
+      "fieldType": "COMPLEX",
+      "childFieldSpecs": {
+        "key": {
+          "name": "key",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        },
+        "value": {
+          "name": "value",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        }
+      }
+    }
+  ]
+}

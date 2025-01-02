@@ -91,6 +91,16 @@ func CreateTestTables() {
 		schemaFile: "data/timeSeriesWithMapLabels_schema.json",
 		configFile: "data/timeSeriesWithMapLabels_offline_table_config.json",
 		dataFile:   "data/timeSeriesWithMapLabels_data.json",
+	}, {
+		tableName:  "nginxLogsWithJson",
+		schemaFile: "data/nginxLogsWithJson_schema.json",
+		configFile: "data/nginxLogsWithJson_offline_table_config.json",
+		dataFile:   "data/nginxLogsWithJson_data.json",
+	}, {
+		tableName:  "nginxLogsWithMap",
+		schemaFile: "data/nginxLogsWithMap_schema.json",
+		configFile: "data/nginxLogsWithMap_offline_table_config.json",
+		dataFile:   "data/nginxLogsWithMap_data.json",
 	}}
 
 	createTestTablesOnce.Do(func() {

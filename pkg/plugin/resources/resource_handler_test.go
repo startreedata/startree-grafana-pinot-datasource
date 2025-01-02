@@ -115,6 +115,100 @@ LIMIT 1000000`
 	assert.Equal(t, want, got["result"])
 }
 
+func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	payload := map[string]interface{}{
+		"tableName": "benchmark",
+		"timeRange": map[string]interface{}{
+			"to":   "2014-02-01T18:44:26.214Z",
+			"from": "2013-12-29T14:50:28.931Z",
+		},
+		"timeColumn":      "ts",
+		"logColumn":       map[string]string{"name": "logColumn"},
+		"logColumnAlias":  "logColumnAlias",
+		"metadataColumns": []map[string]string{{"name": "dim1"}},
+		"jsonExtractors": []map[string]interface{}{{
+			"source":     map[string]string{"name": "myJsonField"},
+			"path":       "myField",
+			"resultType": "LONG",
+			"alias":      "jsonFieldAlias",
+		}},
+		"regexpExtractors": []map[string]interface{}{{
+			"source":  map[string]string{"name": "myRegexpField"},
+			"pattern": ".*",
+			"group":   0,
+			"alias":   "regexpFieldAlias",
+		}},
+		"dimensionFilters": []map[string]interface{}{{
+			"columnName": "dim1",
+			"valueExprs": []string{"val1"},
+			"operator":   "=",
+		}},
+		"queryOptions": []map[string]string{{
+			"name":  "myOption",
+			"value": "myOptionValue",
+		}},
+		"limit": 10,
+	}
+
+	t.Run("expandMacros=true", func(t *testing.T) {
+		var want = `SET myOption=myOptionValue;
+
+SELECT
+    "logColumn" AS 'logColumnAlias',
+    "dim1",
+    JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
+    REGEXPEXTRACT("myRegexpField", '.*', 0, '') AS 'regexpFieldAlias',
+    "ts"
+FROM "benchmark"
+WHERE "logColumn" IS NOT NULL
+    AND "ts" >= 1388328628931 AND "ts" < 1391280266214
+    AND ("dim1" = val1)
+ORDER BY
+    "ts" ASC,
+    "logColumnAlias" ASC
+LIMIT 10;`
+
+		payload["expandMacros"] = true
+		var data bytes.Buffer
+		require.NoError(t, json.NewEncoder(&data).Encode(payload))
+
+		var got map[string]interface{}
+		doPostRequest(t, server.URL+"/preview/logs/sql", data.String(), &got)
+		assert.Equal(t, want, got["result"])
+	})
+
+	t.Run("expandMacros=false", func(t *testing.T) {
+		var want = `SET myOption=myOptionValue;
+
+SELECT
+    "logColumn" AS 'logColumnAlias',
+    "dim1",
+    JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
+    REGEXPEXTRACT("myRegexpField", '.*', 0, '') AS 'regexpFieldAlias',
+    "ts"
+FROM $__table()
+WHERE "logColumn" IS NOT NULL
+    AND $__timeFilter("ts")
+    AND ("dim1" = val1)
+ORDER BY
+    "ts" ASC,
+    "logColumnAlias" ASC
+LIMIT 10;`
+
+		payload["expandMacros"] = false
+		var data bytes.Buffer
+		require.NoError(t, json.NewEncoder(&data).Encode(payload))
+
+		var got map[string]interface{}
+		doPostRequest(t, server.URL+"/preview/logs/sql", data.String(), &got)
+		assert.Equal(t, want, got["result"])
+	})
+
+}
+
 func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
