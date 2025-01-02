@@ -8,7 +8,7 @@ var timeSeriesSqlTemplate = template.Must(template.New("pinot/time-series-sql").
 {{ .QueryOptionsExpr }}
 
 SELECT{{ range .GroupByColumnExprs }}
-    {{ .Expr }}{{if .Alias}} as '{{.Alias}}'{{end}},
+    {{ .Expr }}{{if .Alias}} AS '{{.Alias}}'{{end}},
     {{- end }}
     {{.TimeGroupExpr}} AS {{.TimeColumnAliasExpr}},
     {{.AggregationFunction}}({{.MetricColumnExpr}}) AS {{.MetricColumnAliasExpr}}
@@ -21,7 +21,7 @@ WHERE
 GROUP BY{{ range .GroupByColumnExprs }}
     {{ .Expr }},
     {{- end }}
-    {{.TimeGroupExpr}}
+    {{ .TimeColumnAliasExpr }}
 {{- $sep := ""}}
 ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
     {{ $element }}{{$sep = ","}}

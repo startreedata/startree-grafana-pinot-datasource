@@ -251,7 +251,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
                 SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
                 FROM $__table()
                 WHERE $__timeFilter("timestamp")
-                GROUP BY $__timeGroup("timestamp")
+                GROUP BY $__timeAlias()
                 ORDER BY $__timeAlias() DESC
                 LIMIT 100000
               `;
@@ -418,7 +418,7 @@ describe('Create a Panel with Pinot Code Editor', () => {
             SUM("views") AS $__metricAlias()
         FROM $__table()
         WHERE $__timeFilter("hoursSinceEpoch")
-        GROUP BY $__timeGroup("hoursSinceEpoch")
+        GROUP BY $__timeAlias()
         ORDER BY $__timeAlias() DESC
         LIMIT 1000
       `,
