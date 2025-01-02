@@ -1119,7 +1119,7 @@ describe('Create and run pinot query using Explore', () => {
                 SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
                 FROM $__table()
                 WHERE $__timeFilter("timestamp")
-                GROUP BY $__timeGroup("timestamp")
+                GROUP BY $__timeAlias()
                 ORDER BY $__timeAlias() DESC
                 LIMIT 100000
               `;

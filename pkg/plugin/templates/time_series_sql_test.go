@@ -8,7 +8,7 @@ import (
 func TestRenderTimeSeriesSql(t *testing.T) {
 	want := `SELECT
     "dim1",
-    "dim2" as 'dim2Alias',
+    "dim2" AS 'dim2Alias',
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS') AS "time",
     sum("met") AS "metric"
 FROM
@@ -20,7 +20,7 @@ WHERE
 GROUP BY
     "dim1",
     "dim2",
-    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MILLISECONDS')
+    "time"
 ORDER BY
     "time" DESC,
     "metric" ASC

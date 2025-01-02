@@ -132,7 +132,7 @@ WHERE
     $__timeFilter("my_time_column", '1:SECONDS')
 GROUP BY
     "dim",
-    $__timeGroup("my_time_column", '1:SECONDS')
+    $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`
@@ -155,7 +155,7 @@ WHERE
     "my_time_column" >= 0 AND "my_time_column" < 1000
 GROUP BY
     "dim",
-    DATETIMECONVERT("my_time_column", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:SECONDS')
+    "time"
 ORDER BY
     "time" DESC
 LIMIT 100000;`
@@ -193,7 +193,7 @@ FROM
 WHERE
     "ts" >= 0 AND "ts" < 60000
 GROUP BY
-    "ts_1m"
+    "time"
 ORDER BY
     "time" DESC
 LIMIT 1000;`
@@ -251,7 +251,7 @@ WHERE
     $__timeFilter("my_time_column", '1:SECONDS')
 GROUP BY
     "dim",
-    $__timeGroup("my_time_column", '1:SECONDS')
+    $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`
@@ -274,7 +274,7 @@ WHERE
     "my_time_column" >= 0 AND "my_time_column" < 1000
 GROUP BY
     "dim",
-    DATETIMECONVERT("my_time_column", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:SECONDS')
+    "time"
 ORDER BY
     "time" DESC
 LIMIT 100000;`
