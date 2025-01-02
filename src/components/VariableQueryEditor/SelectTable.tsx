@@ -5,11 +5,12 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 
 export function SelectTable(props: {
-  selected: string | undefined;
-  options: string[] | undefined;
-  onChange: (val: string | undefined) => void;
+  selected: string;
+  options: string[];
+  isLoading: boolean;
+  onChange: (val: string) => void;
 }) {
-  const { selected, options, onChange } = props;
+  const { selected, options, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.table;
 
   return (
@@ -18,9 +19,10 @@ export function SelectTable(props: {
       <Select
         className={`${styles.VariableQueryEditor.inputForm}`}
         invalid={!selected}
+        isLoading={isLoading}
         options={options?.map((name) => ({ label: name, value: name }))}
         value={selected || null}
-        onChange={(change) => onChange(change.value)}
+        onChange={(change) => onChange(change.value || '')}
       />
     </div>
   );

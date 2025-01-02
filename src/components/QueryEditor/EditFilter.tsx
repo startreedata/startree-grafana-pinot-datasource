@@ -3,11 +3,11 @@ import { DateTime, SelectableValue } from '@grafana/data';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { MultiSelect, Select } from '@grafana/ui';
 import React, { useState } from 'react';
-import { PinotDataType, PinotDataTypes } from '../../types/PinotDataType';
-import { DimensionFilter } from '../../types/DimensionFilter';
+import { PinotDataType, PinotDataTypes } from '../../dataquery/PinotDataType';
+import { DimensionFilter } from '../../dataquery/DimensionFilter';
 import { queryDistinctValuesForFilters } from '../../resources/distinctValues';
 import { Column } from '../../resources/columns';
-import { columnLabelOf } from '../../types/ComplexField';
+import { columnLabelOf } from '../../dataquery/ComplexField';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -91,80 +91,82 @@ export function EditFilter(props: {
     .map((val) => ({ label: val, value: val }));
 
   return (
-    <InputGroup>
-      <Select
-        id="column-select"
-        placeholder="Select column"
-        width="auto"
-        value={thisFilter.columnName}
-        allowCustomValue
-        options={colOptions}
-        isLoading={isLoadingColumns}
-        onChange={(change) => {
-          const col = filterableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
-          onChange({
-            ...thisFilter,
-            columnName: col?.name,
-            columnKey: col?.key || undefined,
-            operator: thisFilter.operator ?? DefaultFilterOperator.value,
-          });
-        }}
-      />
-
-      <Select
-        id="query-segment-operator-select"
-        className="query-segment-operator"
-        value={thisFilter.operator}
-        options={operatorOptions}
-        width="auto"
-        onChange={(change) => {
-          onChange({
-            ...thisFilter,
-            operator: change.value,
-          });
-        }}
-      />
-
-      {operatorIsMulti ? (
-        <MultiSelect
-          id="value-select"
-          placeholder="Select value"
+    <InputGroup data-testid="edit-query-filter">
+      <div data-testid="select-query-filter-column">
+        <Select
+          placeholder="Select column"
           width="auto"
-          isLoading={isLoadingValues}
-          value={thisFilter.valueExprs?.map((v) => ({ label: v, value: v }))}
+          value={thisFilter.columnName}
           allowCustomValue
-          options={valueOptions}
-          onOpenMenu={() => loadValueOptions()}
-          onChange={(change: Array<SelectableValue<string>>) => {
-            const selected = change.map((v) => v.value).filter((v) => v !== undefined) as string[];
+          options={colOptions}
+          isLoading={isLoadingColumns}
+          onChange={(change) => {
+            const col = filterableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
             onChange({
               ...thisFilter,
-              valueExprs: selected,
+              columnName: col?.name,
+              columnKey: col?.key || undefined,
               operator: thisFilter.operator ?? DefaultFilterOperator.value,
             });
           }}
         />
-      ) : (
+      </div>
+
+      <div data-testid="select-query-filter-operator">
         <Select
-          id="value-select"
-          placeholder="Select value"
+          className="query-segment-operator"
+          value={thisFilter.operator}
+          options={operatorOptions}
           width="auto"
-          value={thisFilter.valueExprs?.find((v, i) => i === 0)}
-          onOpenMenu={() => loadValueOptions()}
-          isLoading={isLoadingValues}
-          allowCustomValue
-          options={valueOptions}
-          onChange={(change: SelectableValue<string>) => {
-            if (change.value) {
-              onChange({
-                ...thisFilter,
-                valueExprs: [change.value],
-                operator: thisFilter.operator ?? DefaultFilterOperator.value,
-              });
-            }
+          onChange={(change) => {
+            onChange({
+              ...thisFilter,
+              operator: change.value,
+            });
           }}
         />
-      )}
+      </div>
+
+      <div data-testid="select-query-filter-value">
+        {operatorIsMulti ? (
+          <MultiSelect
+            placeholder="Select value"
+            width="auto"
+            isLoading={isLoadingValues}
+            value={thisFilter.valueExprs?.map((v) => ({ label: v, value: v }))}
+            allowCustomValue
+            options={valueOptions}
+            onOpenMenu={() => loadValueOptions()}
+            onChange={(change: Array<SelectableValue<string>>) => {
+              const selected = change.map((v) => v.value).filter((v) => v !== undefined) as string[];
+              onChange({
+                ...thisFilter,
+                valueExprs: selected,
+                operator: thisFilter.operator ?? DefaultFilterOperator.value,
+              });
+            }}
+          />
+        ) : (
+          <Select
+            placeholder="Select value"
+            width="auto"
+            value={thisFilter.valueExprs?.find((v, i) => i === 0)}
+            onOpenMenu={() => loadValueOptions()}
+            isLoading={isLoadingValues}
+            allowCustomValue
+            options={valueOptions}
+            onChange={(change: SelectableValue<string>) => {
+              if (change.value) {
+                onChange({
+                  ...thisFilter,
+                  valueExprs: [change.value],
+                  operator: thisFilter.operator ?? DefaultFilterOperator.value,
+                });
+              }
+            }}
+          />
+        )}
+      </div>
 
       <AccessoryButton data-testid="delete-filter-btn" icon="times" variant="secondary" onClick={onDelete} />
     </InputGroup>

@@ -1,7 +1,7 @@
 import { CustomVariableSupport, DataQueryRequest, DataQueryResponse } from '@grafana/data';
 import { DataSource } from './datasource';
 import { VariableQueryEditor } from './components/VariableQueryEditor/VariableQueryEditor';
-import { PinotDataQuery } from './types/PinotDataQuery';
+import { PinotDataQuery } from './dataquery/PinotDataQuery';
 // TODO: The rxjs package doesn't seem to type correctly here.
 import { Observable } from '@grafana/data/node_modules/rxjs/dist/types/internal/Observable';
 import { assign } from 'lodash';

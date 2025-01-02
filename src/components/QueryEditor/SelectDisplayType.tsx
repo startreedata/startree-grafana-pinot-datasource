@@ -20,7 +20,12 @@ export function SelectDisplayType(props: { value: string | undefined; onChange: 
   return (
     <div className={'gf-form'} data-testid="select-display-type">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <RadioButtonGroup options={DisplayTypes} onChange={onChange} value={value || DisplayTypeTimeSeries} />
+      <RadioButtonGroup
+        data-testid="radio"
+        options={DisplayTypes}
+        onChange={onChange}
+        value={value || DisplayTypeTimeSeries}
+      />
     </div>
   );
 }

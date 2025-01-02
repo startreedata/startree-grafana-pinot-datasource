@@ -1,110 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { PinotDataQuery } from '../../types/PinotDataQuery';
+import React from 'react';
+import { interpolateVariables, PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../../datasource';
-import { PinotConnectionConfig } from '../../types/PinotConnectionConfig';
-import { QueryType } from '../../types/QueryType';
-import { useTables, useTableSchema } from '../../resources/controller';
-import { SelectTable } from './SelectTable';
+import { PinotConnectionConfig } from '../../dataquery/PinotConnectionConfig';
 import { SelectVariableType, VariableType } from './SelectVariableType';
-import { PinotVariableQuery } from '../../types/PinotVariableQuery';
 import { DistinctValuesVariableEditor } from './DistinctValuesVariableEditor';
 import { SqlVariableEditor } from './SqlVariableEditor';
-import { ColumnTypes } from './SelectColumnType';
 import { ColumnVariableEditor } from './ColumnVariableEditor';
-import { previewSqlDistinctValues } from '../../resources/previewSql';
+import { dataQueryWithVariableParams, VariableParams, variableParamsFrom } from '../../pinotql/variablePararms';
+import { useVariableResources } from '../../pinotql/variableResources';
 
 type VariableQueryEditorProps = QueryEditorProps<DataSource, PinotDataQuery, PinotConnectionConfig, PinotDataQuery>;
 
-export function VariableQueryEditor({ datasource, onChange, query }: VariableQueryEditorProps) {
-  const onChangeVariableQuery = (variableQuery: PinotVariableQuery) => {
-    onChange({ ...query, variableQuery });
-  };
-
-  const tables = useTables(datasource);
-  const tableSchema = useTableSchema(datasource, query.tableName);
-
-  const columns = [
-    ...(tableSchema?.dateTimeFieldSpecs || []),
-    ...(tableSchema?.metricFieldSpecs || []),
-    ...(tableSchema?.dimensionFieldSpecs || []),
-  ]
-    .map(({ name }) => name)
-    .sort();
-
-  if (
-    query.queryType !== QueryType.PinotVariableQuery ||
-    query.variableQuery?.variableType === undefined ||
-    query.variableQuery?.columnType === undefined
-  ) {
-    onChange({
-      ...query,
-      queryType: QueryType.PinotVariableQuery,
-      variableQuery: {
-        ...query.variableQuery,
-        variableType: VariableType.TableList,
-        columnType: ColumnTypes.All,
-      },
-    });
-  }
-
-  const [distinctValuesSqlPreview, setDistinctValuesSqlPreview] = useState<string>('');
-  useEffect(() => {
-    if (query.variableQuery?.variableType === VariableType.DistinctValues) {
-      previewSqlDistinctValues(datasource, {
-        tableName: query.tableName,
-        columnName: query.variableQuery?.columnName,
-      }).then((sqlPreview) => setDistinctValuesSqlPreview(sqlPreview));
-    }
-  }, [datasource, query.tableName, query.variableQuery?.columnName, query.variableQuery?.variableType]);
-
-  const selectTable = (
-    <SelectTable
-      selected={query.tableName}
-      options={tables}
-      onChange={(tableName) => onChange({ ...query, tableName })}
-    />
-  );
+export function VariableQueryEditor({ datasource, query, data, onChange: onChangeQuery }: VariableQueryEditorProps) {
+  const savedParams = variableParamsFrom(query);
+  const interpolatedParams = variableParamsFrom(interpolateVariables(query, data?.request?.scopedVars));
+  const resources = useVariableResources(datasource, interpolatedParams);
+  const onChange = (params: VariableParams) => onChangeQuery(dataQueryWithVariableParams(query, params));
 
   return (
     <>
       <div className={'gf-form'} data-testid="select-variable-type">
         <SelectVariableType
-          selected={query.variableQuery?.variableType}
-          onChange={(variableType) => onChangeVariableQuery({ ...query.variableQuery, variableType })}
+          selected={savedParams.variableType}
+          onChange={(variableType) => onChange({ ...savedParams, variableType })}
         />
       </div>
 
       {(() => {
         switch (query.variableQuery?.variableType) {
           case VariableType.ColumnList:
-            return (
-              <ColumnVariableEditor
-                selectTable={selectTable}
-                variableQuery={query.variableQuery}
-                sqlPreview={''}
-                columns={[]}
-                onChange={onChangeVariableQuery}
-              />
-            );
+            return <ColumnVariableEditor savedParams={savedParams} resources={resources} onChange={onChange} />;
           case VariableType.DistinctValues:
-            return (
-              <DistinctValuesVariableEditor
-                selectTable={selectTable}
-                variableQuery={query.variableQuery}
-                columns={columns}
-                onChange={onChangeVariableQuery}
-                sqlPreview={distinctValuesSqlPreview}
-              />
-            );
+            return <DistinctValuesVariableEditor savedParams={savedParams} resources={resources} onChange={onChange} />;
           case VariableType.PinotQlCode:
-            return (
-              <SqlVariableEditor
-                selectTable={selectTable}
-                variableQuery={query.variableQuery}
-                onChange={onChangeVariableQuery}
-              />
-            );
+            return <SqlVariableEditor savedParams={savedParams} resources={resources} onChange={onChange} />;
           default:
             return <></>;
         }

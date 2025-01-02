@@ -8,12 +8,12 @@ export function InputDatabase(props: { value: string | undefined; onChange: (val
 
   return (
     <InlineField
+      data-testid="input-database"
       label={labels.label}
       labelWidth={24}
       tooltip={labels.tooltip}
       grow
       interactive
-      data-testid={`${labels.label.toLowerCase().replace(' ', '-')}-inline-field`}
     >
       <Input
         width={40}

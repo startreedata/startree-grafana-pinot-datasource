@@ -2,15 +2,20 @@ import { DataSource } from '../datasource';
 import { useEffect, useState } from 'react';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { DateTime } from '@grafana/data';
+import { UseResourceResult } from './UseResourceResult';
 
-export function useTimeSeriesTables(datasource: DataSource): string[] | undefined {
-  const [tables, setTables] = useState<string[] | undefined>();
+export function useTimeSeriesTables(datasource: DataSource): UseResourceResult<string[]> {
+  const [result, setResult] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    listTimeSeriesTables(datasource).then((tables) => setTables(tables));
+    setLoading(true);
+    listTimeSeriesTables(datasource)
+      .then((tables) => setResult(tables))
+      .then(() => setLoading(false));
   }, [datasource]);
 
-  return tables;
+  return { result, loading };
 }
 
 export async function listTimeSeriesTables(datasource: DataSource): Promise<string[]> {

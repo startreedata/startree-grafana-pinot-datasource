@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { PinotConnectionConfig, PinotSecureConfig } from '../../types/PinotConnectionConfig';
+import { PinotConnectionConfig, PinotSecureConfig } from '../../dataquery/PinotConnectionConfig';
 import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
@@ -52,6 +52,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
       <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">
         <InputUrl
+          data-testid="input-controller-url"
           label={labels.controllerUrl.label}
           tooltip={
             <>
@@ -72,6 +73,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
           }}
         />
         <InputUrl
+          data-testid="input-broker-url"
           label={labels.brokerUrl.label}
           tooltip={
             <>
@@ -92,7 +94,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
           onChange={(databaseName) => onConfigChange({ ...jsonData, databaseName })}
         />
       </div>
-      <h3 data-testid="auth-heading">Authentication</h3>
+      <h3>Authentication</h3>
       <p className={styles.text} data-testid="auth-description">
         This plugin requires a Pinot authentication token. For detailed instructions on generating a token,{' '}
         <a href={labels.token.help} target="_blank" rel="noreferrer" data-testid="view-doc-link">

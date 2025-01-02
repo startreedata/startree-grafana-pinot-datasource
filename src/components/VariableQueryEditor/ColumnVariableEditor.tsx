@@ -1,27 +1,27 @@
 import { SelectColumnType } from './SelectColumnType';
 import React from 'react';
-import { PinotVariableQuery } from '../../types/PinotVariableQuery';
+import { SelectTable } from './SelectTable';
+import { VariableParams } from '../../pinotql/variablePararms';
+import { VariableResources } from '../../pinotql/variableResources';
 
-export function ColumnVariableEditor({
-  columns,
-  variableQuery,
-  sqlPreview,
-  selectTable,
-  onChange,
-}: {
-  selectTable: React.JSX.Element;
-  variableQuery: PinotVariableQuery;
-  sqlPreview: string;
-  columns: string[];
-  onChange: (val: PinotVariableQuery) => void;
+export function ColumnVariableEditor(props: {
+  savedParams: VariableParams;
+  resources: VariableResources;
+  onChange: (params: VariableParams) => void;
 }) {
+  const { savedParams, resources, onChange } = props;
   return (
     <>
       <div className={'gf-form'} style={{ marginBottom: '0' }}>
-        {selectTable}
+        <SelectTable
+            selected={savedParams.tableName}
+            options={resources.tables}
+            isLoading={resources.isColumnsLoading}
+            onChange={(tableName) => onChange({ ...savedParams, tableName })}
+        />
         <SelectColumnType
-          selected={variableQuery.columnType}
-          onChange={(columnType) => onChange({ ...variableQuery, columnType })}
+          selected={savedParams.columnType}
+          onChange={(columnType) => onChange({ ...savedParams, columnType })}
         />
       </div>
     </>

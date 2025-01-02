@@ -1,23 +1,27 @@
 import React from 'react';
-import { PinotVariableQuery } from '../../types/PinotVariableQuery';
 import { SqlEditor } from './SqlEditor';
+import { SelectTable } from './SelectTable';
+import { VariableParams } from '../../pinotql/variablePararms';
+import { VariableResources } from '../../pinotql/variableResources';
 
-export function SqlVariableEditor({
-  selectTable,
-  variableQuery,
-  onChange,
-}: {
-  selectTable: React.JSX.Element;
-  variableQuery: PinotVariableQuery;
-  onChange: (val: PinotVariableQuery) => void;
+export function SqlVariableEditor(props: {
+  savedParams: VariableParams;
+  resources: VariableResources;
+  onChange: (params: VariableParams) => void;
 }) {
+  const { savedParams, resources, onChange } = props;
   return (
     <>
-      {selectTable}
+      <SelectTable
+        selected={savedParams.tableName}
+        options={resources.tables}
+        isLoading={resources.isColumnsLoading}
+        onChange={(tableName) => onChange({ ...savedParams, tableName })}
+      />
       <div className={'gf-form'} data-testid="sql-editor">
         <SqlEditor
-          current={variableQuery.pinotQlCode}
-          onChange={(pinotQlCode) => onChange({ ...variableQuery, pinotQlCode })}
+          current={savedParams.pinotQlCode}
+          onChange={(pinotQlCode) => onChange({ ...savedParams, pinotQlCode })}
         />
       </div>
     </>

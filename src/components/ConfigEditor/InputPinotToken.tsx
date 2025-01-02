@@ -25,8 +25,8 @@ export function InputPinotToken(props: {
   }
 
   return (
-    <div className={'gf-form'}>
-      <InlineField label={labels.typeLabel} labelWidth={8} required data-testid="auth-type-container">
+    <div className={'gf-form'} data-testid="input-pinot-token">
+      <InlineField label={labels.typeLabel} labelWidth={8} required data-testid="select-pinot-token-type">
         <Select
           options={TokenTypeOptions}
           isSearchable={false}
@@ -36,7 +36,7 @@ export function InputPinotToken(props: {
         />
       </InlineField>
       {tokenType !== 'None' && (
-        <InlineField label={labels.valueLabel} labelWidth={8} required data-testid="auth-token-container">
+        <InlineField label={labels.valueLabel} labelWidth={8} required data-testid="input-pinot-token-value">
           <SecretInput
             isConfigured={isConfigured}
             value={tokenValue}

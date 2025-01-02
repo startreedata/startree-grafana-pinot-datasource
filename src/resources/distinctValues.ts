@@ -1,5 +1,5 @@
 import { DateTime } from '@grafana/data';
-import { DimensionFilter } from '../types/DimensionFilter';
+import { DimensionFilter } from '../dataquery/DimensionFilter';
 import { DataSource } from '../datasource';
 import { PinotResourceResponse } from './PinotResourceResponse';
 

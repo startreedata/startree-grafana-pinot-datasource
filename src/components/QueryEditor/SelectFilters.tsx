@@ -5,8 +5,8 @@ import { DateTime } from '@grafana/data';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { EditFilter } from './EditFilter';
-import { DimensionFilter } from '../../types/DimensionFilter';
-import { columnLabelOf } from '../../types/ComplexField';
+import { DimensionFilter } from '../../dataquery/DimensionFilter';
+import { columnLabelOf } from '../../dataquery/ComplexField';
 import { Column } from '../../resources/columns';
 
 export function SelectFilters(props: {
@@ -39,7 +39,7 @@ export function SelectFilters(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {dimensionFilters.map((filter, idx) => (
-          <div key={idx} data-testid="filter-row">
+          <div key={idx} data-testid="edit-filter">
             <EditFilter
               datasource={datasource}
               tableName={tableName}

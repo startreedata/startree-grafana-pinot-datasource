@@ -6,10 +6,10 @@ import allLabels from '../../labels';
 import { Column } from '../../resources/columns';
 
 export function SelectTimeColumn(props: {
-  selected: string | undefined;
+  selected: string;
   timeColumns: Column[];
   isLoading: boolean;
-  onChange: (val: string | undefined) => void;
+  onChange: (val: string) => void;
 }) {
   const { selected, timeColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.timeColumn;
@@ -28,17 +28,19 @@ export function SelectTimeColumn(props: {
   return (
     <div className={'gf-form'} data-testid="select-time-column">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <Select
-        className={`${styles.QueryEditor.inputForm}`}
-        allowCustomValue
-        invalid={!selected}
-        isLoading={isLoading}
-        options={candidates}
-        value={selected}
-        onChange={(change) => {
-          onChange(change.value);
-        }}
-      />
+      <div data-testid="select-time-column-dropdown">
+        <Select
+          className={`${styles.QueryEditor.inputForm}`}
+          allowCustomValue
+          invalid={!selected}
+          isLoading={isLoading}
+          options={candidates}
+          value={selected}
+          onChange={(change) => {
+            onChange(change.value || '');
+          }}
+        />
+      </div>
     </div>
   );
 }
