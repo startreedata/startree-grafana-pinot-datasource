@@ -27,6 +27,7 @@ func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
 	router.HandleFunc("/databases", adaptHandler(handler.ListDatabases))
 	router.HandleFunc("/isPromQlSupported", adaptHandler(handler.IsPromQlSupported))
 	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(handler.PreviewSqlBuilder))
+	router.HandleFunc("/preview/logs/sql", adaptHandlerWithBody(handler.PreviewLogsSql))
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(handler.PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(handler.PreviewSqlDistinctValues))
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(handler.QueryDistinctValues))
@@ -85,7 +86,6 @@ func (x *ResourceHandler) GetTableSchema(r *http.Request) *Response[pinotlib.Tab
 type PreviewSqlBuilderRequest struct {
 	TimeRange           dataquery.TimeRange         `json:"timeRange"`
 	IntervalSize        string                      `json:"intervalSize"`
-	DatabaseName        string                      `json:"databaseName"`
 	TableName           string                      `json:"tableName"`
 	TimeColumn          string                      `json:"timeColumn"`
 	MetricColumn        dataquery.ComplexField      `json:"metricColumn"`
@@ -140,6 +140,63 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 	}
 
 	return newOkResponse(sql)
+}
+
+type PreviewLogsBuilderSqlRequest struct {
+	TimeRange        dataquery.TimeRange         `json:"timeRange"`
+	TableName        string                      `json:"tableName"`
+	TimeColumn       string                      `json:"timeColumn"`
+	LogColumn        dataquery.ComplexField      `json:"logColumn"`
+	LogColumnAlias   string                      `json:"logColumnAlias"`
+	MetadataColumns  []dataquery.ComplexField    `json:"metadataColumns"`
+	JsonExtractors   []dataquery.JsonExtractor   `json:"jsonExtractors"`
+	RegexpExtractors []dataquery.RegexpExtractor `json:"regexpExtractors"`
+	DimensionFilters []dataquery.DimensionFilter `json:"dimensionFilters"`
+	QueryOptions     []dataquery.QueryOption     `json:"queryOptions"`
+	Limit            int64                       `json:"limit"`
+	ExpandMacros     bool                        `json:"expandMacros"`
+}
+
+func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBuilderSqlRequest) *Response[string] {
+	if data.TableName == "" {
+		return newOkResponse("")
+	}
+
+	builderParams := dataquery.LogsBuilderParams{
+		TimeRange:        data.TimeRange,
+		TableName:        data.TableName,
+		TimeColumn:       data.TimeColumn,
+		LogColumn:        data.LogColumn,
+		LogColumnAlias:   data.LogColumnAlias,
+		MetadataColumns:  data.MetadataColumns,
+		JsonExtractors:   data.JsonExtractors,
+		RegexpExtractors: data.RegexpExtractors,
+		DimensionFilters: data.DimensionFilters,
+		QueryOptions:     data.QueryOptions,
+		Limit:            data.Limit,
+	}
+
+	if data.ExpandMacros {
+		tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
+			return newOkResponse("")
+		}
+
+		sql, err := dataquery.RenderLogsBuilderSql(tableSchema, builderParams)
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
+	} else {
+		sql, err := dataquery.RenderLogsBuilderSqlWithMacros(builderParams)
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
+	}
 }
 
 type PreviewSqlCodeRequest struct {

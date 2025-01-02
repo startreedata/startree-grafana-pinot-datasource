@@ -53,23 +53,43 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 
 	switch query.EditorMode {
 	case EditorModeBuilder:
-		return NewPinotQlBuilderDriver(PinotQlBuilderParams{
-			PinotClient:         pinotClient,
-			TableSchema:         tableSchema,
-			TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
-			IntervalSize:        query.IntervalSize,
-			TableName:           query.TableName,
-			TimeColumn:          query.TimeColumn,
-			MetricColumn:        builderMetricColumnFrom(query),
-			GroupByColumns:      builderGroupByColumnsFrom(query),
-			AggregationFunction: query.AggregationFunction,
-			DimensionFilters:    query.DimensionFilters,
-			Limit:               query.Limit,
-			Granularity:         query.Granularity,
-			OrderByClauses:      query.OrderByClauses,
-			QueryOptions:        query.QueryOptions,
-			Legend:              query.Legend,
-		})
+		switch query.DisplayType {
+		case DisplayTypeLogs:
+			return DriverFunc(func(ctx context.Context) backend.DataResponse {
+				return ExecuteLogsBuilderQuery(ctx, pinotClient, LogsBuilderParams{
+					TimeRange:        TimeRange{To: timeRange.To, From: timeRange.From},
+					TableName:        query.TableName,
+					TimeColumn:       query.TimeColumn,
+					LogColumn:        query.LogColumn,
+					LogColumnAlias:   query.LogColumnAlias,
+					MetadataColumns:  query.MetadataColumns,
+					JsonExtractors:   query.JsonExtractors,
+					RegexpExtractors: query.RegexpExtractors,
+					DimensionFilters: query.DimensionFilters,
+					QueryOptions:     query.QueryOptions,
+					Limit:            query.Limit,
+				})
+			}), nil
+		default:
+			return NewPinotQlBuilderDriver(PinotQlBuilderParams{
+				PinotClient:         pinotClient,
+				TableSchema:         tableSchema,
+				TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
+				IntervalSize:        query.IntervalSize,
+				TableName:           query.TableName,
+				TimeColumn:          query.TimeColumn,
+				MetricColumn:        builderMetricColumnFrom(query),
+				GroupByColumns:      builderGroupByColumnsFrom(query),
+				AggregationFunction: query.AggregationFunction,
+				DimensionFilters:    query.DimensionFilters,
+				Limit:               query.Limit,
+				Granularity:         query.Granularity,
+				OrderByClauses:      query.OrderByClauses,
+				QueryOptions:        query.QueryOptions,
+				Legend:              query.Legend,
+			})
+		}
+
 	case EditorModeCode:
 		if query.PinotQlCode == "" {
 			return new(NoOpDriver), nil
@@ -91,6 +111,10 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 		return new(NoOpDriver), nil
 	}
 }
+
+type DriverFunc func(ctx context.Context) backend.DataResponse
+
+func (f DriverFunc) Execute(ctx context.Context) backend.DataResponse { return f(ctx) }
 
 var _ Driver = &NoOpDriver{}
 

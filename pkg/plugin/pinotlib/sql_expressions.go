@@ -14,6 +14,23 @@ func StringLiteralExpr(lit string) string {
 	return fmt.Sprintf(`'%s'`, lit)
 }
 
+func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val T) string {
+	switch valTyped := any(val).(type) {
+	case bool:
+		if valTyped {
+			return "TRUE"
+		} else {
+			return "FALSE"
+		}
+	case int, int64, int32:
+		return fmt.Sprintf("%d", valTyped)
+	case float32, float64:
+		return fmt.Sprintf("%v", valTyped)
+	default:
+		return fmt.Sprintf(`'%s'`, valTyped)
+	}
+}
+
 func UnquoteObjectName(s string) string {
 	if (strings.HasPrefix(s, `"`) && strings.HasSuffix(s, `"`)) ||
 		(strings.HasPrefix(s, "`") && strings.HasSuffix(s, "`")) {
@@ -112,4 +129,18 @@ func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversio
 		DateTimeFormatExpr(timeGroup.InputFormat),
 		DateTimeFormatExpr(timeGroup.OutputFormat),
 		GranularityExpr(timeGroup.Granularity))
+}
+
+func JsonExtractScalarExpr(sourceExpr string, path string, resultType string, defaultValueExpr string) string {
+	return fmt.Sprintf(`JSONEXTRACTSCALAR(%s, %s, %s, %s)`,
+		sourceExpr, StringLiteralExpr(path), StringLiteralExpr(resultType), defaultValueExpr)
+}
+
+func RegexpExtractExpr(sourceExpr string, pattern string, group int, defaultValueExpr string) string {
+	return fmt.Sprintf(`REGEXPEXTRACT(%s, %s, %d, %s)`,
+		sourceExpr, StringLiteralExpr(pattern), group, defaultValueExpr)
+}
+
+func QueryOptionExpr(name string, valueExpr string) string {
+	return fmt.Sprintf(`SET %s=%s;`, name, valueExpr)
 }

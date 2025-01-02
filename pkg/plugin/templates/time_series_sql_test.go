@@ -28,7 +28,7 @@ LIMIT 10000;`
 
 	got, err := RenderTimeSeriesSql(TimeSeriesSqlParams{
 		TableNameExpr:         `"my_table"`,
-		GroupByColumnExprs:    []GroupByColumn{{Expr: `"dim1"`}, {Expr: `"dim2"`, Alias: `dim2Alias`}},
+		GroupByColumnExprs:    []ExprWithAlias{{Expr: `"dim1"`}, {Expr: `"dim2"`, Alias: `dim2Alias`}},
 		MetricColumnExpr:      `"met"`,
 		AggregationFunction:   "sum",
 		TimeFilterExpr:        `"ts" >= 10 AND "ts" <= 20`,

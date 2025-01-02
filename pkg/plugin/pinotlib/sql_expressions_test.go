@@ -16,6 +16,17 @@ func TestSqlLiteralString(t *testing.T) {
 	assert.Equal(t, `'string'`, StringLiteralExpr("string"))
 }
 
+func TestLiteralExpr(t *testing.T) {
+	t.Run("string", func(t *testing.T) { assert.Equal(t, `'string'`, LiteralExpr("string")) })
+	t.Run("int(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int(1))) })
+	t.Run("int32(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int32(1))) })
+	t.Run("int64(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int64(1))) })
+	t.Run("float32(1.1)", func(t *testing.T) { assert.Equal(t, `1.1`, LiteralExpr(float32(1.1))) })
+	t.Run("float64(1.1)", func(t *testing.T) { assert.Equal(t, `1.1`, LiteralExpr(float64(1.1))) })
+	t.Run("true", func(t *testing.T) { assert.Equal(t, `TRUE`, LiteralExpr(true)) })
+	t.Run("false", func(t *testing.T) { assert.Equal(t, `FALSE`, LiteralExpr(false)) })
+}
+
 func TestUnquoteObjectName(t *testing.T) {
 	testCases := []struct {
 		name string
@@ -412,4 +423,18 @@ func TestTimeGroupExpr(t *testing.T) {
 			assert.Equal(t, tt.want, TimeGroupExpr(tableConfig, group))
 		})
 	}
+}
+
+func TestJsonExtractExpr(t *testing.T) {
+	assert.Equal(t, `JSONEXTRACTSCALAR("col", '$.key1', 'STRING', '')`,
+		JsonExtractScalarExpr(`"col"`, "$.key1", "STRING", `''`))
+}
+
+func TestRegexpExtractExpr(t *testing.T) {
+	assert.Equal(t, `REGEXPEXTRACT("col", '(\w+) (\w+)', 0, '')`,
+		RegexpExtractExpr(`"col"`, `(\w+) (\w+)`, 0, `''`))
+}
+
+func TestQueryOptionExpr(t *testing.T) {
+	assert.Equal(t, `SET myOption=true;`, QueryOptionExpr("myOption", "true"))
 }

@@ -43,6 +43,10 @@ type PinotDataQuery struct {
 	Legend              string            `json:"legend"`
 	MetricColumnV2      ComplexField      `json:"metricColumnV2"`
 	GroupByColumnsV2    []ComplexField    `json:"groupByColumnsV2"`
+	MetadataColumns     []ComplexField    `json:"metadataColumns"`
+	LogColumn           ComplexField      `json:"logColumn"`
+	JsonExtractors      []JsonExtractor   `json:"jsonExtractors"`
+	RegexpExtractors    []RegexpExtractor `json:"regexpExtractors"`
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`
@@ -105,6 +109,20 @@ type OrderByClause struct {
 type QueryOption struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+type RegexpExtractor struct {
+	Source  ComplexField `json:"source"`
+	Pattern string       `json:"pattern"`
+	Group   int          `json:"group"`
+	Alias   string       `json:"alias"`
+}
+
+type JsonExtractor struct {
+	Source     ComplexField `json:"source"`
+	Path       string       `json:"path"`
+	ResultType string       `json:"resultType"`
+	Alias      string       `json:"alias"`
 }
 
 func PinotDataQueryFrom(query backend.DataQuery) (PinotDataQuery, error) {

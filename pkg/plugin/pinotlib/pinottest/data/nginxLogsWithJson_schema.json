@@ -1,0 +1,21 @@
+{
+  "schemaName": "nginxLogsWithJson",
+  "dimensionFieldSpecs": [
+    {
+      "name": "message",
+      "dataType": "STRING"
+    },
+    {
+      "name": "metadata",
+      "dataType": "JSON"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}

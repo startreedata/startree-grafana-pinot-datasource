@@ -31,14 +31,14 @@ ORDER BY{{ range $index, $element := .OrderByExprs }}{{$sep}}
 LIMIT {{.Limit}};
 `))
 
-type GroupByColumn struct {
+type ExprWithAlias struct {
 	Expr  string
 	Alias string
 }
 
 type TimeSeriesSqlParams struct {
 	TableNameExpr         string
-	GroupByColumnExprs    []GroupByColumn
+	GroupByColumnExprs    []ExprWithAlias
 	MetricColumnExpr      string
 	AggregationFunction   string
 	TimeFilterExpr        string
