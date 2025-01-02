@@ -123,13 +123,13 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			TimeFilterExpr:        p.timeFilterExpr(expandMacros),
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
 			Limit:                 p.resolveLimit(),
-			QueryOptionsExpr:      p.queryOptionsExpr(),
+			QueryOptionsExpr:      QueryOptionsExpr(p.params.QueryOptions),
 		})
 	} else {
-		groupByColumns := make([]templates.GroupByColumn, len(p.params.GroupByColumns))
+		groupByColumns := make([]templates.ExprWithAlias, len(p.params.GroupByColumns))
 		for i, col := range p.params.GroupByColumns {
 			if expr := pinotlib.ComplexFieldExpr(col.Name, col.Key); expr != "" {
-				groupByColumns[i] = templates.GroupByColumn{
+				groupByColumns[i] = templates.ExprWithAlias{
 					Expr:  pinotlib.ComplexFieldExpr(col.Name, col.Key),
 					Alias: complexFieldAlias(col.Name, col.Key),
 				}
@@ -148,7 +148,7 @@ func (p *PinotQlBuilderDriver) RenderPinotSql(expandMacros bool) (string, error)
 			DimensionFilterExprs:  FilterExprsFrom(p.params.DimensionFilters),
 			Limit:                 p.resolveLimit(),
 			OrderByExprs:          p.orderByExprs(),
-			QueryOptionsExpr:      p.queryOptionsExpr(),
+			QueryOptionsExpr:      QueryOptionsExpr(p.params.QueryOptions),
 		})
 	}
 }
@@ -296,11 +296,11 @@ func (p *PinotQlBuilderDriver) orderByExprs() []string {
 	return orderByExprs[:]
 }
 
-func (p *PinotQlBuilderDriver) queryOptionsExpr() string {
-	exprs := make([]string, 0, len(p.params.QueryOptions))
-	for _, o := range p.params.QueryOptions {
+func QueryOptionsExpr(options []QueryOption) string {
+	exprs := make([]string, 0, len(options))
+	for _, o := range options {
 		if o.Name != "" && o.Value != "" {
-			exprs = append(exprs, fmt.Sprintf(`SET %s=%s;`, o.Name, o.Value))
+			exprs = append(exprs, pinotlib.QueryOptionExpr(o.Name, o.Value))
 		}
 	}
 	return strings.Join(exprs, "\n")
