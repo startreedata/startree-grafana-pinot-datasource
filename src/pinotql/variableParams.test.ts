@@ -8,9 +8,9 @@ describe('variableParamsFrom', () => {
   test('query is empty', () => {
     expect(variableParamsFrom({ refId: 'test_id' })).toEqual<VariableParams>({
       tableName: '',
-      variableType: VariableType.TableList,
+      variableType: '',
       columnName: '',
-      columnType: ColumnTypes.All,
+      columnType: '',
       pinotQlCode: '',
     });
   });
