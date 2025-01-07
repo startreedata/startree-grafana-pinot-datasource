@@ -4,7 +4,7 @@ import { SelectableValue } from '@grafana/data';
 import React, { useEffect } from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
-import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
 import { Column } from '../../resources/columns';
 
 export function SelectGroupBy(props: {
@@ -12,7 +12,7 @@ export function SelectGroupBy(props: {
   columns: Column[];
   isLoading: boolean;
   disabled: boolean;
-  onChange: (val: ComplexField[] | undefined) => void;
+  onChange: (val: ComplexField[]) => void;
 }) {
   const { columns, selected, disabled, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.groupBy;
@@ -41,21 +41,23 @@ export function SelectGroupBy(props: {
   return (
     <div className={'gf-form'} data-testid="select-group-by">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <MultiSelect
-        className={`${styles.QueryEditor.inputForm}`}
-        allowCustomValue
-        options={options}
-        value={selectOptions}
-        disabled={disabled}
-        isLoading={isLoading}
-        onChange={(item: Array<SelectableValue<string>>) => {
-          const newSelected = item
-            .map((v) => getColumn(v.label))
-            .map<ComplexField>((col) => ({ name: col?.name || '', key: col?.key || undefined }))
-            .filter(({ name }) => name);
-          onChange(newSelected);
-        }}
-      />
+      <div data-testid="select-group-by-dropdown">
+        <MultiSelect
+          className={`${styles.QueryEditor.inputForm}`}
+          allowCustomValue
+          options={options}
+          value={selectOptions}
+          disabled={disabled}
+          isLoading={isLoading}
+          onChange={(item: Array<SelectableValue<string>>) => {
+            const newSelected = item
+              .map((v) => getColumn(v.label))
+              .map<ComplexField>((col) => ({ name: col?.name || '', key: col?.key || undefined }))
+              .filter(({ name }) => name);
+            onChange(newSelected);
+          }}
+        />
+      </div>
     </div>
   );
 }

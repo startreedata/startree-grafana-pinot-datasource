@@ -12,9 +12,8 @@ export function InputLimit(props: { current: number | undefined; onChange: (val:
   const [isValid, setIsValid] = useState<boolean>(true);
 
   return (
-    <div className={'gf-form'} style={{ display: 'flex', flexDirection: 'row' }}>
+    <div className={'gf-form'} data-testid="input-limit">
       <InputTextField
-        data-testid="input-limit"
         current={limitText}
         labels={labels}
         invalid={!isValid}

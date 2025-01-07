@@ -62,9 +62,9 @@ jobs:
           cache: 'yarn'
 
       - run: yarn install --frozen-lockfile
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test:ci
+      - run: yarn run typecheck
+      - run: yarn run lint
+      - run: yarn run test:ci
 
   build_plugin:
     name: Build Plugin
@@ -127,27 +127,23 @@ jobs:
       - name: Start Grafana
         run: docker compose up grafana --wait
 
-      - name: Cypress E2E run
-        uses: cypress-io/github-action@v6
-        id: run-cypress-e2e-tests
-        with:
-          config-file: cypress/config/cypress.config.ts
-          browser: chrome
-          wait-on: 'http://localhost:3000'
-          wait-on-timeout: 60
+      - name: Install Playwright Browsers
+        run: yarn add playwright && yarn playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: yarn playwright test
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
           PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
           PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
-      - name: Upload Cypress screenshots
+      - name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
-        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
+        if: ${{ !cancelled() }}
         with:
-          name: cypress-screenshots
-          path: cypress/screenshots
+          name: playwright-report
+          path: playwright-report/
           retention-days: 30
 
       - name: Collect Grafana logs

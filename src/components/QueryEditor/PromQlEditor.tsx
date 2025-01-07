@@ -1,17 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { SelectTable } from './SelectTable';
-import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 import { FormLabel } from './FormLabel';
 import { useTimeSeriesTables } from '../../resources/timeseries';
 import { InputMetricLegend } from './InputMetricLegend';
 import { Button, Icon, Modal } from '@grafana/ui';
 import { useIsPromQlSupported } from '../../resources/isPromQlSupported';
-import { QueryType } from '../../types/QueryType';
+import { QueryType } from '../../dataquery/QueryType';
 import { DataSource } from '../../datasource';
 import { PromQlExpressionEditor } from './PromQlExpressionEditor';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
-  const tables = useTimeSeriesTables(props.datasource);
+  const { result: tables, loading: isTablesLoading } = useTimeSeriesTables(props.datasource);
   const timeRange = {
     to: props.range?.to,
     from: props.range?.from,
@@ -26,8 +26,9 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
 
       <div className={'gf-form'}>
         <SelectTable
-          selected={props.query.tableName}
-          options={tables}
+          selected={props.query.tableName || ''}
+          options={tables || []}
+          isLoading={isTablesLoading}
           onChange={(tableName) => props.onChange({ ...props.query, tableName })}
         />
       </div>

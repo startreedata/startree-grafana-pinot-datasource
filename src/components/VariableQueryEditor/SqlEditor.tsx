@@ -25,7 +25,7 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
       <InlineFormLabel width={10} tooltip={labels.tooltip} data-testid="inline-form-label">
         {labels.label}
       </InlineFormLabel>
-      <div style={{ flex: '1 1 auto' }}>
+      <div style={{ flex: '1 1 auto' }} data-testid={'sql-editor-content'}>
         <GrafanaSqlEditor query={editorContent} onChange={setEditorContent} />
       </div>
     </>

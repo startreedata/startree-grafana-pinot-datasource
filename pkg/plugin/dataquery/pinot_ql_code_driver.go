@@ -79,6 +79,10 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 }
 
 func (p *PinotQlCodeDriver) Execute(ctx context.Context) backend.DataResponse {
+	if p.params.Code == "" {
+		return NewEmptyDataResponse()
+	}
+
 	sql, err := p.RenderPinotSql()
 	if err != nil {
 		return NewPluginErrorResponse(err)

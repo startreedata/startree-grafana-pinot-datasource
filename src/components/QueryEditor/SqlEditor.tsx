@@ -7,14 +7,13 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
   const { current, onChange } = props;
   const labels = allLabels.components.QueryEditor.sqlEditor;
 
-  // The grafana sql editor appears to cache the onChange function in some way (probably unintended?)
-  // This work-around uses a local state var for the editor content.
-
   const [editorContent, setEditorContent] = useState(current || '');
   useEffect(() => {
-    if (editorContent !== current) {
-      onChange(editorContent);
-    }
+    const timeoutId = setTimeout(
+      () => editorContent !== undefined && current !== editorContent && onChange(editorContent),
+      300
+    );
+    return () => clearTimeout(timeoutId);
   });
 
   return (
@@ -22,8 +21,8 @@ export function SqlEditor(props: { current: string | undefined; onChange: (val: 
       <div>
         <FormLabel tooltip={labels.tooltip} label={labels.label} />
       </div>
-      <div style={{ flex: '1 1 auto' }}>
-        <GrafanaSqlEditor query={editorContent} onChange={setEditorContent}/>
+      <div style={{ flex: '1 1 auto' }} data-testid="sql-editor-content">
+        <GrafanaSqlEditor query={editorContent} onChange={setEditorContent} />
       </div>
     </div>
   );

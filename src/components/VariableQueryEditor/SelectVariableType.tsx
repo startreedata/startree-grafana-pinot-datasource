@@ -10,10 +10,7 @@ export const VariableType = Object.freeze({
   PinotQlCode: 'PINOT_QL_CODE',
 });
 
-export function SelectVariableType(props: {
-  selected: string | undefined;
-  onChange: (val: string | undefined) => void;
-}) {
+export function SelectVariableType(props: { selected: string; onChange: (val: string) => void }) {
   const { selected, onChange } = props;
   const labels = allLabels.components.VariableQueryEditor.variableType;
   const options = [
