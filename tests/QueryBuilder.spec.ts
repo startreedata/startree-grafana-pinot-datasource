@@ -22,6 +22,61 @@ const test = base.extend<TestFixtures>({
   },
 });
 
+test('Switch between Builder and Code editor', async ({ page, datasource }) => {
+  const tablesResponse = page.waitForResponse('/**/resources/tables');
+  const builderPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
+  const codePreviewResponse = page.waitForResponse('/**/resources/preview/sql/code');
+
+  await page.goto('http://localhost:3000/dashboard/new?orgId=1');
+  await page.getByLabel('Add new panel', { exact: true }).click();
+  await setPanelTimeWindow(page);
+  await selectDatasource(page, datasource.name);
+  await page.getByTestId('select-query-type').getByText('PinotQL').click();
+  await page.getByTestId('select-editor-mode').getByText('Builder').click();
+
+  await page.getByTestId('select-table-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
+  await page.getByTestId('select-granularity-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('HOURS', { exact: true }).click();
+  await builderPreviewResponse;
+  await expect(page.getByTestId('sql-preview')).toContainText(
+    //language=text
+    `SELECT
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "time",
+    SUM("views") AS "metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137
+GROUP BY
+    "time"
+ORDER BY
+    "time" DESC
+LIMIT 100000;`
+  );
+
+  await page.getByTestId('select-editor-mode').getByText('Code').click();
+  await codePreviewResponse;
+  await expect(page.getByTestId('sql-preview')).toContainText(
+    //language=text
+    `SELECT
+     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')  AS  "time" ,
+    SUM("views") AS  "views" 
+FROM
+     "complex_website" 
+WHERE
+     "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137 
+GROUP BY
+     "time" 
+ORDER BY
+     "time"  DESC
+LIMIT 100000;`
+  );
+
+  await page.getByTestId('select-editor-mode').getByText('Builder').click();
+  await page.getByTestId('copy-code-and-switch-btn').click();
+});
+
 test.describe('Create Panel with Builder', async () => {
   test.beforeEach(async ({ page, datasource }) => {
     const tablesResponse = page.waitForResponse('/**/resources/tables');
@@ -33,7 +88,6 @@ test.describe('Create Panel with Builder', async () => {
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Builder').click();
     await tablesResponse;
-    await expect(page.getByText('No data')).toBeVisible();
   });
 
   test('Run query button', async ({ page }) => await checkRunQueryButton(page));
@@ -103,7 +157,6 @@ test.describe('Explore with Builder', async () => {
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Builder').click();
     await tablesResponse;
-    await expect(page.getByText('No data')).toBeVisible();
   });
 
   test('Run query button', async ({ page }) => await checkRunQueryButton(page));
@@ -387,7 +440,7 @@ SELECT
 FROM
     "complex_website"
 WHERE
-    "hoursSinceEpoch" >= 464597 AND "hoursSinceEpoch" < 482142
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137
     AND ("country" != 'CN')
 GROUP BY
     "browser",

@@ -66,15 +66,23 @@ export async function selectDatasource(page: Page, name: string) {
 
 export async function setExploreTimeWindow(page: Page) {
   await page.getByTestId('data-testid TimePicker Open Button').click();
-  await page.getByLabel('Time Range from field').click();
-  await page.getByLabel('Time Range from field').fill('2023-01-01');
-  await page.getByLabel('Time Range to field').click();
-  await page.getByLabel('Time Range to field').fill('2025-01-01');
-  await page.getByTestId('data-testid TimePicker submit button').click();
+  await setTimeWindow(page);
 }
 
 export async function setPanelTimeWindow(page: Page) {
   await page.getByLabel('Panel editor content').getByTestId('data-testid TimePicker Open Button').click();
+  await setTimeWindow(page);
+}
+
+async function setTimeWindow(page: Page) {
+  await page.getByRole('button', { name: 'Change time settings' }).click();
+  await page
+    .getByTestId('data-testid Time zone picker select container')
+    .locator('div')
+    .filter({ hasText: 'Type to search (country, city' })
+    .nth(1)
+    .click();
+  await page.getByText('Coordinated Universal TimeUTC').click();
   await page.getByLabel('Time Range from field').click();
   await page.getByLabel('Time Range from field').fill('2023-01-01');
   await page.getByLabel('Time Range to field').click();

@@ -16,6 +16,8 @@
     "test-e2e-gui": "cypress run --browser chrome --headed --no-exit --config-file ./cypress/config/cypress.config.ts",
     "test-e2e-open": "cypress open --browser chrome --config-file ./cypress/config/cypress.config.ts",
     "test-playwright": "yarn playwright test",
+    "test-playwright-gui": "yarn playwright test --ui",
+    "playwright-codegen": "yarn playwright codegen",
     "server": "docker compose up grafana --build",
     "sign": "npx --yes @grafana/sign-plugin@latest"
   },

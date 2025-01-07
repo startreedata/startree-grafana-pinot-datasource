@@ -32,7 +32,6 @@ test.describe('Explore with Code Editor', async () => {
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Code').click();
     await tablesResponse;
-    await expect(page.getByText('No data')).toBeVisible();
   });
 
   test('Choose display type', async ({ page }) => {
@@ -78,7 +77,9 @@ test.describe('Explore with Code Editor', async () => {
 
     test('Table renders', async ({ page }) => {
       await checkTableRenders(page);
-      await expect(page.getByLabel('Explore Table')).toContainText('2024-07-25 08:00:00.000');
+      await expect(page.getByLabel('Explore Table')).toHaveText(
+        `timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN2024-07-24 12:00:00.000888109US2024-07-24 12:00:00.000874261CN2024-07-24 12:00:00.000904955KR2024-07-24 12:00:00.000849660IN2024-07-24 00:00:00.000935868IN2024-07-24 00:00:00.000876624KR2024-07-24 00:00:00.000859081CN2024-07-24 00:00:00.000919988US2024-07-23 12:00:00.000891722IN2024-07-23 12:00:00.000922426KR2024-07-23 12:00:00.000905138US2024-07-23 12:00:00.000881045CN`
+      );
     });
   });
 });
@@ -94,7 +95,6 @@ test.describe('Create Panel with Code Editor', async () => {
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Code').click();
     await tablesResponse;
-    await expect(page.getByText('No data')).toBeVisible();
   });
 
   test('Choose display type', async ({ page }) => {
@@ -144,7 +144,9 @@ test.describe('Create Panel with Code Editor', async () => {
 
     test('Table renders', async ({ page }) => {
       await checkTableRenders(page);
-      await expect(page.getByLabel('Panel Title panel').getByRole('table')).toContainText('2024-07-25 08:00:00.000');
+      await expect(page.getByLabel('Panel Title panel').getByRole('table')).toContainText(
+        `timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN`
+      );
     });
   });
 

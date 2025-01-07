@@ -1,5 +1,4 @@
 import { CodeParams, codeParamsFrom, dataQueryWithCodeParams } from './codeParams';
-import { DisplayTypeLogs, DisplayTypeTimeSeries } from '../components/QueryEditor/SelectDisplayType';
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 
 const newEmptyParams = (): CodeParams => {
@@ -17,7 +16,7 @@ const newEmptyParams = (): CodeParams => {
 describe('codeParamsFrom', () => {
   test('query is empty', () => {
     expect(codeParamsFrom({ refId: 'test_id' })).toEqual<CodeParams>({
-      displayType: DisplayTypeTimeSeries,
+      displayType: 'TIMESERIES',
       legend: '',
       logColumnAlias: '',
       metricColumnAlias: '',
@@ -31,7 +30,7 @@ describe('codeParamsFrom', () => {
     expect(
       codeParamsFrom({
         refId: 'test_id',
-        displayType: DisplayTypeLogs,
+        displayType: 'LOGS',
         legend: '{{ dim }}',
         logColumnAlias: 'test_log_column_alias',
         metricColumnAlias: 'test_metric_column_alias',
@@ -40,7 +39,7 @@ describe('codeParamsFrom', () => {
         timeColumnAlias: 'test_time_column_alias',
       })
     ).toEqual<CodeParams>({
-      displayType: DisplayTypeLogs,
+      displayType: 'LOGS',
       legend: '{{ dim }}',
       logColumnAlias: 'test_log_column_alias',
       metricColumnAlias: 'test_metric_column_alias',
@@ -55,6 +54,8 @@ describe('dataQueryWithCodeParams', () => {
   test('params are empty', () => {
     expect(dataQueryWithCodeParams({ refId: 'test_id' }, newEmptyParams())).toEqual<PinotDataQuery>({
       refId: 'test_id',
+      queryType: 'PinotQL',
+      editorMode: 'Code',
       displayType: undefined,
       tableName: undefined,
       pinotQlCode: undefined,
@@ -67,7 +68,7 @@ describe('dataQueryWithCodeParams', () => {
 
   test('params are fully populated', () => {
     const params: CodeParams = {
-      displayType: DisplayTypeLogs,
+      displayType: 'LOGS',
       tableName: 'test_table',
       pinotQlCode: 'SELECT * FROM "test_table";',
       timeColumnAlias: 'test_time_column_alias',
@@ -78,7 +79,9 @@ describe('dataQueryWithCodeParams', () => {
 
     expect(dataQueryWithCodeParams({ refId: 'test_id' }, params)).toEqual<PinotDataQuery>({
       refId: 'test_id',
-      displayType: DisplayTypeLogs,
+      queryType: 'PinotQL',
+      editorMode: 'Code',
+      displayType: 'LOGS',
       tableName: 'test_table',
       pinotQlCode: 'SELECT * FROM "test_table";',
       timeColumnAlias: 'test_time_column_alias',
