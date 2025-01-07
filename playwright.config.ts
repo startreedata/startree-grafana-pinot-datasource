@@ -5,7 +5,9 @@ import { dirname } from 'node:path';
 const pluginE2eAuth = `${dirname(require.resolve('@grafana/plugin-e2e'))}/auth`;
 
 // https://github.com/motdotla/dotenv
-require('dotenv').config();
+require('dotenv').config({ path: './tests/.env' });
+
+console.log(process.env); // remove this after you've confirmed it is working
 
 // https://playwright.dev/docs/test-configuration.
 export default defineConfig<PluginOptions>({

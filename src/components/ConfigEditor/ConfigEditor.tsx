@@ -52,7 +52,6 @@ export function ConfigEditor(props: ConfigEditorProps) {
       <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">
         <InputUrl
-          data-testid="input-controller-url"
           label={labels.controllerUrl.label}
           tooltip={
             <>

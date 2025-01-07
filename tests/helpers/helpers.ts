@@ -1,14 +1,10 @@
 import { expect, Locator, Page } from '@playwright/test';
 
 export const Env = Object.freeze({
-  // PinotConnectionControllerUrl: process.env['pinotConnectionControllerUrl'],
-  // PinotConnectionBrokerUrl: process.env['pinotConnectionBrokerUrl'],
-  // PinotConnectionDatabase: process.env['pinotConnectionDatabase'],
-  // PinotConnectionAuthToken: process.env['pinotConnectionAuthToken'],
-  PinotConnectionControllerUrl: 'https://pinot.celpxu.cp.s7e.startree.cloud',
-  PinotConnectionBrokerUrl: 'https://broker.pinot.celpxu.cp.s7e.startree.cloud',
-  PinotConnectionDatabase: 'ws_2jkxph6tf0nr',
-  PinotConnectionAuthToken: 'st-JzYjKgW5vpcUsEm9-Z3JRnh4uXRME90HIAMCuoySPPjgCXgdI',
+  PinotConnectionControllerUrl: process.env['PINOT_CONNECTION_CONTROLLER_URL'],
+  PinotConnectionBrokerUrl: process.env['PINOT_CONNECTION_BROKER_URL'],
+  PinotConnectionDatabase: process.env['PINOT_CONNECTION_DATABASE'],
+  PinotConnectionAuthToken: process.env['PINOT_CONNECTION_AUTH_TOKEN'],
 });
 
 export async function deleteDatasource(uid: string): Promise<void> {
@@ -24,12 +20,16 @@ export async function deleteDatasource(uid: string): Promise<void> {
   });
 }
 
+export function randomDatasourceName(): string {
+  return `__Pinot_Test_${Math.floor(Math.random() * 1e6).toString(36)}`;
+}
+
 export async function createDatasource(): Promise<{ uid: string; name: string }> {
   return fetch('http://localhost:3000/api/datasources/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      name: `__Pinot_Test_${Math.floor(Math.random() * 1e6).toString(36)}`,
+      name: randomDatasourceName(),
       type: 'startree-pinot-datasource',
       typeName: 'Pinot',
       typeLogoUrl: 'public/plugins/startree-pinot-datasource/img/logo.svg',
