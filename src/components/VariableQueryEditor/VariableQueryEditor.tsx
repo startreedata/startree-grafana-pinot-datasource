@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { interpolateVariables, PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../../datasource';
@@ -7,7 +7,12 @@ import { SelectVariableType, VariableType } from './SelectVariableType';
 import { DistinctValuesVariableEditor } from './DistinctValuesVariableEditor';
 import { SqlVariableEditor } from './SqlVariableEditor';
 import { ColumnVariableEditor } from './ColumnVariableEditor';
-import { dataQueryWithVariableParams, VariableParams, variableParamsFrom } from '../../pinotql/variablePararms';
+import {
+  applyDefaults,
+  dataQueryWithVariableParams,
+  VariableParams,
+  variableParamsFrom,
+} from '../../pinotql/variablePararms';
 import { useVariableResources } from '../../pinotql/variableResources';
 
 type VariableQueryEditorProps = QueryEditorProps<DataSource, PinotDataQuery, PinotConnectionConfig, PinotDataQuery>;
@@ -17,6 +22,12 @@ export function VariableQueryEditor({ datasource, query, data, onChange: onChang
   const interpolatedParams = variableParamsFrom(interpolateVariables(query, data?.request?.scopedVars));
   const resources = useVariableResources(datasource, interpolatedParams);
   const onChange = (params: VariableParams) => onChangeQuery(dataQueryWithVariableParams(query, params));
+
+  useEffect(() => {
+    if (applyDefaults(savedParams)) {
+      onChange({ ...savedParams });
+    }
+  });
 
   return (
     <>

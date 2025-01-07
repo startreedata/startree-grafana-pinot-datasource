@@ -13,12 +13,26 @@ export interface VariableParams {
 
 export function variableParamsFrom(query: PinotDataQuery): VariableParams {
   return {
+    variableType: query.variableQuery?.variableType || '',
     tableName: query.tableName || '',
-    variableType: query.variableQuery?.variableType || VariableType.TableList,
     columnName: query.variableQuery?.columnName || '',
-    columnType: query.variableQuery?.columnType || ColumnTypes.All,
+    columnType: query.variableQuery?.columnType || '',
     pinotQlCode: query.variableQuery?.pinotQlCode || '',
   };
+}
+
+export function applyDefaults(params: VariableParams): boolean {
+  let changed = false;
+  if (params.variableType === '') {
+    changed = true;
+    params.variableType = VariableType.TableList;
+  }
+
+  if (params.variableType === VariableType.ColumnList && params.columnType === '') {
+    changed = true;
+    params.columnType = ColumnTypes.All;
+  }
+  return changed;
 }
 
 export function dataQueryWithVariableParams(query: PinotDataQuery, params: VariableParams): PinotDataQuery {

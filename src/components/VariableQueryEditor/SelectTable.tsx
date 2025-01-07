@@ -16,14 +16,16 @@ export function SelectTable(props: {
   return (
     <div className={'gf-form'} data-testid="select-table">
       <FormLabel label={labels.label} tooltip={labels.tooltip} />
-      <Select
-        className={`${styles.VariableQueryEditor.inputForm}`}
-        invalid={!selected}
-        isLoading={isLoading}
-        options={options?.map((name) => ({ label: name, value: name }))}
-        value={selected || null}
-        onChange={(change) => onChange(change.value || '')}
-      />
+      <div data-testid={'select-table-dropdown'}>
+        <Select
+          className={`${styles.VariableQueryEditor.inputForm}`}
+          invalid={!selected}
+          isLoading={isLoading}
+          options={options?.map((name) => ({ label: name, value: name }))}
+          value={selected || null}
+          onChange={(change) => onChange(change.value || '')}
+        />
+      </div>
     </div>
   );
 }

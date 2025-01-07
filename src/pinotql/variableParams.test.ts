@@ -1,4 +1,4 @@
-import { dataQueryWithVariableParams, VariableParams, variableParamsFrom } from './variablePararms';
+import { applyDefaults, dataQueryWithVariableParams, VariableParams, variableParamsFrom } from './variablePararms';
 import { VariableType } from '../components/VariableQueryEditor/SelectVariableType';
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import { QueryType } from '../dataquery/QueryType';
@@ -34,6 +34,43 @@ describe('variableParamsFrom', () => {
       columnType: ColumnTypes.Metric,
       pinotQlCode: 'SELECT * FROM "test_table";',
     });
+  });
+});
+
+describe('applyDefaults', () => {
+  test('params are empty', () => {
+    const params: VariableParams = {
+      tableName: '',
+      variableType: '',
+      columnName: '',
+      columnType: '',
+      pinotQlCode: '',
+    };
+    expect(applyDefaults(params)).toEqual(true);
+    expect(params.variableType).toEqual('TABLE_LIST');
+  });
+
+  test('no column type', () => {
+    const params: VariableParams = {
+      tableName: '',
+      variableType: 'COLUMN_LIST',
+      columnName: '',
+      columnType: '',
+      pinotQlCode: '',
+    };
+    expect(applyDefaults(params)).toEqual(true);
+    expect(params.columnType).toEqual('ALL');
+  });
+
+  test('params are fully populated', () => {
+    const params: VariableParams = {
+      tableName: 'test_table',
+      variableType: VariableType.PinotQlCode,
+      columnName: 'test_column_name',
+      columnType: ColumnTypes.Metric,
+      pinotQlCode: 'SELECT * FROM "test_table";',
+    };
+    expect(applyDefaults(params)).toEqual(false);
   });
 });
 

@@ -2,7 +2,7 @@ import { SelectMetricColumn } from './SelectMetricColumn';
 import { AggregationFunction, SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { InputLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
@@ -37,9 +37,11 @@ export function PinotQlBuilder(props: {
     }
   };
 
-  if (applyBuilderDefaults(savedParams, resources)) {
-    onChangeAndRun({ ...savedParams });
-  }
+  useEffect(() => {
+    if (applyBuilderDefaults(savedParams, resources)) {
+      onChangeAndRun({ ...savedParams });
+    }
+  });
 
   return (
     <>

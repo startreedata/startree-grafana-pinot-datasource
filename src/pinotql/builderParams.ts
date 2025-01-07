@@ -72,9 +72,11 @@ export function applyBuilderDefaults(
   }
 ): boolean {
   let changed = false;
-  if (!params.timeColumn && resources.timeColumns.length > 0) {
+
+  const timeColumnCandidates = resources.timeColumns.filter((t) => !t.isDerived);
+  if (!params.timeColumn && timeColumnCandidates.length > 0) {
     changed = true;
-    params.timeColumn = resources.timeColumns[0].name;
+    params.timeColumn = timeColumnCandidates[0].name;
   }
 
   if (!params.metricColumn?.name && resources.metricColumns.length > 0) {

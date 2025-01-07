@@ -16,14 +16,16 @@ export function SelectColumn(props: {
   return (
     <div className={'gf-form'} data-testid="select-column">
       <FormLabel label={labels.label} tooltip={labels.tooltip} />
-      <Select
-        className={`${styles.VariableQueryEditor.inputForm}`}
-        invalid={!selected}
-        options={options.sort().map((name) => ({ label: name, value: name }))}
-        isLoading={isLoading}
-        value={selected || null}
-        onChange={(change) => onChange(change.value || '')}
-      />
+      <div data-testid={'select-column-dropdown'}>
+        <Select
+          className={`${styles.VariableQueryEditor.inputForm}`}
+          invalid={!selected}
+          options={options.sort().map((name) => ({ label: name, value: name }))}
+          isLoading={isLoading}
+          value={selected || null}
+          onChange={(change) => onChange(change.value || '')}
+        />
+      </div>
     </div>
   );
 }

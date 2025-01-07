@@ -141,29 +141,6 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-      - name: Cypress E2E run
-        uses: cypress-io/github-action@v6
-        id: run-cypress-e2e-tests
-        with:
-          config-file: cypress/config/cypress.config.ts
-          browser: chrome
-          wait-on: 'http://localhost:3000'
-          wait-on-timeout: 60
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
-          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
-          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
-          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
-
-      - name: Upload Cypress screenshots
-        uses: actions/upload-artifact@v4
-        if: ${{ failure() && steps.run-cypress-e2e-tests.outcome == 'failure' }}
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots
-          retention-days: 30
-
       - name: Collect Grafana logs
         run: docker compose logs grafana > grafana.log
 

@@ -170,7 +170,6 @@ test.describe('Create Panel with Code Editor', async () => {
       await page.getByTestId('input-log-alias').getByRole('textbox').fill('message');
 
       const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-
       await codebox.click();
       await page.keyboard.press('ControlOrMeta+a');
       await page.keyboard.press('ControlOrMeta+x');

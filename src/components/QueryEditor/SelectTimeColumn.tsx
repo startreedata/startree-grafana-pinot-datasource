@@ -21,10 +21,6 @@ export function SelectTimeColumn(props: {
       value: t.name,
     }));
 
-  if (!selected && candidates.length > 0 && selected !== candidates[0].value) {
-    onChange(candidates[0].value);
-  }
-
   return (
     <div className={'gf-form'} data-testid="select-time-column">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
