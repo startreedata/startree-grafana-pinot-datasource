@@ -1,16 +1,21 @@
 import { DataSource } from '../datasource';
-import { TableSchema } from '../types/TableSchema';
+import { TableSchema } from '../dataquery/TableSchema';
 import { useEffect, useState } from 'react';
 import { PinotResourceResponse } from './PinotResourceResponse';
+import { UseResourceResult } from './UseResourceResult';
 
-export function useTables(datasource: DataSource): string[] | undefined {
-  const [tables, setTables] = useState<string[] | undefined>();
+export function useTables(datasource: DataSource): UseResourceResult<string[]> {
+  const [result, setResult] = useState<string[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    listTables(datasource).then((tables) => setTables(tables));
+    setLoading(true);
+    listTables(datasource)
+      .then((tables) => setResult(tables))
+      .finally(() => setLoading(false));
   }, [datasource]);
 
-  return tables;
+  return { result, loading };
 }
 
 export async function listTables(datasource: DataSource): Promise<string[]> {

@@ -2,16 +2,16 @@ import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
 import { MultiSelect } from '@grafana/ui';
 import React from 'react';
-import { OrderByClause } from '../../types/OrderByClause';
+import { OrderByClause } from '../../dataquery/OrderByClause';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import { columnLabelOf, ComplexField } from '../../types/ComplexField';
+import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
 
 export function SelectOrderBy(props: {
-  selected: OrderByClause[] | undefined;
-  columns: ComplexField[] | undefined;
+  selected: OrderByClause[];
+  columns: ComplexField[];
   disabled: boolean;
-  onChange: (val: OrderByClause[] | undefined) => void;
+  onChange: (val: OrderByClause[]) => void;
 }) {
   const { columns, selected, disabled, onChange } = props;
   const labels = allLabels.components.QueryEditor.orderBy;
@@ -27,7 +27,7 @@ export function SelectOrderBy(props: {
 
   const usedLabels = new Set(usedOptions.map(({ label }) => label));
 
-  const unusedOptions = (columns || [])
+  const unusedOptions = columns
     .filter((col) => !usedLabels.has(columnLabelOf(col.name, col.key)))
     .flatMap<OrderByClause>((col) => [
       { columnName: col.name, columnKey: col.key || undefined, direction: 'ASC' },
@@ -44,19 +44,21 @@ export function SelectOrderBy(props: {
   return (
     <div className={'gf-form'} data-testid="select-order-by">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <MultiSelect
-        className={`${styles.QueryEditor.inputForm}`}
-        disabled={disabled}
-        options={options}
-        value={usedOptions}
-        onChange={(item: Array<SelectableValue<string>>) => {
-          onChange(
-            item
-              .map(({ value }) => options.find((opt) => opt.value === value)?.clause)
-              .filter((clause) => clause !== undefined) as OrderByClause[]
-          );
-        }}
-      />
+      <div data-testid="select-order-by-dropdown">
+        <MultiSelect
+          className={`${styles.QueryEditor.inputForm}`}
+          disabled={disabled}
+          options={options}
+          value={usedOptions}
+          onChange={(item: Array<SelectableValue<string>>) => {
+            onChange(
+              item
+                .map(({ value }) => options.find((opt) => opt.value === value)?.clause)
+                .filter((clause) => clause !== undefined) as OrderByClause[]
+            );
+          }}
+        />
+      </div>
     </div>
   );
 }

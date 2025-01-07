@@ -1,8 +1,8 @@
-import { PinotQueryEditorProps } from '../../types/PinotQueryEditorProps';
+import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 import { ToolbarButton } from '@grafana/ui';
 import React from 'react';
-import { QueryType } from '../../types/QueryType';
-import { EditorMode } from '../../types/EditorMode';
+import { QueryType } from '../../dataquery/QueryType';
+import { EditorMode } from '../../dataquery/EditorMode';
 import { SelectQueryType } from './SelectQueryType';
 import { SelectEditorMode } from './SelectEditorMode';
 

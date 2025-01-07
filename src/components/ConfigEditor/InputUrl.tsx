@@ -25,7 +25,6 @@ export function InputUrl(props: {
       invalid={!isValid}
       error={isValid ? '' : 'Please enter a valid URL'}
       interactive
-      data-testid={`${label.toLowerCase().replace(' ', '-')}-inline-field`}
     >
       <Input
         width={40}

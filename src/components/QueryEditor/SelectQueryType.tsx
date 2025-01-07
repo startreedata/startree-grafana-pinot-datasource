@@ -1,6 +1,6 @@
 import { FormLabel } from './FormLabel';
 import { RadioButtonGroup } from '@grafana/ui';
-import { QueryType } from '../../types/QueryType';
+import { QueryType } from '../../dataquery/QueryType';
 import React from 'react';
 import allLabels from '../../labels';
 
@@ -19,7 +19,7 @@ export function SelectQueryType({
     <>
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <RadioButtonGroup
-        data-testid="radio-btn-group"
+        data-testid="select-query-type"
         options={SupportedQueryTypes.map((name) => ({ label: name, value: name }))}
         onChange={onChange}
         value={current}
