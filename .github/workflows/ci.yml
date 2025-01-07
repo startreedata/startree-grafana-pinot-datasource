@@ -132,6 +132,11 @@ jobs:
 
       - name: Run Playwright tests
         run: yarn playwright test
+        env:
+          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
+          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
+          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
+          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
       - name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
