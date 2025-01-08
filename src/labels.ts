@@ -68,6 +68,18 @@ export default {
         tooltip: 'Select group by columns.',
         label: 'Group By',
       },
+      metadataColumns: {
+        tooltip: 'Select metadata columns.',
+        label: 'Metadata',
+      },
+      jsonExtractors: {
+        tooltip: 'Select json extract.',
+        label: 'Extract json',
+      },
+      regexpExtractors: {
+        tooltip: 'Select regexp extractors.',
+        label: 'Extract regexp',
+      },
       orderBy: {
         tooltip: 'Select order by columns.',
         label: 'Order By',
@@ -75,6 +87,10 @@ export default {
       metricColumn: {
         tooltip: 'Select the metric column. Required.',
         label: 'Metric Column',
+      },
+      logColumn: {
+        tooltip: 'Select the log column. Required.',
+        label: 'Log Column',
       },
       database: {
         tooltip: 'Select the Pinot database. Required.',

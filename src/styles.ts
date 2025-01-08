@@ -6,6 +6,9 @@ export const styles = {
       margin-right: 5px;
       width: 240px !important;
     `,
+    inlineInputForm: css`
+        min-width: 120px !important;
+    `,
   },
   VariableQueryEditor: {
     inputForm: css`

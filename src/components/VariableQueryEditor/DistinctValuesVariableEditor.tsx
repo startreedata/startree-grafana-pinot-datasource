@@ -1,14 +1,14 @@
 import React from 'react';
 import { SelectColumn } from './SelectColumn';
 import { SqlPreview } from './SqlPreview';
-import { VariableParams } from '../../pinotql/variablePararms';
-import { VariableResources } from '../../pinotql/variableResources';
+import { VariableQuery } from '../../pinotql';
+
 import { SelectTable } from './SelectTable';
 
 export function DistinctValuesVariableEditor(props: {
-  savedParams: VariableParams;
-  resources: VariableResources;
-  onChange: (params: VariableParams) => void;
+  savedParams: VariableQuery.Params;
+  resources: VariableQuery.Resources;
+  onChange: (params: VariableQuery.Params) => void;
 }) {
   const { savedParams, resources, onChange } = props;
 

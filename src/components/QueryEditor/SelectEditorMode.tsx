@@ -5,20 +5,12 @@ import React, { useState } from 'react';
 import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
-import { DisplayTypeTimeSeries } from './SelectDisplayType';
 import { previewSqlBuilder } from '../../resources/previewSql';
 import { QueryType } from '../../dataquery/QueryType';
-import { builderParamsFrom } from '../../pinotql/builderParams';
-import { dataQueryWithCodeParams } from '../../pinotql/codeParams';
-import { columnLabelOf } from '../../dataquery/ComplexField'; //language=text
-
-//language=text
-const defaultSql = `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("timestamp")
-GROUP BY $__timeGroup("timestamp")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000`;
+import { columnLabelOf } from '../../dataquery/ComplexField';
+import { DisplayType } from '../../dataquery/DisplayType';
+import { TimeSeriesBuilder } from '../../pinotql/TimeSeriesBuilder';
+import { CodeQuery } from '../../pinotql/CodeQuery';
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
@@ -65,7 +57,7 @@ export function SelectEditorMode(props: {
           if (value === EditorMode.Builder) {
             setShowConfirm(true);
           }
-          const builderParams = builderParamsFrom(query);
+          const builderParams = TimeSeriesBuilder.paramsFrom(query);
 
           if (value === EditorMode.Code) {
             previewSqlBuilder(datasource, {
@@ -84,14 +76,14 @@ export function SelectEditorMode(props: {
               queryOptions: builderParams.queryOptions,
             }).then((sql) =>
               onChange(
-                dataQueryWithCodeParams(query, {
-                  displayType: DisplayTypeTimeSeries,
+                CodeQuery.dataQueryOf(query, {
+                  displayType: DisplayType.TIMESERIES,
                   tableName: builderParams.tableName,
                   timeColumnAlias: 'time',
                   metricColumnAlias: columnLabelOf(builderParams.metricColumn.name, builderParams.metricColumn.key),
                   logColumnAlias: '',
                   legend: builderParams.legend,
-                  pinotQlCode: sql || defaultSql,
+                  pinotQlCode: sql,
                 })
               )
             );

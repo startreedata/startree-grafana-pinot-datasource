@@ -1,16 +1,15 @@
 import React from 'react';
 import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 import { EditorMode } from '../../dataquery/EditorMode';
-import { PinotQlBuilder } from './PinotQlBuilder';
 import { PinotQlCode } from './PinotQlCode';
-import { builderParamsFrom as builderParamsFrom, dataQueryWithBuilderParams } from '../../pinotql/builderParams';
 import { interpolateVariables } from '../../dataquery/PinotDataQuery';
-import { codeParamsFrom, dataQueryWithCodeParams } from '../../pinotql/codeParams';
+import { PinotQlBuilder } from './PinotQlBuilder';
+import { CodeQuery } from '../../pinotql/CodeQuery';
 
 export function PinotQlEditor(props: PinotQueryEditorProps) {
-  return (
-    <div>
-      {props.query.editorMode === EditorMode.Code ? (
+  switch (props.query.editorMode) {
+    case EditorMode.Code:
+      return (
         <PinotQlCode
           datasource={props.datasource}
           query={props.query}
@@ -19,25 +18,13 @@ export function PinotQlEditor(props: PinotQueryEditorProps) {
             from: props.range?.from,
           }}
           intervalSize={props.data?.request?.interval}
-          savedParams={codeParamsFrom(props.query)}
-          interpolatedParams={codeParamsFrom(interpolateVariables(props.query, props.data?.request?.scopedVars))}
-          onChange={(params) => props.onChange(dataQueryWithCodeParams(props.query, params))}
+          savedParams={CodeQuery.paramsFrom(props.query)}
+          interpolatedParams={CodeQuery.paramsFrom(interpolateVariables(props.query, props.data?.request?.scopedVars))}
+          onChange={(params) => props.onChange(CodeQuery.dataQueryOf(props.query, params))}
           onRunQuery={props.onRunQuery}
         />
-      ) : (
-        <PinotQlBuilder
-          datasource={props.datasource}
-          timeRange={{
-            to: props.range?.to,
-            from: props.range?.from,
-          }}
-          intervalSize={props.data?.request?.interval}
-          savedParams={builderParamsFrom(props.query)}
-          interpolatedParams={builderParamsFrom(interpolateVariables(props.query, props.data?.request?.scopedVars))}
-          onChange={(params) => props.onChange(dataQueryWithBuilderParams(props.query, params))}
-          onRunQuery={props.onRunQuery}
-        />
-      )}
-    </div>
-  );
+      );
+    default:
+      return <PinotQlBuilder {...props} />;
+  }
 }

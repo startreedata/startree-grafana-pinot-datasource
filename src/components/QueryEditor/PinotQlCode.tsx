@@ -1,32 +1,39 @@
 import { SqlEditor } from './SqlEditor';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { SqlPreview } from './SqlPreview';
-import { DisplayTypeLogs, DisplayTypeTable, DisplayTypeTimeSeries, SelectDisplayType } from './SelectDisplayType';
+import { SelectDisplayType } from './SelectDisplayType';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
 import { InputLogColumnAlias } from './InputLogColumnAlias';
 import { SelectTable } from './SelectTable';
-import { CodeParams } from '../../pinotql/codeParams';
-import { useCodeResources } from '../../pinotql/codeResources';
+import { DisplayType } from '../../dataquery/DisplayType';
+import { CodeQuery } from '../../pinotql/CodeQuery';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string | undefined;
   datasource: DataSource;
-  savedParams: CodeParams;
-  interpolatedParams: CodeParams;
-  onChange: (newParams: CodeParams) => void;
+  savedParams: CodeQuery.Params;
+  interpolatedParams: CodeQuery.Params;
+  onChange: (newParams: CodeQuery.Params) => void;
   onRunQuery: () => void;
 }) {
   const { timeRange, intervalSize, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
 
-  const resources = useCodeResources(datasource, timeRange, intervalSize, interpolatedParams);
-    return (
+  const resources = CodeQuery.useResources(datasource, timeRange, intervalSize, interpolatedParams);
+
+  useEffect(() => {
+    if (CodeQuery.applyDefaults(savedParams)) {
+      onChange({ ...savedParams });
+    }
+  });
+
+  return (
     <div>
       <SelectDisplayType
         value={savedParams.displayType}
@@ -43,13 +50,13 @@ export function PinotQlCode(props: {
           onChange={(tableName) => onChange({ ...savedParams, tableName })}
         />
       </div>
-      {savedParams.displayType === DisplayTypeTable && (
+      {savedParams.displayType === DisplayType.TABLE && (
         <InputTimeColumnAlias
           current={savedParams.timeColumnAlias}
           onChange={(timeColumnAlias) => onChange({ ...savedParams, timeColumnAlias })}
         />
       )}
-      {savedParams.displayType === DisplayTypeTimeSeries && (
+      {savedParams.displayType === DisplayType.TIMESERIES && (
         <div style={{ display: 'flex', flexDirection: 'row' }}>
           <InputTimeColumnAlias
             current={savedParams.timeColumnAlias}
@@ -61,7 +68,7 @@ export function PinotQlCode(props: {
           />
         </div>
       )}
-      {savedParams.displayType === DisplayTypeLogs && (
+      {savedParams.displayType === DisplayType.LOGS && (
         <div style={{ display: 'flex', flexDirection: 'row' }}>
           <InputTimeColumnAlias
             current={savedParams.timeColumnAlias}
