@@ -11,7 +11,7 @@ import { InputMetricLegend } from './InputMetricLegend';
 import { InputLogColumnAlias } from './InputLogColumnAlias';
 import { SelectTable } from './SelectTable';
 import { DisplayType } from '../../dataquery/DisplayType';
-import { CodeQuery } from '../../pinotql/CodeQuery';
+import { CodeQuery } from '../../pinotql';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;

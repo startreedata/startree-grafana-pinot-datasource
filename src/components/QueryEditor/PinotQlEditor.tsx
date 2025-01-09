@@ -4,7 +4,7 @@ import { EditorMode } from '../../dataquery/EditorMode';
 import { PinotQlCode } from './PinotQlCode';
 import { interpolateVariables } from '../../dataquery/PinotDataQuery';
 import { PinotQlBuilder } from './PinotQlBuilder';
-import { CodeQuery } from '../../pinotql/CodeQuery';
+import { CodeQuery } from '../../pinotql';
 
 export function PinotQlEditor(props: PinotQueryEditorProps) {
   switch (props.query.editorMode) {

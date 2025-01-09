@@ -9,8 +9,7 @@ import { previewSqlBuilder } from '../../resources/previewSql';
 import { QueryType } from '../../dataquery/QueryType';
 import { columnLabelOf } from '../../dataquery/ComplexField';
 import { DisplayType } from '../../dataquery/DisplayType';
-import { TimeSeriesBuilder } from '../../pinotql/TimeSeriesBuilder';
-import { CodeQuery } from '../../pinotql/CodeQuery';
+import { CodeQuery, TimeSeriesBuilder } from '../../pinotql';
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
