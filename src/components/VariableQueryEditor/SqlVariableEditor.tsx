@@ -1,13 +1,12 @@
 import React from 'react';
 import { SqlEditor } from './SqlEditor';
 import { SelectTable } from './SelectTable';
-import { VariableParams } from '../../pinotql/variablePararms';
-import { VariableResources } from '../../pinotql/variableResources';
+import { VariableQuery } from '../../pinotql';
 
 export function SqlVariableEditor(props: {
-  savedParams: VariableParams;
-  resources: VariableResources;
-  onChange: (params: VariableParams) => void;
+  savedParams: VariableQuery.Params;
+  resources: VariableQuery.Resources;
+  onChange: (params: VariableQuery.Params) => void;
 }) {
   const { savedParams, resources, onChange } = props;
   return (

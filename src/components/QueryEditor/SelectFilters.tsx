@@ -14,31 +14,31 @@ export function SelectFilters(props: {
   tableName: string | undefined;
   timeColumn: string | undefined;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  dimensionColumns: Column[] | undefined;
-  dimensionFilters: DimensionFilter[];
+  columns: Column[] | undefined;
+  filters: DimensionFilter[];
   onChange: (val: DimensionFilter[]) => void;
 }) {
   const labels = allLabels.components.QueryEditor.filters;
 
-  const { datasource, dimensionColumns, dimensionFilters, tableName, timeColumn, timeRange, onChange } = props;
-  const filteredColumns = (dimensionFilters || [])
+  const { datasource, columns, filters, tableName, timeColumn, timeRange, onChange } = props;
+  const filteredColumns = (filters || [])
     .filter(({ columnName }) => columnName)
     .map((f) => columnLabelOf(f.columnName || '', f.columnKey));
   const unusedColumns =
-    dimensionColumns?.filter(({ name, key }) => !filteredColumns.includes(columnLabelOf(name, key))) || [];
+    columns?.filter(({ name, key }) => !filteredColumns.includes(columnLabelOf(name, key))) || [];
 
   const onChangeFilter = (val: DimensionFilter, idx: number) => {
-    onChange(dimensionFilters.map((existing, i) => (i === idx ? val : existing)));
+    onChange(filters.map((existing, i) => (i === idx ? val : existing)));
   };
   const onDeleteFilter = (idx: number) => {
-    onChange(dimensionFilters.filter((_val, i) => i !== idx));
+    onChange(filters.filter((_val, i) => i !== idx));
   };
 
   return (
     <div className={'gf-form'} data-testid="select-filters">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {dimensionFilters.map((filter, idx) => (
+        {filters.map((filter, idx) => (
           <div key={idx} data-testid="edit-filter">
             <EditFilter
               datasource={datasource}
@@ -46,12 +46,12 @@ export function SelectFilters(props: {
               timeColumn={timeColumn}
               timeRange={timeRange}
               unusedColumns={unusedColumns}
-              thisColumn={dimensionColumns?.find(
+              thisColumn={columns?.find(
                 ({ name, key }) => filter.columnName === name && filter.columnKey === key
               )}
               thisFilter={filter}
-              isLoadingColumns={dimensionColumns === undefined}
-              remainingFilters={[...dimensionFilters.slice(0, idx), ...dimensionFilters.slice(idx + 1)]}
+              isLoadingColumns={columns === undefined}
+              remainingFilters={[...filters.slice(0, idx), ...filters.slice(idx + 1)]}
               onChange={(val: DimensionFilter) => onChangeFilter(val, idx)}
               onDelete={() => onDeleteFilter(idx)}
             />
@@ -64,7 +64,7 @@ export function SelectFilters(props: {
             variant="secondary"
             fullWidth={false}
             onClick={() => {
-              onChange([...(dimensionFilters || []), {}]);
+              onChange([...(filters || []), {}]);
             }}
           />
         </div>

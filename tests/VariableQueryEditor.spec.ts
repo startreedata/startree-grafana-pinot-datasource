@@ -1,17 +1,5 @@
-import { expect, test as base } from '@playwright/test';
-import { createDatasource, deleteDatasource } from '@helpers/helpers';
-
-interface TestFixtures {
-  datasource: { uid: string; name: string };
-}
-
-const test = base.extend<TestFixtures>({
-  datasource: async ({ page }, use) => {
-    const datasource = await createDatasource();
-    await use(datasource);
-    await deleteDatasource(datasource.uid);
-  },
-});
+import { expect } from '@playwright/test';
+import { queryEditorTest as test } from '@helpers/helpers';
 
 test.beforeEach(async ({ page, datasource }) => {
   await page.goto('http://localhost:3000/dashboard/new?orgId=1');

@@ -1,7 +1,7 @@
-import { CodeParams, codeParamsFrom, dataQueryWithCodeParams } from './codeParams';
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
+import * as CodeQuery from './CodeQuery';
 
-const newEmptyParams = (): CodeParams => {
+const newEmptyParams = (): CodeQuery.Params => {
   return {
     displayType: '',
     tableName: '',
@@ -13,10 +13,10 @@ const newEmptyParams = (): CodeParams => {
   };
 };
 
-describe('codeParamsFrom', () => {
+describe('paramsFrom', () => {
   test('query is empty', () => {
-    expect(codeParamsFrom({ refId: 'test_id' })).toEqual<CodeParams>({
-      displayType: 'TIMESERIES',
+    expect(CodeQuery.paramsFrom({ refId: 'test_id' })).toEqual<CodeQuery.Params>({
+      displayType: '',
       legend: '',
       logColumnAlias: '',
       metricColumnAlias: '',
@@ -28,7 +28,7 @@ describe('codeParamsFrom', () => {
 
   test('query is fully populated', () => {
     expect(
-      codeParamsFrom({
+      CodeQuery.paramsFrom({
         refId: 'test_id',
         displayType: 'LOGS',
         legend: '{{ dim }}',
@@ -38,7 +38,7 @@ describe('codeParamsFrom', () => {
         tableName: 'test_table',
         timeColumnAlias: 'test_time_column_alias',
       })
-    ).toEqual<CodeParams>({
+    ).toEqual<CodeQuery.Params>({
       displayType: 'LOGS',
       legend: '{{ dim }}',
       logColumnAlias: 'test_log_column_alias',
@@ -50,9 +50,53 @@ describe('codeParamsFrom', () => {
   });
 });
 
-describe('dataQueryWithCodeParams', () => {
+describe('applyDefaults', () => {
   test('params are empty', () => {
-    expect(dataQueryWithCodeParams({ refId: 'test_id' }, newEmptyParams())).toEqual<PinotDataQuery>({
+    const params = newEmptyParams();
+    expect(CodeQuery.applyDefaults(params)).toEqual(true);
+    expect(params).toEqual<CodeQuery.Params>({
+      displayType: 'TIMESERIES',
+      legend: '',
+      logColumnAlias: '',
+      metricColumnAlias: '',
+      tableName: '',
+      timeColumnAlias: '',
+      //language=text
+      pinotQlCode: `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("timestamp")
+GROUP BY $__timeGroup("timestamp")
+ORDER BY $__timeAlias() DESC
+LIMIT 100000`,
+    });
+  });
+
+  test('params are fully populated', () => {
+    const params: CodeQuery.Params = {
+      displayType: 'TIMESERIES',
+      tableName: 'test_table',
+      pinotQlCode: 'SELECT * FROM "test_table";',
+      timeColumnAlias: 'test_time_column_alias',
+      metricColumnAlias: 'test_metric_column_alias',
+      logColumnAlias: 'test_log_column_alias',
+      legend: '{{ dim }}',
+    };
+    expect(CodeQuery.applyDefaults(params)).toEqual(false);
+    expect(params).toEqual<CodeQuery.Params>({
+      displayType: 'TIMESERIES',
+      tableName: 'test_table',
+      pinotQlCode: 'SELECT * FROM "test_table";',
+      timeColumnAlias: 'test_time_column_alias',
+      metricColumnAlias: 'test_metric_column_alias',
+      logColumnAlias: 'test_log_column_alias',
+      legend: '{{ dim }}',
+    });
+  });
+});
+
+describe('dataQueryOf', () => {
+  test('params are empty', () => {
+    expect(CodeQuery.dataQueryOf({ refId: 'test_id' }, newEmptyParams())).toEqual<PinotDataQuery>({
       refId: 'test_id',
       queryType: 'PinotQL',
       editorMode: 'Code',
@@ -67,7 +111,7 @@ describe('dataQueryWithCodeParams', () => {
   });
 
   test('params are fully populated', () => {
-    const params: CodeParams = {
+    const params: CodeQuery.Params = {
       displayType: 'LOGS',
       tableName: 'test_table',
       pinotQlCode: 'SELECT * FROM "test_table";',
@@ -77,7 +121,7 @@ describe('dataQueryWithCodeParams', () => {
       legend: '{{ dim }}',
     };
 
-    expect(dataQueryWithCodeParams({ refId: 'test_id' }, params)).toEqual<PinotDataQuery>({
+    expect(CodeQuery.dataQueryOf({ refId: 'test_id' }, params)).toEqual<PinotDataQuery>({
       refId: 'test_id',
       queryType: 'PinotQL',
       editorMode: 'Code',

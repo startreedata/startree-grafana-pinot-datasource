@@ -1,9 +1,11 @@
 import { DataSource } from '../datasource';
 import { DateTime } from '@grafana/data';
-import { DimensionFilter } from '../dataquery/DimensionFilter';
 import { PinotResourceResponse } from './PinotResourceResponse';
 import { useEffect, useState } from 'react';
 import { UseResourceResult } from './UseResourceResult';
+import { useTableSchema } from './tableSchema';
+import { DimensionFilter } from '../dataquery/DimensionFilter';
+import { isEmpty } from 'lodash';
 
 export interface Column {
   name: string;
@@ -15,7 +17,7 @@ export interface Column {
 }
 
 export interface ListColumnsRequest {
-  tableName: string | undefined;
+  tableName: string;
   timeColumn?: string;
   timeRange?: { to: DateTime | undefined; from: DateTime | undefined };
   filters?: DimensionFilter[];
@@ -27,15 +29,20 @@ export function useColumns(
 ): UseResourceResult<Column[]> {
   const [result, setResult] = useState<Column[]>([]);
   const [loading, setLoading] = useState(false);
+  const { result: tableSchema } = useTableSchema(datasource, tableName);
 
   const request: ListColumnsRequest = {
     tableName: tableName,
   };
 
-  // Only need these params if the table has map columns.
-  if (result.length === 0 || result.filter(({ key }) => !key).length === 0) {
+  if (!isEmpty(tableSchema?.complexFieldSpecs)) {
     request.timeColumn = timeColumn;
-    request.timeRange = timeRange;
+    request.timeRange = timeRange
+      ? {
+          to: timeRange.to?.endOf('second'),
+          from: timeRange.from?.startOf('second'),
+        }
+      : undefined;
     request.filters = filters;
   }
 
@@ -46,7 +53,7 @@ export function useColumns(
         .then((res) => setResult(res))
         .finally(() => setLoading(false));
     }
-  }, [datasource, JSON.stringify(request)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [datasource, tableSchema, JSON.stringify(request)]); // eslint-disable-line react-hooks/exhaustive-deps
   return { loading, result };
 }
 

@@ -1,5 +1,3 @@
-import { QueryType } from './QueryType';
-import { EditorMode } from './EditorMode';
 import { DataQuery } from '@grafana/schema';
 import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
@@ -7,40 +5,10 @@ import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
 import { ScopedVars } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
-import { ComplexField } from './ComplexField'; // TODO: It's not entirely clear to me how these defaults are populated.
+import { ComplexField } from './ComplexField';
+import { JsonExtractor } from './JsonExtractor';
+import { RegexpExtractor } from './RegexpExtractor'; // TODO: It's not entirely clear to me how these defaults are populated.
 
-// TODO: It's not entirely clear to me how these defaults are populated.
-export const GetDefaultPinotDataQuery = (): Partial<PinotDataQuery> => ({
-  queryType: QueryType.PinotQL,
-  editorMode: EditorMode.Builder,
-
-  // PinotQl Builder
-
-  limit: -1,
-
-  // PinotQl Code Editor
-
-  timeColumnAlias: 'time',
-  metricColumnAlias: 'metric',
-  timeColumnFormat: '1:MILLISECONDS:EPOCH',
-  pinotQlCode: `
-SELECT 
-  $__timeGroup("timestamp") AS $__timeAlias(),
-  SUM("metric") AS $__metricAlias()
-FROM $__table()
-WHERE $__timeFilter("timestamp")
-GROUP BY $__timeGroup("timestamp")
-ORDER BY $__timeAlias() DESC
-LIMIT 100000
-`.trim(),
-});
-
-// PinotDataQuery serves as both the saved data model and data query API model.
-// And it's also overloaded as the primary data model that powers the ui components. 😬
-// Since this is also the saved data model, we have to be careful to maintain backwards compability.
-// Grafana does provide a data migration js api, however it's not available for Grafana 10.
-// Ref https://grafana.com/developers/plugin-tools/how-to-guides/data-source-plugins/add-migration-handler-for-backend-data-source.
-// TODO: Make unit-testable data conversions and data models for UI components instead of re-using this data model.
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
   editorMode?: string;
@@ -59,6 +27,10 @@ export interface PinotDataQuery extends DataQuery {
   legend?: string;
   metricColumnV2?: ComplexField;
   groupByColumnsV2?: ComplexField[];
+  logColumn?: ComplexField;
+  metadataColumns?: ComplexField[];
+  jsonExtractors?: JsonExtractor[];
+  regexpExtractors?: RegexpExtractor[];
 
   // PinotQl Code
   pinotQlCode?: string;
@@ -73,20 +45,6 @@ export interface PinotDataQuery extends DataQuery {
 
   // PromQl
   promQlCode?: string;
-}
-
-export function builderGroupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
-  return [...(query.groupByColumns?.map((col) => ({ name: col })) || []), ...(query.groupByColumnsV2 || [])];
-}
-
-export function builderMetricColumnFrom(query: PinotDataQuery): ComplexField | undefined {
-  if (query.metricColumnV2) {
-    return query.metricColumnV2;
-  } else if (query.metricColumn) {
-    return { name: query.metricColumn };
-  } else {
-    return undefined;
-  }
 }
 
 export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars | undefined): PinotDataQuery {
