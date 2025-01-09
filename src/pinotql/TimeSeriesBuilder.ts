@@ -15,6 +15,7 @@ import { useTables } from '../resources/tables';
 import { UseResourceResult } from '../resources/UseResourceResult';
 import { useEffect, useState } from 'react';
 import { previewSqlBuilder, PreviewSqlBuilderRequest } from '../resources/previewSql';
+import { DisplayType } from '../dataquery/DisplayType';
 
 export interface Params {
   tableName: string;
@@ -116,6 +117,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     ...query,
     queryType: QueryType.PinotQL,
     editorMode: EditorMode.Builder,
+    displayType: DisplayType.TIMESERIES,
     tableName: params.tableName || undefined,
     timeColumn: params.timeColumn || undefined,
     metricColumnV2: params.metricColumn.name ? params.metricColumn : undefined,
