@@ -11,8 +11,8 @@
     "test": "jest --watch --onlyChanged",
     "test:ci": "jest --passWithNoTests --maxWorkers 4",
     "test:e2e": "playwright test",
-    "test:e2e:gui": "playwright test --ui",
-    "test:e2e:codegen": "yarn playwright codegen",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:codegen": "playwright codegen",
     "server": "docker compose up grafana --build",
     "sign": "npx --yes @grafana/sign-plugin@latest"
   },

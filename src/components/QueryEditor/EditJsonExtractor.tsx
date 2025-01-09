@@ -2,10 +2,8 @@ import React, { ChangeEvent } from 'react';
 import { columnLabelOf } from '../../dataquery/ComplexField';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { Input, Select } from '@grafana/ui';
-import { JsonExtractor } from '../../dataquery/JsonExtractor';
+import { JsonExtractor, ResultTypes } from '../../dataquery/JsonExtractor';
 import { Column } from '../../resources/columns';
-
-const ResultTypes = ['INT', 'LONG', 'FLOAT', 'DOUBLE', 'BOOLEAN', 'TIMESTAMP', 'STRING'];
 
 export function EditJsonExtractor(props: {
   extractor: JsonExtractor;
