@@ -1,16 +1,13 @@
-import {
-  applyBuilderDefaults,
-  BuilderParams,
-  builderParamsFrom,
-  canRunBuilderQuery,
-  dataQueryWithBuilderParams,
-} from './builderParams';
+import * as TimeSeriesBuilder from './TimeSeriesBuilder';
 import { Column } from '../resources/columns';
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import { QueryType } from '../dataquery/QueryType';
 import { EditorMode } from '../dataquery/EditorMode';
+import { UseResourceResult } from '../resources/UseResourceResult';
+import { Granularity } from '../resources/granularities';
+import { DisplayType } from '../dataquery/DisplayType';
 
-const newEmptyParams = (): BuilderParams => ({
+const newEmptyParams = (): TimeSeriesBuilder.Params => ({
   tableName: '',
   timeColumn: '',
   metricColumn: {},
@@ -24,7 +21,7 @@ const newEmptyParams = (): BuilderParams => ({
   groupByColumns: [],
 });
 
-describe('builderParamsFrom', () => {
+describe('paramsFrom', () => {
   const query: PinotDataQuery = {
     refId: 'test_id',
     tableName: 'test_table_name',
@@ -43,7 +40,7 @@ describe('builderParamsFrom', () => {
   };
 
   test('query is fully populated', () => {
-    expect(builderParamsFrom(query)).toEqual<BuilderParams>({
+    expect(TimeSeriesBuilder.paramsFrom(query)).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table_name',
       timeColumn: 'test_time_column',
       metricColumn: { name: 'test_metric_column2', key: 'test_metric_column_key' },
@@ -59,7 +56,12 @@ describe('builderParamsFrom', () => {
   });
 
   test('aggregationFunction is absent', () => {
-    expect(builderParamsFrom({ ...query, aggregationFunction: undefined })).toEqual<BuilderParams>({
+    expect(
+      TimeSeriesBuilder.paramsFrom({
+        ...query,
+        aggregationFunction: undefined,
+      })
+    ).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table_name',
       timeColumn: 'test_time_column',
       metricColumn: { name: 'test_metric_column2', key: 'test_metric_column_key' },
@@ -75,7 +77,7 @@ describe('builderParamsFrom', () => {
   });
 
   test('metricColumnV2 is absent', () => {
-    expect(builderParamsFrom({ ...query, metricColumnV2: undefined })).toEqual<BuilderParams>({
+    expect(TimeSeriesBuilder.paramsFrom({ ...query, metricColumnV2: undefined })).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table_name',
       timeColumn: 'test_time_column',
       metricColumn: { name: 'test_metric_column1' },
@@ -91,7 +93,7 @@ describe('builderParamsFrom', () => {
   });
 
   test('query is empty', () => {
-    expect(builderParamsFrom({ refId: 'test_id' })).toEqual<BuilderParams>({
+    expect(TimeSeriesBuilder.paramsFrom({ refId: 'test_id' })).toEqual<TimeSeriesBuilder.Params>({
       tableName: '',
       timeColumn: '',
       metricColumn: {},
@@ -108,7 +110,7 @@ describe('builderParamsFrom', () => {
 });
 
 describe('canRunQuery', () => {
-  const params: BuilderParams = {
+  const params: TimeSeriesBuilder.Params = {
     tableName: 'test_table_name',
     timeColumn: 'test_time_column',
     metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
@@ -123,31 +125,37 @@ describe('canRunQuery', () => {
   };
 
   test('params are empty', () => {
-    expect(canRunBuilderQuery(newEmptyParams())).toEqual(false);
+    expect(TimeSeriesBuilder.canRunQuery(newEmptyParams())).toEqual(false);
   });
 
   test('tableName is empty', () => {
-    expect(canRunBuilderQuery({ ...params, tableName: '' })).toEqual(false);
+    expect(TimeSeriesBuilder.canRunQuery({ ...params, tableName: '' })).toEqual(false);
   });
 
   test('timeColumn is empty', () => {
-    expect(canRunBuilderQuery({ ...params, timeColumn: '' })).toEqual(false);
+    expect(TimeSeriesBuilder.canRunQuery({ ...params, timeColumn: '' })).toEqual(false);
   });
 
   test('metricColumn is empty and aggregationFunction is SUM', () => {
-    expect(canRunBuilderQuery({ ...params, metricColumn: {}, aggregationFunction: 'SUM' })).toEqual(false);
+    expect(TimeSeriesBuilder.canRunQuery({ ...params, metricColumn: {}, aggregationFunction: 'SUM' })).toEqual(false);
   });
 
   test('metricColumn is empty and aggregationFunction is COUNT', () => {
-    expect(canRunBuilderQuery({ ...params, metricColumn: {}, aggregationFunction: 'COUNT' })).toEqual(true);
+    expect(
+      TimeSeriesBuilder.canRunQuery({
+        ...params,
+        metricColumn: {},
+        aggregationFunction: 'COUNT',
+      })
+    ).toEqual(true);
   });
 
   test('params are fully populated', () => {
-    expect(canRunBuilderQuery(params)).toEqual(true);
+    expect(TimeSeriesBuilder.canRunQuery(params)).toEqual(true);
   });
 });
 
-describe('applyBuilderDefaults', () => {
+describe('applyDefaults', () => {
   const timeColumns: Column[] = [
     {
       name: 'ts',
@@ -187,8 +195,8 @@ describe('applyBuilderDefaults', () => {
 
   test('emptyParams', () => {
     const params = newEmptyParams();
-    expect(applyBuilderDefaults(params, { timeColumns, metricColumns })).toEqual(true);
-    expect(params).toEqual<BuilderParams>({
+    expect(TimeSeriesBuilder.applyDefaults(params, { timeColumns, metricColumns })).toEqual(true);
+    expect(params).toEqual<TimeSeriesBuilder.Params>({
       tableName: '',
       timeColumn: 'ts',
       metricColumn: { name: 'met', key: undefined },
@@ -204,7 +212,7 @@ describe('applyBuilderDefaults', () => {
   });
 
   test('populatedParams', () => {
-    const params: BuilderParams = {
+    const params: TimeSeriesBuilder.Params = {
       tableName: 'test_table',
       timeColumn: 'test_time_column',
       metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
@@ -217,8 +225,8 @@ describe('applyBuilderDefaults', () => {
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column' }],
     };
-    expect(applyBuilderDefaults(params, { timeColumns, metricColumns })).toEqual(false);
-    expect(params).toEqual<BuilderParams>({
+    expect(TimeSeriesBuilder.applyDefaults(params, { timeColumns, metricColumns })).toEqual(false);
+    expect(params).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table',
       timeColumn: 'test_time_column',
       metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
@@ -234,14 +242,15 @@ describe('applyBuilderDefaults', () => {
   });
 });
 
-describe('dataQueryWithBuilderParams', () => {
+describe('dataQueryOf', () => {
   const query = { refId: 'test_id' };
 
   test('params are empty', () => {
-    expect(dataQueryWithBuilderParams(query, newEmptyParams())).toEqual<PinotDataQuery>({
+    expect(TimeSeriesBuilder.dataQueryOf(query, newEmptyParams())).toEqual<PinotDataQuery>({
       refId: 'test_id',
       queryType: QueryType.PinotQL,
       editorMode: EditorMode.Builder,
+      displayType: DisplayType.TIMESERIES,
       tableName: undefined,
       timeColumn: undefined,
       metricColumn: undefined,
@@ -258,7 +267,7 @@ describe('dataQueryWithBuilderParams', () => {
 
   test('params are fully populated', () => {
     expect(
-      dataQueryWithBuilderParams(query, {
+      TimeSeriesBuilder.dataQueryOf(query, {
         tableName: 'test_table',
         timeColumn: 'test_time_column',
         metricColumn: { name: 'test_metric_column', key: 'test_metric_column_key' },
@@ -275,6 +284,7 @@ describe('dataQueryWithBuilderParams', () => {
       refId: 'test_id',
       queryType: QueryType.PinotQL,
       editorMode: EditorMode.Builder,
+      displayType: DisplayType.TIMESERIES,
       tableName: 'test_table',
       timeColumn: 'test_time_column',
       metricColumnV2: { name: 'test_metric_column', key: 'test_metric_column_key' },
@@ -287,5 +297,229 @@ describe('dataQueryWithBuilderParams', () => {
       legend: '{{test_dim_column}}',
       groupByColumnsV2: [{ name: 'test_dim_column' }],
     });
+  });
+});
+
+test('resourcesFrom', () => {
+  const tablesResult: UseResourceResult<string[]> = { loading: false, result: ['table_1', 'table_2'] };
+  const columnsResult: UseResourceResult<Column[]> = {
+    loading: false,
+    result: [
+      {
+        name: 'ts',
+        dataType: 'TIMESTAMP',
+        key: null,
+        isTime: true,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'ts2',
+        dataType: 'TIMESTAMP',
+        key: null,
+        isTime: true,
+        isDerived: true,
+        isMetric: false,
+      },
+      {
+        name: 'met',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'met2',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'dim',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'dim2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+  };
+
+  const granularitiesResult: UseResourceResult<Granularity[]> = {
+    loading: false,
+    result: [{ name: 'SECONDS', optimized: false, seconds: 1 }],
+  };
+
+  const sqlPreviewResult: UseResourceResult<string> = {
+    loading: false,
+    result: 'SELECT * FROM "test_table";',
+  };
+
+  const got = TimeSeriesBuilder.resourcesFrom(tablesResult, columnsResult, granularitiesResult, sqlPreviewResult);
+  expect(got).toEqual<TimeSeriesBuilder.Resources>({
+    tables: ['table_1', 'table_2'],
+    isTablesLoading: false,
+    columns: [
+      {
+        name: 'ts',
+        dataType: 'TIMESTAMP',
+        key: null,
+        isTime: true,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'ts2',
+        dataType: 'TIMESTAMP',
+        key: null,
+        isTime: true,
+        isDerived: true,
+        isMetric: false,
+      },
+      {
+        name: 'met',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'met2',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'dim',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'dim2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    timeColumns: [
+      {
+        name: 'ts',
+        dataType: 'TIMESTAMP',
+        key: null,
+        isTime: true,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    metricColumns: [
+      {
+        name: 'met',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'met2',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+    ],
+    groupByColumns: [
+      {
+        name: 'met',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'met2',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'dim',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'dim2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    filterColumns: [
+      {
+        name: 'met',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'met2',
+        dataType: 'DOUBLE',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: true,
+      },
+      {
+        name: 'dim',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'dim2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    isColumnsLoading: false,
+    granularities: [{ name: 'SECONDS', optimized: false, seconds: 1 }],
+    isGranularitiesLoading: false,
+    sqlPreview: 'SELECT * FROM "test_table";',
+    isSqlPreviewLoading: false,
   });
 });

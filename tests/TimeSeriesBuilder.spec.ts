@@ -1,26 +1,15 @@
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import {
   checkDropdown,
+  checkFilterEditor,
+  checkQueryOptionEditor,
   checkRunQueryButton,
   checkTextForm,
-  createDatasource,
-  deleteDatasource,
+  queryEditorTest as test,
   selectDatasource,
   setExploreTimeWindow,
   setPanelTimeWindow,
 } from '@helpers/helpers';
-
-interface TestFixtures {
-  datasource: { uid: string; name: string };
-}
-
-const test = base.extend<TestFixtures>({
-  datasource: async ({ page }, use) => {
-    const datasource = await createDatasource();
-    await use(datasource);
-    await deleteDatasource(datasource.uid);
-  },
-});
 
 test('Switch between Builder and Code editor', async ({ page, datasource }) => {
   const tablesResponse = page.waitForResponse('/**/resources/tables');
@@ -77,7 +66,7 @@ LIMIT 100000;`
   await page.getByTestId('copy-code-and-switch-btn').click();
 });
 
-test.describe('Create Panel with Builder', async () => {
+test.describe('Create Panel with Time Series Builder', async () => {
   test.beforeEach(async ({ page, datasource }) => {
     const tablesResponse = page.waitForResponse('/**/resources/tables');
 
@@ -87,6 +76,7 @@ test.describe('Create Panel with Builder', async () => {
     await selectDatasource(page, datasource.name);
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Builder').click();
+    await page.getByTestId('select-display-type').getByText('Time Series').click();
     await tablesResponse;
   });
 
@@ -147,7 +137,7 @@ test.describe('Create Panel with Builder', async () => {
   });
 });
 
-test.describe('Explore with Builder', async () => {
+test.describe('Explore with Time Series Builder', async () => {
   test.beforeEach(async ({ page, datasource }) => {
     const tablesResponse = page.waitForResponse('/**/resources/tables');
 
@@ -156,6 +146,7 @@ test.describe('Explore with Builder', async () => {
     await selectDatasource(page, datasource.name);
     await page.getByTestId('select-query-type').getByText('PinotQL').click();
     await page.getByTestId('select-editor-mode').getByText('Builder').click();
+    await page.getByTestId('select-display-type').getByText('Time Series').click();
     await tablesResponse;
   });
 
@@ -285,78 +276,6 @@ async function checkOrderByDropdown(page: Page) {
     want: ['time asc', 'time desc', 'metric asc', 'metric desc', 'country asc', 'country desc'],
     setValue: 'metric asc',
   });
-}
-
-async function checkFilterEditor(page: Page) {
-  const columnsResponse = page.waitForResponse('/**/resources/columns');
-  const distinctValuesResponse = page.waitForResponse('/**/resources/query/distinctValues');
-
-  await page.getByTestId('select-table-dropdown').click();
-  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
-
-  await columnsResponse;
-  await page.getByTestId('select-time-column-dropdown').click();
-  await page.getByLabel('Select options menu').getByText('hoursSinceEpoch', { exact: true }).click();
-
-  await page.getByTestId('add-filter-btn').click();
-  await checkDropdown(page, page.getByTestId('select-query-filter-column'), {
-    want: ['country', 'browser', 'platform', 'clicks', 'views', 'errors'],
-  });
-  await page.getByTestId('select-query-filter-column').click();
-  await page.getByLabel('Select options menu').getByText('country', { exact: true }).click();
-  await expect(page.getByTestId('select-query-filter-column')).toContainText('country');
-
-  await checkDropdown(page, page.getByTestId('select-query-filter-operator'), {
-    want: ['=', '!=', '>', '<', '<=', '<=', 'like', 'not like'],
-  });
-  await page.getByTestId('select-query-filter-operator').click();
-  await page.getByLabel('Select options menu').getByText('=', { exact: true }).click();
-  await expect(page.getByTestId('select-query-filter-operator')).toContainText('=');
-
-  await checkDropdown(page, page.getByTestId('select-query-filter-value'), {
-    onOpen: async () => await distinctValuesResponse,
-    want: [`'CN'`, `'IN'`, `'KR'`, `'US'`],
-  });
-  await page.getByTestId('select-query-filter-value').click();
-  await page.getByLabel('Select options menu').getByText(`'IN'`, { exact: true }).click();
-  await expect(page.getByTestId('select-query-filter-value')).toContainText(`'IN'`);
-
-  await page.getByTestId('delete-filter-btn').click();
-  await expect(page.getByTestId('select-query-filter-column')).not.toBeVisible();
-}
-
-async function checkQueryOptionEditor(page: Page) {
-  await page.getByTestId('add-query-option-btn').click();
-
-  await checkDropdown(page, page.getByTestId('select-query-option-name'), {
-    want: [
-      'timeoutMs',
-      'enableNullHandling',
-      'explainPlanVerbose',
-      'useMultistageEngine',
-      'maxExecutionThreads',
-      'numReplicaGroupsToQuery',
-      'minSegmentGroupTrimSize',
-      'minServerGroupTrimSize',
-      'skipIndexes',
-      'skipUpsert',
-      'useStarTree',
-      'maxRowsInJoin',
-      'inPredicatePreSorted',
-      'inPredicateLookupAlgorithm',
-      'maxServerResponseSizeBytes',
-      'maxQueryResponseSizeBytes',
-    ],
-  });
-  await page.getByTestId('select-query-option-name').click();
-  await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
-  await expect(page.getByTestId('select-query-option-name')).toContainText('timeoutMs');
-
-  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
-  await expect(page.getByTestId('input-query-option-value').getByRole('textbox')).toHaveValue('100');
-
-  await page.getByTestId('delete-query-option-btn').click();
-  await expect(page.getByTestId('select-query-option-name')).not.toBeVisible();
 }
 
 async function checkTimeSeriesRendersMinFields(page: Page) {

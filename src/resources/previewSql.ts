@@ -6,6 +6,8 @@ import { PinotResourceResponse } from './PinotResourceResponse';
 import { QueryDistinctValuesRequest } from './distinctValues';
 import { DateTime } from '@grafana/data';
 import { ComplexField } from '../dataquery/ComplexField';
+import { JsonExtractor } from '../dataquery/JsonExtractor';
+import { RegexpExtractor } from '../dataquery/RegexpExtractor';
 
 type PreviewSqlResponse = PinotResourceResponse<string>;
 
@@ -44,6 +46,31 @@ export async function previewSqlBuilder(datasource: DataSource, request: Preview
   }
 }
 
+export interface PreviewLogsSqlRequest {
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  tableName: string | undefined;
+  timeColumn: string | undefined;
+  logColumn: ComplexField | undefined;
+  metadataColumns: ComplexField[] | undefined;
+  jsonExtractors: JsonExtractor[] | undefined;
+  regexpExtractors: RegexpExtractor[] | undefined;
+  dimensionFilters: DimensionFilter[] | undefined;
+  queryOptions: QueryOption[] | undefined;
+  limit: number | undefined;
+  expandMacros: boolean | undefined;
+}
+
+export async function previewLogsSql(datasource: DataSource, request: PreviewLogsSqlRequest): Promise<string> {
+  if (request.tableName && request.timeColumn && request.timeRange.to && request.timeRange.from) {
+    return datasource
+      .postResource<PreviewSqlResponse>('preview/logs/sql', request)
+      .then((resp) => resp.result || '')
+      .catch(() => '');
+  } else {
+    return '';
+  }
+}
+
 export interface PreviewSqlCodeRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string | undefined;
@@ -54,6 +81,7 @@ export interface PreviewSqlCodeRequest {
 }
 
 export async function previewSqlCode(datasource: DataSource, request: PreviewSqlCodeRequest): Promise<string> {
+  console.log({ method: 'previewSqlCode', args: { datasource, request } });
   if (request.intervalSize && request.tableName && request.code) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/code', request)

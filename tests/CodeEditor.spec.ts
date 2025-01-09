@@ -1,26 +1,13 @@
-import { expect, Page, test as base } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import {
   checkDropdown,
   checkRunQueryButton,
   checkTextForm,
-  createDatasource,
-  deleteDatasource,
+  queryEditorTest as test,
   selectDatasource,
   setExploreTimeWindow,
   setPanelTimeWindow,
 } from '@helpers/helpers';
-
-interface TestFixtures {
-  datasource: { uid: string; name: string };
-}
-
-const test = base.extend<TestFixtures>({
-  datasource: async ({ page }, use) => {
-    const datasource = await createDatasource();
-    await use(datasource);
-    await deleteDatasource(datasource.uid);
-  },
-});
 
 test.describe('Explore with Code Editor', async () => {
   test.beforeEach(async ({ page, datasource }) => {

@@ -7,24 +7,18 @@ import { SelectVariableType, VariableType } from './SelectVariableType';
 import { DistinctValuesVariableEditor } from './DistinctValuesVariableEditor';
 import { SqlVariableEditor } from './SqlVariableEditor';
 import { ColumnVariableEditor } from './ColumnVariableEditor';
-import {
-  applyDefaults,
-  dataQueryWithVariableParams,
-  VariableParams,
-  variableParamsFrom,
-} from '../../pinotql/variablePararms';
-import { useVariableResources } from '../../pinotql/variableResources';
+import { VariableQuery } from '../../pinotql';
 
 type VariableQueryEditorProps = QueryEditorProps<DataSource, PinotDataQuery, PinotConnectionConfig, PinotDataQuery>;
 
 export function VariableQueryEditor({ datasource, query, data, onChange: onChangeQuery }: VariableQueryEditorProps) {
-  const savedParams = variableParamsFrom(query);
-  const interpolatedParams = variableParamsFrom(interpolateVariables(query, data?.request?.scopedVars));
-  const resources = useVariableResources(datasource, interpolatedParams);
-  const onChange = (params: VariableParams) => onChangeQuery(dataQueryWithVariableParams(query, params));
+  const savedParams = VariableQuery.paramsFrom(query);
+  const interpolatedParams = VariableQuery.paramsFrom(interpolateVariables(query, data?.request?.scopedVars));
+  const resources = VariableQuery.useResources(datasource, interpolatedParams);
+  const onChange = (params: VariableQuery.Params) => onChangeQuery(VariableQuery.dataQueryOf(query, params));
 
   useEffect(() => {
-    if (applyDefaults(savedParams)) {
+    if (VariableQuery.applyDefaults(savedParams)) {
       onChange({ ...savedParams });
     }
   });

@@ -1,7 +1,7 @@
-import { AdHocVariableFilter, CoreApp, DataSourceInstanceSettings, ScopedVars } from '@grafana/data';
+import { AdHocVariableFilter, DataSourceInstanceSettings, ScopedVars } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
 
-import { GetDefaultPinotDataQuery, interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
+import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
 import { PinotConnectionConfig } from './dataquery/PinotConnectionConfig';
 import { PinotVariableSupport } from './variables';
 
@@ -10,10 +10,6 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     super(instanceSettings);
 
     this.variables = new PinotVariableSupport(this);
-  }
-
-  getDefaultQuery(_: CoreApp): Partial<PinotDataQuery> {
-    return GetDefaultPinotDataQuery();
   }
 
   applyTemplateVariables(

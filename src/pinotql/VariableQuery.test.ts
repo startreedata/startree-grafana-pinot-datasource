@@ -1,12 +1,12 @@
-import { applyDefaults, dataQueryWithVariableParams, VariableParams, variableParamsFrom } from './variablePararms';
 import { VariableType } from '../components/VariableQueryEditor/SelectVariableType';
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import { QueryType } from '../dataquery/QueryType';
 import { ColumnTypes } from '../components/VariableQueryEditor/SelectColumnType';
+import { applyDefaults, dataQueryOf, Params, paramsFrom } from './VariableQuery';
 
-describe('variableParamsFrom', () => {
+describe('paramsFrom', () => {
   test('query is empty', () => {
-    expect(variableParamsFrom({ refId: 'test_id' })).toEqual<VariableParams>({
+    expect(paramsFrom({ refId: 'test_id' })).toEqual<Params>({
       tableName: '',
       variableType: '',
       columnName: '',
@@ -17,7 +17,7 @@ describe('variableParamsFrom', () => {
 
   test('query is fully populated', () => {
     expect(
-      variableParamsFrom({
+      paramsFrom({
         refId: 'test_id',
         tableName: 'test_table',
         variableQuery: {
@@ -27,7 +27,7 @@ describe('variableParamsFrom', () => {
           pinotQlCode: 'SELECT * FROM "test_table";',
         },
       })
-    ).toEqual<VariableParams>({
+    ).toEqual<Params>({
       tableName: 'test_table',
       variableType: VariableType.PinotQlCode,
       columnName: 'test_column_name',
@@ -39,7 +39,7 @@ describe('variableParamsFrom', () => {
 
 describe('applyDefaults', () => {
   test('params are empty', () => {
-    const params: VariableParams = {
+    const params: Params = {
       tableName: '',
       variableType: '',
       columnName: '',
@@ -51,7 +51,7 @@ describe('applyDefaults', () => {
   });
 
   test('no column type', () => {
-    const params: VariableParams = {
+    const params: Params = {
       tableName: '',
       variableType: 'COLUMN_LIST',
       columnName: '',
@@ -63,7 +63,7 @@ describe('applyDefaults', () => {
   });
 
   test('params are fully populated', () => {
-    const params: VariableParams = {
+    const params: Params = {
       tableName: 'test_table',
       variableType: VariableType.PinotQlCode,
       columnName: 'test_column_name',
@@ -74,11 +74,11 @@ describe('applyDefaults', () => {
   });
 });
 
-describe('dataQueryWithVariableParams', () => {
+describe('dataQueryOf', () => {
   const query: PinotDataQuery = { refId: 'test_id' };
   test('params are empty', () => {
     expect(
-      dataQueryWithVariableParams(query, {
+      dataQueryOf(query, {
         tableName: '',
         variableType: '',
         columnName: '',
@@ -100,7 +100,7 @@ describe('dataQueryWithVariableParams', () => {
 
   test('params are fully populated', () => {
     expect(
-      dataQueryWithVariableParams(query, {
+      dataQueryOf(query, {
         tableName: 'test_table',
         variableType: VariableType.PinotQlCode,
         columnName: 'test_column_name',
