@@ -20,16 +20,16 @@ func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
 SET timeoutMs=1;
 
 SELECT
-    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "time",
-    MAX("value") AS "metric"
+    DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "__time",
+    MAX("value") AS "__metric"
 FROM
     "benchmark"
 WHERE
     "ts" >= 1388327400000 AND "ts" < 1391281200000
 GROUP BY
-    "time"
+    "__time"
 ORDER BY
-    "time" DESC,
+    "__time" DESC,
     "fabric" DESC
 LIMIT 100000;
 `)
@@ -47,7 +47,7 @@ LIMIT 100000;
   },
   "limit": -1,
   "groupBy": ["fabric"],
-  "orderBy": [{"columnName": "time", "direction": "DESC"}, {"columnName": "fabric", "direction": "DESC"}],
+  "orderBy": [{"columnName": "__time", "direction": "DESC"}, {"columnName": "fabric", "direction": "DESC"}],
   "queryOptions": [{"name":"timeoutMs", "value":"1"}],
   "expandMacros": true
 }`, &got)
@@ -100,9 +100,9 @@ LIMIT 1000000`
 	require.NoError(t, json.NewEncoder(&data).Encode(map[string]interface{}{
 		"aggregationFunction": "MAX",
 		"intervalSize":        "30m",
-		"metricAlias":         "metric",
+		"metricColumnAlias":   "metric",
 		"tableName":           "benchmark",
-		"timeAlias":           "time",
+		"timeColumnAlias":     "time",
 		"timeRange": map[string]interface{}{
 			"to":   "2014-02-01T18:44:26.214Z",
 			"from": "2013-12-29T14:50:28.931Z",

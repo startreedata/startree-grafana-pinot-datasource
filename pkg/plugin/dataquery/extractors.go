@@ -37,7 +37,7 @@ func ExtractLogsDataFrame(results *pinotlib.ResultTable, timeColumn, logColumn s
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, TimeOutputFormat())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
@@ -84,7 +84,7 @@ func ExtractTimeField(results *pinotlib.ResultTable, timeColumn string) (int, *d
 		return -1, nil
 	}
 
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, TimeOutputFormat())
+	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
 	if err != nil {
 		return -1, nil
 	}

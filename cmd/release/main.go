@@ -169,18 +169,66 @@ func (x *ReleaseManager) InstallPluginIntoDataPlane() {
 
 	fmt.Println("Installing plugin into Grafana...")
 	fmt.Printf("Use this k8s context: %s [N/y]? ", x.getK8sContext())
-	ans, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	switch strings.TrimSpace(ans) {
-	case "y", "Y":
-		break
-	default:
+	if !readYesNo() {
 		return
 	}
 
-	deployment := x.getK8sDeployment(x.getGrafanaDeploymentName())
-	x.patchGrafanaDeployment(deployment)
-	x.applyK8sConfig(deployment)
+	oldDeployment := x.getK8sDeployment(x.getGrafanaDeploymentName())
+	// TODO: Deep copy
+	newDeployment := x.getK8sDeployment(x.getGrafanaDeploymentName())
+	x.patchGrafanaDeployment(newDeployment)
+
+	fmt.Println("Makes these changes to the grafana deployment:")
+	printDiff(oldDeployment, newDeployment)
+
+	fmt.Printf("Are you sure you want to continue [N/y]? ")
+	if !readYesNo() {
+		return
+	}
+
+	x.applyK8sConfig(newDeployment)
 	fmt.Println("Installation complete.")
+}
+
+func readYesNo() bool {
+	ans, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	switch strings.TrimSpace(ans) {
+	case "y", "Y":
+		return true
+	default:
+		return false
+	}
+}
+
+func printDiff(old, new DeploymentConfig) {
+	writeConfig := func(name string, config DeploymentConfig) {
+		f, err := os.OpenFile(name, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
+		handleError(err)
+		defer f.Close()
+		enc := json.NewEncoder(f)
+		enc.SetIndent("", "  ")
+		handleError(enc.Encode(config))
+	}
+
+	handleError(os.MkdirAll("tmp", 0700))
+	defer os.RemoveAll("tmp")
+
+	writeConfig("tmp/before", old)
+	writeConfig("tmp/after", new)
+
+	cmd := exec.Command("diff", "-u", "--color=always", "tmp/before", "tmp/after")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		var exitError *exec.ExitError
+		if errors.As(err, &exitError) {
+			if exitError.ExitCode() > 1 {
+				handleError(err)
+			}
+		} else {
+			handleError(err)
+		}
+	}
 }
 
 func (x *ReleaseManager) getInternalArchiveName() string {
@@ -506,16 +554,33 @@ func (x *ReleaseManager) getK8sDeployment(deploymentName string) DeploymentConfi
 func (x *ReleaseManager) patchGrafanaDeployment(deployment DeploymentConfig) {
 	spec := deployment["spec"].(map[string]interface{})["template"].(map[string]interface{})["spec"].(map[string]interface{})
 
-	spec["volumes"] = append(spec["volumes"].([]interface{}), []interface{}{
-		map[string]interface{}{
+	var pluginsVolumeExists bool
+	for _, vol := range spec["volumes"].([]interface{}) {
+		if vol.(map[string]interface{})["name"].(string) == "plugins" {
+			pluginsVolumeExists = true
+			break
+		}
+	}
+	if !pluginsVolumeExists {
+		spec["volumes"] = append(spec["volumes"].([]interface{}), map[string]interface{}{
 			"name":     "plugins",
 			"emptyDir": map[string]interface{}{},
-		},
-		map[string]interface{}{
+		})
+	}
+
+	var filesVolumeExists bool
+	for _, vol := range spec["volumes"].([]interface{}) {
+		if vol.(map[string]interface{})["name"].(string) == "files" {
+			filesVolumeExists = true
+			break
+		}
+	}
+	if !filesVolumeExists {
+		spec["volumes"] = append(spec["volumes"].([]interface{}), map[string]interface{}{
 			"name":     "files",
 			"emptyDir": map[string]interface{}{},
-		},
-	}...)
+		})
+	}
 
 	spec["initContainers"] = []map[string]interface{}{x.getInitContainerConfig()}
 
