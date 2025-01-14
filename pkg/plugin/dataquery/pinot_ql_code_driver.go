@@ -49,13 +49,13 @@ func NewPinotQlCodeDriver(params PinotQlCodeDriverParams) (*PinotQlCodeDriver, e
 		params.Ctx = context.Background()
 	}
 	if params.TimeColumnAlias == "" {
-		params.TimeColumnAlias = DefaultTimeColumnAlias
+		params.TimeColumnAlias = BuilderTimeColumn
 	}
 	if params.MetricColumnAlias == "" {
-		params.MetricColumnAlias = DefaultMetricColumnAlias
+		params.MetricColumnAlias = BuilderMetricColumn
 	}
 	if params.LogColumnAlias == "" {
-		params.LogColumnAlias = DefaultLogColumnAlias
+		params.LogColumnAlias = BuilderLogColumn
 	}
 
 	tableConfigs, err := params.PinotClient.ListTableConfigs(params.Ctx, params.TableName)
@@ -121,7 +121,7 @@ func (p *PinotQlCodeDriver) ExtractResults(results *pinotlib.ResultTable) (*data
 			Legend:            p.params.Legend,
 			TimeColumnAlias:   p.params.TimeColumnAlias,
 			MetricColumnAlias: p.params.MetricColumnAlias,
-			TimeColumnFormat:  TimeOutputFormat(),
+			TimeColumnFormat:  OutputTimeFormat(),
 		}, results)
 	}
 }

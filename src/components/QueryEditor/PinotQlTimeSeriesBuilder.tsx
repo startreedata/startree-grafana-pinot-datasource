@@ -91,7 +91,7 @@ export function PinotQlTimeSeriesBuilder(props: {
         />
         <SelectOrderBy
           selected={savedParams.orderBy}
-          columns={[{ name: 'time' }, { name: 'metric' }, ...savedParams.groupByColumns]}
+          columns={[{ name: '__time' }, { name: '__metric' }, ...savedParams.groupByColumns]}
           disabled={savedParams.aggregationFunction === AggregationFunction.NONE}
           onChange={(orderBy) => onChangeAndRun({ ...savedParams, orderBy })}
         />

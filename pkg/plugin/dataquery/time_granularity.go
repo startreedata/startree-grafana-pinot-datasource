@@ -13,7 +13,7 @@ import (
 
 const GranularityAuto = "auto"
 
-func TimeOutputFormat() pinotlib.DateTimeFormat {
+func OutputTimeFormat() pinotlib.DateTimeFormat {
 	return pinotlib.DateTimeFormatMillisecondsEpoch()
 }
 

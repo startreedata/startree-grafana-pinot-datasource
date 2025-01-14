@@ -18,14 +18,7 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})
-	schema, err := client.GetTableSchema(context.Background(), "benchmark")
-	if err != nil {
-		b.Fatal(err)
-	}
-
-	params := PinotQlBuilderParams{
-		PinotClient: client,
-		TableSchema: schema,
+	params := TimeSeriesBuilderParams{
 		TimeRange: TimeRange{
 			From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
 			To:   time.Date(2024, 10, 1, 5, 0, 0, 0, time.UTC),
@@ -39,14 +32,9 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 		Limit:               1_000_000_000,
 	}
 
-	driver, err := NewPinotQlBuilderDriver(params)
-	if err != nil {
-		b.Fatal(err)
-	}
-
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		result := driver.Execute(context.Background())
+		result := ExecuteTimeSeriesBuilderQuery(context.Background(), client, params)
 		if result.Error != nil {
 			b.Fatal(result.Error)
 		}

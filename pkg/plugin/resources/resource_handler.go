@@ -110,9 +110,13 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		return newOkResponse("")
 	}
 
-	driver, err := dataquery.NewPinotQlBuilderDriver(dataquery.PinotQlBuilderParams{
-		PinotClient:         x.client,
-		TableSchema:         tableSchema,
+	tableConfigs, err := x.client.ListTableConfigs(ctx, data.TableName)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("PinotClient.ListTableConfigs() failed.")
+		return newOkResponse("")
+	}
+
+	params := dataquery.TimeSeriesBuilderParams{
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
 		TableName:           data.TableName,
@@ -125,18 +129,17 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		Granularity:         data.Granularity,
 		OrderByClauses:      data.OrderByClauses,
 		QueryOptions:        data.QueryOptions,
-	})
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("Failed to build query driver.")
-		return newOkResponse("")
-
 	}
 
-	sql, err := driver.RenderPinotSql(data.ExpandMacros)
+	var sql string
+	if data.ExpandMacros {
+		sql, err = dataquery.RenderTimeSeriesSql(ctx, params, tableSchema, tableConfigs)
+	} else {
+		sql, err = dataquery.RenderTimeSeriesSqlWithMacros(ctx, params, tableSchema, tableConfigs)
+	}
 	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
+		log.WithError(err).FromContext(ctx).Error("RenderTimeSeriesSql() failed.")
 		return newOkResponse("")
-
 	}
 
 	return newOkResponse(sql)
@@ -162,7 +165,13 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		return newOkResponse("")
 	}
 
-	builderParams := dataquery.LogsBuilderParams{
+	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
+		return newOkResponse("")
+	}
+
+	params := dataquery.LogsBuilderParams{
 		TimeRange:        data.TimeRange,
 		TableName:        data.TableName,
 		TimeColumn:       data.TimeColumn,
@@ -176,27 +185,18 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		Limit:            data.Limit,
 	}
 
+	var sql string
 	if data.ExpandMacros {
-		tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-		if err != nil {
-			log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
-			return newOkResponse("")
-		}
-
-		sql, err := dataquery.RenderLogsBuilderSql(tableSchema, builderParams)
-		if err != nil {
-			log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
-			return newOkResponse("")
-		}
-		return newOkResponse(sql)
+		sql, err = dataquery.RenderLogsBuilderSql(tableSchema, params)
 	} else {
-		sql, err := dataquery.RenderLogsBuilderSqlWithMacros(builderParams)
-		if err != nil {
-			log.WithError(err).FromContext(ctx).Error("PinotDriver.RenderSql() failed.")
-			return newOkResponse("")
-		}
-		return newOkResponse(sql)
+		sql, err = dataquery.RenderLogsBuilderSqlWithMacros(params)
 	}
+
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("RenderLogsBuilderSql() failed.")
+		return newOkResponse("")
+	}
+	return newOkResponse(sql)
 }
 
 type PreviewSqlCodeRequest struct {
@@ -465,7 +465,7 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 		}
 	}
 
-	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn, dataquery.TimeOutputFormat())
+	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn, dataquery.OutputTimeFormat())
 	for _, pinotGranularity := range derivedGranularities {
 		distinctSuggestions[pinotGranularity.Duration().Seconds()] = Granularity{
 			Name:      pinotGranularity.ShortString(),
@@ -474,7 +474,7 @@ func (x *ResourceHandler) ListSuggestedGranularities(ctx context.Context, req Li
 		}
 	}
 
-	if timeColumnFormat.Equals(dataquery.TimeOutputFormat()) {
+	if timeColumnFormat.Equals(dataquery.OutputTimeFormat()) {
 		distinctSuggestions[minPinotGranularity.Duration().Seconds()] = Granularity{
 			Name:      minPinotGranularity.ShortString(),
 			Optimized: true,

@@ -37,7 +37,10 @@ func TestNewDriver(t *testing.T) {
 			}
 			got, err := NewDriver(client, query, backend.TimeRange{})
 			assert.NoError(t, err)
-			assert.IsType(t, &PinotQlBuilderDriver{}, got)
+			//TODO: Not sure that this actually makes sense.
+			assert.IsType(t, DriverFunc(func(ctx context.Context) backend.DataResponse {
+				return backend.DataResponse{}
+			}), got)
 		})
 
 		t.Run("editorMode="+string(EditorModeCode), func(t *testing.T) {
