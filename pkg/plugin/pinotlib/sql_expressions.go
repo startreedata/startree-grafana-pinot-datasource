@@ -144,3 +144,12 @@ func RegexpExtractExpr(sourceExpr string, pattern string, group int, defaultValu
 func QueryOptionExpr(name string, valueExpr string) string {
 	return fmt.Sprintf(`SET %s=%s;`, name, valueExpr)
 }
+
+func OrderByExpr(columnExpr string, direction string) string {
+	if strings.ToUpper(direction) == "DESC" {
+		direction = "DESC"
+	} else {
+		direction = "ASC"
+	}
+	return fmt.Sprintf(`%s %s`, columnExpr, direction)
+}

@@ -31,16 +31,16 @@ test('Switch between Builder and Code editor', async ({ page, datasource }) => {
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
-    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "time",
-    SUM("views") AS "metric"
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
+    SUM("views") AS "__metric"
 FROM
     "complex_website"
 WHERE
     "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137
 GROUP BY
-    "time"
+    "__time"
 ORDER BY
-    "time" DESC
+    "__time" DESC
 LIMIT 100000;`
   );
 
@@ -273,8 +273,8 @@ async function checkOrderByDropdown(page: Page) {
 
   const dropdownLocator = page.getByTestId('select-order-by-dropdown');
   await checkDropdown(page, dropdownLocator, {
-    want: ['time asc', 'time desc', 'metric asc', 'metric desc', 'country asc', 'country desc'],
-    setValue: 'metric asc',
+    want: ['__time asc', '__time desc', '__metric asc', '__metric desc', 'country asc', 'country desc'],
+    setValue: '__metric asc',
   });
 }
 
@@ -289,16 +289,16 @@ async function checkTimeSeriesRendersMinFields(page: Page) {
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT
-    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "time",
-    SUM("views") AS "metric"
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
+    SUM("views") AS "__metric"
 FROM
     "complex_website"
 WHERE
     "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148
 GROUP BY
-    "time"
+    "__time"
 ORDER BY
-    "time" DESC
+    "__time" DESC
 LIMIT 100000;`
   );
 
@@ -354,8 +354,8 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
 
 SELECT
     "browser",
-    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "time",
-    MAX("errors") AS "metric"
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
+    MAX("errors") AS "__metric"
 FROM
     "complex_website"
 WHERE
@@ -363,7 +363,7 @@ WHERE
     AND ("country" != 'CN')
 GROUP BY
     "browser",
-    "time"
+    "__time"
 ORDER BY
     "browser" ASC
 LIMIT 4000;`

@@ -71,23 +71,23 @@ func newPinotQlDriver(pinotClient *pinotlib.PinotClient, query PinotDataQuery, t
 				})
 			}), nil
 		default:
-			return NewPinotQlBuilderDriver(PinotQlBuilderParams{
-				PinotClient:         pinotClient,
-				TableSchema:         tableSchema,
-				TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
-				IntervalSize:        query.IntervalSize,
-				TableName:           query.TableName,
-				TimeColumn:          query.TimeColumn,
-				MetricColumn:        builderMetricColumnFrom(query),
-				GroupByColumns:      builderGroupByColumnsFrom(query),
-				AggregationFunction: query.AggregationFunction,
-				DimensionFilters:    query.DimensionFilters,
-				Limit:               query.Limit,
-				Granularity:         query.Granularity,
-				OrderByClauses:      query.OrderByClauses,
-				QueryOptions:        query.QueryOptions,
-				Legend:              query.Legend,
-			})
+			return DriverFunc(func(ctx context.Context) backend.DataResponse {
+				return ExecuteTimeSeriesBuilderQuery(ctx, pinotClient, TimeSeriesBuilderParams{
+					TimeRange:           TimeRange{To: timeRange.To, From: timeRange.From},
+					IntervalSize:        query.IntervalSize,
+					TableName:           query.TableName,
+					TimeColumn:          query.TimeColumn,
+					MetricColumn:        builderMetricColumnFrom(query),
+					GroupByColumns:      builderGroupByColumnsFrom(query),
+					AggregationFunction: query.AggregationFunction,
+					DimensionFilters:    query.DimensionFilters,
+					Limit:               query.Limit,
+					Granularity:         query.Granularity,
+					OrderByClauses:      query.OrderByClauses,
+					QueryOptions:        query.QueryOptions,
+					Legend:              query.Legend,
+				})
+			}), nil
 		}
 
 	case EditorModeCode:
