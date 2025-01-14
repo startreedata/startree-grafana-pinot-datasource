@@ -14,14 +14,12 @@ import (
 )
 
 func TestPinotQlCodeDriver_Execute(t *testing.T) {
-	t.Run("display="+DisplayTypeTimeSeries, func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			params := PinotQlCodeDriverParams{
-				PinotClient:       testCase.Client,
+	t.Run("displayType=TIMESERIES", func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return PinotQlCodeQuery{
 				TableName:         testCase.TableName,
 				TimeRange:         testCase.TimeRange,
 				IntervalSize:      testCase.IntervalSize,
-				TableSchema:       testCase.TableSchema,
 				DisplayType:       DisplayTypeTimeSeries,
 				MetricColumnAlias: "value",
 				TimeColumnAlias:   "time",
@@ -39,7 +37,6 @@ ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
 			}
-			return NewPinotQlCodeDriver(params)
 		}
 
 		wantFrames := func(times []time.Time, values []float64) data.Frames {
@@ -66,14 +63,12 @@ LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn,
 		})
 	})
 
-	t.Run("display="+DisplayTypeTable, func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			params := PinotQlCodeDriverParams{
-				PinotClient:       testCase.Client,
+	t.Run("display=TABLE", func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return PinotQlCodeQuery{
 				TableName:         testCase.TableName,
 				TimeRange:         testCase.TimeRange,
 				IntervalSize:      testCase.IntervalSize,
-				TableSchema:       testCase.TableSchema,
 				DisplayType:       DisplayTypeTable,
 				MetricColumnAlias: "value",
 				TimeColumnAlias:   "time",
@@ -91,7 +86,6 @@ ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
 			}
-			return NewPinotQlCodeDriver(params)
 		}
 
 		wantFrames := func(times []time.Time, values []float64) data.Frames {
@@ -118,14 +112,12 @@ LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn,
 		})
 	})
 
-	t.Run("display="+DisplayTypeLogs, func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			params := PinotQlCodeDriverParams{
-				PinotClient:     testCase.Client,
+	t.Run("displayType=LOGS", func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return PinotQlCodeQuery{
 				TableName:       testCase.TableName,
 				TimeRange:       testCase.TimeRange,
 				IntervalSize:    testCase.IntervalSize,
-				TableSchema:     testCase.TableSchema,
 				DisplayType:     DisplayTypeLogs,
 				LogColumnAlias:  "message",
 				TimeColumnAlias: "time",
@@ -143,7 +135,6 @@ ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
 			}
-			return NewPinotQlCodeDriver(params)
 		}
 
 		wantFrames := func(times []time.Time, values []float64) data.Frames {

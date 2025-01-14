@@ -9,11 +9,7 @@ import (
 	"time"
 )
 
-var _ Driver = &PromQlDriver{}
-
-type PromQlCodeDriverParams struct {
-	PinotClient *pinotlib.PinotClient
-
+type PromQlQuery struct {
 	TableName    string
 	PromQlCode   string
 	TimeRange    TimeRange
@@ -21,35 +17,25 @@ type PromQlCodeDriverParams struct {
 	Legend       string
 }
 
-type PromQlDriver struct {
-	params PromQlCodeDriverParams
-}
-
-func NewPromQlCodeDriver(params PromQlCodeDriverParams) *PromQlDriver {
-	return &PromQlDriver{
-		params: params,
-	}
-}
-
-func (p *PromQlDriver) Execute(ctx context.Context) backend.DataResponse {
-	if strings.TrimSpace(p.params.PromQlCode) == "" {
+func (params PromQlQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+	if strings.TrimSpace(params.PromQlCode) == "" {
 		return NewEmptyDataResponse()
 	}
 
-	queryResponse, err := p.params.PinotClient.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
+	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
 		Language:  pinotlib.TimeSeriesQueryLanguagePromQl,
-		Query:     p.params.PromQlCode,
-		Start:     p.params.TimeRange.From,
-		End:       p.params.TimeRange.To,
-		Step:      p.params.IntervalSize,
-		TableName: p.params.TableName,
+		Query:     params.PromQlCode,
+		Start:     params.TimeRange.From,
+		End:       params.TimeRange.To,
+		Step:      params.IntervalSize,
+		TableName: params.TableName,
 	})
 	if err != nil {
 		// TODO: Separate downstream and plugin errors.
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := ExtractTimeSeriesMatrix(queryResponse.Data.Result, p.params.Legend, p.params.IntervalSize)
+	frames := ExtractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize)
 	return NewOkDataResponse(frames...)
 }
 

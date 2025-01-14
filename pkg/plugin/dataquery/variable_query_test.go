@@ -11,19 +11,16 @@ import (
 )
 
 func TestPinotVariableQueryDriver_Execute(t *testing.T) {
+	ctx := context.Background()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	// TODO: Add tests for error cases
 
-	t.Run("variableType="+VariableQueryTypeTableList, func(t *testing.T) {
+	t.Run("variableType=TABLE_LIST", func(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
-			params := PinotVariableQueryParams{
-				PinotClient:  client,
+			got := VariableQuery{
 				VariableType: VariableQueryTypeTableList,
-			}
-
-			driver := NewPinotVariableQueryDriver(params)
-			got := driver.Execute(context.Background())
+			}.Execute(ctx, client)
 
 			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 			if assert.Len(t, got.Frames, 1, "DataResponse.Frames") && assert.Len(t, got.Frames[0].Fields, 1, "DataResponse.Frames[0].Fields") {
@@ -39,16 +36,12 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 			assert.NoError(t, got.Error, "DataResponse.Error")
 		})
 	})
-	t.Run("variableType="+VariableQueryTypeColumnList, func(t *testing.T) {
+	t.Run("variableType=COLUMN_LIST", func(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
-			params := PinotVariableQueryParams{
-				PinotClient:  client,
+			got := VariableQuery{
 				VariableType: VariableQueryTypeColumnList,
 				TableName:    "benchmark",
-			}
-
-			driver := NewPinotVariableQueryDriver(params)
-			got := driver.Execute(context.Background())
+			}.Execute(ctx, client)
 
 			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 			assert.Equal(t, data.Frames{data.NewFrame("result",
@@ -60,14 +53,13 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 		})
 	})
 
-	t.Run("variableType="+VariableQueryTypeDistinctValues, func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			return NewPinotVariableQueryDriver(PinotVariableQueryParams{
-				PinotClient:  testCase.Client,
+	t.Run("variableType=DISTINCT_VALUES", func(t *testing.T) {
+		newQuery := func(testCase DriverTestCase) ExecutableQuery {
+			return VariableQuery{
 				VariableType: VariableQueryTypeDistinctValues,
 				TableName:    testCase.TableName,
 				ColumnName:   testCase.TargetColumn,
-			}), nil
+			}
 		}
 
 		wantFrames := func(values []string) data.Frames {
@@ -77,33 +69,32 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 		}
 
 		t.Run("happy path", func(t *testing.T) {
-			runSqlQueryDistinctValsHappyPath(t, newDriver, wantFrames)
+			runSqlQueryDistinctValsHappyPath(t, newQuery, wantFrames)
 		})
 		t.Run("partial data", func(t *testing.T) {
-			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
+			runSqlQueryDistinctValsPartialResults(t, newQuery, wantFrames)
 		})
 		t.Run("no rows", func(t *testing.T) {
-			runSqlQueryNoRows(t, newDriver)
+			runSqlQueryNoRows(t, newQuery)
 		})
 		t.Run("column dne", func(t *testing.T) {
-			runSqlQueryColumnDne(t, newDriver)
+			runSqlQueryColumnDne(t, newQuery)
 		})
 		t.Run("pinot unreachable", func(t *testing.T) {
-			runSqlQueryPinotUnreachable(t, newDriver)
+			runSqlQueryPinotUnreachable(t, newQuery)
 		})
 	})
 
-	t.Run("variableType="+VariableQueryTypePinotQlCode, func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			return NewPinotVariableQueryDriver(PinotVariableQueryParams{
-				PinotClient:  testCase.Client,
+	t.Run("variableType=PINOT_QL_CODE", func(t *testing.T) {
+		newQuery := func(testCase DriverTestCase) ExecutableQuery {
+			return VariableQuery{
 				VariableType: VariableQueryTypePinotQlCode,
 				TableName:    testCase.TableName,
 				PinotQlCode: fmt.Sprintf(`SELECT DISTINCT "%s"
 FROM "%s"
 ORDER BY "%s" ASC
 LIMIT 100;`, testCase.TargetColumn, testCase.TableName, testCase.TargetColumn),
-			}), nil
+			}
 		}
 
 		wantFrames := func(values []string) data.Frames {
@@ -113,19 +104,19 @@ LIMIT 100;`, testCase.TargetColumn, testCase.TableName, testCase.TargetColumn),
 		}
 
 		t.Run("happy path", func(t *testing.T) {
-			runSqlQueryDistinctValsHappyPath(t, newDriver, wantFrames)
+			runSqlQueryDistinctValsHappyPath(t, newQuery, wantFrames)
 		})
 		t.Run("partial data", func(t *testing.T) {
-			runSqlQueryDistinctValsPartialResults(t, newDriver, wantFrames)
+			runSqlQueryDistinctValsPartialResults(t, newQuery, wantFrames)
 		})
 		t.Run("no rows", func(t *testing.T) {
-			runSqlQueryNoRows(t, newDriver)
+			runSqlQueryNoRows(t, newQuery)
 		})
 		t.Run("column dne", func(t *testing.T) {
-			runSqlQueryColumnDne(t, newDriver)
+			runSqlQueryColumnDne(t, newQuery)
 		})
 		t.Run("pinot unreachable", func(t *testing.T) {
-			runSqlQueryPinotUnreachable(t, newDriver)
+			runSqlQueryPinotUnreachable(t, newQuery)
 		})
 	})
 }

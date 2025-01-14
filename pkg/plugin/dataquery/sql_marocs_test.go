@@ -1,6 +1,7 @@
 package dataquery
 
 import (
+	"context"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -9,6 +10,8 @@ import (
 )
 
 func TestExpandMacros(t *testing.T) {
+	ctx := context.Background()
+
 	engine := MacroEngine{
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
@@ -75,7 +78,7 @@ func TestExpandMacros(t *testing.T) {
 
 	for _, tt := range testArgs {
 		t.Run(tt.expr, func(t *testing.T) {
-			got, err := engine.ExpandMacros(tt.expr)
+			got, err := engine.ExpandMacros(ctx, tt.expr)
 			if tt.wantErr != "" {
 				assert.EqualError(t, err, tt.wantErr)
 				assert.Equal(t, "", got)
@@ -88,6 +91,8 @@ func TestExpandMacros(t *testing.T) {
 }
 
 func TestMacroExprFor(t *testing.T) {
+	ctx := context.Background()
+
 	engine := MacroEngine{
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
@@ -107,7 +112,7 @@ func TestMacroExprFor(t *testing.T) {
 	t.Run(MacroTable, func(t *testing.T) {
 		gotExpr := MacroExprFor(MacroTable)
 		assert.Equal(t, "$__table()", gotExpr)
-		res, err := engine.ExpandTableName(gotExpr)
+		res, err := engine.ExpandTableName(ctx, gotExpr)
 		assert.NoError(t, err)
 		assert.Equal(t, `"CleanLogisticData"`, strings.TrimSpace(res))
 	})
@@ -115,7 +120,7 @@ func TestMacroExprFor(t *testing.T) {
 	t.Run(MacroTimeGroup, func(t *testing.T) {
 		gotExpr := MacroExprFor(MacroTimeGroup, `"timestamp"`, "'1:MINUTES'")
 		assert.Equal(t, `$__timeGroup("timestamp", '1:MINUTES')`, gotExpr)
-		res, err := engine.ExpandTimeGroup(gotExpr)
+		res, err := engine.ExpandTimeGroup(ctx, gotExpr)
 		assert.NoError(t, err)
 		assert.Equal(t,
 			`DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`,
@@ -124,6 +129,8 @@ func TestMacroExprFor(t *testing.T) {
 }
 
 func TestExpandMacrosExampleQuery(t *testing.T) {
+	ctx := context.Background()
+
 	want := strings.TrimSpace(`
 SET useMultistageEngine=true;
 
@@ -171,7 +178,7 @@ LIMIT 1000000
 		IntervalSize: 1 * time.Hour,
 	}
 
-	got, err := engine.ExpandMacros(`
+	got, err := engine.ExpandMacros(ctx, `
 SET useMultistageEngine=true;
 
 WITH data AS (

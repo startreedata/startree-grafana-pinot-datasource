@@ -1,0 +1,17 @@
+{
+  "tableName": "nullValues",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "__timestamp",
+    "schemaName": "nullValues",
+    "replication": "1"
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

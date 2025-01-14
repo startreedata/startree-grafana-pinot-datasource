@@ -116,7 +116,7 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		return newOkResponse("")
 	}
 
-	params := dataquery.TimeSeriesBuilderParams{
+	query := dataquery.TimeSeriesBuilderQuery{
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
 		TableName:           data.TableName,
@@ -133,9 +133,9 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 
 	var sql string
 	if data.ExpandMacros {
-		sql, err = dataquery.RenderTimeSeriesSql(ctx, params, tableSchema, tableConfigs)
+		sql, err = query.RenderSql(ctx, tableSchema, tableConfigs)
 	} else {
-		sql, err = dataquery.RenderTimeSeriesSqlWithMacros(ctx, params, tableSchema, tableConfigs)
+		sql, err = query.RenderSqlWithMacros(ctx, tableSchema, tableConfigs)
 	}
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderTimeSeriesSql() failed.")
@@ -171,7 +171,7 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		return newOkResponse("")
 	}
 
-	params := dataquery.LogsBuilderParams{
+	query := dataquery.LogsBuilderQuery{
 		TimeRange:        data.TimeRange,
 		TableName:        data.TableName,
 		TimeColumn:       data.TimeColumn,
@@ -187,9 +187,9 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 
 	var sql string
 	if data.ExpandMacros {
-		sql, err = dataquery.RenderLogsBuilderSql(tableSchema, params)
+		sql, err = query.RenderSql(tableSchema)
 	} else {
-		sql, err = dataquery.RenderLogsBuilderSqlWithMacros(params)
+		sql, err = query.RenderSqlWithMacros()
 	}
 
 	if err != nil {
@@ -221,22 +221,22 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		return newOkResponse("")
 	}
 
-	driver, err := dataquery.NewPinotQlCodeDriver(dataquery.PinotQlCodeDriverParams{
-		PinotClient:       x.client,
-		TableName:         data.TableName,
-		TimeRange:         data.TimeRange,
-		IntervalSize:      parseIntervalSize(data.IntervalSize),
-		TableSchema:       tableSchema,
-		TimeColumnAlias:   data.TimeColumnAlias,
-		MetricColumnAlias: data.MetricColumnAlias,
-		Code:              data.Code,
-	})
+	tableConfigs, err := x.client.ListTableConfigs(ctx, data.TableName)
 	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("NewPinotQlCodeDriver() failed.")
+		log.WithError(err).FromContext(ctx).Error("PinotClient.ListTableConfigs() failed.")
 		return newOkResponse("")
 	}
 
-	sql, err := driver.RenderPinotSql()
+	query := dataquery.PinotQlCodeQuery{
+		TableName:         data.TableName,
+		TimeRange:         data.TimeRange,
+		IntervalSize:      parseIntervalSize(data.IntervalSize),
+		TimeColumnAlias:   data.TimeColumnAlias,
+		MetricColumnAlias: data.MetricColumnAlias,
+		Code:              data.Code,
+	}
+
+	sql, err := query.RenderSql(ctx, tableSchema, tableConfigs)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderPinotSql() failed.")
 		return newOkResponse("")

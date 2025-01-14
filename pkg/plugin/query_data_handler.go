@@ -13,22 +13,16 @@ func NewQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler 
 		response := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
 			backend.Logger.Debug(fmt.Sprintf("received query: %s", string(query.JSON)))
-			response.Responses[query.RefID] = fetchData(client, ctx, query)
+			response.Responses[query.RefID] = fetchData(ctx, client, query)
 		}
 		return response, nil
 	})
 }
 
-func fetchData(client *pinotlib.PinotClient, ctx context.Context, query backend.DataQuery) backend.DataResponse {
+func fetchData(ctx context.Context, client *pinotlib.PinotClient, query backend.DataQuery) backend.DataResponse {
 	pinotDataQuery, err := dataquery.PinotDataQueryFrom(query)
 	if err != nil {
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
-
-	driver, err := dataquery.NewDriver(client, pinotDataQuery, query.TimeRange)
-	if err != nil {
-		return dataquery.NewPluginErrorResponse(err)
-	}
-
-	return driver.Execute(ctx)
+	return dataquery.ExecutableQueryFrom(pinotDataQuery).Execute(ctx, client)
 }
