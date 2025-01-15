@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
@@ -13,7 +15,27 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
+)
+
+var requestCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "grafana_plugin",
+		Name:      "pinot_resource_requests_total",
+		Help:      "Total number of queries to the Pinot data source.",
+	},
+	[]string{"endpoint", "status"},
+)
+
+var requestDuration = promauto.NewSummaryVec(
+	prometheus.SummaryOpts{
+		Namespace:  "grafana_plugin",
+		Name:       "pinot_resource_request_duration_seconds",
+		Help:       "Duration of queries to the Pinot data source.",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	},
+	[]string{"endpoint", "status"},
 )
 
 type ResourceHandler struct {
@@ -643,20 +665,42 @@ func newErrorResponse[T any](code int, err error) *Response[T] {
 	return &Response[T]{Code: code, Error: err.Error()}
 }
 
-func adaptHandler[T any](handler func(r *http.Request) *Response[T]) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		writeResponse(w, handler(r))
+func adaptHandler[T any](handler func(*http.Request) *Response[T]) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		startTime := time.Now()
+		resp := handler(req)
+		duration := time.Since(startTime)
+
+		labels := promLabelsFor(req, resp)
+		requestCounter.With(labels).Inc()
+		requestDuration.With(labels).Observe(duration.Seconds())
+		writeResponse(w, resp)
 	}
 }
 
 func adaptHandlerWithBody[I any, O any](handler func(ctx context.Context, data I) *Response[O]) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		var data I
-		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
 			writeResponse(w, newBadRequestResponse[O](err))
 			return
 		}
-		writeResponse(w, handler(r.Context(), data))
+
+		startTime := time.Now()
+		resp := handler(req.Context(), data)
+		duration := time.Since(startTime)
+
+		labels := promLabelsFor(req, resp)
+		requestCounter.With(labels).Inc()
+		requestDuration.With(labels).Observe(duration.Seconds())
+		writeResponse(w, handler(req.Context(), data))
+	}
+}
+
+func promLabelsFor[T any](req *http.Request, resp *Response[T]) prometheus.Labels {
+	return prometheus.Labels{
+		"endpoint": req.URL.Path,
+		"status":   strconv.FormatInt(int64(resp.Code), 10),
 	}
 }
 

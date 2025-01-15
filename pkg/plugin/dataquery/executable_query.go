@@ -3,8 +3,55 @@ package dataquery
 import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"strconv"
+	"time"
 )
+
+var queryCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "grafana_plugin",
+		Name:      "pinot_data_queries_total",
+		Help:      "Total number of queries to the Pinot data source.",
+	},
+	[]string{"query_type", "status"},
+)
+
+var queryDuration = promauto.NewSummaryVec(
+	prometheus.SummaryOpts{
+		Namespace:  "grafana_plugin",
+		Name:       "pinot_data_query_duration_seconds",
+		Help:       "Duration of queries to the Pinot data source.",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	},
+	[]string{"query_type", "status"},
+)
+
+func ExecuteQuery(ctx context.Context, client *pinotlib.PinotClient, query backend.DataQuery) backend.DataResponse {
+	pinotDataQuery, err := PinotDataQueryFrom(query)
+	if err != nil {
+		queryCounter.With(prometheus.Labels{
+			"query_type": pinotDataQuery.QueryType.String(),
+			"status":     "400",
+		}).Inc()
+		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+	}
+
+	startTime := time.Now()
+	resp := ExecutableQueryFrom(pinotDataQuery).Execute(ctx, client)
+	duration := time.Since(startTime)
+
+	labels := prometheus.Labels{
+		"query_type": pinotDataQuery.QueryType.String(),
+		"status":     strconv.FormatInt(int64(resp.Status), 10),
+	}
+	queryCounter.With(labels).Inc()
+	queryDuration.With(labels).Observe(duration.Seconds())
+
+	return resp
+}
 
 func ExecutableQueryFrom(query PinotDataQuery) ExecutableQuery {
 	switch {

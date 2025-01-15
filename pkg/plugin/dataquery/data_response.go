@@ -43,6 +43,10 @@ func NewPinotExceptionsDataResponse(exceptions []pinotlib.BrokerException) backe
 	}
 }
 
+func NewBadRequestErrorResponse(err error) backend.DataResponse {
+	return NewErrorDataResponse(backend.StatusBadRequest, err, backend.ErrorSourcePlugin)
+}
+
 func NewPluginErrorResponse(err error) backend.DataResponse {
 	return NewInternalErrorDataResponse(err, backend.ErrorSourcePlugin)
 }

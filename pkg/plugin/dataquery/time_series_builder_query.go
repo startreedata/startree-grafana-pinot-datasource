@@ -41,7 +41,7 @@ type TimeSeriesBuilderQuery struct {
 
 func (query TimeSeriesBuilderQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
 	if err := query.Validate(); err != nil {
-		return NewPluginErrorResponse(err)
+		return NewBadRequestErrorResponse(err)
 	}
 
 	tableSchema, err := client.GetTableSchema(ctx, query.TableName)

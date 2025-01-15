@@ -9,6 +9,8 @@ import (
 
 type QueryType string
 
+func (x QueryType) String() string { return string(x) }
+
 const (
 	QueryTypePinotQl            QueryType = "PinotQL"
 	QueryTypePromQl             QueryType = "PromQL"
@@ -17,12 +19,16 @@ const (
 
 type EditorMode string
 
+func (x EditorMode) String() string { return string(x) }
+
 const (
 	EditorModeBuilder EditorMode = "Builder"
 	EditorModeCode    EditorMode = "Code"
 )
 
 type DisplayType string
+
+func (x DisplayType) String() string { return string(x) }
 
 const (
 	DisplayTypeTable      DisplayType = "TABLE"
