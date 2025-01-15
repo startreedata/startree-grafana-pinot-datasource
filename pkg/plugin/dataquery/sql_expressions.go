@@ -26,3 +26,20 @@ func QueryOptionsExpr(options []QueryOption) string {
 	}
 	return strings.Join(exprs, "\n")
 }
+
+func FilterExprsFrom(filters []DimensionFilter) []string {
+	exprs := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		expr := pinotlib.ColumnFilterExpr(pinotlib.ColumnFilter{
+			ColumnName: filter.ColumnName,
+			ColumnKey:  filter.ColumnKey,
+			ValueExprs: filter.ValueExprs,
+			Operator:   pinotlib.FilterOperator(filter.Operator),
+		})
+		if expr == "" {
+			continue
+		}
+		exprs = append(exprs, expr)
+	}
+	return exprs[:]
+}

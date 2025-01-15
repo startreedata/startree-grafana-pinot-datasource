@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
@@ -13,7 +15,27 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"net/http"
 	"sort"
+	"strconv"
 	"time"
+)
+
+var requestCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Namespace: "grafana_plugin",
+		Name:      "pinot_resource_requests_total",
+		Help:      "Total number of queries to the Pinot data source.",
+	},
+	[]string{"endpoint", "status"},
+)
+
+var requestDuration = promauto.NewSummaryVec(
+	prometheus.SummaryOpts{
+		Namespace:  "grafana_plugin",
+		Name:       "pinot_resource_request_duration_seconds",
+		Help:       "Duration of queries to the Pinot data source.",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	},
+	[]string{"endpoint", "status"},
 )
 
 type ResourceHandler struct {
@@ -116,7 +138,7 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		return newOkResponse("")
 	}
 
-	params := dataquery.TimeSeriesBuilderParams{
+	query := dataquery.TimeSeriesBuilderQuery{
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
 		TableName:           data.TableName,
@@ -133,9 +155,9 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 
 	var sql string
 	if data.ExpandMacros {
-		sql, err = dataquery.RenderTimeSeriesSql(ctx, params, tableSchema, tableConfigs)
+		sql, err = query.RenderSql(ctx, tableSchema, tableConfigs)
 	} else {
-		sql, err = dataquery.RenderTimeSeriesSqlWithMacros(ctx, params, tableSchema, tableConfigs)
+		sql, err = query.RenderSqlWithMacros(ctx, tableSchema, tableConfigs)
 	}
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderTimeSeriesSql() failed.")
@@ -171,7 +193,7 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		return newOkResponse("")
 	}
 
-	params := dataquery.LogsBuilderParams{
+	query := dataquery.LogsBuilderQuery{
 		TimeRange:        data.TimeRange,
 		TableName:        data.TableName,
 		TimeColumn:       data.TimeColumn,
@@ -187,9 +209,9 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 
 	var sql string
 	if data.ExpandMacros {
-		sql, err = dataquery.RenderLogsBuilderSql(tableSchema, params)
+		sql, err = query.RenderSql(tableSchema)
 	} else {
-		sql, err = dataquery.RenderLogsBuilderSqlWithMacros(params)
+		sql, err = query.RenderSqlWithMacros()
 	}
 
 	if err != nil {
@@ -221,22 +243,22 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		return newOkResponse("")
 	}
 
-	driver, err := dataquery.NewPinotQlCodeDriver(dataquery.PinotQlCodeDriverParams{
-		PinotClient:       x.client,
-		TableName:         data.TableName,
-		TimeRange:         data.TimeRange,
-		IntervalSize:      parseIntervalSize(data.IntervalSize),
-		TableSchema:       tableSchema,
-		TimeColumnAlias:   data.TimeColumnAlias,
-		MetricColumnAlias: data.MetricColumnAlias,
-		Code:              data.Code,
-	})
+	tableConfigs, err := x.client.ListTableConfigs(ctx, data.TableName)
 	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("NewPinotQlCodeDriver() failed.")
+		log.WithError(err).FromContext(ctx).Error("PinotClient.ListTableConfigs() failed.")
 		return newOkResponse("")
 	}
 
-	sql, err := driver.RenderPinotSql()
+	query := dataquery.PinotQlCodeQuery{
+		TableName:         data.TableName,
+		TimeRange:         data.TimeRange,
+		IntervalSize:      parseIntervalSize(data.IntervalSize),
+		TimeColumnAlias:   data.TimeColumnAlias,
+		MetricColumnAlias: data.MetricColumnAlias,
+		Code:              data.Code,
+	}
+
+	sql, err := query.RenderSql(ctx, tableSchema, tableConfigs)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderPinotSql() failed.")
 		return newOkResponse("")
@@ -643,20 +665,42 @@ func newErrorResponse[T any](code int, err error) *Response[T] {
 	return &Response[T]{Code: code, Error: err.Error()}
 }
 
-func adaptHandler[T any](handler func(r *http.Request) *Response[T]) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		writeResponse(w, handler(r))
+func adaptHandler[T any](handler func(*http.Request) *Response[T]) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		startTime := time.Now()
+		resp := handler(req)
+		duration := time.Since(startTime)
+
+		labels := promLabelsFor(req, resp)
+		requestCounter.With(labels).Inc()
+		requestDuration.With(labels).Observe(duration.Seconds())
+		writeResponse(w, resp)
 	}
 }
 
 func adaptHandlerWithBody[I any, O any](handler func(ctx context.Context, data I) *Response[O]) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, req *http.Request) {
 		var data I
-		if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
 			writeResponse(w, newBadRequestResponse[O](err))
 			return
 		}
-		writeResponse(w, handler(r.Context(), data))
+
+		startTime := time.Now()
+		resp := handler(req.Context(), data)
+		duration := time.Since(startTime)
+
+		labels := promLabelsFor(req, resp)
+		requestCounter.With(labels).Inc()
+		requestDuration.With(labels).Observe(duration.Seconds())
+		writeResponse(w, handler(req.Context(), data))
+	}
+}
+
+func promLabelsFor[T any](req *http.Request, resp *Response[T]) prometheus.Labels {
+	return prometheus.Labels{
+		"endpoint": req.URL.Path,
+		"status":   strconv.FormatInt(int64(resp.Code), 10),
 	}
 }
 

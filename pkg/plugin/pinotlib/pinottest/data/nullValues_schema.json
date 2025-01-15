@@ -1,0 +1,71 @@
+{
+  "schemaName": "nullValues",
+  "enableColumnBasedNullHandling": true,
+  "metricFieldSpecs": [
+    {
+      "name": "__double",
+      "dataType": "DOUBLE"
+    },
+    {
+      "name": "__float",
+      "dataType": "FLOAT"
+    },
+    {
+      "name": "__int",
+      "dataType": "INT"
+    },
+    {
+      "name": "__long",
+      "dataType": "LONG"
+    },
+    {
+      "name": "__big_decimal",
+      "dataType": "BIG_DECIMAL"
+    }
+  ],
+  "dimensionFieldSpecs": [
+    {
+      "name": "__string",
+      "dataType": "STRING"
+    },
+    {
+      "name": "__bytes",
+      "dataType": "BYTES"
+    },
+    {
+      "name": "__json",
+      "dataType": "JSON"
+    },
+    {
+      "name": "__bool",
+      "dataType": "BOOLEAN"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "__timestamp",
+      "dataType": "TIMESTAMP",
+      "format": "TIMESTAMP",
+      "granularity": "1:MILLISECONDS"
+    }
+  ],
+  "complexFieldSpecs": [
+    {
+      "name": "__map_string_string",
+      "dataType": "MAP",
+      "fieldType": "COMPLEX",
+      "childFieldSpecs": {
+        "value": {
+          "name": "value",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        },
+        "key": {
+          "name": "key",
+          "dataType": "STRING",
+          "fieldType": "DIMENSION"
+        }
+      }
+    }
+  ]
+}

@@ -14,19 +14,21 @@ import (
 	"time"
 )
 
-func TestNewDriver(t *testing.T) {
-	client := test_helpers.SetupPinotAndCreateClient(t)
+func TestExecutableQueryFrom(t *testing.T) {
+	timeRange := TimeRange{
+		From: time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC),
+		To:   time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC),
+	}
 
 	t.Run("hide=true", func(t *testing.T) {
-		query := PinotDataQuery{Hide: true}
-		got, err := NewDriver(client, query, backend.TimeRange{})
-		require.NoError(t, err)
-		assert.IsType(t, &NoOpDriver{}, got)
+		got := ExecutableQueryFrom(PinotDataQuery{Hide: true})
+		assert.IsType(t, &NoOpQuery{}, got)
 	})
 
 	t.Run("queryType="+string(QueryTypePinotQl), func(t *testing.T) {
 		t.Run("editorMode="+string(EditorModeBuilder), func(t *testing.T) {
-			query := PinotDataQuery{
+			got := ExecutableQueryFrom(PinotDataQuery{
+				TimeRange:           timeRange,
 				QueryType:           QueryTypePinotQl,
 				EditorMode:          EditorModeBuilder,
 				TableName:           "benchmark",
@@ -34,51 +36,60 @@ func TestNewDriver(t *testing.T) {
 				MetricColumn:        "value",
 				AggregationFunction: "SUM",
 				IntervalSize:        1 * time.Second,
+			})
+			if assert.IsType(t, TimeSeriesBuilderQuery{}, got) {
+				assert.Equal(t, TimeSeriesBuilderQuery{
+					TimeRange:           timeRange,
+					IntervalSize:        1 * time.Second,
+					TableName:           "benchmark",
+					TimeColumn:          "ts",
+					MetricColumn:        ComplexField{Name: "value"},
+					AggregationFunction: "SUM",
+					GroupByColumns:      []ComplexField{},
+				}, got.(TimeSeriesBuilderQuery))
 			}
-			got, err := NewDriver(client, query, backend.TimeRange{})
-			assert.NoError(t, err)
-			//TODO: Not sure that this actually makes sense.
-			assert.IsType(t, DriverFunc(func(ctx context.Context) backend.DataResponse {
-				return backend.DataResponse{}
-			}), got)
 		})
 
 		t.Run("editorMode="+string(EditorModeCode), func(t *testing.T) {
-			query := PinotDataQuery{
+			got := ExecutableQueryFrom(PinotDataQuery{
+				TimeRange:    timeRange,
 				QueryType:    QueryTypePinotQl,
 				EditorMode:   EditorModeCode,
 				TableName:    "benchmark",
 				PinotQlCode:  `select 1;`,
 				IntervalSize: 1 * time.Second,
+			})
+			if assert.IsType(t, PinotQlCodeQuery{}, got) {
+				assert.Equal(t, PinotQlCodeQuery{
+					Code:         `select 1;`,
+					TableName:    "benchmark",
+					TimeRange:    timeRange,
+					IntervalSize: 1 * time.Second,
+				}, got.(PinotQlCodeQuery))
 			}
-			got, err := NewDriver(client, query, backend.TimeRange{})
-			assert.NoError(t, err)
-			assert.IsType(t, &PinotQlCodeDriver{}, got)
 		})
 	})
 
 	t.Run("queryType="+string(QueryTypePromQl), func(t *testing.T) {
-		query := PinotDataQuery{
+		got := ExecutableQueryFrom(PinotDataQuery{
 			QueryType: QueryTypePromQl,
+		})
+		if assert.IsType(t, PromQlQuery{}, got) {
+			assert.Equal(t, PromQlQuery{}, got.(PromQlQuery))
 		}
-		got, err := NewDriver(client, query, backend.TimeRange{})
-		assert.NoError(t, err)
-		assert.IsType(t, &PromQlDriver{}, got)
 	})
 
 	t.Run("queryType="+string(QueryTypePinotVariableQuery), func(t *testing.T) {
-		query := PinotDataQuery{
+		got := ExecutableQueryFrom(PinotDataQuery{
 			QueryType: QueryTypePinotVariableQuery,
-		}
-		got, err := NewDriver(client, query, backend.TimeRange{})
-		assert.NoError(t, err)
-		assert.IsType(t, &PinotVariableQueryDriver{}, got)
+		})
+		assert.IsType(t, VariableQuery{}, got)
 	})
 }
 
 func TestNoOpDriver_Execute(t *testing.T) {
-	var driver NoOpDriver
-	got := driver.Execute(context.Background())
+	var driver NoOpQuery
+	got := driver.Execute(context.Background(), nil)
 	assert.Equal(t, backend.StatusOK, got.Status)
 	assert.Equal(t, data.Frames(nil), got.Frames)
 	assert.NoError(t, got.Error)
@@ -117,8 +128,6 @@ func assertBrokerExceptionErrorWithCodes(t *testing.T, err error, codes ...int) 
 }
 
 type DriverTestCase struct {
-	TestName     string
-	Client       *pinotlib.PinotClient
 	TimeRange    TimeRange
 	TableName    string
 	TableSchema  pinotlib.TableSchema
@@ -127,15 +136,14 @@ type DriverTestCase struct {
 	IntervalSize time.Duration
 }
 
-func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(times []time.Time, values []float64) data.Frames) {
+func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery, wantFrames func(times []time.Time, values []float64) data.Frames) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "benchmark",
 		TableSchema:  benchmarkTableSchema,
 		TargetColumn: "value",
@@ -145,10 +153,7 @@ func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCas
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]time.Time{
@@ -171,15 +176,14 @@ func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCas
 
 }
 
-func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(times []time.Time, values []float64) data.Frames) {
+func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery, wantFrames func(times []time.Time, values []float64) data.Frames) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	partialTableSchema, err := client.GetTableSchema(context.Background(), "partial")
 	require.NoError(t, err)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "partial",
 		TableSchema:  partialTableSchema,
 		TargetColumn: "value",
@@ -189,10 +193,7 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 			To:   time.Date(2024, 10, 2, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]time.Time{
@@ -214,18 +215,14 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
-func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(values []string) data.Frames) {
+func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery, wantFrames func(values []string) data.Frames) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "infraMetrics",
 		TargetColumn: "metric",
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames([]string{
 		"db_record_write",
@@ -235,18 +232,14 @@ func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase Driv
 	assert.NoError(t, got.Error, "DataResponse.Error")
 }
 
-func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error), wantFrames func(values []string) data.Frames) {
+func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery, wantFrames func(values []string) data.Frames) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "partial",
 		TargetColumn: "value",
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]string{
@@ -296,15 +289,14 @@ func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
-func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	schema, err := client.GetTableSchema(context.Background(), "empty")
 	require.NoError(t, err)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "empty",
 		TableSchema:  schema,
 		TargetColumn: "value",
@@ -314,25 +306,21 @@ func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) (Dr
 			To:   time.Date(2024, 11, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
 	assert.NoError(t, got.Error, "DataResponse.Error")
 }
 
-func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery) {
 	t.Helper()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)
 
-	driver, err := newDriver(DriverTestCase{
-		Client:       client,
+	got := newDriver(DriverTestCase{
 		TableName:    "benchmark",
 		TableSchema:  benchmarkTableSchema,
 		TargetColumn: "not_a_column",
@@ -342,19 +330,15 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), client)
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 710)
 }
 
-func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTestCase) (Driver, error)) {
+func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTestCase) ExecutableQuery) {
 	t.Helper()
-
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
@@ -365,9 +349,7 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 		BrokerUrl:     "not a url",
 	})
 
-	driver, err := newDriver(DriverTestCase{
-		TestName:     "pinot unreachable",
-		Client:       unreachableClient,
+	got := newDriver(DriverTestCase{
 		TableName:    "benchmark",
 		TableSchema:  benchmarkTableSchema,
 		TimeColumn:   "ts",
@@ -377,10 +359,7 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	})
-	require.NoError(t, err)
-
-	got := driver.Execute(context.Background())
+	}).Execute(context.Background(), unreachableClient)
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")

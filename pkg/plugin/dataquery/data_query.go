@@ -9,6 +9,8 @@ import (
 
 type QueryType string
 
+func (x QueryType) String() string { return string(x) }
+
 const (
 	QueryTypePinotQl            QueryType = "PinotQL"
 	QueryTypePromQl             QueryType = "PromQL"
@@ -17,18 +19,52 @@ const (
 
 type EditorMode string
 
+func (x EditorMode) String() string { return string(x) }
+
 const (
 	EditorModeBuilder EditorMode = "Builder"
 	EditorModeCode    EditorMode = "Code"
 )
 
+type DisplayType string
+
+func (x DisplayType) String() string { return string(x) }
+
+const (
+	DisplayTypeTable      DisplayType = "TABLE"
+	DisplayTypeTimeSeries DisplayType = "TIMESERIES"
+	DisplayTypeLogs       DisplayType = "LOGS"
+)
+
+type VariableQueryType string
+
+const (
+	VariableQueryTypeTableList      VariableQueryType = "TABLE_LIST"
+	VariableQueryTypeColumnList     VariableQueryType = "COLUMN_LIST"
+	VariableQueryTypeDistinctValues VariableQueryType = "DISTINCT_VALUES"
+	VariableQueryTypePinotQlCode    VariableQueryType = "PINOT_QL_CODE"
+)
+
+type ColumnType string
+
+const (
+	ColumnTypeDateTime  ColumnType = "DATETIME"
+	ColumnTypeMetric    ColumnType = "METRIC"
+	ColumnTypeDimension ColumnType = "DIMENSION"
+	ColumnTypeAll       ColumnType = "ALL"
+)
+
 type PinotDataQuery struct {
-	Hide         bool          `json:"hide"`
-	QueryType    QueryType     `json:"queryType"`
-	EditorMode   EditorMode    `json:"editorMode"`
-	TableName    string        `json:"tableName"`
-	DisplayType  string        `json:"displayType"`
-	IntervalSize time.Duration `json:"intervalSize"`
+	TimeRange     TimeRange     `json:"-"`
+	MaxDataPoints int64         `json:"-"`
+	IntervalSize  time.Duration `json:"-"`
+
+	Hide        bool        `json:"hide"`
+	QueryType   QueryType   `json:"queryType"`
+	EditorMode  EditorMode  `json:"editorMode"`
+	DisplayType DisplayType `json:"displayType"`
+
+	TableName string `json:"tableName"`
 
 	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`
@@ -57,10 +93,10 @@ type PinotDataQuery struct {
 
 	// Variable query
 	VariableQuery struct {
-		VariableType string `json:"variableType"`
-		PinotQlCode  string `json:"pinotQlCode"`
-		ColumnName   string `json:"columnName"`
-		ColumnType   string `json:"columnType"`
+		VariableType VariableQueryType `json:"variableType"`
+		PinotQlCode  string            `json:"pinotQlCode"`
+		ColumnName   string            `json:"columnName"`
+		ColumnType   ColumnType        `json:"columnType"`
 	} `json:"variableQuery"`
 
 	// PromQl code
@@ -130,8 +166,8 @@ func PinotDataQueryFrom(query backend.DataQuery) (PinotDataQuery, error) {
 	if err := json.Unmarshal(query.JSON, &pinotDataQuery); err != nil {
 		return PinotDataQuery{}, fmt.Errorf("failed to unmarshal query model: %w", err)
 	}
-	if pinotDataQuery.IntervalSize == 0 {
-		pinotDataQuery.IntervalSize = query.Interval
-	}
+	pinotDataQuery.TimeRange = TimeRange{To: query.TimeRange.To, From: query.TimeRange.From}
+	pinotDataQuery.IntervalSize = query.Interval
+	pinotDataQuery.MaxDataPoints = query.MaxDataPoints
 	return pinotDataQuery, nil
 }

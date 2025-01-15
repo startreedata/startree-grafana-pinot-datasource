@@ -2,21 +2,18 @@ package dataquery
 
 import (
 	"context"
-	"encoding/json"
-	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"strings"
 	"testing"
 	"time"
 )
 
-func TestTimeSeriesBuilderParams_Validate(t *testing.T) {
-	newParams := func() TimeSeriesBuilderParams {
-		return TimeSeriesBuilderParams{
+func TestTimeSeriesBuilderQuery_Validate(t *testing.T) {
+	newQuery := func() TimeSeriesBuilderQuery {
+		return TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(0, 0),
 				From: time.Unix(0, 0),
@@ -40,32 +37,31 @@ func TestTimeSeriesBuilderParams_Validate(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		params := newParams()
-		assert.NoError(t, params.Validate())
+		assert.NoError(t, newQuery().Validate())
 	})
 	t.Run("no table name", func(t *testing.T) {
-		params := newParams()
-		params.TableName = ""
-		assert.ErrorContains(t, params.Validate(), "TableName is required")
+		query := newQuery()
+		query.TableName = ""
+		assert.ErrorContains(t, query.Validate(), "TableName is required")
 	})
 	t.Run("no time column", func(t *testing.T) {
-		params := newParams()
-		params.TimeColumn = ""
-		assert.ErrorContains(t, params.Validate(), "TimeColumn is required")
+		query := newQuery()
+		query.TimeColumn = ""
+		assert.ErrorContains(t, query.Validate(), "TimeColumn is required")
 	})
 	t.Run("no metric column", func(t *testing.T) {
-		params := newParams()
-		params.MetricColumn.Name = ""
-		assert.ErrorContains(t, params.Validate(), "MetricColumn is required")
+		query := newQuery()
+		query.MetricColumn.Name = ""
+		assert.ErrorContains(t, query.Validate(), "MetricColumn is required")
 	})
 	t.Run("no aggregation function", func(t *testing.T) {
-		params := newParams()
-		params.AggregationFunction = ""
-		assert.ErrorContains(t, params.Validate(), "AggregationFunction is required")
+		query := newQuery()
+		query.AggregationFunction = ""
+		assert.ErrorContains(t, query.Validate(), "AggregationFunction is required")
 	})
 }
 
-func TestRenderTimeSeriesSql(t *testing.T) {
+func TestTimeSeriesBuilderQuery_RenderSql(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("AggregationFunction=SUM", func(t *testing.T) {
@@ -75,7 +71,7 @@ func TestRenderTimeSeriesSql(t *testing.T) {
 		tableConfigs, err := client.ListTableConfigs(ctx, "derivedTimeBuckets")
 		require.NoError(t, err)
 
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange:           TimeRange{To: time.Unix(1, 0), From: time.Unix(0, 0)},
 			Granularity:         "1:MINUTES",
 			TableName:           "derivedTimeBuckets",
@@ -112,7 +108,7 @@ ORDER BY
     "__time" DESC
 LIMIT 1000;`
 
-		got, err := RenderTimeSeriesSql(ctx, params, schema, tableConfigs)
+		got, err := query.RenderSql(ctx, schema, tableConfigs)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -125,7 +121,7 @@ LIMIT 1000;`
 				Format:   "1:MILLISECONDS:EPOCH",
 			}},
 		}
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(1, 0),
 				From: time.Unix(0, 0),
@@ -164,7 +160,7 @@ ORDER BY
     "__time" DESC
 LIMIT 100000;`
 
-		got, err := RenderTimeSeriesSql(ctx, params, schema, nil)
+		got, err := query.RenderSql(ctx, schema, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
@@ -177,7 +173,7 @@ LIMIT 100000;`
 				Format:   "1:MILLISECONDS:EPOCH",
 			}},
 		}
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(1, 0),
 				From: time.Unix(0, 0),
@@ -211,13 +207,13 @@ WHERE
 ORDER BY "__time" DESC
 LIMIT 1000;`
 
-		got, err := RenderTimeSeriesSql(ctx, params, schema, nil)
+		got, err := query.RenderSql(ctx, schema, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 }
 
-func TestRenderTimeSeriesSqlWithMacros(t *testing.T) {
+func TestTimeSeriesBuilderQuery_RenderSqlWithMacros(t *testing.T) {
 	ctx := context.Background()
 	schema := pinotlib.TableSchema{
 		DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
@@ -228,7 +224,7 @@ func TestRenderTimeSeriesSqlWithMacros(t *testing.T) {
 	}
 
 	t.Run("AggregationFunction=SUM", func(t *testing.T) {
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(1, 0),
 				From: time.Unix(0, 0),
@@ -267,13 +263,13 @@ ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`
 
-		got, err := RenderTimeSeriesSqlWithMacros(ctx, params, schema, nil)
+		got, err := query.RenderSqlWithMacros(ctx, schema, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("AggregationFunction=COUNT", func(t *testing.T) {
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(1, 0),
 				From: time.Unix(0, 0),
@@ -312,13 +308,13 @@ ORDER BY
     $__timeAlias() DESC
 LIMIT 100000;`
 
-		got, err := RenderTimeSeriesSqlWithMacros(ctx, params, schema, nil)
+		got, err := query.RenderSqlWithMacros(ctx, schema, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("AggregationFunction=NONE", func(t *testing.T) {
-		params := TimeSeriesBuilderParams{
+		query := TimeSeriesBuilderQuery{
 			TimeRange: TimeRange{
 				To:   time.Unix(1, 0),
 				From: time.Unix(0, 0),
@@ -352,28 +348,26 @@ WHERE
 ORDER BY $__timeAlias() DESC
 LIMIT 1000;`
 
-		got, err := RenderTimeSeriesSqlWithMacros(ctx, params, schema, nil)
+		got, err := query.RenderSqlWithMacros(ctx, schema, nil)
 		assert.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
 }
 
-func TestExecuteTimeSeriesBuilderQuery(t *testing.T) {
+func TestTimeSeriesBuilderQuery_Execute(t *testing.T) {
 	t.Run("AggregationFunction=NONE", func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			return DriverFunc(func(ctx context.Context) backend.DataResponse {
-				return ExecuteTimeSeriesBuilderQuery(ctx, testCase.Client, TimeSeriesBuilderParams{
-					TimeRange:           testCase.TimeRange,
-					IntervalSize:        testCase.IntervalSize,
-					TableName:           testCase.TableName,
-					TimeColumn:          testCase.TimeColumn,
-					MetricColumn:        ComplexField{Name: testCase.TargetColumn},
-					AggregationFunction: AggregationFunctionNone,
-					Limit:               1_000,
-					Legend:              "test-legend",
-				})
-			}), nil
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return TimeSeriesBuilderQuery{
+				TimeRange:           testCase.TimeRange,
+				IntervalSize:        testCase.IntervalSize,
+				TableName:           testCase.TableName,
+				TimeColumn:          testCase.TimeColumn,
+				MetricColumn:        ComplexField{Name: testCase.TargetColumn},
+				AggregationFunction: AggregationFunctionNone,
+				Limit:               1_000,
+				Legend:              "test-legend",
+			}
 		}
 
 		// TODO: Add happy path & partial data test
@@ -390,19 +384,17 @@ func TestExecuteTimeSeriesBuilderQuery(t *testing.T) {
 	})
 
 	t.Run("AggregationFunction=SUM", func(t *testing.T) {
-		newDriver := func(testCase DriverTestCase) (Driver, error) {
-			return DriverFunc(func(ctx context.Context) backend.DataResponse {
-				return ExecuteTimeSeriesBuilderQuery(ctx, testCase.Client, TimeSeriesBuilderParams{
-					TimeRange:           testCase.TimeRange,
-					IntervalSize:        testCase.IntervalSize,
-					TableName:           testCase.TableName,
-					TimeColumn:          testCase.TimeColumn,
-					MetricColumn:        ComplexField{Name: testCase.TargetColumn},
-					AggregationFunction: "SUM",
-					Limit:               1_000,
-					Legend:              "test-legend",
-				})
-			}), nil
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return TimeSeriesBuilderQuery{
+				TimeRange:           testCase.TimeRange,
+				IntervalSize:        testCase.IntervalSize,
+				TableName:           testCase.TableName,
+				TimeColumn:          testCase.TimeColumn,
+				MetricColumn:        ComplexField{Name: testCase.TargetColumn},
+				AggregationFunction: "SUM",
+				Limit:               1_000,
+				Legend:              "test-legend",
+			}
 		}
 
 		wantFrames := func(times []time.Time, values []float64) data.Frames {
@@ -428,77 +420,4 @@ func TestExecuteTimeSeriesBuilderQuery(t *testing.T) {
 			runSqlQueryPinotUnreachable(t, newDriver)
 		})
 	})
-}
-
-func TestFilterExprsFrom(t *testing.T) {
-	var filters []DimensionFilter
-	assert.NoError(t, json.NewDecoder(strings.NewReader(`[
-	  {
-		"columnName": "AirlineID",
-		"operator": "=",
-		"valueExprs": [
-		  "19393",
-		  "19790"
-		]
-	  },
-	  {
-		"columnName": "ArrTime",
-		"operator": ">",
-		"valueExprs": [
-		  "-2147483648"
-		]
-	  },
-	  {
-		"columnName": "Cancelled",
-		"operator": "=",
-		"valueExprs": [
-		  "0"
-		]
-	  },
-	  {
-		"columnName": "Carrier",
-		"operator": "like",
-		"valueExprs": [
-		  "'DL'"
-		]
-	  },
-	  {
-		"operator": "like",
-		"valueExprs": [
-		  "'DL'"
-		]
-	  },
-	  {
-		"columnName": "Carrier",
-		"operator": "in",
-		"valueExprs": [
-		  "'DL'"
-		]
-	  },
-	  {
-		"columnName": "Carrier",
-		"operator": "not in",
-		"valueExprs": [
-		  "'DL'"
-		]
-	  },
-	  {
-		"columnName": "Carrier",
-		"operator": "invalid",
-		"valueExprs": [
-		  "'DL'"
-		]
-	  },
-	  {}
-	]`)).Decode(&filters))
-
-	got := FilterExprsFrom(filters)
-	assert.EqualValues(t, []string{
-		`("AirlineID" = 19393 OR "AirlineID" = 19790)`,
-		`("ArrTime" > -2147483648)`,
-		`("Cancelled" = 0)`,
-		`("Carrier" like 'DL')`,
-		`("Carrier" in 'DL')`,
-		`("Carrier" not in 'DL')`,
-	}, got)
 }

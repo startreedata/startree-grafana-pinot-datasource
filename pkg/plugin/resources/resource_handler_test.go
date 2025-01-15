@@ -127,7 +127,6 @@ func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
 		},
 		"timeColumn":      "ts",
 		"logColumn":       map[string]string{"name": "logColumn"},
-		"logColumnAlias":  "logColumnAlias",
 		"metadataColumns": []map[string]string{{"name": "dim1"}},
 		"jsonExtractors": []map[string]interface{}{{
 			"source":     map[string]string{"name": "myJsonField"},
@@ -157,7 +156,7 @@ func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
 		var want = `SET myOption=myOptionValue;
 
 SELECT
-    "logColumn" AS 'logColumnAlias',
+    "logColumn" AS '__message',
     "dim1",
     JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
     REGEXPEXTRACT("myRegexpField", '.*', 0, '') AS 'regexpFieldAlias',
@@ -168,7 +167,7 @@ WHERE "logColumn" IS NOT NULL
     AND ("dim1" = val1)
 ORDER BY
     "ts" ASC,
-    "logColumnAlias" ASC
+    "__message" ASC
 LIMIT 10;`
 
 		payload["expandMacros"] = true
@@ -184,7 +183,7 @@ LIMIT 10;`
 		var want = `SET myOption=myOptionValue;
 
 SELECT
-    "logColumn" AS 'logColumnAlias',
+    "logColumn" AS '__message',
     "dim1",
     JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
     REGEXPEXTRACT("myRegexpField", '.*', 0, '') AS 'regexpFieldAlias',
@@ -195,7 +194,7 @@ WHERE "logColumn" IS NOT NULL
     AND ("dim1" = val1)
 ORDER BY
     "ts" ASC,
-    "logColumnAlias" ASC
+    "__message" ASC
 LIMIT 10;`
 
 		payload["expandMacros"] = false

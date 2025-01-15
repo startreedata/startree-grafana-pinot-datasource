@@ -12,29 +12,26 @@ import (
 )
 
 func TestExecuteLogsBuilderQuery(t *testing.T) {
+	ctx := context.Background()
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	driver := DriverFunc(func(ctx context.Context) backend.DataResponse {
-		return ExecuteLogsBuilderQuery(ctx, client, LogsBuilderParams{
-			TimeRange: TimeRange{
-				From: time.Date(2024, 06, 01, 00, 00, 00, 0, time.UTC),
-				To:   time.Date(2024, 12, 31, 00, 00, 00, 0, time.UTC),
-			},
-			TableName:       "nginxLogs",
-			TimeColumn:      "ts",
-			LogColumn:       ComplexField{Name: "message"},
-			MetadataColumns: []ComplexField{{Name: "ipAddr"}},
-			RegexpExtractors: []RegexpExtractor{{
-				Source:  ComplexField{Name: "message"},
-				Pattern: "GET .* (HTTP/\\d\\.\\d)",
-				Group:   1,
-				Alias:   "httpVer",
-			}},
-			Limit: 1,
-		})
-	})
-
-	got := driver(context.Background())
+	got := LogsBuilderQuery{
+		TimeRange: TimeRange{
+			From: time.Date(2024, 06, 01, 00, 00, 00, 0, time.UTC),
+			To:   time.Date(2024, 12, 31, 00, 00, 00, 0, time.UTC),
+		},
+		TableName:       "nginxLogs",
+		TimeColumn:      "ts",
+		LogColumn:       ComplexField{Name: "message"},
+		MetadataColumns: []ComplexField{{Name: "ipAddr"}},
+		RegexpExtractors: []RegexpExtractor{{
+			Source:  ComplexField{Name: "message"},
+			Pattern: "GET .* (HTTP/\\d\\.\\d)",
+			Group:   1,
+			Alias:   "httpVer",
+		}},
+		Limit: 1,
+	}.Execute(ctx, client)
 
 	assert.Equal(t, backend.Status(200), got.Status)
 	assert.NotEmpty(t, got.Frames)

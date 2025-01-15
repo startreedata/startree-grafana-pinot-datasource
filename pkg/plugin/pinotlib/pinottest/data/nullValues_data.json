@@ -1,0 +1,31 @@
+[
+  {
+    "__big_decimal": "100000000000000000000",
+    "__bool": true,
+    "__double": 0,
+    "__float": 0,
+    "__int": 0,
+    "__json": "{\"key1\":\"val1\",\"key2\":2,\"key3\":[\"val3_1\",\"val3_2\"]}",
+    "__long": 0,
+    "__map_string_string": {
+      "key1": "val1",
+      "key2": "val2"
+    },
+    "__bytes": "726f775f30",
+    "__string": "row_0",
+    "__timestamp": 1730419200000
+  },
+  {
+    "__big_decimal": null,
+    "__bool": null,
+    "__double": null,
+    "__float": null,
+    "__int": null,
+    "__json": null,
+    "__long": null,
+    "__map_string_string": null,
+    "__bytes": null,
+    "__string": null,
+    "__timestamp": 1730419201000
+  }
+]

@@ -10,6 +10,7 @@ import (
 
 func TestPinotDataQueryFrom(t *testing.T) {
 	want := PinotDataQuery{
+		TimeRange:           TimeRange{From: time.Unix(0, 0), To: time.Unix(100, 0)},
 		QueryType:           "PinotQL",
 		EditorMode:          "Builder",
 		TableName:           "m_test_1",
