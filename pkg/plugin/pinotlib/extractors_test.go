@@ -89,40 +89,40 @@ func TestExtractColumn(t *testing.T) {
 		want     interface{}
 		wantNaNs bool
 	}{
-		{column: "__double", want: interface{}([]float64{0, 0.1111111111111111, 0.2222222222222222})},
-		{column: "__double_inf", want: interface{}([]float64{math.Inf(1), math.Inf(1), math.Inf(1)})},
-		{column: "__double_minus_inf", want: interface{}([]float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)})},
+		{column: "__double", want: []float64{0, 0.1111111111111111, 0.2222222222222222}},
+		{column: "__double_inf", want: []float64{math.Inf(1), math.Inf(1), math.Inf(1)}},
+		{column: "__double_minus_inf", want: []float64{math.Inf(-1), math.Inf(-1), math.Inf(-1)}},
 		{column: "__double_nan", wantNaNs: true},
-		{column: "__float", want: interface{}([]float32{0, 0.11111111, 0.22222222})},
-		{column: "__float_inf", want: interface{}([]float32{float32(math.Inf(1)), float32(math.Inf(1)), float32(math.Inf(1))})},
-		{column: "__float_minus_inf", want: interface{}([]float32{float32(math.Inf(-1)), float32(math.Inf(-1)), float32(math.Inf(-1))})},
+		{column: "__float", want: []float32{0, 0.11111111, 0.22222222}},
+		{column: "__float_inf", want: []float32{float32(math.Inf(1)), float32(math.Inf(1)), float32(math.Inf(1))}},
+		{column: "__float_minus_inf", want: []float32{float32(math.Inf(-1)), float32(math.Inf(-1)), float32(math.Inf(-1))}},
 		{column: "__float_nan", wantNaNs: true},
-		{column: "__int", want: interface{}([]int32{0, 111111, 222222})},
-		{column: "__long", want: interface{}([]int64{0, 111111111111111, 222222222222222})},
-		{column: "__string", want: interface{}([]string{"row_0", "row_1", "row_2"})},
-		{column: "__bytes", want: interface{}([][]byte{[]byte("row_0"), []byte("row_1"), []byte("row_2")})},
-		{column: "__bool", want: interface{}([]bool{true, false, true})},
-		{column: "__big_decimal", want: interface{}([]*big.Int{
+		{column: "__int", want: []int32{0, 111111, 222222}},
+		{column: "__long", want: []int64{0, 111111111111111, 222222222222222}},
+		{column: "__string", want: []string{"row_0", "row_1", "row_2"}},
+		{column: "__bytes", want: [][]byte{[]byte("row_0"), []byte("row_1"), []byte("row_2")}},
+		{column: "__bool", want: []bool{true, false, true}},
+		{column: "__big_decimal", want: []*big.Int{
 			big.NewInt(0).Add(exp20, big.NewInt(0)),
 			big.NewInt(0).Add(exp20, big.NewInt(1)),
 			big.NewInt(0).Add(exp20, big.NewInt(2)),
-		})},
-		{column: "__json", want: any([]json.RawMessage{
+		}},
+		{column: "__json", want: []json.RawMessage{
 			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`),
 			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`),
-			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`)})},
-		{column: "__timestamp", want: any([]time.Time{
+			json.RawMessage(`{"key1":"val1","key2":2,"key3":["val3_1","val3_2"]}`)}},
+		{column: "__timestamp", want: []time.Time{
 			time.Date(2024, time.November, 1, 0, 0, 0, 0, time.UTC),
 			time.Date(2024, time.November, 1, 0, 0, 1, 0, time.UTC),
-			time.Date(2024, time.November, 1, 0, 0, 2, 0, time.UTC)})},
-		{column: "__map_string_long", want: any([]map[string]any{
+			time.Date(2024, time.November, 1, 0, 0, 2, 0, time.UTC)}},
+		{column: "__map_string_long", want: []map[string]any{
 			{"key1": json.Number("1"), "key2": json.Number("2")},
 			{"key1": json.Number("1"), "key2": json.Number("2")},
-			{"key1": json.Number("1"), "key2": json.Number("2")}})},
-		{column: "__map_string_string", want: any([]map[string]any{
+			{"key1": json.Number("1"), "key2": json.Number("2")}}},
+		{column: "__map_string_string", want: []map[string]any{
 			{"key1": "val1", "key2": "val2"},
 			{"key1": "val1", "key2": "val2"},
-			{"key1": "val1", "key2": "val2"}})},
+			{"key1": "val1", "key2": "val2"}}},
 	}
 
 	resp := selectStarFromAllDataTypes(t)
@@ -373,6 +373,19 @@ func TestDecodeJsonFromColumn(t *testing.T) {
 			}
 		})
 	}
+}
+
+func selectStarFromNullValues(t *testing.T) *BrokerResponse {
+	t.Helper()
+	client := setupPinotAndCreateClient(t)
+	resp, err := client.ExecuteSqlQuery(context.Background(),
+		NewSqlQuery(`
+SELECT *
+FROM "nullValues"
+ORDER BY "__timestamp" ASC LIMIT 2`))
+	require.NoError(t, err, "client.ExecuteSqlQuery()")
+	require.True(t, resp.HasData(), "resp.HasData()")
+	return resp
 }
 
 func selectStarFromAllDataTypes(t *testing.T) *BrokerResponse {

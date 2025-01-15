@@ -8,7 +8,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 )
 
-type LogsBuilderParams struct {
+type LogsBuilderQuery struct {
 	TimeRange        TimeRange
 	TableName        string
 	TimeColumn       string
@@ -22,40 +22,30 @@ type LogsBuilderParams struct {
 	Limit            int64
 }
 
-func (params *LogsBuilderParams) Validate() error {
+func (query LogsBuilderQuery) Validate() error {
 	switch {
-	case params.TableName == "":
+	case query.TableName == "":
 		return fmt.Errorf("table name is required")
-	case params.LogColumn.Name == "":
+	case query.LogColumn.Name == "":
 		return fmt.Errorf("log column name is required")
-	case params.TimeColumn == "":
+	case query.TimeColumn == "":
 		return fmt.Errorf("time column is required")
 	default:
 		return nil
 	}
 }
 
-func (params *LogsBuilderParams) ApplyDefaults() {
-	if params.Limit <= 0 {
-		params.Limit = DefaultLimit
-	}
-	if params.LogColumnAlias == "" {
-		params.LogColumnAlias = complexFieldAlias(params.LogColumn.Name, params.LogColumn.Key)
-	}
-}
-
-func ExecuteLogsBuilderQuery(ctx context.Context, client *pinotlib.PinotClient, params LogsBuilderParams) backend.DataResponse {
-	params.ApplyDefaults()
-	if err := params.Validate(); err != nil {
+func (query LogsBuilderQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+	if err := query.Validate(); err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	tableSchema, err := client.GetTableSchema(ctx, params.TableName)
+	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
-		return NewDownstreamErrorResponse(err)
+		return NewPluginErrorResponse(err)
 	}
 
-	sql, err := RenderLogsBuilderSql(tableSchema, params)
+	sql, err := query.RenderSql(tableSchema)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
@@ -65,14 +55,7 @@ func ExecuteLogsBuilderQuery(ctx context.Context, client *pinotlib.PinotClient, 
 		return backendResp
 	}
 
-	var logColumn string
-	if params.LogColumnAlias == "" {
-		logColumn = params.LogColumn.Name
-	} else {
-		logColumn = params.LogColumnAlias
-	}
-
-	frame, err := ExtractLogsDataFrame(results, params.TimeColumn, logColumn)
+	frame, err := ExtractLogsDataFrame(results, query.TimeColumn, BuilderLogColumn)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
@@ -80,57 +63,57 @@ func ExecuteLogsBuilderQuery(ctx context.Context, client *pinotlib.PinotClient, 
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func RenderLogsBuilderSql(tableSchema pinotlib.TableSchema, params LogsBuilderParams) (string, error) {
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, params.TimeColumn)
+func (query LogsBuilderQuery) RenderSql(tableSchema pinotlib.TableSchema) (string, error) {
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, query.TimeColumn)
 	if err != nil {
 		return "", err
 	}
 
 	timeFilterExpr := pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
-		Column: params.TimeColumn,
+		Column: query.TimeColumn,
 		Format: timeColumnFormat,
-		From:   params.TimeRange.From,
-		To:     params.TimeRange.To,
+		From:   query.TimeRange.From,
+		To:     query.TimeRange.To,
 	})
 
 	return templates.RenderLogSql(templates.LogSqlParams{
-		TableNameExpr:        pinotlib.ObjectExpr(params.TableName),
-		TimeColumn:           params.TimeColumn,
-		LogColumnExpr:        pinotlib.ComplexFieldExpr(params.LogColumn.Name, params.LogColumn.Key),
-		LogColumnAlias:       params.LogColumnAlias,
-		MetadataColumns:      logsMetadataColumnsFrom(params),
+		TableNameExpr:        pinotlib.ObjectExpr(query.TableName),
+		TimeColumn:           query.TimeColumn,
+		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
+		LogColumnAlias:       BuilderLogColumn,
+		MetadataColumns:      query.logsMetadataColumns(),
 		TimeFilterExpr:       timeFilterExpr,
-		DimensionFilterExprs: FilterExprsFrom(params.DimensionFilters),
-		Limit:                params.Limit,
-		QueryOptionsExpr:     QueryOptionsExpr(params.QueryOptions),
+		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
+		Limit:                query.resolveLimit(),
+		QueryOptionsExpr:     QueryOptionsExpr(query.QueryOptions),
 	})
 }
 
-func RenderLogsBuilderSqlWithMacros(params LogsBuilderParams) (string, error) {
+func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 	return templates.RenderLogSql(templates.LogSqlParams{
 		TableNameExpr:        MacroExprFor(MacroTable),
-		TimeColumn:           params.TimeColumn,
-		LogColumnExpr:        pinotlib.ComplexFieldExpr(params.LogColumn.Name, params.LogColumn.Key),
-		LogColumnAlias:       params.LogColumnAlias,
-		MetadataColumns:      logsMetadataColumnsFrom(params),
-		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(params.TimeColumn)),
-		DimensionFilterExprs: FilterExprsFrom(params.DimensionFilters),
-		Limit:                params.Limit,
-		QueryOptionsExpr:     QueryOptionsExpr(params.QueryOptions),
+		TimeColumn:           query.TimeColumn,
+		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
+		LogColumnAlias:       BuilderLogColumn,
+		MetadataColumns:      query.logsMetadataColumns(),
+		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn)),
+		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
+		Limit:                query.resolveLimit(),
+		QueryOptionsExpr:     QueryOptionsExpr(query.QueryOptions),
 	})
 }
 
-func logsMetadataColumnsFrom(params LogsBuilderParams) []templates.ExprWithAlias {
+func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {
 	var metadataColumns []templates.ExprWithAlias
 
-	for _, column := range params.MetadataColumns {
+	for _, column := range query.MetadataColumns {
 		metadataColumns = append(metadataColumns, templates.ExprWithAlias{
 			Expr:  pinotlib.ComplexFieldExpr(column.Name, column.Key),
 			Alias: complexFieldAlias(column.Name, column.Key),
 		})
 	}
 
-	for _, extractor := range params.JsonExtractors {
+	for _, extractor := range query.JsonExtractors {
 		if extractor.Source.Name == "" || extractor.Path == "" || extractor.ResultType == "" {
 			continue
 		}
@@ -151,7 +134,7 @@ func logsMetadataColumnsFrom(params LogsBuilderParams) []templates.ExprWithAlias
 		})
 	}
 
-	for _, extractor := range params.RegexpExtractors {
+	for _, extractor := range query.RegexpExtractors {
 		if extractor.Source.Name == "" || extractor.Pattern == "" {
 			continue
 		}
@@ -163,4 +146,12 @@ func logsMetadataColumnsFrom(params LogsBuilderParams) []templates.ExprWithAlias
 		})
 	}
 	return metadataColumns[:]
+}
+
+func (query LogsBuilderQuery) resolveLimit() int64 {
+	if query.Limit <= 0 {
+		return DefaultLimit
+	} else {
+		return query.Limit
+	}
 }

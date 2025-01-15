@@ -25,7 +25,6 @@ const (
 )
 
 type MacroEngine struct {
-	Ctx          context.Context
 	TableName    string
 	TimeAlias    string
 	MetricAlias  string
@@ -39,9 +38,9 @@ func MacroExprFor(macroName string, args ...string) string {
 	return fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", "))
 }
 
-func (x MacroEngine) ExpandMacros(query string) (string, error) {
+func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, error) {
 	var err error
-	for _, macro := range []func(query string) (string, error){
+	for _, macro := range []func(ctx context.Context, query string) (string, error){
 		// These have to come first because the regex for TimeTo/From/Filter macros also matches.
 		x.ExpandTimeFilterMillis,
 		x.ExpandTimeFromMillis,
@@ -57,7 +56,7 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 		x.ExpandGranularityMillis,
 		x.ExpandPanelMillis,
 	} {
-		query, err = macro(query)
+		query, err = macro(ctx, query)
 		if err != nil {
 			return "", err
 		}
@@ -65,13 +64,13 @@ func (x MacroEngine) ExpandMacros(query string) (string, error) {
 	return strings.TrimSpace(query), nil
 }
 
-func (x MacroEngine) ExpandTableName(query string) (string, error) {
+func (x MacroEngine) ExpandTableName(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTable, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.TableName), nil
 	})
 }
 
-func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
+func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFilter, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
@@ -85,7 +84,7 @@ func (x MacroEngine) ExpandTimeFilter(query string) (string, error) {
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
 		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
+		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,
 			Format: format,
@@ -103,7 +102,7 @@ func getDateTimeFormatOrFallback(tableSchema pinotlib.TableSchema, timeColumn st
 	return format
 }
 
-func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
+func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeGroup, func(args []string) (string, error) {
 		if len(args) < 1 || len(args) > 2 {
 			// TODO: Fix confusing error since 2 args is also valid.
@@ -118,7 +117,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
 		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
+		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeGroupExpr(x.TableConfigs, pinotlib.DateTimeConversion{
 			TimeColumn:   timeColumn,
 			InputFormat:  format,
@@ -128,7 +127,7 @@ func (x MacroEngine) ExpandTimeGroup(query string) (string, error) {
 	})
 }
 
-func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
+func (x MacroEngine) ExpandTimeTo(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeTo, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
@@ -139,7 +138,7 @@ func (x MacroEngine) ExpandTimeTo(query string) (string, error) {
 	})
 }
 
-func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
+func (x MacroEngine) ExpandTimeFrom(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFrom, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
@@ -150,19 +149,19 @@ func (x MacroEngine) ExpandTimeFrom(query string) (string, error) {
 	})
 }
 
-func (x MacroEngine) ExpandTimeAlias(query string) (string, error) {
+func (x MacroEngine) ExpandTimeAlias(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeAlias, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.TimeAlias), nil
 	})
 }
 
-func (x MacroEngine) ExpandMetricAlias(query string) (string, error) {
+func (x MacroEngine) ExpandMetricAlias(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroMetricAlias, func(_ []string) (string, error) {
 		return fmt.Sprintf(`"%s"`, x.MetricAlias), nil
 	})
 }
 
-func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
+func (x MacroEngine) ExpandTimeFilterMillis(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFilterMillis, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
@@ -176,7 +175,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 
 		format := pinotlib.DateTimeFormatMillisecondsEpoch()
 		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(x.Ctx, granularityExpr, format, x.IntervalSize, derived)
+		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
 		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
 			Column: timeColumn,
 			Format: format,
@@ -186,19 +185,19 @@ func (x MacroEngine) ExpandTimeFilterMillis(query string) (string, error) {
 	})
 }
 
-func (x MacroEngine) ExpandTimeToMillis(query string) (string, error) {
+func (x MacroEngine) ExpandTimeToMillis(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeToMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()), nil
 	})
 }
 
-func (x MacroEngine) ExpandTimeFromMillis(query string) (string, error) {
+func (x MacroEngine) ExpandTimeFromMillis(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFromMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.From.UnixMilli()), nil
 	})
 }
 
-func (x MacroEngine) ExpandGranularityMillis(query string) (string, error) {
+func (x MacroEngine) ExpandGranularityMillis(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroGranularityMillis, func(args []string) (string, error) {
 		if len(args) < 1 {
 			return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
@@ -212,7 +211,7 @@ func (x MacroEngine) ExpandGranularityMillis(query string) (string, error) {
 	})
 }
 
-func (x MacroEngine) ExpandPanelMillis(query string) (string, error) {
+func (x MacroEngine) ExpandPanelMillis(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroPanelMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
 	})

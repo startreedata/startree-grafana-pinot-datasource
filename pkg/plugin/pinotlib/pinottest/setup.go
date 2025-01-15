@@ -101,6 +101,11 @@ func CreateTestTables() {
 		schemaFile: "data/nginxLogsWithMap_schema.json",
 		configFile: "data/nginxLogsWithMap_offline_table_config.json",
 		dataFile:   "data/nginxLogsWithMap_data.json",
+	}, {
+		tableName:  "nullValues",
+		schemaFile: "data/nullValues_schema.json",
+		configFile: "data/nullValues_offline_table_config.json",
+		dataFile:   "data/nullValues_data.json",
 	}}
 
 	createTestTablesOnce.Do(func() {
