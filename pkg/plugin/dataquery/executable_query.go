@@ -29,22 +29,26 @@ var queryDuration = promauto.NewSummaryVec(
 	[]string{"query_type", "status"},
 )
 
-func ExecuteQuery(ctx context.Context, client *pinotlib.PinotClient, query backend.DataQuery) backend.DataResponse {
-	pinotDataQuery, err := PinotDataQueryFrom(query)
-	if err != nil {
+type ExecutableQuery interface {
+	Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse
+}
+
+func ExecuteQuery(ctx context.Context, client *pinotlib.PinotClient, backendQuery backend.DataQuery) backend.DataResponse {
+	var query DataQuery
+	if err := query.ReadFrom(backendQuery); err != nil {
 		queryCounter.With(prometheus.Labels{
-			"query_type": pinotDataQuery.QueryType.String(),
+			"query_type": query.QueryType.String(),
 			"status":     "400",
 		}).Inc()
 		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	}
 
 	startTime := time.Now()
-	resp := ExecutableQueryFrom(pinotDataQuery).Execute(ctx, client)
+	resp := ExecutableQueryFrom(query).Execute(ctx, client)
 	duration := time.Since(startTime)
 
 	labels := prometheus.Labels{
-		"query_type": pinotDataQuery.QueryType.String(),
+		"query_type": query.QueryType.String(),
 		"status":     strconv.FormatInt(int64(resp.Status), 10),
 	}
 	queryCounter.With(labels).Inc()
@@ -53,7 +57,7 @@ func ExecuteQuery(ctx context.Context, client *pinotlib.PinotClient, query backe
 	return resp
 }
 
-func ExecutableQueryFrom(query PinotDataQuery) ExecutableQuery {
+func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 	switch {
 	case query.Hide:
 		return new(NoOpQuery)
@@ -126,8 +130,20 @@ func ExecutableQueryFrom(query PinotDataQuery) ExecutableQuery {
 	}
 }
 
-type ExecutableQuery interface {
-	Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse
+func builderGroupByColumnsFrom(query DataQuery) []ComplexField {
+	groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
+	for _, col := range query.GroupByColumns {
+		groupByColumns = append(groupByColumns, ComplexField{Name: col})
+	}
+	return append(groupByColumns, query.GroupByColumnsV2...)
+}
+
+func builderMetricColumnFrom(query DataQuery) ComplexField {
+	if query.MetricColumnV2.Name != "" {
+		return query.MetricColumnV2
+	} else {
+		return ComplexField{Name: query.MetricColumn}
+	}
 }
 
 var _ ExecutableQuery = NoOpQuery{}
@@ -136,6 +152,17 @@ type NoOpQuery struct{}
 
 func (d NoOpQuery) Execute(context.Context, *pinotlib.PinotClient) backend.DataResponse {
 	return NewEmptyDataResponse()
+}
+
+func newSqlQueryWithOptions(sql string, options []QueryOption) pinotlib.SqlQuery {
+	query := pinotlib.NewSqlQuery(sql)
+	for _, o := range options {
+		if o.Name == "" || o.Value == "" {
+			continue
+		}
+		query.QueryOptions = append(query.QueryOptions, pinotlib.QueryOption{Name: o.Name, Value: o.Value})
+	}
+	return query
 }
 
 func doSqlQuery(ctx context.Context, pinotClient *pinotlib.PinotClient, query pinotlib.SqlQuery) (*pinotlib.ResultTable, []pinotlib.BrokerException, bool, backend.DataResponse) {

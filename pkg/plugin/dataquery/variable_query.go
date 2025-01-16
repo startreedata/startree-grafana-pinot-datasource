@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var _ ExecutableQuery = VariableQuery{}
+
 type VariableQuery struct {
 	VariableType VariableQueryType
 	TableName    string

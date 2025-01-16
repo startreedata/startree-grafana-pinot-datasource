@@ -3,8 +3,6 @@ package templates
 import "text/template"
 
 var logSqlTemplate = template.Must(template.New("pinot/log-sql").Parse(`
-{{ .QueryOptionsExpr }}
-
 SELECT
     {{ .LogColumnExpr }}{{ if .LogColumnAlias }} AS '{{ .LogColumnAlias }}'{{ end }},
     {{- range .MetadataColumns}}
@@ -34,7 +32,6 @@ type LogSqlParams struct {
 	TimeFilterExpr       string
 	DimensionFilterExprs []string
 	Limit                int64
-	QueryOptionsExpr     string
 }
 
 func RenderLogSql(params LogSqlParams) (string, error) {

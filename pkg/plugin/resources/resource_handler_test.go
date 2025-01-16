@@ -16,10 +16,7 @@ func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
-	want := strings.TrimSpace(`
-SET timeoutMs=1;
-
-SELECT
+	want := `SELECT
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '30:MINUTES') AS "__time",
     MAX("value") AS "__metric"
 FROM
@@ -32,7 +29,8 @@ ORDER BY
     "__time" DESC,
     "fabric" DESC
 LIMIT 100000;
-`)
+
+SET timeoutMs=1;`
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/sql/builder", `{
@@ -153,9 +151,7 @@ func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
 	}
 
 	t.Run("expandMacros=true", func(t *testing.T) {
-		var want = `SET myOption=myOptionValue;
-
-SELECT
+		var want = `SELECT
     "logColumn" AS '__message',
     "dim1",
     JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
@@ -168,7 +164,9 @@ WHERE "logColumn" IS NOT NULL
 ORDER BY
     "ts" ASC,
     "__message" ASC
-LIMIT 10;`
+LIMIT 10;
+
+SET myOption=myOptionValue;`
 
 		payload["expandMacros"] = true
 		var data bytes.Buffer
@@ -180,9 +178,7 @@ LIMIT 10;`
 	})
 
 	t.Run("expandMacros=false", func(t *testing.T) {
-		var want = `SET myOption=myOptionValue;
-
-SELECT
+		var want = `SELECT
     "logColumn" AS '__message',
     "dim1",
     JSONEXTRACTSCALAR("myJsonField", 'myField', 'LONG', 0) AS 'jsonFieldAlias',
@@ -195,7 +191,9 @@ WHERE "logColumn" IS NOT NULL
 ORDER BY
     "ts" ASC,
     "__message" ASC
-LIMIT 10;`
+LIMIT 10;
+
+SET myOption=myOptionValue;`
 
 		payload["expandMacros"] = false
 		var data bytes.Buffer
@@ -368,7 +366,7 @@ func TestPinotResourceHandler_ListColumns(t *testing.T) {
 
 func newTestServer(t *testing.T) *httptest.Server {
 	client := test_helpers.SetupPinotAndCreateClient(t)
-	return httptest.NewServer(NewPinotResourceHandler(client))
+	return httptest.NewServer(NewResourceHandler(client))
 }
 
 func doPostRequest(t *testing.T, url string, data string, dest interface{}) {

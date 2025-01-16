@@ -40,11 +40,17 @@ type PinotClientProperties struct {
 	BrokerUrl     string
 	DatabaseName  string
 	Authorization string
+	QueryOptions  []QueryOption
 
 	ControllerCacheTimeout time.Duration
 	BrokerCacheTimeout     time.Duration
 
 	BrokerMaxQueryRate time.Duration
+}
+
+type QueryOption struct {
+	Name  string
+	Value string
 }
 
 type Limiter struct {

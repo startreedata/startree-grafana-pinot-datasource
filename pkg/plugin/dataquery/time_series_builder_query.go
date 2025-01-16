@@ -22,6 +22,8 @@ const (
 	DefaultLimit = 100_000
 )
 
+var _ ExecutableQuery = TimeSeriesBuilderQuery{}
+
 type TimeSeriesBuilderQuery struct {
 	TimeRange           TimeRange
 	IntervalSize        time.Duration
@@ -44,27 +46,17 @@ func (query TimeSeriesBuilderQuery) Execute(ctx context.Context, client *pinotli
 		return NewBadRequestErrorResponse(err)
 	}
 
-	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
+	sqlQuery, outputTimeFormat, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	tableConfigs, err := client.ListTableConfigs(ctx, query.TableName)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
-	sql, err := query.RenderSql(ctx, tableSchema, tableConfigs)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinotlib.NewSqlQuery(sql))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, sqlQuery)
 	if !ok {
 		return backendResp
 	}
 
-	frame, err := query.ExtractResults(results, tableSchema)
+	frame, err := query.ExtractResults(results, outputTimeFormat)
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
@@ -83,14 +75,27 @@ func (query TimeSeriesBuilderQuery) Validate() error {
 	}
 }
 
-func (query TimeSeriesBuilderQuery) RenderSql(ctx context.Context, schema pinotlib.TableSchema, tableConfigs pinotlib.ListTableConfigsResponse) (string, error) {
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, query.TimeColumn)
+func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotlib.PinotClient) (pinotlib.SqlQuery, pinotlib.DateTimeFormat, error) {
+	schema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
-		return "", err
+		return pinotlib.SqlQuery{}, pinotlib.DateTimeFormat{}, err
 	}
 
+	tableConfigs, err := client.ListTableConfigs(ctx, query.TableName)
+	if err != nil {
+		return pinotlib.SqlQuery{}, pinotlib.DateTimeFormat{}, err
+	}
+
+	inputTimeFormat, err := pinotlib.GetTimeColumnFormat(schema, query.TimeColumn)
+	if err != nil {
+		return pinotlib.SqlQuery{}, pinotlib.DateTimeFormat{}, err
+	}
+
+	var outputTimeFormat pinotlib.DateTimeFormat
+	var sql string
 	if query.AggregationFunction == AggregationFunctionNone {
-		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+		outputTimeFormat = inputTimeFormat
+		sql, err = templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
 			TableNameExpr:         pinotlib.ObjectExpr(query.TableName),
 			TimeColumn:            query.TimeColumn,
 			MetricColumnExpr:      query.metricExpr(),
@@ -98,49 +103,50 @@ func (query TimeSeriesBuilderQuery) RenderSql(ctx context.Context, schema pinotl
 			MetricColumnAliasExpr: pinotlib.ObjectExpr(BuilderMetricColumn),
 			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
 			Limit:                 query.resolveLimit(),
-			QueryOptionsExpr:      QueryOptionsExpr(query.QueryOptions),
 			TimeFilterExpr: pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
 				Column: query.TimeColumn,
-				Format: timeColumnFormat,
+				Format: inputTimeFormat,
 				From:   query.TimeRange.From,
 				To:     query.TimeRange.To,
 			}),
 		})
+	} else {
+		outputTimeFormat = OutputTimeFormat()
+		derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, query.TimeColumn, outputTimeFormat)
+		granularity := ResolveGranularity(ctx, query.Granularity, inputTimeFormat, query.IntervalSize, derivedGranularities)
+		timeGroup := timeGroupOf(query.TimeColumn, inputTimeFormat, granularity)
+		sql, err = templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableNameExpr:         pinotlib.ObjectExpr(query.TableName),
+			TimeGroupExpr:         pinotlib.TimeGroupExpr(tableConfigs, timeGroup),
+			MetricColumnExpr:      query.metricExpr(),
+			TimeColumnAliasExpr:   pinotlib.ObjectExpr(BuilderTimeColumn),
+			MetricColumnAliasExpr: pinotlib.ObjectExpr(BuilderMetricColumn),
+			AggregationFunction:   query.AggregationFunction,
+			GroupByColumnExprs:    query.groupByExprs(),
+			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
+			Limit:                 query.resolveLimit(),
+			OrderByExprs:          OrderByExprs(query.OrderByClauses),
+			TimeFilterExpr: pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
+				Column: query.TimeColumn,
+				Format: timeGroup.InputFormat,
+				From:   query.TimeRange.From,
+				To:     query.TimeRange.To,
+			}, timeGroup.Granularity.Duration()),
+		})
+	}
+	if err != nil {
+		return pinotlib.SqlQuery{}, pinotlib.DateTimeFormat{}, err
 	}
 
-	derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, query.TimeColumn, OutputTimeFormat())
-	granularity := ResolveGranularity(ctx, query.Granularity, timeColumnFormat, query.IntervalSize, derivedGranularities)
-	timeGroup := timeGroupOf(query.TimeColumn, timeColumnFormat, granularity)
-
-	return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-		TableNameExpr:         pinotlib.ObjectExpr(query.TableName),
-		TimeGroupExpr:         pinotlib.TimeGroupExpr(tableConfigs, timeGroup),
-		MetricColumnExpr:      query.metricExpr(),
-		TimeColumnAliasExpr:   pinotlib.ObjectExpr(BuilderTimeColumn),
-		MetricColumnAliasExpr: pinotlib.ObjectExpr(BuilderMetricColumn),
-		AggregationFunction:   query.AggregationFunction,
-		GroupByColumnExprs:    query.groupByExprs(),
-		DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
-		Limit:                 query.resolveLimit(),
-		OrderByExprs:          OrderByExprs(query.OrderByClauses),
-		QueryOptionsExpr:      QueryOptionsExpr(query.QueryOptions),
-		TimeFilterExpr: pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
-			Column: query.TimeColumn,
-			Format: timeGroup.InputFormat,
-			From:   query.TimeRange.From,
-			To:     query.TimeRange.To,
-		}, timeGroup.Granularity.Duration()),
-	})
+	return newSqlQueryWithOptions(sql, query.QueryOptions), outputTimeFormat, nil
 }
 
-func (query TimeSeriesBuilderQuery) RenderSqlWithMacros(ctx context.Context, schema pinotlib.TableSchema, tableConfigs pinotlib.ListTableConfigsResponse) (string, error) {
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, query.TimeColumn)
-	if err != nil {
-		return "", err
-	}
+func (query TimeSeriesBuilderQuery) RenderSqlWithMacros() (string, error) {
+	var sql string
+	var err error
 
 	if query.AggregationFunction == AggregationFunctionNone {
-		return templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+		sql, err = templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
 			TableNameExpr:         MacroExprFor(MacroTable),
 			TimeColumn:            query.TimeColumn,
 			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
@@ -149,35 +155,31 @@ func (query TimeSeriesBuilderQuery) RenderSqlWithMacros(ctx context.Context, sch
 			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn)),
 			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
 			Limit:                 query.resolveLimit(),
-			QueryOptionsExpr:      QueryOptionsExpr(query.QueryOptions),
+		})
+	} else {
+		timeColExpr := pinotlib.ObjectExpr(query.TimeColumn)
+		granularityExpr := pinotlib.LiteralExpr(getOrFallback(query.Granularity, "auto"))
+		sql, err = templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+			TableNameExpr:         MacroExprFor(MacroTable),
+			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, timeColExpr, granularityExpr),
+			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
+			AggregationFunction:   query.AggregationFunction,
+			MetricColumnExpr:      query.metricExpr(),
+			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
+			GroupByColumnExprs:    query.groupByExprs(),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, timeColExpr, granularityExpr),
+			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
+			Limit:                 query.resolveLimit(),
+			OrderByExprs:          OrderByExprs(query.OrderByClauses),
 		})
 	}
-
-	derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, query.TimeColumn, OutputTimeFormat())
-	granularity := ResolveGranularity(ctx, query.Granularity, timeColumnFormat, query.IntervalSize, derivedGranularities)
-	timeGroup := timeGroupOf(query.TimeColumn, timeColumnFormat, granularity)
-	return templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
-		TableNameExpr:         MacroExprFor(MacroTable),
-		TimeGroupExpr:         MacroExprFor(MacroTimeGroup, pinotlib.ObjectExpr(query.TimeColumn), pinotlib.GranularityExpr(timeGroup.Granularity)),
-		TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
-		AggregationFunction:   query.AggregationFunction,
-		MetricColumnExpr:      query.metricExpr(),
-		MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
-		GroupByColumnExprs:    query.groupByExprs(),
-		TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn), pinotlib.GranularityExpr(timeGroup.Granularity)),
-		DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
-		Limit:                 query.resolveLimit(),
-		OrderByExprs:          OrderByExprs(query.OrderByClauses),
-		QueryOptionsExpr:      QueryOptionsExpr(query.QueryOptions),
-	})
+	if err != nil {
+		return "", err
+	}
+	return newSqlQueryWithOptions(sql, query.QueryOptions).RenderSql(), nil
 }
 
-func (query TimeSeriesBuilderQuery) ExtractResults(results *pinotlib.ResultTable, tableSchema pinotlib.TableSchema) (*data.Frame, error) {
-	outputTimeFormat, err := query.resolveOutputTimeFormat(tableSchema)
-	if err != nil {
-		return nil, err
-	}
-
+func (query TimeSeriesBuilderQuery) ExtractResults(results *pinotlib.ResultTable, outputTimeFormat pinotlib.DateTimeFormat) (*data.Frame, error) {
 	return ExtractTimeSeriesDataFrame(TimeSeriesExtractorParams{
 		MetricName:        query.resolveMetricName(),
 		Legend:            query.Legend,

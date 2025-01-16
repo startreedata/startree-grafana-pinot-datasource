@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sort"
+	"slices"
 	"strings"
 )
 
@@ -80,29 +80,55 @@ func (e *BrokerExceptionError) Error() string {
 type SqlQuery struct {
 	Sql          string
 	Trace        bool
-	QueryOptions map[string]string
+	QueryOptions []QueryOption
 }
 
 func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
-func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	data := map[string]interface{}{"sql": query.Sql}
-	if query.Trace {
-		data["trace"] = true
+func (query *SqlQuery) AddOption(name, value string) {
+	query.QueryOptions = append(query.QueryOptions, QueryOption{name, value})
+}
+
+// RenderSql returns the SQL query string with all query options appended.
+func (query SqlQuery) RenderSql() string {
+	sql := strings.TrimSpace(query.Sql)
+	if len(query.QueryOptions) == 0 {
+		return sql
 	}
-	if len(query.QueryOptions) > 0 {
-		var queryOptionsEncoded []string
-		for key, value := range query.QueryOptions {
-			queryOptionsEncoded = append(queryOptionsEncoded, key+"="+value)
-		}
-		sort.Strings(queryOptionsEncoded)
-		data["queryOptions"] = strings.Join(queryOptionsEncoded, ";")
+
+	var builder strings.Builder
+	builder.WriteString(sql)
+	if strings.HasSuffix(sql, ";") {
+		builder.WriteString("\n")
+	} else {
+		builder.WriteString(";\n")
+	}
+	for _, o := range query.QueryOptions {
+		builder.WriteString(fmt.Sprintf("\nSET %s=%s;", o.Name, o.Value))
+	}
+	return builder.String()
+}
+
+// RenderSql renders the actual SQL query string sent to Pinot.
+// The rendered query includes all query options provided in the client properties and query.
+func (p *PinotClient) RenderSql(query SqlQuery) string {
+	query.QueryOptions = slices.Concat(query.QueryOptions, p.properties.QueryOptions)
+	return query.RenderSql()
+}
+
+func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
+	request := struct {
+		Sql   string `json:"sql"`
+		Trace bool   `json:"trace,omitempty"`
+	}{
+		Sql:   p.RenderSql(query),
+		Trace: query.Trace,
 	}
 
 	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(data); err != nil {
+	if err := json.NewEncoder(&body).Encode(request); err != nil {
 		return nil, err
 	}
 
@@ -112,7 +138,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 			return nil, err
 		}
 
-		p.newLogger(ctx).Info("Executing sql query.", "queryString", query.Sql)
+		p.newLogger(ctx).Info("Executing sql query.", "queryString", request.Sql)
 
 		var respData BrokerResponse
 		p.brokerLimiter.Do(func() {

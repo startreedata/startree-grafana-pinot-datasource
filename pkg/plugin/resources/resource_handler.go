@@ -42,7 +42,7 @@ type ResourceHandler struct {
 	client *pinotlib.PinotClient
 }
 
-func NewPinotResourceHandler(client *pinotlib.PinotClient) http.Handler {
+func NewResourceHandler(client *pinotlib.PinotClient) http.Handler {
 	router := mux.NewRouter()
 
 	handler := ResourceHandler{client: client}
@@ -126,18 +126,6 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		return newOkResponse("")
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
-		return newOkResponse("")
-	}
-
-	tableConfigs, err := x.client.ListTableConfigs(ctx, data.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotClient.ListTableConfigs() failed.")
-		return newOkResponse("")
-	}
-
 	query := dataquery.TimeSeriesBuilderQuery{
 		TimeRange:           data.TimeRange,
 		IntervalSize:        parseIntervalSize(data.IntervalSize),
@@ -153,18 +141,21 @@ func (x *ResourceHandler) PreviewSqlBuilder(ctx context.Context, data PreviewSql
 		QueryOptions:        data.QueryOptions,
 	}
 
-	var sql string
-	if data.ExpandMacros {
-		sql, err = query.RenderSql(ctx, tableSchema, tableConfigs)
-	} else {
-		sql, err = query.RenderSqlWithMacros(ctx, tableSchema, tableConfigs)
+	if !data.ExpandMacros {
+		sql, err := query.RenderSqlWithMacros()
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("RenderSqlWithMacros() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
 	}
+
+	sqlQuery, _, err := query.RenderSqlQuery(ctx, x.client)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderTimeSeriesSql() failed.")
 		return newOkResponse("")
 	}
-
-	return newOkResponse(sql)
+	return newOkResponse(x.client.RenderSql(sqlQuery))
 }
 
 type PreviewLogsBuilderSqlRequest struct {
@@ -187,12 +178,6 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		return newOkResponse("")
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
-		return newOkResponse("")
-	}
-
 	query := dataquery.LogsBuilderQuery{
 		TimeRange:        data.TimeRange,
 		TableName:        data.TableName,
@@ -207,18 +192,21 @@ func (x *ResourceHandler) PreviewLogsSql(ctx context.Context, data PreviewLogsBu
 		Limit:            data.Limit,
 	}
 
-	var sql string
-	if data.ExpandMacros {
-		sql, err = query.RenderSql(tableSchema)
-	} else {
-		sql, err = query.RenderSqlWithMacros()
+	if !data.ExpandMacros {
+		sql, err := query.RenderSqlWithMacros()
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("RenderSqlWithMacros() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
 	}
 
+	sqlQuery, err := query.RenderSqlQuery(ctx, x.client)
 	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("RenderLogsBuilderSql() failed.")
+		log.WithError(err).FromContext(ctx).Error("RenderSqlQuery() failed.")
 		return newOkResponse("")
 	}
-	return newOkResponse(sql)
+	return newOkResponse(x.client.RenderSql(sqlQuery))
 }
 
 type PreviewSqlCodeRequest struct {
@@ -237,18 +225,6 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		return newOkResponse("")
 	}
 
-	tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotClient.GetTableSchema() failed.")
-		return newOkResponse("")
-	}
-
-	tableConfigs, err := x.client.ListTableConfigs(ctx, data.TableName)
-	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("PinotClient.ListTableConfigs() failed.")
-		return newOkResponse("")
-	}
-
 	query := dataquery.PinotQlCodeQuery{
 		TableName:         data.TableName,
 		TimeRange:         data.TimeRange,
@@ -258,12 +234,12 @@ func (x *ResourceHandler) PreviewSqlCode(ctx context.Context, data PreviewSqlCod
 		Code:              data.Code,
 	}
 
-	sql, err := query.RenderSql(ctx, tableSchema, tableConfigs)
+	sql, err := query.RenderSqlQuery(ctx, x.client)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderPinotSql() failed.")
 		return newOkResponse("")
 	}
-	return newOkResponse(sql)
+	return newOkResponse(x.client.RenderSql(sql))
 }
 
 type QueryDistinctValuesRequest struct {

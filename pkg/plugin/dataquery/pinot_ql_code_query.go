@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var _ ExecutableQuery = PinotQlCodeQuery{}
+
 type PinotQlCodeQuery struct {
 	Code              string
 	TableName         string
@@ -32,31 +34,21 @@ func (query PinotQlCodeQuery) Validate() error {
 	}
 }
 
-func (query PinotQlCodeQuery) Execute(ctx context.Context, pinotClient *pinotlib.PinotClient) backend.DataResponse {
+func (query PinotQlCodeQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
 	if err := query.Validate(); err != nil {
-		return NewPluginErrorResponse(err)
+		return NewBadRequestErrorResponse(err)
 	}
 
 	if query.Code == "" {
 		return NewEmptyDataResponse()
 	}
 
-	tableSchema, err := pinotClient.GetTableSchema(ctx, query.TableName)
+	sqlQuery, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	tableConfigs, err := pinotClient.ListTableConfigs(ctx, query.TableName)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
-	sql, err := query.RenderSql(ctx, tableSchema, tableConfigs)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, pinotClient, pinotlib.NewSqlQuery(sql))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, sqlQuery)
 	if !ok {
 		return backendResp
 	}
@@ -69,8 +61,18 @@ func (query PinotQlCodeQuery) Execute(ctx context.Context, pinotClient *pinotlib
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query PinotQlCodeQuery) RenderSql(ctx context.Context, tableSchema pinotlib.TableSchema, tableConfigs pinotlib.ListTableConfigsResponse) (string, error) {
-	return MacroEngine{
+func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinotlib.PinotClient) (pinotlib.SqlQuery, error) {
+	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
+	if err != nil {
+		return pinotlib.SqlQuery{}, err
+	}
+
+	tableConfigs, err := client.ListTableConfigs(ctx, query.TableName)
+	if err != nil {
+		return pinotlib.SqlQuery{}, err
+	}
+
+	sql, err := MacroEngine{
 		TableName:    query.TableName,
 		TableSchema:  tableSchema,
 		TableConfigs: tableConfigs,
@@ -79,6 +81,13 @@ func (query PinotQlCodeQuery) RenderSql(ctx context.Context, tableSchema pinotli
 		TimeAlias:    query.resolveTimeColumnAlias(),
 		MetricAlias:  query.resolveMetricColumnAlias(),
 	}.ExpandMacros(ctx, query.Code)
+	if err != nil {
+		if err != nil {
+			return pinotlib.SqlQuery{}, err
+		}
+	}
+
+	return pinotlib.NewSqlQuery(sql), nil
 }
 
 func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
