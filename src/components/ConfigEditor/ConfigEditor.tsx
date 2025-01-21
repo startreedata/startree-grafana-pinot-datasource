@@ -8,6 +8,7 @@ import allLabels from 'labels';
 import { useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { InputDatabase } from './InputDatabase';
+import { SelectQueryOptions } from './SelectQueryOptions';
 
 interface ConfigEditorProps extends DataSourcePluginOptionsEditorProps<PinotConnectionConfig> {}
 
@@ -91,6 +92,10 @@ export function ConfigEditor(props: ConfigEditorProps) {
         <InputDatabase
           value={jsonData.databaseName}
           onChange={(databaseName) => onConfigChange({ ...jsonData, databaseName })}
+        />
+        <SelectQueryOptions
+          selected={jsonData.queryOptions || []}
+          onChange={(queryOptions) => onConfigChange({ ...jsonData, queryOptions })}
         />
       </div>
       <h3>Authentication</h3>

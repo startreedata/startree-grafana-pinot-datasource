@@ -87,10 +87,6 @@ func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
-func (query *SqlQuery) AddOption(name, value string) {
-	query.QueryOptions = append(query.QueryOptions, QueryOption{name, value})
-}
-
 // RenderSql returns the SQL query string with all query options appended.
 func (query SqlQuery) RenderSql() string {
 	sql := strings.TrimSpace(query.Sql)
@@ -111,6 +107,10 @@ func (query SqlQuery) RenderSql() string {
 	return builder.String()
 }
 
+func (query SqlQuery) cacheKey() string {
+	return fmt.Sprintf("%v", query)
+}
+
 // RenderSql renders the actual SQL query string sent to Pinot.
 // The rendered query includes all query options provided in the client properties and query.
 func (p *PinotClient) RenderSql(query SqlQuery) string {
@@ -119,20 +119,20 @@ func (p *PinotClient) RenderSql(query SqlQuery) string {
 }
 
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	request := struct {
-		Sql   string `json:"sql"`
-		Trace bool   `json:"trace,omitempty"`
-	}{
-		Sql:   p.RenderSql(query),
-		Trace: query.Trace,
-	}
+	return p.brokerQueryCache.Get(query.cacheKey(), func() (*BrokerResponse, error) {
+		request := struct {
+			Sql   string `json:"sql"`
+			Trace bool   `json:"trace,omitempty"`
+		}{
+			Sql:   p.RenderSql(query),
+			Trace: query.Trace,
+		}
 
-	var body bytes.Buffer
-	if err := json.NewEncoder(&body).Encode(request); err != nil {
-		return nil, err
-	}
+		var body bytes.Buffer
+		if err := json.NewEncoder(&body).Encode(request); err != nil {
+			return nil, err
+		}
 
-	return p.brokerQueryCache.Get(body.String(), func() (*BrokerResponse, error) {
 		req, err := p.newBrokerPostRequest(ctx, "/query/sql", &body)
 		if err != nil {
 			return nil, err

@@ -4,7 +4,9 @@
   "description": "Pinot connector for Grafana.",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
+    "server": "docker compose up grafana --build",
     "dev": "webpack -w -c ./.config/webpack/webpack.config.ts --env development",
+    "dev:backend": "yarn run build && mage -v && yarn run server",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --cache --ignore-path ./.gitignore --ext .js,.jsx,.ts,.tsx .",
     "lint:fix": "yarn run lint -- --fix",
@@ -13,7 +15,6 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:codegen": "playwright codegen",
-    "server": "docker compose up grafana --build",
     "sign": "npx --yes @grafana/sign-plugin@latest"
   },
   "author": "Startree",
