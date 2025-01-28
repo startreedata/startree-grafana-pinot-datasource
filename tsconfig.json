@@ -1,4 +1,3 @@
 {
-  "extends": "./.config/tsconfig.json",
-  "exclude": ["cypress/config/cypress.config.ts", "cypress", "node_modules"] // Exclude Cypress end to end tests to avoid clashing types with jest
+  "extends": "./.config/tsconfig.json"
 }
