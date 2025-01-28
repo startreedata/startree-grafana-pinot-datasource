@@ -26,6 +26,27 @@ const PluginName = "startree-pinot-datasource"
 const ArtifactoryUrl = "https://repo.startreedata.io/artifactory"
 const ArtifactoryRepository = "startree-grafana-plugin"
 
+type ExternalRelease struct {
+	name string
+	repo string
+	urls []string
+}
+
+// Hard coded external releases
+
+var ExternalReleases = []ExternalRelease{
+	{
+		name: "epicgames",
+		repo: "external-startree-releases-for-epicgames",
+		urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud/"},
+	},
+	{
+		name: "doordash",
+		repo: "external-startree-releases-for-doordash",
+		urls: []string{"https://grafana.doordash.team/"},
+	},
+}
+
 const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 const PodInstallerFile = "pod_installer.sh"
@@ -59,6 +80,17 @@ func main() {
 	case "create":
 		releaseManager.CreateInternalRelease()
 
+	case "external":
+		target := os.Args[2]
+		for _, release := range ExternalReleases {
+			if release.name == target {
+				releaseManager.CreateExternalRelease(release)
+				return
+			}
+		}
+		fmt.Printf("No release for `%s` found!\n", target)
+		os.Exit(1)
+
 	case "resign":
 		rootUrls := parseRootUrls(os.Args[2:])
 		releaseManager.ResignRelease(rootUrls)
@@ -67,7 +99,7 @@ func main() {
 		releaseManager.DeployDemo()
 
 	case "pod_installer":
-		releaseManager.uploadFile("cmd/release/" + PodInstallerFile)
+		releaseManager.uploadInternalFile("cmd/release/" + PodInstallerFile)
 
 	case "install":
 		releaseManager.InstallPluginIntoDataPlane()
@@ -110,7 +142,7 @@ func (x *ReleaseManager) CreateInternalRelease() {
 	x.buildPlugin()
 	x.signPlugin(rootUrls)
 	x.zipPlugin(releaseArchive)
-	x.uploadFile(releaseArchive)
+	x.uploadInternalFile(releaseArchive)
 }
 
 func (x *ReleaseManager) ResignRelease(rootUrls []string) {
@@ -126,7 +158,15 @@ func (x *ReleaseManager) ResignRelease(rootUrls []string) {
 	x.unzipPlugin(internalRelease)
 	x.signPlugin(rootUrls)
 	x.zipPlugin(customerRelease)
-	x.uploadFile(customerRelease)
+	x.uploadInternalFile(customerRelease)
+}
+
+func (x *ReleaseManager) CreateExternalRelease(release ExternalRelease) {
+	x.releaseName = release.name
+	x.ResignRelease(release.urls)
+	if release.repo != "" {
+		x.uploadExternalFile(x.getCustomerArchiveName(), release.repo)
+	}
 }
 
 func (x *ReleaseManager) DeployDemo() {
@@ -329,28 +369,43 @@ func (x *ReleaseManager) getReleaseName() string {
 	return x.releaseName
 }
 
-func (x *ReleaseManager) uploadFile(path string) {
-	fmt.Printf("Uploading %s...\n", path)
+func (x *ReleaseManager) uploadInternalFile(fileName string) {
+	fmt.Printf("Uploading %s...\n", fileName)
 
-	file, err := os.Open(path)
+	file, err := os.Open(fileName)
 	if err != nil {
-		handleError(fmt.Errorf("os.Open(`%s`) failed: %w", path, err))
+		handleError(fmt.Errorf("os.Open(`%s`) failed: %w", fileName, err))
 	}
+	defer func() { handleError(file.Close()) }()
 
+	dest := fmt.Sprintf("%s/%s/%s", ArtifactoryUrl, ArtifactoryRepository, filepath.Base(fileName))
+	x.uploadToArtifactory(file, dest)
+}
+
+func (x *ReleaseManager) uploadExternalFile(fileName string, repo string) {
+	fmt.Printf("Uploading %s...\n", fileName)
+
+	file, err := os.Open(fileName)
+	if err != nil {
+		handleError(fmt.Errorf("os.Open(`%s`) failed: %w", fileName, err))
+	}
+	defer func() { handleError(file.Close()) }()
+
+	dest := fmt.Sprintf("%s/%s/startree-grafana-plugin/%s", ArtifactoryUrl, repo, filepath.Base(fileName))
+	x.uploadToArtifactory(file, dest)
+}
+
+func (x *ReleaseManager) uploadToArtifactory(file io.Reader, dest string) {
 	var buf bytes.Buffer
 	if _, err := buf.ReadFrom(file); err != nil {
 		handleError(fmt.Errorf("file.Read failed: %w", err))
 	}
-	sha256sum := sha256.Sum256(buf.Bytes())
-	sha1sum := sha1.Sum(buf.Bytes())
-	md5sum := md5.Sum(buf.Bytes())
 
-	dest := fmt.Sprintf("%s/%s/%s", ArtifactoryUrl, ArtifactoryRepository, filepath.Base(path))
 	req := x.newArtifactoryRequest(http.MethodPut, dest, &buf)
 	req.Header.Add("Content-Type", "application/zip")
-	req.Header.Add("X-Checksum-Sha256", fmt.Sprintf("%x", sha256sum))
-	req.Header.Add("X-Checksum-Sha1", fmt.Sprintf("%x", sha1sum))
-	req.Header.Add("X-Checksum-Md5", fmt.Sprintf("%x", md5sum))
+	req.Header.Add("X-Checksum-Sha256", fmt.Sprintf("%x", sha256.Sum256(buf.Bytes())))
+	req.Header.Add("X-Checksum-Sha1", fmt.Sprintf("%x", sha1.Sum(buf.Bytes())))
+	req.Header.Add("X-Checksum-Md5", fmt.Sprintf("%x", md5.Sum(buf.Bytes())))
 
 	resp, err := x.doRequest(req)
 	if err != nil {
@@ -362,7 +417,7 @@ func (x *ReleaseManager) uploadFile(path string) {
 		handleError(fmt.Errorf("failed to upload file: %s", resp.Status))
 	}
 
-	fmt.Println("File uploaded to", dest)
+	fmt.Println("Upload complete.", dest)
 }
 
 func (x *ReleaseManager) downloadFile(fileName string) {
@@ -415,7 +470,7 @@ func (x *ReleaseManager) fileExistsInRepo(fileName string) bool {
 }
 
 func (x *ReleaseManager) checkFileIntegrity(fileName string, expectedChecksum string) {
-	fmt.Println("Checking file integrity...")
+	fmt.Printf("Checking file integrity... ")
 	file, err := os.Open(fileName)
 	if err != nil {
 		handleError(fmt.Errorf("os.OpenFile(`%s`) failed: %w", fileName, err))
@@ -428,9 +483,10 @@ func (x *ReleaseManager) checkFileIntegrity(fileName string, expectedChecksum st
 	}
 	fileChecksum := fmt.Sprintf("%x", hash.Sum(nil))
 	if fileChecksum != expectedChecksum {
+		fmt.Println("Failed! 😵")
 		handleError(errors.New("file integrity check failed"))
 	}
-	fmt.Println("File integrity verified.")
+	fmt.Println("Ok!")
 }
 
 func (x *ReleaseManager) newArtifactoryRequest(method string, path string, body io.Reader) *http.Request {
