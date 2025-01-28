@@ -2,88 +2,95 @@ package plugin
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
 )
 
 var (
+	_ instancemgmt.Instance         = (*Datasource)(nil)
 	_ backend.QueryDataHandler      = (*Datasource)(nil)
 	_ backend.CheckHealthHandler    = (*Datasource)(nil)
 	_ backend.CallResourceHandler   = (*Datasource)(nil)
 	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
 )
 
-type DatasourceConfig struct {
-	ControllerUrl string
-	BrokerUrl     string
-	DatabaseName  string
-
-	// Secrets
-	Authorization string
-}
-
 type Datasource struct {
+	backend.QueryDataHandler
 	backend.CallResourceHandler
 	backend.CheckHealthHandler
-	backend.QueryDataHandler
 	instancemgmt.InstanceDisposer
 }
 
-func NewDatasource(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	config, err := DatasourceConfigFrom(settings)
-	if err != nil {
+func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+	var config Config
+	if err := config.ReadFrom(settings); err != nil {
 		return nil, err
 	}
 
-	client := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
-		ControllerUrl: config.ControllerUrl,
-		BrokerUrl:     config.BrokerUrl,
-		DatabaseName:  config.DatabaseName,
-		Authorization: config.Authorization,
-	})
-
+	client := PinotClientOf(config)
 	return &Datasource{
-		CallResourceHandler: NewCallResourceHandler(client),
-		CheckHealthHandler:  NewCheckHealthHandler(client),
-		QueryDataHandler:    NewQueryDataHandler(client),
-		InstanceDisposer:    NewInstanceDisposer(client),
+		QueryDataHandler:    newQueryDataHandler(client),
+		CallResourceHandler: newCallResourceHandler(client),
+		CheckHealthHandler:  newCheckHealthHandler(client),
+		InstanceDisposer:    disposerFunc(func() { client.Close() }),
 	}, nil
 }
 
-const TokenTypeNone = "None"
-
-func DatasourceConfigFrom(settings backend.DataSourceInstanceSettings) (*DatasourceConfig, error) {
-	var config struct {
-		ControllerUrl string `json:"controllerUrl"`
-		BrokerUrl     string `json:"brokerUrl"`
-		DatabaseName  string `json:"databaseName"`
-		TokenType     string `json:"tokenType"`
-	}
-
-	tokenSecret := settings.DecryptedSecureJSONData["authToken"]
-	if err := json.Unmarshal(settings.JSONData, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal datasource config: %w", err)
-	} else if config.BrokerUrl == "" {
-		return nil, errors.New("broker url cannot be empty")
-	} else if config.ControllerUrl == "" {
-		return nil, errors.New("controller url cannot be empty")
-	} else if config.TokenType == "" {
-		return nil, errors.New("token type cannot be empty")
-	}
-
-	var authToken string
-	if config.TokenType != TokenTypeNone {
-		authToken = fmt.Sprintf("%s %s", config.TokenType, tokenSecret)
-	}
-
-	return &DatasourceConfig{
-		ControllerUrl: config.ControllerUrl,
-		BrokerUrl:     config.BrokerUrl,
-		DatabaseName:  config.DatabaseName,
-		Authorization: authToken,
-	}, nil
+func newQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {
+	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+		response := backend.NewQueryDataResponse()
+		for _, query := range req.Queries {
+			log.FromContext(ctx).Debug("received query", "contents", string(query.JSON))
+			response.Responses[query.RefID] = dataquery.ExecuteQuery(ctx, client, query)
+		}
+		return response, nil
+	})
 }
+
+func newCallResourceHandler(client *pinotlib.PinotClient) backend.CallResourceHandler {
+	return httpadapter.New(resources.NewResourceHandler(client))
+}
+
+func newCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHandler {
+	return backend.CheckHealthHandlerFunc(func(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		// Test connection to controller
+		if tables, err := client.ListTables(ctx); err != nil {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: err.Error(),
+			}, nil
+		} else if len(tables) == 0 {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: fmt.Sprintf("Got an empty list of tables from %s. Please check the authentication and database settings.", client.Properties().ControllerUrl),
+			}, nil
+		}
+
+		// Test connection to broker
+		if _, err := client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery("SELECT 1")); err != nil {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: err.Error(),
+			}, nil
+		}
+
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusOk,
+			Message: "Pinot data source is working",
+		}, nil
+	})
+}
+
+type disposerFunc func()
+
+func (f disposerFunc) Dispose() { f() }

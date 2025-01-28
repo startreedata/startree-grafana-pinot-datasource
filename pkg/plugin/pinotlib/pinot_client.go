@@ -40,11 +40,21 @@ type PinotClientProperties struct {
 	BrokerUrl     string
 	DatabaseName  string
 	Authorization string
+	QueryOptions  []QueryOption
 
 	ControllerCacheTimeout time.Duration
 	BrokerCacheTimeout     time.Duration
 
 	BrokerMaxQueryRate time.Duration
+}
+
+func (x PinotClientProperties) cacheKey() string {
+	return fmt.Sprintf("%v", x)
+}
+
+type QueryOption struct {
+	Name  string
+	Value string
 }
 
 type Limiter struct {
@@ -75,14 +85,14 @@ func (x *Limiter) Close() {
 var clientMap sync.Map
 
 func NewPinotClient(properties PinotClientProperties) *PinotClient {
-	key := fmt.Sprintf("%v", properties)
-	val, ok := clientMap.Load(key)
+	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
+	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
+
+	cacheKey := properties.cacheKey()
+	val, ok := clientMap.Load(cacheKey)
 	if ok {
 		return val.(*PinotClient)
 	}
-
-	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
-	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
 
 	headers := make(map[string]string)
 	if properties.Authorization != "" {
@@ -107,12 +117,14 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 
 		brokerLimiter: NewLimiter(properties.BrokerMaxQueryRate),
 	}
-	clientMap.Store(key, client)
+
+	clientMap.Store(cacheKey, client)
 	return client
 }
 
 func (p *PinotClient) Close() {
 	p.brokerLimiter.Close()
+	clientMap.Delete(p.properties.cacheKey())
 }
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }

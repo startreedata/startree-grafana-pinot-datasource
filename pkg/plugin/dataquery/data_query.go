@@ -54,7 +54,7 @@ const (
 	ColumnTypeAll       ColumnType = "ALL"
 )
 
-type PinotDataQuery struct {
+type DataQuery struct {
 	TimeRange     TimeRange     `json:"-"`
 	MaxDataPoints int64         `json:"-"`
 	IntervalSize  time.Duration `json:"-"`
@@ -64,7 +64,8 @@ type PinotDataQuery struct {
 	EditorMode  EditorMode  `json:"editorMode"`
 	DisplayType DisplayType `json:"displayType"`
 
-	TableName string `json:"tableName"`
+	TableName    string        `json:"tableName"`
+	QueryOptions []QueryOption `json:"queryOptions"`
 
 	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`
@@ -75,7 +76,6 @@ type PinotDataQuery struct {
 	DimensionFilters    []DimensionFilter `json:"filters"`
 	Granularity         string            `json:"granularity"`
 	OrderByClauses      []OrderByClause   `json:"orderBy"`
-	QueryOptions        []QueryOption     `json:"queryOptions"`
 	Legend              string            `json:"legend"`
 	MetricColumnV2      ComplexField      `json:"metricColumnV2"`
 	GroupByColumnsV2    []ComplexField    `json:"groupByColumnsV2"`
@@ -101,22 +101,6 @@ type PinotDataQuery struct {
 
 	// PromQl code
 	PromQlCode string `json:"promQlCode"`
-}
-
-func builderGroupByColumnsFrom(query PinotDataQuery) []ComplexField {
-	groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
-	for _, col := range query.GroupByColumns {
-		groupByColumns = append(groupByColumns, ComplexField{Name: col})
-	}
-	return append(groupByColumns, query.GroupByColumnsV2...)
-}
-
-func builderMetricColumnFrom(query PinotDataQuery) ComplexField {
-	if query.MetricColumnV2.Name != "" {
-		return query.MetricColumnV2
-	} else {
-		return ComplexField{Name: query.MetricColumn}
-	}
 }
 
 type TimeRange struct {
@@ -161,13 +145,13 @@ type JsonExtractor struct {
 	Alias      string       `json:"alias"`
 }
 
-func PinotDataQueryFrom(query backend.DataQuery) (PinotDataQuery, error) {
-	var pinotDataQuery PinotDataQuery
-	if err := json.Unmarshal(query.JSON, &pinotDataQuery); err != nil {
-		return PinotDataQuery{}, fmt.Errorf("failed to unmarshal query model: %w", err)
+func (query *DataQuery) ReadFrom(backendQuery backend.DataQuery) error {
+	if err := json.Unmarshal(backendQuery.JSON, &query); err != nil {
+		return fmt.Errorf("failed to unmarshal query model: %w", err)
 	}
-	pinotDataQuery.TimeRange = TimeRange{To: query.TimeRange.To, From: query.TimeRange.From}
-	pinotDataQuery.IntervalSize = query.Interval
-	pinotDataQuery.MaxDataPoints = query.MaxDataPoints
-	return pinotDataQuery, nil
+	query.TimeRange = TimeRange{To: backendQuery.TimeRange.To, From: backendQuery.TimeRange.From}
+	query.IntervalSize = backendQuery.Interval
+	query.MaxDataPoints = backendQuery.MaxDataPoints
+
+	return nil
 }

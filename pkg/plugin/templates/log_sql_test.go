@@ -6,9 +6,7 @@ import (
 )
 
 func TestRenderLogSql(t *testing.T) {
-	want := `SET useMultistageEngine=true;
-
-SELECT
+	want := `SELECT
     "message" AS 'message_alias',
     "col1" AS 'alias1',
     "col2" AS 'alias2',
@@ -35,7 +33,6 @@ LIMIT 1000;`
 		TimeFilterExpr:       `"ts" >= 10 AND "ts" <= 20`,
 		DimensionFilterExprs: []string{`("dim1" = 'val1')`, `("dim2" = 'val2')`},
 		Limit:                1000,
-		QueryOptionsExpr:     `SET useMultistageEngine=true;`,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)

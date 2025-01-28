@@ -1,4 +1,4 @@
-import React, { ChangeEvent, useEffect, useState } from 'react';
+import React, { ChangeEvent, useState } from 'react';
 import { QueryOption } from '../../dataquery/QueryOption';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { Input, Select } from '@grafana/ui';
@@ -11,13 +11,7 @@ export function EditQueryOption(props: {
   onChange: (val: QueryOption) => void;
 }) {
   const { queryOption, unused, onChange, onDelete } = props;
-
   const [value, setValue] = useState(queryOption.value);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => queryOption.value !== value && onChange({ ...queryOption, value }), 500);
-    return () => clearTimeout(timeoutId);
-  }, [value, queryOption, onChange]);
 
   const selectableNames = queryOption.name ? [queryOption.name, ...unused] : [...unused];
   return (
@@ -42,6 +36,7 @@ export function EditQueryOption(props: {
           className={`${styles.QueryEditor.inputForm}`}
           value={value}
           onChange={(event: ChangeEvent<HTMLInputElement>) => setValue(event.target.value)}
+          onBlur={() => queryOption.value !== value && onChange({ ...queryOption, value })}
         />
       </div>
       <AccessoryButton data-testid="delete-query-option-btn" icon="times" variant="secondary" onClick={onDelete} />

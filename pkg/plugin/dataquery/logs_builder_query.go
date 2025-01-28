@@ -8,6 +8,8 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 )
 
+var _ ExecutableQuery = LogsBuilderQuery{}
+
 type LogsBuilderQuery struct {
 	TimeRange        TimeRange
 	TableName        string
@@ -37,20 +39,15 @@ func (query LogsBuilderQuery) Validate() error {
 
 func (query LogsBuilderQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
 	if err := query.Validate(); err != nil {
-		return NewPluginErrorResponse(err)
+		return NewBadRequestErrorResponse(err)
 	}
 
-	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
+	sqlQuery, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	sql, err := query.RenderSql(tableSchema)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinotlib.NewSqlQuery(sql))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, sqlQuery)
 	if !ok {
 		return backendResp
 	}
@@ -63,34 +60,41 @@ func (query LogsBuilderQuery) Execute(ctx context.Context, client *pinotlib.Pino
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query LogsBuilderQuery) RenderSql(tableSchema pinotlib.TableSchema) (string, error) {
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, query.TimeColumn)
+func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotlib.PinotClient) (pinotlib.SqlQuery, error) {
+	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
-		return "", err
+		return pinotlib.SqlQuery{}, err
 	}
 
-	timeFilterExpr := pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
-		Column: query.TimeColumn,
-		Format: timeColumnFormat,
-		From:   query.TimeRange.From,
-		To:     query.TimeRange.To,
-	})
+	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, query.TimeColumn)
+	if err != nil {
+		return pinotlib.SqlQuery{}, err
+	}
 
-	return templates.RenderLogSql(templates.LogSqlParams{
+	sql, err := templates.RenderLogSql(templates.LogSqlParams{
 		TableNameExpr:        pinotlib.ObjectExpr(query.TableName),
 		TimeColumn:           query.TimeColumn,
 		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
-		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
 		Limit:                query.resolveLimit(),
-		QueryOptionsExpr:     QueryOptionsExpr(query.QueryOptions),
+		TimeFilterExpr: pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+			Column: query.TimeColumn,
+			Format: timeColumnFormat,
+			From:   query.TimeRange.From,
+			To:     query.TimeRange.To,
+		}),
 	})
+	if err != nil {
+		return pinotlib.SqlQuery{}, err
+	}
+
+	return newSqlQueryWithOptions(sql, query.QueryOptions), nil
 }
 
 func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
-	return templates.RenderLogSql(templates.LogSqlParams{
+	sql, err := templates.RenderLogSql(templates.LogSqlParams{
 		TableNameExpr:        MacroExprFor(MacroTable),
 		TimeColumn:           query.TimeColumn,
 		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
@@ -99,8 +103,12 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn)),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
 		Limit:                query.resolveLimit(),
-		QueryOptionsExpr:     QueryOptionsExpr(query.QueryOptions),
 	})
+	if err != nil {
+		return "", err
+	}
+	return newSqlQueryWithOptions(sql, query.QueryOptions).RenderSql(), nil
+
 }
 
 func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {

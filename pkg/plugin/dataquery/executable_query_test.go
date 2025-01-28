@@ -21,13 +21,13 @@ func TestExecutableQueryFrom(t *testing.T) {
 	}
 
 	t.Run("hide=true", func(t *testing.T) {
-		got := ExecutableQueryFrom(PinotDataQuery{Hide: true})
+		got := ExecutableQueryFrom(DataQuery{Hide: true})
 		assert.IsType(t, &NoOpQuery{}, got)
 	})
 
 	t.Run("queryType="+string(QueryTypePinotQl), func(t *testing.T) {
 		t.Run("editorMode="+string(EditorModeBuilder), func(t *testing.T) {
-			got := ExecutableQueryFrom(PinotDataQuery{
+			got := ExecutableQueryFrom(DataQuery{
 				TimeRange:           timeRange,
 				QueryType:           QueryTypePinotQl,
 				EditorMode:          EditorModeBuilder,
@@ -51,7 +51,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 		})
 
 		t.Run("editorMode="+string(EditorModeCode), func(t *testing.T) {
-			got := ExecutableQueryFrom(PinotDataQuery{
+			got := ExecutableQueryFrom(DataQuery{
 				TimeRange:    timeRange,
 				QueryType:    QueryTypePinotQl,
 				EditorMode:   EditorModeCode,
@@ -71,7 +71,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 	})
 
 	t.Run("queryType="+string(QueryTypePromQl), func(t *testing.T) {
-		got := ExecutableQueryFrom(PinotDataQuery{
+		got := ExecutableQueryFrom(DataQuery{
 			QueryType: QueryTypePromQl,
 		})
 		if assert.IsType(t, PromQlQuery{}, got) {
@@ -80,7 +80,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 	})
 
 	t.Run("queryType="+string(QueryTypePinotVariableQuery), func(t *testing.T) {
-		got := ExecutableQueryFrom(PinotDataQuery{
+		got := ExecutableQueryFrom(DataQuery{
 			QueryType: QueryTypePinotVariableQuery,
 		})
 		assert.IsType(t, VariableQuery{}, got)
