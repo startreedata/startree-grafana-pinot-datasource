@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var _ ExecutableQuery = PromQlQuery{}
+
 type PromQlQuery struct {
 	TableName    string
 	PromQlCode   string
@@ -35,11 +37,11 @@ func (params PromQlQuery) Execute(ctx context.Context, client *pinotlib.PinotCli
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := ExtractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize)
+	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize)
 	return NewOkDataResponse(frames...)
 }
 
-func ExtractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration) []*data.Frame {
+func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration) []*data.Frame {
 	var legendFormatter LegendFormatter
 
 	frames := make([]*data.Frame, len(results))

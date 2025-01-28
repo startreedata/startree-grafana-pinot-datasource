@@ -347,12 +347,12 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('input-limit').getByRole('textbox').fill('4000');
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
+  await page.getByTestId('run-query-btn').click();
+
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
-    `SET timeoutMs=100;
-
-SELECT
+    `SELECT
     "browser",
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
     MAX("errors") AS "__metric"
@@ -366,10 +366,11 @@ GROUP BY
     "__time"
 ORDER BY
     "browser" ASC
-LIMIT 4000;`
+LIMIT 4000;
+
+SET timeoutMs=100;`
   );
 
-  await page.getByTestId('run-query-btn').click();
   await dataQueryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func TestPinotDataQueryFrom(t *testing.T) {
-	want := PinotDataQuery{
+	want := DataQuery{
 		TimeRange:           TimeRange{From: time.Unix(0, 0), To: time.Unix(100, 0)},
 		QueryType:           "PinotQL",
 		EditorMode:          "Builder",
@@ -30,7 +30,8 @@ func TestPinotDataQueryFrom(t *testing.T) {
 		Granularity: "MINUTES",
 	}
 
-	got, err := PinotDataQueryFrom(backend.DataQuery{
+	var got DataQuery
+	err := got.ReadFrom(backend.DataQuery{
 		RefID:     "1",
 		Interval:  10 * time.Second,
 		TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(100, 0)},

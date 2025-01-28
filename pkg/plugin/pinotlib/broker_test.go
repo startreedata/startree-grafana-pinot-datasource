@@ -41,3 +41,28 @@ func TestBrokerExceptionError_Error(t *testing.T) {
 	err := NewBrokerExceptionError([]BrokerException{{Message: "this is a broker exception", ErrorCode: 1}})
 	assert.Equal(t, "Broker request completed with exceptions:\nCode 1: this is a broker exception", err.Error())
 }
+
+func TestPinotClient_RenderSql(t *testing.T) {
+	client := NewPinotClient(PinotClientProperties{
+		QueryOptions: []QueryOption{
+			{Name: "useMultistageEngine", Value: "true"},
+			{Name: "timeoutMs", Value: "100"},
+		},
+	})
+
+	query := SqlQuery{
+		Sql: `select * from benchmark`,
+		QueryOptions: []QueryOption{
+			{Name: "enableNullHandling", Value: "true"},
+			{Name: "maxExecutionThreads", Value: "5"},
+		},
+	}
+
+	got := client.RenderSql(query)
+	assert.Equal(t, `select * from benchmark;
+
+SET enableNullHandling=true;
+SET maxExecutionThreads=5;
+SET useMultistageEngine=true;
+SET timeoutMs=100;`, got)
+}

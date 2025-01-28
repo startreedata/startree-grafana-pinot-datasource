@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { Env, randomDatasourceName } from '@helpers/helpers';
+import { Env, randomDatasourceName, setExploreTimeWindow } from '@helpers/helpers';
 
 test.describe('Add Pinot Datasource', async () => {
   // Grafana generates an incremental name for each datasource and saves it when the editor page loads.
@@ -9,6 +9,7 @@ test.describe('Add Pinot Datasource', async () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:3000/datasources/new');
     await page.getByLabel('Add data source Pinot').click();
+    await page.getByPlaceholder('Name').click();
     await page.getByPlaceholder('Name').fill(randomDatasourceName());
   });
 
@@ -29,6 +30,53 @@ test.describe('Add Pinot Datasource', async () => {
     await page.getByLabel('Data source settings page Save and Test button').click();
     await healthCheckResponse;
     await expect(page.getByText('Pinot data source is working')).toBeVisible();
+  });
+
+  test('Query Options set at data source are visible in query editor', async ({ page }) => {
+    await page.getByPlaceholder('Controller URL').fill(Env.PinotConnectionControllerUrl);
+    await page.getByPlaceholder('Broker URL').fill(Env.PinotConnectionBrokerUrl);
+    await page.getByPlaceholder('default').fill(Env.PinotConnectionDatabase);
+    await page.getByTestId('select-pinot-token-type').click();
+    await page.getByLabel('Select options menu').getByText('Bearer').click();
+    await page.getByPlaceholder('Token').fill(Env.PinotConnectionAuthToken);
+    await page.getByTestId('add-query-option-btn').click();
+    await page.getByTestId('select-query-option-name').click();
+    await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
+    await page.getByTestId('input-query-option-value').getByRole('textbox').click();
+    await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
+    await page.locator('body').click()
+
+    const healthCheckResponse = page.waitForResponse('http://localhost:3000/api/datasources/*/health');
+    await page.getByLabel('Data source settings page Save and Test button').click();
+    await healthCheckResponse;
+    await expect(page.getByText('Pinot data source is working')).toBeVisible();
+    const datasourceUrl = page.url();
+
+    await page.getByRole('main').getByRole('link', { name: 'Explore' }).click();
+    await setExploreTimeWindow(page);
+    const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
+    await sqlPreviewResponse;
+    await expect(page.getByTestId('sql-preview')).toContainText(
+      // language=text
+      `SELECT
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
+    SUM("views") AS "__metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148
+GROUP BY
+    "__time"
+ORDER BY
+    "__time" DESC
+LIMIT 100000;
+
+SET timeoutMs=100;`
+    );
+
+    await page.goto(datasourceUrl);
   });
 
   test('Invalid controller url shows error', async ({ page }) => {

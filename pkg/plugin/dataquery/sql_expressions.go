@@ -1,6 +1,7 @@
 package dataquery
 
 import (
+	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"strings"
 )
@@ -18,13 +19,13 @@ func OrderByExprs(orderByClauses []OrderByClause) []string {
 }
 
 func QueryOptionsExpr(options []QueryOption) string {
-	exprs := make([]string, 0, len(options))
+	var builder strings.Builder
 	for _, o := range options {
 		if o.Name != "" && o.Value != "" {
-			exprs = append(exprs, pinotlib.QueryOptionExpr(o.Name, o.Value))
+			builder.WriteString(fmt.Sprintf("SET %s=%s;\n", o.Name, o.Value))
 		}
 	}
-	return strings.Join(exprs, "\n")
+	return builder.String()
 }
 
 func FilterExprsFrom(filters []DimensionFilter) []string {

@@ -1,4 +1,5 @@
 import {DataSourceJsonData} from '@grafana/data';
+import {QueryOption} from './QueryOption';
 
 /**
  * These are options configured for each DataSource instance
@@ -8,6 +9,7 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   brokerUrl?: string;
   databaseName?: string;
   tokenType?: string;
+  queryOptions: QueryOption[];
 }
 
 /**

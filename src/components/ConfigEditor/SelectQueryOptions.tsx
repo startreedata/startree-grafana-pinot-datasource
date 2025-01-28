@@ -1,10 +1,10 @@
 import React from 'react';
-import { FormLabel } from './FormLabel';
 import { AccessoryButton } from '@grafana/experimental';
 import allLabels from '../../labels';
 import { QueryOption } from '../../dataquery/QueryOption';
-import { EditQueryOption } from './EditQueryOption';
 import { PinotQueryOptions } from '../../pinotql/pinotQueryOptions';
+import { InlineField } from '@grafana/ui';
+import { EditQueryOption } from '../QueryEditor/EditQueryOption';
 
 export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (val: QueryOption[]) => void }) {
   const { selected, onChange } = props;
@@ -28,8 +28,15 @@ export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (
     .reduce((collector, name) => collector.add(name), new Set<string>());
 
   return (
-    <div className={'gf-form'} data-testid="select-query-options">
-      <FormLabel tooltip={labels.tooltip} label={labels.label} />
+    <InlineField
+      data-testid={'select-query-options'}
+      label={labels.label}
+      labelWidth={24}
+      tooltip={labels.tooltip}
+      grow
+      required
+      interactive
+    >
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {selected.map((option, idx) => (
           <div key={idx} data-testid="edit-query-option">
@@ -53,6 +60,6 @@ export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (
           />
         </div>
       </div>
-    </div>
+    </InlineField>
   );
 }
