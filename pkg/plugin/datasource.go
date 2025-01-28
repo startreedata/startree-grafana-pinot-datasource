@@ -7,24 +7,34 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/datasource"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
 )
 
-type disposerFunc func()
+var (
+	_ instancemgmt.Instance         = (*Datasource)(nil)
+	_ backend.QueryDataHandler      = (*Datasource)(nil)
+	_ backend.CheckHealthHandler    = (*Datasource)(nil)
+	_ backend.CallResourceHandler   = (*Datasource)(nil)
+	_ instancemgmt.InstanceDisposer = (*Datasource)(nil)
+)
 
-func (f disposerFunc) Dispose() { f() }
+type Datasource struct {
+	backend.QueryDataHandler
+	backend.CallResourceHandler
+	backend.CheckHealthHandler
+	instancemgmt.InstanceDisposer
+}
 
 func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	var config datasource.Config
+	var config Config
 	if err := config.ReadFrom(settings); err != nil {
 		return nil, err
 	}
 
-	client := datasource.PinotClientOf(config)
-	return &datasource.Datasource{
+	client := PinotClientOf(config)
+	return &Datasource{
 		QueryDataHandler:    newQueryDataHandler(client),
 		CallResourceHandler: newCallResourceHandler(client),
 		CheckHealthHandler:  newCheckHealthHandler(client),
@@ -80,3 +90,7 @@ func newCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHand
 		}, nil
 	})
 }
+
+type disposerFunc func()
+
+func (f disposerFunc) Dispose() { f() }

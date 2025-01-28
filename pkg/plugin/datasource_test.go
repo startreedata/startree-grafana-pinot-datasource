@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/datasource"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +19,7 @@ func TestDatasource(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, instance)
-	pinotDatasource := instance.(*datasource.Datasource)
+	pinotDatasource := instance.(*Datasource)
 	assert.NotNil(t, pinotDatasource.CallResourceHandler)
 	assert.NotNil(t, pinotDatasource.CheckHealthHandler)
 	assert.NotNil(t, pinotDatasource.QueryDataHandler)

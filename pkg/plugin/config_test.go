@@ -1,4 +1,4 @@
-package datasource
+package plugin
 
 import (
 	"encoding/json"
