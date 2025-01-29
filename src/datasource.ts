@@ -10,6 +10,7 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     super(instanceSettings);
 
     this.variables = new PinotVariableSupport(this);
+    this.annotations = {};
   }
 
   applyTemplateVariables(
