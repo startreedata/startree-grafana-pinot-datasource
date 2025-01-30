@@ -8,7 +8,7 @@ import (
 func TestColumnFilterExpr(t *testing.T) {
 	testArgs := []struct {
 		operator FilterOperator
-		expected string
+		expected SqlExpr
 	}{
 		{FilterOpEquals, `("dim"['key'] = 'val1' OR "dim"['key'] = 'val2')`},
 		{FilterOpNotEquals, `("dim"['key'] != 'val1' OR "dim"['key'] != 'val2')`},

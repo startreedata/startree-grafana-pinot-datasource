@@ -5,7 +5,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"strings"
 )
 
@@ -65,7 +64,7 @@ func (query VariableQuery) getDistinctValues(ctx context.Context, client *pinotl
 		return NewEmptyDataResponse()
 	}
 
-	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+	sql, err := pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
 		ColumnExpr: pinotlib.ObjectExpr(query.ColumnName),
 		TableName:  query.TableName,
 	})

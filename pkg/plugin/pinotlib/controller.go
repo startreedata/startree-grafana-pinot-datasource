@@ -9,45 +9,41 @@ import (
 )
 
 func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
-	return p.listDatabasesCache.Get(func() ([]string, error) {
-		req, err := p.newControllerGetRequest(ctx, "/databases")
-		if err != nil {
-			return nil, err
-		}
+	req, err := p.newControllerGetRequest(ctx, "/databases")
+	if err != nil {
+		return nil, err
+	}
 
-		var databases []string
-		err = p.doRequestAndDecodeResponse(req, &databases)
-		if IsStatusNotFoundError(err) {
-			return []string{}, nil
-		} else if err != nil {
-			return nil, err
-		}
-		return databases, nil
-	})
+	var databases []string
+	err = p.doRequestAndDecodeResponse(req, &databases)
+	if IsStatusNotFoundError(err) {
+		return []string{}, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return databases, nil
 }
 
 func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
-	return p.listTablesCache.Get(func() ([]string, error) {
-		endpoint := p.listTablesEndpoint(ctx)
-		req, err := p.newControllerGetRequest(ctx, endpoint)
-		if err != nil {
-			return nil, err
-		}
+	endpoint := p.listTablesEndpoint(ctx)
+	req, err := p.newControllerGetRequest(ctx, endpoint)
+	if err != nil {
+		return nil, err
+	}
 
-		var tablesResp struct {
-			Tables []string `json:"tables"`
-		}
-		if err = p.doRequestAndDecodeResponse(req, &tablesResp); err != nil {
-			return nil, err
-		}
+	var tablesResp struct {
+		Tables []string `json:"tables"`
+	}
+	if err = p.doRequestAndDecodeResponse(req, &tablesResp); err != nil {
+		return nil, err
+	}
 
-		tables := make([]string, len(tablesResp.Tables))
-		databasePrefix := fmt.Sprintf("%s.", p.properties.DatabaseName)
-		for i := range tablesResp.Tables {
-			tables[i] = strings.TrimPrefix(tablesResp.Tables[i], databasePrefix)
-		}
-		return tables, nil
-	})
+	tables := make([]string, len(tablesResp.Tables))
+	databasePrefix := fmt.Sprintf("%s.", p.properties.DatabaseName)
+	for i := range tablesResp.Tables {
+		tables[i] = strings.TrimPrefix(tablesResp.Tables[i], databasePrefix)
+	}
+	return tables, nil
 }
 
 func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
@@ -89,17 +85,15 @@ type TransformConfig struct {
 }
 
 func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
-	return p.listTableConfigsCache.Get(table, func() (ListTableConfigsResponse, error) {
-		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
-		if err != nil {
-			return ListTableConfigsResponse{}, err
-		}
-		var data ListTableConfigsResponse
-		if err = p.doRequestAndDecodeResponse(req, &data); err != nil {
-			return ListTableConfigsResponse{}, err
-		}
-		return data, nil
-	})
+	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
+	if err != nil {
+		return ListTableConfigsResponse{}, err
+	}
+	var data ListTableConfigsResponse
+	if err = p.doRequestAndDecodeResponse(req, &data); err != nil {
+		return ListTableConfigsResponse{}, err
+	}
+	return data, nil
 }
 
 // TableSchema is a JSON serializable Pinot table schema.
@@ -150,18 +144,16 @@ type ChildFieldSpec struct {
 }
 
 func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
-	return p.getTableSchemaCache.Get(table, func() (TableSchema, error) {
-		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/schema")
-		if err != nil {
-			return TableSchema{}, err
-		}
+	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/schema")
+	if err != nil {
+		return TableSchema{}, err
+	}
 
-		var schema TableSchema
-		if err = p.doRequestAndDecodeResponse(req, &schema); err != nil {
-			return TableSchema{}, err
-		}
-		return schema, nil
-	})
+	var schema TableSchema
+	if err = p.doRequestAndDecodeResponse(req, &schema); err != nil {
+		return TableSchema{}, err
+	}
+	return schema, nil
 }
 
 type TableMetadata struct {
@@ -172,17 +164,15 @@ type TableMetadata struct {
 }
 
 func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (TableMetadata, error) {
-	return p.getTableMetadataCache.Get(table, func() (TableMetadata, error) {
-		req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/metadata")
-		if err != nil {
-			return TableMetadata{}, err
-		}
-		var metadata TableMetadata
-		if err = p.doRequestAndDecodeResponse(req, &metadata); err != nil {
-			return TableMetadata{}, err
-		}
-		return metadata, nil
-	})
+	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/metadata")
+	if err != nil {
+		return TableMetadata{}, err
+	}
+	var metadata TableMetadata
+	if err = p.doRequestAndDecodeResponse(req, &metadata); err != nil {
+		return TableMetadata{}, err
+	}
+	return metadata, nil
 }
 
 func (p *PinotClient) newControllerHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {

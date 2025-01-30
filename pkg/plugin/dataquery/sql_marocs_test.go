@@ -110,7 +110,7 @@ func TestMacroExprFor(t *testing.T) {
 	}
 
 	t.Run(MacroTable, func(t *testing.T) {
-		gotExpr := MacroExprFor(MacroTable)
+		gotExpr := MacroExprFor(MacroTable).String()
 		assert.Equal(t, "$__table()", gotExpr)
 		res, err := engine.ExpandTableName(ctx, gotExpr)
 		assert.NoError(t, err)
@@ -118,7 +118,7 @@ func TestMacroExprFor(t *testing.T) {
 	})
 
 	t.Run(MacroTimeGroup, func(t *testing.T) {
-		gotExpr := MacroExprFor(MacroTimeGroup, `"timestamp"`, "'1:MINUTES'")
+		gotExpr := MacroExprFor(MacroTimeGroup, `"timestamp"`, "'1:MINUTES'").String()
 		assert.Equal(t, `$__timeGroup("timestamp", '1:MINUTES')`, gotExpr)
 		res, err := engine.ExpandTimeGroup(ctx, gotExpr)
 		assert.NoError(t, err)

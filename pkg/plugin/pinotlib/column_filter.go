@@ -29,7 +29,7 @@ const (
 	FilterOpNotIn              FilterOperator = "not in"
 )
 
-func ColumnFilterExpr(filter ColumnFilter) string {
+func ColumnFilterExpr(filter ColumnFilter) SqlExpr {
 	if filter.ColumnName == "" || filter.Operator == "" || len(filter.ValueExprs) == 0 {
 		return ""
 	}
@@ -78,5 +78,5 @@ func ColumnFilterExpr(filter ColumnFilter) string {
 		return ""
 	}
 
-	return fmt.Sprintf(`(%s)`, strings.Join(exprs, " OR "))
+	return SqlExpr(fmt.Sprintf(`(%s)`, strings.Join(exprs, " OR ")))
 }

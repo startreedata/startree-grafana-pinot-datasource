@@ -12,7 +12,6 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"net/http"
 	"sort"
 	"strconv"
@@ -288,7 +287,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 		return "", nil
 	}
 
-	var timeFilterExpr string
+	var timeFilterExpr pinotlib.SqlExpr
 	if data.TimeRange != nil {
 		tableSchema, err := x.client.GetTableSchema(ctx, data.TableName)
 		if err != nil {
@@ -308,7 +307,7 @@ func (x *ResourceHandler) getDistinctValuesSql(ctx context.Context, data QueryDi
 		})
 	}
 
-	return templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+	return pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
 		ColumnExpr:           pinotlib.ComplexFieldExpr(data.ColumnName, data.ColumnKey),
 		TableName:            data.TableName,
 		TimeFilterExpr:       timeFilterExpr,
@@ -598,9 +597,9 @@ func (x *ResourceHandler) listTimeColumns(schema pinotlib.TableSchema, tableConf
 	return results
 }
 
-func (x *ResourceHandler) listMapColumnKeys(ctx context.Context, tableName string, columnName string, timeFilterExpr string, filterExprs []string) []string {
-	columnExpr := fmt.Sprintf(`CAST(%s AS %s)`, pinotlib.ObjectExpr(columnName), pinotlib.DataTypeJson)
-	sql, _ := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+func (x *ResourceHandler) listMapColumnKeys(ctx context.Context, tableName string, columnName string, timeFilterExpr pinotlib.SqlExpr, filterExprs []pinotlib.SqlExpr) []string {
+	columnExpr := pinotlib.CastExpr(pinotlib.ObjectExpr(columnName), pinotlib.DataTypeJson)
+	sql, _ := pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
 		ColumnExpr:           columnExpr,
 		TableName:            tableName,
 		TimeFilterExpr:       timeFilterExpr,

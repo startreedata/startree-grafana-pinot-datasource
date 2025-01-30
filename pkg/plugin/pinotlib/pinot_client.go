@@ -7,12 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/cache"
 	"io"
 	"net/http"
 	"strings"
-	"sync"
-	"time"
 )
 
 const (
@@ -23,16 +20,6 @@ type PinotClient struct {
 	properties PinotClientProperties
 	headers    map[string]string
 	httpClient *http.Client
-
-	listDatabasesCache    *cache.ResourceCache[[]string]
-	listTablesCache       *cache.ResourceCache[[]string]
-	listTableConfigsCache *cache.MultiResourceCache[string, ListTableConfigsResponse]
-	getTableSchemaCache   *cache.MultiResourceCache[string, TableSchema]
-	getTableMetadataCache *cache.MultiResourceCache[string, TableMetadata]
-	timeseriesLabelsCache *cache.MultiResourceCache[string, LabelsCollection]
-	brokerQueryCache      *cache.MultiResourceCache[string, *BrokerResponse]
-
-	brokerLimiter *Limiter
 }
 
 type PinotClientProperties struct {
@@ -41,15 +28,6 @@ type PinotClientProperties struct {
 	DatabaseName  string
 	Authorization string
 	QueryOptions  []QueryOption
-
-	ControllerCacheTimeout time.Duration
-	BrokerCacheTimeout     time.Duration
-
-	BrokerMaxQueryRate time.Duration
-}
-
-func (x PinotClientProperties) cacheKey() string {
-	return fmt.Sprintf("%v", x)
 }
 
 type QueryOption struct {
@@ -57,42 +35,9 @@ type QueryOption struct {
 	Value string
 }
 
-type Limiter struct {
-	ticker *time.Ticker
-}
-
-func NewLimiter(every time.Duration) *Limiter {
-	var ticker *time.Ticker
-	if every > 0 {
-		ticker = time.NewTicker(every)
-	}
-	return &Limiter{ticker: ticker}
-}
-
-func (x *Limiter) Do(f func()) {
-	if x.ticker != nil {
-		<-x.ticker.C
-	}
-	f()
-}
-
-func (x *Limiter) Close() {
-	if x.ticker != nil {
-		x.ticker.Stop()
-	}
-}
-
-var clientMap sync.Map
-
 func NewPinotClient(properties PinotClientProperties) *PinotClient {
 	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
 	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
-
-	cacheKey := properties.cacheKey()
-	val, ok := clientMap.Load(cacheKey)
-	if ok {
-		return val.(*PinotClient)
-	}
 
 	headers := make(map[string]string)
 	if properties.Authorization != "" {
@@ -102,29 +47,11 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 		headers["Database"] = properties.DatabaseName
 	}
 
-	client := &PinotClient{
+	return &PinotClient{
 		properties: properties,
 		headers:    headers,
 		httpClient: http.DefaultClient,
-
-		listDatabasesCache:    cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
-		listTablesCache:       cache.NewResourceCache[[]string](properties.ControllerCacheTimeout),
-		listTableConfigsCache: cache.NewMultiResourceCache[string, ListTableConfigsResponse](properties.ControllerCacheTimeout),
-		getTableSchemaCache:   cache.NewMultiResourceCache[string, TableSchema](properties.ControllerCacheTimeout),
-		getTableMetadataCache: cache.NewMultiResourceCache[string, TableMetadata](properties.ControllerCacheTimeout),
-		timeseriesLabelsCache: cache.NewMultiResourceCache[string, LabelsCollection](properties.ControllerCacheTimeout),
-		brokerQueryCache:      cache.NewMultiResourceCache[string, *BrokerResponse](properties.BrokerCacheTimeout),
-
-		brokerLimiter: NewLimiter(properties.BrokerMaxQueryRate),
 	}
-
-	clientMap.Store(cacheKey, client)
-	return client
-}
-
-func (p *PinotClient) Close() {
-	p.brokerLimiter.Close()
-	clientMap.Delete(p.properties.cacheKey())
 }
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }

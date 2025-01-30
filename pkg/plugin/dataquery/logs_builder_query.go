@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 )
 
 var _ ExecutableQuery = LogsBuilderQuery{}
@@ -71,7 +70,7 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotl
 		return pinotlib.SqlQuery{}, err
 	}
 
-	sql, err := templates.RenderLogSql(templates.LogSqlParams{
+	sql, err := pinotlib.RenderLogSql(pinotlib.LogSqlParams{
 		TableNameExpr:        pinotlib.ObjectExpr(query.TableName),
 		TimeColumn:           query.TimeColumn,
 		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
@@ -94,13 +93,13 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotl
 }
 
 func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
-	sql, err := templates.RenderLogSql(templates.LogSqlParams{
+	sql, err := pinotlib.RenderLogSql(pinotlib.LogSqlParams{
 		TableNameExpr:        MacroExprFor(MacroTable),
 		TimeColumn:           query.TimeColumn,
 		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
-		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn)),
+		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn).String()),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
 		Limit:                query.resolveLimit(),
 	})
@@ -111,11 +110,11 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 
 }
 
-func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {
-	var metadataColumns []templates.ExprWithAlias
+func (query LogsBuilderQuery) logsMetadataColumns() []pinotlib.ExprWithAlias {
+	var metadataColumns []pinotlib.ExprWithAlias
 
 	for _, column := range query.MetadataColumns {
-		metadataColumns = append(metadataColumns, templates.ExprWithAlias{
+		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
 			Expr:  pinotlib.ComplexFieldExpr(column.Name, column.Key),
 			Alias: complexFieldAlias(column.Name, column.Key),
 		})
@@ -126,7 +125,7 @@ func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {
 			continue
 		}
 
-		var defaultValueExpr string
+		var defaultValueExpr pinotlib.SqlExpr
 		switch extractor.ResultType {
 		case pinotlib.DataTypeInt, pinotlib.DataTypeLong, pinotlib.DataTypeFloat, pinotlib.DataTypeDouble:
 			defaultValueExpr = pinotlib.LiteralExpr(0)
@@ -136,7 +135,7 @@ func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {
 			defaultValueExpr = pinotlib.LiteralExpr("")
 		}
 		columnExpr := pinotlib.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
-		metadataColumns = append(metadataColumns, templates.ExprWithAlias{
+		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
 			Expr:  pinotlib.JsonExtractScalarExpr(columnExpr, extractor.Path, extractor.ResultType, defaultValueExpr),
 			Alias: extractor.Alias,
 		})
@@ -148,7 +147,7 @@ func (query LogsBuilderQuery) logsMetadataColumns() []templates.ExprWithAlias {
 		}
 
 		columnExpr := pinotlib.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
-		metadataColumns = append(metadataColumns, templates.ExprWithAlias{
+		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
 			Expr:  pinotlib.RegexpExtractExpr(columnExpr, extractor.Pattern, extractor.Group, pinotlib.LiteralExpr("")),
 			Alias: extractor.Alias,
 		})
