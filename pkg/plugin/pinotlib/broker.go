@@ -119,33 +119,31 @@ func (p *PinotClient) RenderSql(query SqlQuery) string {
 }
 
 func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
-	return p.brokerQueryCache.Get(query.cacheKey(), func() (*BrokerResponse, error) {
-		request := struct {
-			Sql   string `json:"sql"`
-			Trace bool   `json:"trace,omitempty"`
-		}{
-			Sql:   p.RenderSql(query),
-			Trace: query.Trace,
-		}
+	request := struct {
+		Sql   string `json:"sql"`
+		Trace bool   `json:"trace,omitempty"`
+	}{
+		Sql:   p.RenderSql(query),
+		Trace: query.Trace,
+	}
 
-		var body bytes.Buffer
-		if err := json.NewEncoder(&body).Encode(request); err != nil {
-			return nil, err
-		}
+	var body bytes.Buffer
+	if err := json.NewEncoder(&body).Encode(request); err != nil {
+		return nil, err
+	}
 
-		req, err := p.newBrokerPostRequest(ctx, "/query/sql", &body)
-		if err != nil {
-			return nil, err
-		}
+	req, err := p.newBrokerPostRequest(ctx, "/query/sql", &body)
+	if err != nil {
+		return nil, err
+	}
 
-		p.newLogger(ctx).Info("Executing sql query.", "queryString", request.Sql)
+	p.newLogger(ctx).Info("Executing sql query.", "queryString", request.Sql)
 
-		var respData BrokerResponse
-		p.brokerLimiter.Do(func() {
-			err = p.doRequestAndDecodeResponse(req, &respData)
-		})
-		return &respData, err
-	})
+	var respData BrokerResponse
+	if err = p.doRequestAndDecodeResponse(req, &respData); err != nil {
+		return nil, err
+	}
+	return &respData, nil
 }
 
 func (p *PinotClient) newBrokerPostRequest(ctx context.Context, endpoint string, body io.Reader) (*http.Request, error) {

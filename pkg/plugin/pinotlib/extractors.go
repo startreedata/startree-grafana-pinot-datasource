@@ -215,13 +215,13 @@ func ExtractColumnAsExprs(results *ResultTable, colIdx int) []string {
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
 		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
 			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {
-				return StringLiteralExpr(str), nil
+				return StringLiteralExpr(str).String(), nil
 			}
 			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeBigDecimal:
 		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
-			return StringLiteralExpr(results.Rows[rowIdx][colIdx].(string)), nil
+			return StringLiteralExpr(results.Rows[rowIdx][colIdx].(string)).String(), nil
 		})
 	}
 

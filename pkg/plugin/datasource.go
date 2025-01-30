@@ -38,7 +38,7 @@ func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings)
 		QueryDataHandler:    newQueryDataHandler(client),
 		CallResourceHandler: newCallResourceHandler(client),
 		CheckHealthHandler:  newCheckHealthHandler(client),
-		InstanceDisposer:    disposerFunc(func() { client.Close() }),
+		InstanceDisposer:    disposerFunc(func() {}),
 	}, nil
 }
 

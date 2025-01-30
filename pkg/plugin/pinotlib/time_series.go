@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"math"
 	"net/http"
 	"net/url"
@@ -218,7 +217,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 		return nil, ctx.Err()
 	}
 
-	sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
+	sql, err := RenderDistinctValuesSql(DistinctValuesSqlParams{
 		ColumnExpr: ObjectExpr(TimeSeriesTableColumnMetricName),
 		TableName:  query.TableName,
 		TimeFilterExpr: TimeFilterExpr(TimeFilter{
@@ -309,51 +308,47 @@ func (x LabelsCollection) Add(name, value string) {
 }
 
 func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) (LabelsCollection, error) {
-	cacheKey := fmt.Sprintf("table=%s&metric=%s&from=%s&to=%s", tableName, metricName, from.Format(time.RFC3339), to.Format(time.RFC3339))
-	return p.timeseriesLabelsCache.Get(cacheKey, func() (LabelsCollection, error) {
-		var filterExprs []string
-		if metricName != "" {
-			filterExprs = []string{fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName)}
-		}
+	var filterExprs []SqlExpr
+	if metricName != "" {
+		filterExprs = []SqlExpr{SqlExpr(fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName))}
+	}
 
-		dataType, err := p.timeSeriesLabelType(ctx, tableName)
-		if err != nil {
-			return nil, err
-		}
+	dataType, err := p.timeSeriesLabelType(ctx, tableName)
+	if err != nil {
+		return nil, err
+	}
 
-		var columnExpr string
-		if dataType == DataTypeJson {
-			columnExpr = ObjectExpr(TimeSeriesTableColumnLabels)
-		} else {
-			columnExpr = fmt.Sprintf(`CAST(%s AS %s)`, ObjectExpr(TimeSeriesTableColumnLabels), DataTypeJson)
-		}
+	var columnExpr SqlExpr
+	if dataType == DataTypeJson {
+		columnExpr = ObjectExpr(TimeSeriesTableColumnLabels)
+	} else {
+		columnExpr = CastExpr(ObjectExpr(TimeSeriesTableColumnLabels), DataTypeJson)
+	}
 
-		sql, err := templates.RenderDistinctValuesSql(templates.DistinctValuesSqlParams{
-			ColumnExpr: columnExpr,
-			TableName:  tableName,
-			TimeFilterExpr: TimeFilterExpr(TimeFilter{
-				Column: TimeSeriesTableColumnTimestamp,
-				Format: DateTimeFormatMillisecondsEpoch(),
-				From:   from,
-				To:     to,
-			}),
-			DimensionFilterExprs: filterExprs,
-			Limit:                templates.DistinctValuesLimit,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
-		switch {
-		case err != nil:
-			return nil, err
-		case resp.HasData():
-			return extractLabels(resp.ResultTable)
-		default:
-			return nil, nil
-		}
+	sql, err := RenderDistinctValuesSql(DistinctValuesSqlParams{
+		ColumnExpr: columnExpr,
+		TableName:  tableName,
+		TimeFilterExpr: TimeFilterExpr(TimeFilter{
+			Column: TimeSeriesTableColumnTimestamp,
+			Format: DateTimeFormatMillisecondsEpoch(),
+			From:   from,
+			To:     to,
+		}),
+		DimensionFilterExprs: filterExprs,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.ExecuteSqlQuery(ctx, SqlQuery{Sql: sql})
+	switch {
+	case err != nil:
+		return nil, err
+	case resp.HasData():
+		return extractLabels(resp.ResultTable)
+	default:
+		return nil, nil
+	}
 }
 
 func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string) (string, error) {

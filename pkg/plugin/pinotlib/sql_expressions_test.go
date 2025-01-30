@@ -9,22 +9,22 @@ import (
 )
 
 func TestSqlObjectExpr(t *testing.T) {
-	assert.Equal(t, `"object"`, ObjectExpr("object"))
+	assert.Equal(t, SqlExpr(`"object"`), ObjectExpr("object"))
 }
 
 func TestSqlLiteralString(t *testing.T) {
-	assert.Equal(t, `'string'`, StringLiteralExpr("string"))
+	assert.Equal(t, SqlExpr(`'string'`), StringLiteralExpr("string"))
 }
 
 func TestLiteralExpr(t *testing.T) {
-	t.Run("string", func(t *testing.T) { assert.Equal(t, `'string'`, LiteralExpr("string")) })
-	t.Run("int(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int(1))) })
-	t.Run("int32(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int32(1))) })
-	t.Run("int64(1)", func(t *testing.T) { assert.Equal(t, `1`, LiteralExpr(int64(1))) })
-	t.Run("float32(1.1)", func(t *testing.T) { assert.Equal(t, `1.1`, LiteralExpr(float32(1.1))) })
-	t.Run("float64(1.1)", func(t *testing.T) { assert.Equal(t, `1.1`, LiteralExpr(float64(1.1))) })
-	t.Run("true", func(t *testing.T) { assert.Equal(t, `TRUE`, LiteralExpr(true)) })
-	t.Run("false", func(t *testing.T) { assert.Equal(t, `FALSE`, LiteralExpr(false)) })
+	t.Run("string", func(t *testing.T) { assert.Equal(t, SqlExpr(`'string'`), LiteralExpr("string")) })
+	t.Run("int(1)", func(t *testing.T) { assert.Equal(t, SqlExpr(`1`), LiteralExpr(int(1))) })
+	t.Run("int32(1)", func(t *testing.T) { assert.Equal(t, SqlExpr(`1`), LiteralExpr(int32(1))) })
+	t.Run("int64(1)", func(t *testing.T) { assert.Equal(t, SqlExpr(`1`), LiteralExpr(int64(1))) })
+	t.Run("float32(1.1)", func(t *testing.T) { assert.Equal(t, SqlExpr(`1.1`), LiteralExpr(float32(1.1))) })
+	t.Run("float64(1.1)", func(t *testing.T) { assert.Equal(t, SqlExpr(`1.1`), LiteralExpr(float64(1.1))) })
+	t.Run("true", func(t *testing.T) { assert.Equal(t, SqlExpr(`TRUE`), LiteralExpr(true)) })
+	t.Run("false", func(t *testing.T) { assert.Equal(t, SqlExpr(`FALSE`), LiteralExpr(false)) })
 }
 
 func TestUnquoteObjectName(t *testing.T) {
@@ -75,7 +75,7 @@ func TestTimeFilterExpr(t *testing.T) {
 		From: time.Unix(1, 0),
 		To:   time.Unix(3601, 0),
 	})
-	assert.Equal(t, `"time" >= 1 AND "time" < 3601`, got)
+	assert.Equal(t, SqlExpr(`"time" >= 1 AND "time" < 3601`), got)
 }
 
 func TestTimeFilterBucketAlignedExpr(t *testing.T) {
@@ -91,7 +91,7 @@ func TestTimeFilterBucketAlignedExpr(t *testing.T) {
 		from        time.Time
 		to          time.Time
 		granularity time.Duration
-		want        string
+		want        SqlExpr
 	}{
 		{
 			name:        "from=0,to=3599,granularity=millisecond",
@@ -225,7 +225,7 @@ func TestTimeExpr(t *testing.T) {
 	testCases := []struct {
 		format string
 		ts     time.Time
-		want   string
+		want   SqlExpr
 	}{
 		{ts: time.Unix(3600, 0), format: "EPOCH_NANOS", want: `3600000000000`},
 		{ts: time.Unix(3600, 0), format: "1:NANOSECONDS:EPOCH", want: `3600000000000`},
@@ -321,7 +321,7 @@ func TestTimeGroupExpr(t *testing.T) {
 	testCases := []struct {
 		format      string
 		granularity string
-		want        string
+		want        SqlExpr
 	}{
 		{granularity: "3:MINUTES", format: "EPOCH_NANOS", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '3:MINUTES')`},
 		{granularity: "3:MINUTES", format: "1:NANOSECONDS:EPOCH", want: `DATETIMECONVERT("ts", '1:NANOSECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '3:MINUTES')`},
@@ -426,15 +426,15 @@ func TestTimeGroupExpr(t *testing.T) {
 }
 
 func TestJsonExtractExpr(t *testing.T) {
-	assert.Equal(t, `JSONEXTRACTSCALAR("col", '$.key1', 'STRING', '')`,
+	assert.Equal(t, SqlExpr(`JSONEXTRACTSCALAR("col", '$.key1', 'STRING', '')`),
 		JsonExtractScalarExpr(`"col"`, "$.key1", "STRING", `''`))
 }
 
 func TestRegexpExtractExpr(t *testing.T) {
-	assert.Equal(t, `REGEXPEXTRACT("col", '(\w+) (\w+)', 0, '')`,
+	assert.Equal(t, SqlExpr(`REGEXPEXTRACT("col", '(\w+) (\w+)', 0, '')`),
 		RegexpExtractExpr(`"col"`, `(\w+) (\w+)`, 0, `''`))
 }
 
 func TestQueryOptionExpr(t *testing.T) {
-	assert.Equal(t, `SET myOption=true;`, QueryOptionExpr("myOption", "true"))
+	assert.Equal(t, SqlExpr(`SET myOption=true;`), QueryOptionExpr("myOption", "true"))
 }
