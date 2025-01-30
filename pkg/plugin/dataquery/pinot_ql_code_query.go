@@ -92,7 +92,7 @@ func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinotl
 
 func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
 	switch query.DisplayType {
-	case DisplayTypeTable:
+	case DisplayTypeTable, DisplayTypeAnnotations:
 		return ExtractTableDataFrame(results, query.resolveTimeColumnAlias()), nil
 	case DisplayTypeLogs:
 		return ExtractLogsDataFrame(results, query.resolveTimeColumnAlias(), query.resolveLogColumnAlias())

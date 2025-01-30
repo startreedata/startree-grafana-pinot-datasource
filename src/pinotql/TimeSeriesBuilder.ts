@@ -52,7 +52,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     timeColumn: query.timeColumn || '',
     metricColumn: metricColumnFrom(query) || {},
     granularity: query.granularity || '',
-    aggregationFunction: query.aggregationFunction || AggregationFunction.SUM,
+    aggregationFunction: query.aggregationFunction || '',
     limit: query.limit || 0,
     filters: query.filters || [],
     orderBy: query.orderBy || [],
@@ -109,6 +109,12 @@ export function applyDefaults(
       key: resources.metricColumns[0].key || undefined,
     };
   }
+
+  if (!params.aggregationFunction) {
+    changed = true;
+    params.aggregationFunction = AggregationFunction.SUM;
+  }
+
   return changed;
 }
 
@@ -120,6 +126,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     displayType: DisplayType.TIMESERIES,
     tableName: params.tableName || undefined,
     timeColumn: params.timeColumn || undefined,
+    metricColumn: undefined,
     metricColumnV2: params.metricColumn.name ? params.metricColumn : undefined,
     granularity: params.granularity || undefined,
     aggregationFunction: params.aggregationFunction || undefined,
@@ -128,6 +135,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     orderBy: isEmpty(params.orderBy) ? undefined : params.orderBy,
     queryOptions: isEmpty(params.queryOptions) ? undefined : params.queryOptions,
     legend: params.legend || undefined,
+    groupByColumns: undefined,
     groupByColumnsV2: isEmpty(params.groupByColumns) ? undefined : params.groupByColumns,
   };
 }

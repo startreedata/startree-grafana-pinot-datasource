@@ -4,13 +4,14 @@ import { DataSourceWithBackend } from '@grafana/runtime';
 import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
 import { PinotConnectionConfig } from './dataquery/PinotConnectionConfig';
 import { PinotVariableSupport } from './variables';
+import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/AnnotationsQueryEditor';
 
 export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConnectionConfig> {
   constructor(instanceSettings: DataSourceInstanceSettings<PinotConnectionConfig>) {
     super(instanceSettings);
 
     this.variables = new PinotVariableSupport(this);
-    this.annotations = {};
+    this.annotations = { QueryEditor: AnnotationsQueryEditor };
   }
 
   applyTemplateVariables(

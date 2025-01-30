@@ -1,22 +1,11 @@
 import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 import { ToolbarButton } from '@grafana/ui';
 import React from 'react';
-import { QueryType } from '../../dataquery/QueryType';
-import { EditorMode } from '../../dataquery/EditorMode';
 import { SelectQueryType } from './SelectQueryType';
 import { SelectEditorMode } from './SelectEditorMode';
 
 export function QueryEditorHeader(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
-
-  if (query.queryType === undefined || query.editorMode === undefined) {
-    onChange({
-      ...query,
-      queryType: query.queryType || QueryType.PinotQL,
-      editorMode: query.editorMode || EditorMode.Builder,
-      tableName: undefined,
-    });
-  }
 
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">

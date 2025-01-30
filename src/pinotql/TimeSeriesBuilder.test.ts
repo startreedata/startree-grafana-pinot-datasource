@@ -24,6 +24,7 @@ const newEmptyParams = (): TimeSeriesBuilder.Params => ({
 describe('paramsFrom', () => {
   const query: PinotDataQuery = {
     refId: 'test_id',
+    displayType: 'TIMESERIES',
     tableName: 'test_table_name',
     timeColumn: 'test_time_column',
     metricColumn: 'test_metric_column1',
@@ -55,27 +56,6 @@ describe('paramsFrom', () => {
     });
   });
 
-  test('aggregationFunction is absent', () => {
-    expect(
-      TimeSeriesBuilder.paramsFrom({
-        ...query,
-        aggregationFunction: undefined,
-      })
-    ).toEqual<TimeSeriesBuilder.Params>({
-      tableName: 'test_table_name',
-      timeColumn: 'test_time_column',
-      metricColumn: { name: 'test_metric_column2', key: 'test_metric_column_key' },
-      granularity: 'auto',
-      aggregationFunction: 'SUM',
-      limit: 100,
-      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-      orderBy: [{ columnName: 'test_order_column', direction: 'asc' }],
-      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-      legend: '{{test_dim_column}}',
-      groupByColumns: [{ name: 'test_dim_column_1' }, { name: 'test_dim_column2', key: 'test_dim_column2_key' }],
-    });
-  });
-
   test('metricColumnV2 is absent', () => {
     expect(TimeSeriesBuilder.paramsFrom({ ...query, metricColumnV2: undefined })).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table_name',
@@ -98,7 +78,7 @@ describe('paramsFrom', () => {
       timeColumn: '',
       metricColumn: {},
       granularity: '',
-      aggregationFunction: 'SUM',
+      aggregationFunction: '',
       limit: 0,
       filters: [],
       orderBy: [],
@@ -201,7 +181,7 @@ describe('applyDefaults', () => {
       timeColumn: 'ts',
       metricColumn: { name: 'met', key: undefined },
       granularity: '',
-      aggregationFunction: '',
+      aggregationFunction: 'SUM',
       limit: 0,
       filters: [],
       orderBy: [],
@@ -254,6 +234,7 @@ describe('dataQueryOf', () => {
       tableName: undefined,
       timeColumn: undefined,
       metricColumn: undefined,
+      metricColumnV2: undefined,
       granularity: undefined,
       aggregationFunction: undefined,
       limit: undefined,
@@ -262,6 +243,7 @@ describe('dataQueryOf', () => {
       queryOptions: undefined,
       legend: undefined,
       groupByColumns: undefined,
+      groupByColumnsV2: undefined,
     });
   });
 
