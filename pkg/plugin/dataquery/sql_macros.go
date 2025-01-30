@@ -34,8 +34,8 @@ type MacroEngine struct {
 	IntervalSize time.Duration
 }
 
-func MacroExprFor(macroName string, args ...string) string {
-	return fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", "))
+func MacroExprFor(macroName string, args ...string) pinotlib.SqlExpr {
+	return pinotlib.SqlExpr(fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", ")))
 }
 
 func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, error) {
@@ -90,7 +90,7 @@ func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string
 			Format: format,
 			From:   x.TimeRange.From,
 			To:     x.TimeRange.To,
-		}, granularity.Duration()), nil
+		}, granularity.Duration()).String(), nil
 	})
 }
 
@@ -123,7 +123,7 @@ func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string,
 			InputFormat:  format,
 			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
 			Granularity:  granularity,
-		}), nil
+		}).String(), nil
 	})
 }
 
@@ -134,7 +134,7 @@ func (x MacroEngine) ExpandTimeTo(_ context.Context, query string) (string, erro
 		}
 		timeColumn := pinotlib.UnquoteObjectName(args[0])
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinotlib.TimeExpr(x.To, format), nil
+		return pinotlib.TimeExpr(x.To, format).String(), nil
 	})
 }
 
@@ -145,7 +145,7 @@ func (x MacroEngine) ExpandTimeFrom(_ context.Context, query string) (string, er
 		}
 		timeColumn := pinotlib.UnquoteObjectName(args[0])
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinotlib.TimeExpr(x.From, format), nil
+		return pinotlib.TimeExpr(x.From, format).String(), nil
 	})
 }
 
@@ -181,7 +181,7 @@ func (x MacroEngine) ExpandTimeFilterMillis(ctx context.Context, query string) (
 			Format: format,
 			From:   x.TimeRange.From,
 			To:     x.TimeRange.To,
-		}, granularity.Duration()), nil
+		}, granularity.Duration()).String(), nil
 	})
 }
 

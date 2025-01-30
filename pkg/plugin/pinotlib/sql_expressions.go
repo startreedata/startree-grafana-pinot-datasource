@@ -6,15 +6,22 @@ import (
 	"time"
 )
 
-func ObjectExpr(obj string) string {
-	return fmt.Sprintf(`"%s"`, obj)
+// SqlExpr is a snippet of valid Pinot SQL.
+// SqlExprs can be stitched together to form an entire SQL statement.
+// SqlExprs are different from normal strings that may not have been properly quoted or encoded for SQL.
+type SqlExpr string
+
+func (x SqlExpr) String() string { return string(x) }
+
+func ObjectExpr(obj string) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`"%s"`, obj))
 }
 
-func StringLiteralExpr(lit string) string {
-	return fmt.Sprintf(`'%s'`, lit)
+func StringLiteralExpr(lit string) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`'%s'`, lit))
 }
 
-func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val T) string {
+func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val T) SqlExpr {
 	switch valTyped := any(val).(type) {
 	case bool:
 		if valTyped {
@@ -23,11 +30,11 @@ func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val 
 			return "FALSE"
 		}
 	case int, int64, int32:
-		return fmt.Sprintf("%d", valTyped)
+		return SqlExpr(fmt.Sprintf("%d", valTyped))
 	case float32, float64:
-		return fmt.Sprintf("%v", valTyped)
+		return SqlExpr(fmt.Sprintf("%v", valTyped))
 	default:
-		return fmt.Sprintf(`'%s'`, valTyped)
+		return SqlExpr(fmt.Sprintf(`'%s'`, valTyped))
 	}
 }
 
@@ -48,11 +55,11 @@ func UnquoteStringLiteral(s string) string {
 	}
 }
 
-func ComplexFieldExpr(column string, key string) string {
+func ComplexFieldExpr(column string, key string) SqlExpr {
 	if key == "" {
 		return ObjectExpr(column)
 	} else {
-		return fmt.Sprintf("%s[%s]", ObjectExpr(column), StringLiteralExpr(key))
+		return SqlExpr(fmt.Sprintf("%s[%s]", ObjectExpr(column), StringLiteralExpr(key)))
 	}
 }
 
@@ -63,7 +70,7 @@ type TimeFilter struct {
 	To     time.Time
 }
 
-func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) string {
+func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) SqlExpr {
 	fromTrunc := filter.From.Truncate(bucketSize)
 	toTrunc := filter.To.Truncate(bucketSize)
 	if toTrunc.Before(filter.To) {
@@ -78,43 +85,43 @@ func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) st
 	})
 }
 
-func TimeFilterExpr(filter TimeFilter) string {
-	return fmt.Sprintf(`%s >= %s AND %s < %s`,
+func TimeFilterExpr(filter TimeFilter) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`%s >= %s AND %s < %s`,
 		ObjectExpr(filter.Column), TimeExpr(filter.From, filter.Format),
 		ObjectExpr(filter.Column), TimeExpr(filter.To, filter.Format),
-	)
+	))
 }
 
-func TimeExpr(ts time.Time, format DateTimeFormat) string {
+func TimeExpr(ts time.Time, format DateTimeFormat) SqlExpr {
 	switch format.Unit {
 	case TimeUnitNanoseconds:
-		return fmt.Sprintf("%d", ts.UnixNano()/int64(format.Size))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixNano()/int64(format.Size)))
 	case TimeUnitMicroseconds:
-		return fmt.Sprintf("%d", ts.UnixMicro()/int64(format.Size))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixMicro()/int64(format.Size)))
 	case TimeUnitMilliseconds:
-		return fmt.Sprintf("%d", ts.UnixMilli()/int64(format.Size))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixMilli()/int64(format.Size)))
 	case TimeUnitSeconds:
-		return fmt.Sprintf("%d", ts.Unix()/int64(format.Size))
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)))
 	case TimeUnitMinutes:
-		return fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/60)
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/60))
 	case TimeUnitHours:
-		return fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/3600)
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/3600))
 	case TimeUnitDays:
-		return fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/86400)
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/86400))
 	default:
 		return ""
 	}
 }
 
-func GranularityExpr(granularity Granularity) string {
+func GranularityExpr(granularity Granularity) SqlExpr {
 	return StringLiteralExpr(granularity.String())
 }
 
-func DateTimeFormatExpr(format DateTimeFormat) string {
+func DateTimeFormatExpr(format DateTimeFormat) SqlExpr {
 	return StringLiteralExpr(format.LegacyString())
 }
 
-func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) string {
+func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversion) SqlExpr {
 	if timeGroup.Granularity.Duration() == timeGroup.InputFormat.MinimumGranularity().Duration() &&
 		timeGroup.InputFormat.Equals(timeGroup.OutputFormat) {
 		return ObjectExpr(timeGroup.TimeColumn)
@@ -124,32 +131,36 @@ func TimeGroupExpr(configs ListTableConfigsResponse, timeGroup DateTimeConversio
 		return ObjectExpr(timeCol)
 	}
 
-	return fmt.Sprintf(`DATETIMECONVERT(%s, %s, %s, %s)`,
+	return SqlExpr(fmt.Sprintf(`DATETIMECONVERT(%s, %s, %s, %s)`,
 		ObjectExpr(timeGroup.TimeColumn),
 		DateTimeFormatExpr(timeGroup.InputFormat),
 		DateTimeFormatExpr(timeGroup.OutputFormat),
-		GranularityExpr(timeGroup.Granularity))
+		GranularityExpr(timeGroup.Granularity)))
 }
 
-func JsonExtractScalarExpr(sourceExpr string, path string, resultType string, defaultValueExpr string) string {
-	return fmt.Sprintf(`JSONEXTRACTSCALAR(%s, %s, %s, %s)`,
-		sourceExpr, StringLiteralExpr(path), StringLiteralExpr(resultType), defaultValueExpr)
+func JsonExtractScalarExpr(sourceExpr SqlExpr, path string, resultType string, defaultValueExpr SqlExpr) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`JSONEXTRACTSCALAR(%s, %s, %s, %s)`,
+		sourceExpr, StringLiteralExpr(path), StringLiteralExpr(resultType), defaultValueExpr))
 }
 
-func RegexpExtractExpr(sourceExpr string, pattern string, group int, defaultValueExpr string) string {
-	return fmt.Sprintf(`REGEXPEXTRACT(%s, %s, %d, %s)`,
-		sourceExpr, StringLiteralExpr(pattern), group, defaultValueExpr)
+func RegexpExtractExpr(sourceExpr SqlExpr, pattern string, group int, defaultValueExpr SqlExpr) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`REGEXPEXTRACT(%s, %s, %d, %s)`,
+		sourceExpr, StringLiteralExpr(pattern), group, defaultValueExpr))
 }
 
-func QueryOptionExpr(name string, valueExpr string) string {
-	return fmt.Sprintf(`SET %s=%s;`, name, valueExpr)
+func QueryOptionExpr(name string, valueExpr SqlExpr) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`SET %s=%s;`, name, valueExpr))
 }
 
-func OrderByExpr(columnExpr string, direction string) string {
+func OrderByExpr(columnExpr SqlExpr, direction string) SqlExpr {
 	if strings.ToUpper(direction) == "DESC" {
 		direction = "DESC"
 	} else {
 		direction = "ASC"
 	}
-	return fmt.Sprintf(`%s %s`, columnExpr, direction)
+	return SqlExpr(fmt.Sprintf(`%s %s`, columnExpr, direction))
+}
+
+func CastExpr(columnExpr SqlExpr, dataType string) SqlExpr {
+	return SqlExpr(fmt.Sprintf(`CAST(%s AS %s)`, columnExpr, dataType))
 }

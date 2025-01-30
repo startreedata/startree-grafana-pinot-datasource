@@ -7,7 +7,6 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/templates"
 	"time"
 )
 
@@ -95,7 +94,7 @@ func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *
 	var sql string
 	if query.AggregationFunction == AggregationFunctionNone {
 		outputTimeFormat = inputTimeFormat
-		sql, err = templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+		sql, err = pinotlib.RenderSingleMetricSql(pinotlib.SingleMetricSqlParams{
 			TableNameExpr:         pinotlib.ObjectExpr(query.TableName),
 			TimeColumn:            query.TimeColumn,
 			MetricColumnExpr:      query.metricExpr(),
@@ -115,7 +114,7 @@ func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *
 		derivedGranularities := pinotlib.DerivedGranularitiesFor(tableConfigs, query.TimeColumn, outputTimeFormat)
 		granularity := ResolveGranularity(ctx, query.Granularity, inputTimeFormat, query.IntervalSize, derivedGranularities)
 		timeGroup := timeGroupOf(query.TimeColumn, inputTimeFormat, granularity)
-		sql, err = templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+		sql, err = pinotlib.RenderTimeSeriesSql(pinotlib.TimeSeriesSqlParams{
 			TableNameExpr:         pinotlib.ObjectExpr(query.TableName),
 			TimeGroupExpr:         pinotlib.TimeGroupExpr(tableConfigs, timeGroup),
 			MetricColumnExpr:      query.metricExpr(),
@@ -146,28 +145,28 @@ func (query TimeSeriesBuilderQuery) RenderSqlWithMacros() (string, error) {
 	var err error
 
 	if query.AggregationFunction == AggregationFunctionNone {
-		sql, err = templates.RenderSingleMetricSql(templates.SingleMetricSqlParams{
+		sql, err = pinotlib.RenderSingleMetricSql(pinotlib.SingleMetricSqlParams{
 			TableNameExpr:         MacroExprFor(MacroTable),
 			TimeColumn:            query.TimeColumn,
 			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
 			MetricColumnExpr:      pinotlib.ComplexFieldExpr(query.MetricColumn.Name, query.MetricColumn.Key),
 			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
-			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn)),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn).String()),
 			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
 			Limit:                 query.resolveLimit(),
 		})
 	} else {
 		timeColExpr := pinotlib.ObjectExpr(query.TimeColumn)
 		granularityExpr := pinotlib.LiteralExpr(getOrFallback(query.Granularity, "auto"))
-		sql, err = templates.RenderTimeSeriesSql(templates.TimeSeriesSqlParams{
+		sql, err = pinotlib.RenderTimeSeriesSql(pinotlib.TimeSeriesSqlParams{
 			TableNameExpr:         MacroExprFor(MacroTable),
-			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, timeColExpr, granularityExpr),
+			TimeGroupExpr:         MacroExprFor(MacroTimeGroup, timeColExpr.String(), granularityExpr.String()),
 			TimeColumnAliasExpr:   MacroExprFor(MacroTimeAlias),
 			AggregationFunction:   query.AggregationFunction,
 			MetricColumnExpr:      query.metricExpr(),
 			MetricColumnAliasExpr: MacroExprFor(MacroMetricAlias),
 			GroupByColumnExprs:    query.groupByExprs(),
-			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, timeColExpr, granularityExpr),
+			TimeFilterExpr:        MacroExprFor(MacroTimeFilter, timeColExpr.String(), granularityExpr.String()),
 			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
 			Limit:                 query.resolveLimit(),
 			OrderByExprs:          OrderByExprs(query.OrderByClauses),
@@ -197,7 +196,7 @@ func (query TimeSeriesBuilderQuery) resolveOutputTimeFormat(tableSchema pinotlib
 	}
 }
 
-func (query TimeSeriesBuilderQuery) metricExpr() string {
+func (query TimeSeriesBuilderQuery) metricExpr() pinotlib.SqlExpr {
 	if query.AggregationFunction == AggregationFunctionCount {
 		return pinotlib.ObjectExpr("*")
 	} else {
@@ -230,11 +229,11 @@ func (query TimeSeriesBuilderQuery) resolveLimit() int64 {
 	}
 }
 
-func (query TimeSeriesBuilderQuery) groupByExprs() []templates.ExprWithAlias {
-	var exprs []templates.ExprWithAlias
+func (query TimeSeriesBuilderQuery) groupByExprs() []pinotlib.ExprWithAlias {
+	var exprs []pinotlib.ExprWithAlias
 	for _, col := range query.GroupByColumns {
 		if col.Name != "" {
-			exprs = append(exprs, templates.ExprWithAlias{
+			exprs = append(exprs, pinotlib.ExprWithAlias{
 				Expr:  pinotlib.ComplexFieldExpr(col.Name, col.Key),
 				Alias: complexFieldAlias(col.Name, col.Key),
 			})
