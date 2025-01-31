@@ -1,28 +1,18 @@
 import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 import { ToolbarButton } from '@grafana/ui';
 import React from 'react';
-import { QueryType } from '../../dataquery/QueryType';
-import { EditorMode } from '../../dataquery/EditorMode';
 import { SelectQueryType } from './SelectQueryType';
 import { SelectEditorMode } from './SelectEditorMode';
+import {QueryType} from "../../dataquery/QueryType";
 
 export function QueryEditorHeader(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
-
-  if (query.queryType === undefined || query.editorMode === undefined) {
-    onChange({
-      ...query,
-      queryType: query.queryType || QueryType.PinotQL,
-      editorMode: query.editorMode || EditorMode.Builder,
-      tableName: undefined,
-    });
-  }
 
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">
       <div className={'gf-form'} data-testid="select-query-type">
         <SelectQueryType
-          current={query.queryType}
+          current={query.queryType || QueryType.PinotQL}
           onChange={(queryType) => onChange({ ...query, queryType, tableName: undefined })}
         />
       </div>

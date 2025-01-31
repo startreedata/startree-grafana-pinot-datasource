@@ -10,7 +10,7 @@ import { useEffect, useState } from 'react';
 import { previewSqlCode, PreviewSqlCodeRequest } from '../resources/previewSql'; //language=text
 
 //language=text
-const DefaultQuerySql = `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+export const DefaultQuerySql = `SELECT $__timeGroup("timestamp") AS $__timeAlias()
 FROM $__table()
 WHERE $__timeFilter("timestamp")
 GROUP BY $__timeGroup("timestamp")

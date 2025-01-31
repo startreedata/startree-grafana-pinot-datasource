@@ -81,7 +81,6 @@ export interface PreviewSqlCodeRequest {
 }
 
 export async function previewSqlCode(datasource: DataSource, request: PreviewSqlCodeRequest): Promise<string> {
-  console.log({ method: 'previewSqlCode', args: { datasource, request } });
   if (request.intervalSize && request.tableName && request.code) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/code', request)

@@ -31,9 +31,10 @@ type DisplayType string
 func (x DisplayType) String() string { return string(x) }
 
 const (
-	DisplayTypeTable      DisplayType = "TABLE"
-	DisplayTypeTimeSeries DisplayType = "TIMESERIES"
-	DisplayTypeLogs       DisplayType = "LOGS"
+	DisplayTypeTable       DisplayType = "TABLE"
+	DisplayTypeTimeSeries  DisplayType = "TIMESERIES"
+	DisplayTypeLogs        DisplayType = "LOGS"
+	DisplayTypeAnnotations DisplayType = "ANNOTATIONS"
 )
 
 type VariableQueryType string

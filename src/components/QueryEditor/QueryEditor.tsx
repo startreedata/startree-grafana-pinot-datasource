@@ -5,8 +5,14 @@ import { QueryEditorHeader } from './QueryEditorHeader';
 import { QueryType } from '../../dataquery/QueryType';
 import { PromQlEditor } from './PromQlEditor';
 import { PinotQlEditor } from './PinotQlEditor';
+import { DisplayType } from '../../dataquery/DisplayType';
+import { EditorMode } from '../../dataquery/EditorMode';
 
 export function QueryEditor(props: PinotQueryEditorProps) {
+  props.query.queryType = props.query.queryType || QueryType.PinotQL;
+  props.query.editorMode = props.query.editorMode || EditorMode.Builder;
+  props.query.displayType = props.query.displayType || DisplayType.TIMESERIES;
+
   return (
     <div>
       <QueryEditorHeader {...props} />

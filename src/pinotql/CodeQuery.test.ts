@@ -62,7 +62,7 @@ describe('applyDefaults', () => {
       tableName: '',
       timeColumnAlias: '',
       //language=text
-      pinotQlCode: `SELECT $__timeGroup("timestamp") AS $__timeAlias(), SUM("metric") AS $__metricAlias()
+      pinotQlCode: `SELECT $__timeGroup("timestamp") AS $__timeAlias()
 FROM $__table()
 WHERE $__timeFilter("timestamp")
 GROUP BY $__timeGroup("timestamp")
