@@ -3,6 +3,7 @@ import { ToolbarButton } from '@grafana/ui';
 import React from 'react';
 import { SelectQueryType } from './SelectQueryType';
 import { SelectEditorMode } from './SelectEditorMode';
+import {QueryType} from "../../dataquery/QueryType";
 
 export function QueryEditorHeader(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
@@ -11,7 +12,7 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
     <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">
       <div className={'gf-form'} data-testid="select-query-type">
         <SelectQueryType
-          current={query.queryType}
+          current={query.queryType || QueryType.PinotQL}
           onChange={(queryType) => onChange({ ...query, queryType, tableName: undefined })}
         />
       </div>

@@ -29,8 +29,6 @@ export function PinotQlTimeSeriesBuilder(props: {
   const { timeRange, intervalSize, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
 
   const resources = TimeSeriesBuilder.useResources(datasource, timeRange, intervalSize, interpolatedParams);
-  TimeSeriesBuilder.applyDefaults(savedParams, resources);
-
   const onChangeAndRun = (newParams: TimeSeriesBuilder.Params) => {
     onChange(newParams);
     if (TimeSeriesBuilder.canRunQuery(newParams)) {
@@ -38,6 +36,9 @@ export function PinotQlTimeSeriesBuilder(props: {
     }
   };
 
+  if (TimeSeriesBuilder.applyDefaults(savedParams, resources)) {
+    onChangeAndRun({ ...savedParams });
+  }
   return (
     <>
       <SelectTable
