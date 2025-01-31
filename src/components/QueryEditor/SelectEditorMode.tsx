@@ -21,7 +21,7 @@ export function SelectEditorMode(props: {
   const { query, datasource, intervalSize, timeRange, onChange } = props;
   const [showConfirm, setShowConfirm] = useState(false);
 
-  if (query.queryType !== QueryType.PinotQL) {
+  if (query.queryType !== QueryType.PinotQL || query.displayType === DisplayType.ANNOTATIONS) {
     return <></>;
   }
 

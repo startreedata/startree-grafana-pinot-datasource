@@ -1,5 +1,5 @@
 import { SqlEditor } from './SqlEditor';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { InputTimeColumnAlias } from './InputTimeColumnAlias';
 import { InputMetricColumnAlias } from './InputMetricColumnAlias';
 import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
@@ -26,28 +26,28 @@ export function PinotQlCode(props: {
   const { timeRange, intervalSize, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
 
   const resources = CodeQuery.useResources(datasource, timeRange, intervalSize, interpolatedParams);
+  CodeQuery.applyDefaults(savedParams);
 
-  useEffect(() => {
-    if (CodeQuery.applyDefaults(savedParams)) {
-      onChange({ ...savedParams });
-    }
-  });
+  const onChangeAndRun = (newParams: CodeQuery.Params) => {
+    onChange(newParams);
+    onRunQuery();
+  };
 
   return (
     <div>
-      <SelectDisplayType
-        value={savedParams.displayType}
-        onChange={(displayType) => {
-          onChange({ ...savedParams, displayType });
-          onRunQuery();
-        }}
-      />
+      {savedParams.displayType !== DisplayType.ANNOTATIONS && (
+        <SelectDisplayType
+          value={savedParams.displayType}
+          onChange={(displayType) => onChangeAndRun({ ...savedParams, displayType })}
+        />
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <SelectTable
           options={resources.tables}
           selected={savedParams.tableName}
           isLoading={resources.isTablesLoading}
-          onChange={(tableName) => onChange({ ...savedParams, tableName })}
+          onChange={(tableName) => onChangeAndRun({ ...savedParams, tableName })}
         />
       </div>
       {savedParams.displayType === DisplayType.TABLE && (
@@ -89,7 +89,11 @@ export function PinotQlCode(props: {
         <SqlPreview sql={resources.sqlPreview} />
       </div>
       <div>
-        <InputMetricLegend current={savedParams.legend} onChange={(legend) => onChange({ ...savedParams, legend })} />
+        <InputMetricLegend
+          current={savedParams.legend}
+          displayType={savedParams.displayType}
+          onChange={(legend) => onChange({ ...savedParams, legend })}
+        />
       </div>
     </div>
   );

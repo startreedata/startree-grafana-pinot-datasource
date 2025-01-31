@@ -112,6 +112,55 @@ LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn,
 		})
 	})
 
+	t.Run("display=ANNOTATIONS", func(t *testing.T) {
+		newDriver := func(testCase DriverTestCase) ExecutableQuery {
+			return PinotQlCodeQuery{
+				TableName:         testCase.TableName,
+				TimeRange:         testCase.TimeRange,
+				IntervalSize:      testCase.IntervalSize,
+				DisplayType:       DisplayTypeAnnotations,
+				MetricColumnAlias: "value",
+				TimeColumnAlias:   "time",
+				Legend:            "test-legend",
+				Code: fmt.Sprintf(`SELECT
+    $__timeGroup("%s") AS $__timeAlias(),
+    SUM("%s") AS $__metricAlias()
+FROM
+    $__table()
+WHERE
+    $__timeFilter("%s")
+GROUP BY
+    $__timeGroup("%s")
+ORDER BY
+    $__timeAlias() DESC
+LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn, testCase.TimeColumn),
+			}
+		}
+
+		wantFrames := func(times []time.Time, values []float64) data.Frames {
+			return data.Frames{data.NewFrame("response",
+				data.NewField("time", nil, times),
+				data.NewField("value", nil, values),
+			)}
+		}
+
+		t.Run("happy path", func(t *testing.T) {
+			runSqlQuerySumHappyPath(t, newDriver, wantFrames)
+		})
+		t.Run("partial data", func(t *testing.T) {
+			runSqlQuerySumPartialResults(t, newDriver, wantFrames)
+		})
+		t.Run("no rows", func(t *testing.T) {
+			runSqlQueryNoRows(t, newDriver)
+		})
+		t.Run("column dne", func(t *testing.T) {
+			runSqlQueryColumnDne(t, newDriver)
+		})
+		t.Run("pinot unreachable", func(t *testing.T) {
+			runSqlQueryPinotUnreachable(t, newDriver)
+		})
+	})
+
 	t.Run("displayType=LOGS", func(t *testing.T) {
 		newDriver := func(testCase DriverTestCase) ExecutableQuery {
 			return PinotQlCodeQuery{

@@ -168,6 +168,7 @@ WHERE $__timeFilter("ts", '12:HOURS')
 ORDER BY $__timeAlias() DESC
 LIMIT 100000;`
       );
+      await page.getByTestId('run-query-btn').click();
 
       await sqlPreviewResponse;
       await expect(page.getByTestId('sql-preview')).toContainText(
@@ -179,7 +180,6 @@ ORDER BY  "time"  DESC
 LIMIT 100000;`
       );
 
-      await page.getByTestId('run-query-btn').click();
       await dataQueryResponse;
       await expect(page.getByText('No data')).not.toBeVisible();
       await expect(page.getByRole('rowgroup')).toContainText(
@@ -231,6 +231,7 @@ GROUP BY $__timeAlias()
 ORDER BY $__timeAlias() DESC
 LIMIT 100000;`
   );
+  await page.getByTestId('run-query-btn').click();
 
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
@@ -243,7 +244,6 @@ ORDER BY  "time"  DESC
 LIMIT 100000;`
   );
 
-  await page.getByTestId('run-query-btn').click();
   await dataQueryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
 }
@@ -268,6 +268,7 @@ GROUP BY $__timeAlias(), "country"
 ORDER BY $__timeAlias() DESC
 LIMIT 100000;`
   );
+  await page.getByTestId('run-query-btn').click();
 
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
@@ -280,7 +281,6 @@ ORDER BY  "time"  DESC
 LIMIT 100000;`
   );
 
-  await page.getByTestId('run-query-btn').click();
   await dataQueryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
 }

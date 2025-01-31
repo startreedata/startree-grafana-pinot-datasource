@@ -9,6 +9,7 @@ import { useIsPromQlSupported } from '../../resources/isPromQlSupported';
 import { QueryType } from '../../dataquery/QueryType';
 import { DataSource } from '../../datasource';
 import { PromQlExpressionEditor } from './PromQlExpressionEditor';
+import { DisplayType } from '../../dataquery/DisplayType';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const { result: tables, loading: isTablesLoading } = useTimeSeriesTables(props.datasource);
@@ -47,7 +48,8 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
       </div>
       <div className={'gf-form'}>
         <InputMetricLegend
-          current={props.query.legend}
+          current={props.query.legend || ''}
+          displayType={props.query.displayType || DisplayType.TIMESERIES}
           onChange={(legend) => props.onChange({ ...props.query, legend })}
         />
       </div>

@@ -14,10 +14,7 @@ test.beforeEach(async ({ page, datasource }) => {
 });
 
 test('Tables', async ({ page }) => {
-  const dataQueryResponse = page.waitForResponse('/api/ds/query');
-
   await page.getByText('Tables').click();
-  await dataQueryResponse;
   for (const text of ['complex_website', 'simple_website', 'nginxLogs']) {
     await expect(page.getByText(text, { exact: true })).toBeVisible();
   }

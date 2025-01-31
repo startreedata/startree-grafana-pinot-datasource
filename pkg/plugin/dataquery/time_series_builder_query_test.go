@@ -337,8 +337,6 @@ func TestTimeSeriesBuilderQuery_Execute(t *testing.T) {
 			}
 		}
 
-		// TODO: Add happy path & partial data test
-
 		t.Run("no rows", func(t *testing.T) {
 			runSqlQueryNoRows(t, newDriver)
 		})

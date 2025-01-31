@@ -81,6 +81,10 @@ export async function setExploreTimeWindow(page: Page) {
   await setTimeWindow(page);
 }
 
+export async function setDashboardTimeWindow(page: Page) {
+  await setExploreTimeWindow(page);
+}
+
 export async function setPanelTimeWindow(page: Page) {
   await page.getByLabel('Panel editor content').getByTestId('data-testid TimePicker Open Button').click();
   await setTimeWindow(page);
