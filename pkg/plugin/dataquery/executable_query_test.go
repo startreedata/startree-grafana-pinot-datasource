@@ -9,6 +9,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/http"
 	"sort"
 	"testing"
 	"time"
@@ -344,7 +345,7 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)
 
-	unreachableClient := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
+	unreachableClient := pinotlib.NewPinotClient(http.DefaultClient, pinotlib.PinotClientProperties{
 		ControllerUrl: "not a url",
 		BrokerUrl:     "not a url",
 	})

@@ -35,7 +35,7 @@ type QueryOption struct {
 	Value string
 }
 
-func NewPinotClient(properties PinotClientProperties) *PinotClient {
+func NewPinotClient(httpClient *http.Client, properties PinotClientProperties) *PinotClient {
 	properties.BrokerUrl = strings.TrimSuffix(properties.BrokerUrl, "/")
 	properties.ControllerUrl = strings.TrimSuffix(properties.ControllerUrl, "/")
 
@@ -50,8 +50,14 @@ func NewPinotClient(properties PinotClientProperties) *PinotClient {
 	return &PinotClient{
 		properties: properties,
 		headers:    headers,
-		httpClient: http.DefaultClient,
+		httpClient: httpClient,
 	}
+}
+
+func (p *PinotClient) WithAuthorization(authorization string) *PinotClient {
+	properties := p.Properties()
+	properties.Authorization = authorization
+	return NewPinotClient(p.httpClient, properties)
 }
 
 func (p *PinotClient) Properties() PinotClientProperties { return p.properties }

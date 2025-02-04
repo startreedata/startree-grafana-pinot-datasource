@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/startreedata/pinot-client-go/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
+	"net/http"
 	"testing"
 )
 
@@ -36,7 +37,7 @@ LIMIT 1000000000;`
 		b.Fatal(err)
 	}
 
-	pluginClient := NewPinotClient(PinotClientProperties{
+	pluginClient := NewPinotClient(http.DefaultClient, PinotClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})

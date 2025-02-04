@@ -5,6 +5,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
+	"net/http"
 	"testing"
 	"time"
 )
@@ -14,7 +15,7 @@ func init() {
 }
 
 func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
-	client := pinotlib.NewPinotClient(pinotlib.PinotClientProperties{
+	client := pinotlib.NewPinotClient(http.DefaultClient, pinotlib.PinotClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})

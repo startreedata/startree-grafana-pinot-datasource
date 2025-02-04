@@ -10,6 +10,7 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   databaseName?: string;
   tokenType?: string;
   queryOptions: QueryOption[];
+  oauthPassThru?: boolean;
 }
 
 /**

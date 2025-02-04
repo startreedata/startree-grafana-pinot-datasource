@@ -5,7 +5,7 @@ import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
 import allLabels from 'labels';
-import { useTheme2 } from '@grafana/ui';
+import { Switch, useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { InputDatabase } from './InputDatabase';
 import { SelectQueryOptions } from './SelectQueryOptions';
@@ -50,6 +50,12 @@ export function ConfigEditor(props: ConfigEditorProps) {
     <>
       <DataSourceDescription dataSourceName={labels.dataSourceName} docsLink={labels.docsLinks} />
       <hr style={{ marginTop: '50px', marginBottom: '56px' }} />
+
+      <p>Pass through oauth</p>
+      <Switch
+        value={jsonData.oauthPassThru}
+        onChange={() => onConfigChange({ ...jsonData, oauthPassThru: !jsonData.oauthPassThru })}
+      />
       <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">
         <InputUrl
