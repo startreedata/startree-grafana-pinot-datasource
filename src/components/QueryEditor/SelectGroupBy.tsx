@@ -31,13 +31,6 @@ export function SelectGroupBy(props: {
     return columns.find(({ name, key }) => columnLabelOf(name, key) === label);
   };
 
-  useEffect(() => {
-    const valid = selected?.filter((col) => getColumn(columnLabelOf(col.name, col.key))) || [];
-    if (valid.length < (selected?.length || 0)) {
-      onChange(valid);
-    }
-  });
-
   return (
     <div className={'gf-form'} data-testid="select-group-by">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
