@@ -31,7 +31,7 @@ GROUP BY "time", "country"
 ORDER BY "time" DESC
 LIMIT 100000;`
   );
-  await page.getByTestId('run-query-btn').click();
+  await page.getByRole('button', { name: 'TEST' }).click();
 
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
