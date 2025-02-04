@@ -63,7 +63,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
 }
 
 function groupByColumnsFrom(query: PinotDataQuery): ComplexField[] {
-  return [...(query.groupByColumns?.map((col) => ({ name: col })) || []), ...(query.groupByColumnsV2 || [])];
+  return (query.groupByColumns || []).map<ComplexField>((col) => ({ name: col })).concat(query.groupByColumnsV2 || []);
 }
 
 function metricColumnFrom(query: PinotDataQuery): ComplexField | undefined {

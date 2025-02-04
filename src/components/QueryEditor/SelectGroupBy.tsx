@@ -1,7 +1,7 @@
 import { MultiSelect } from '@grafana/ui';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
@@ -30,13 +30,6 @@ export function SelectGroupBy(props: {
   const getColumn = (label: string | undefined): Column | undefined => {
     return columns.find(({ name, key }) => columnLabelOf(name, key) === label);
   };
-
-  useEffect(() => {
-    const valid = selected?.filter((col) => getColumn(columnLabelOf(col.name, col.key))) || [];
-    if (valid.length < (selected?.length || 0)) {
-      onChange(valid);
-    }
-  });
 
   return (
     <div className={'gf-form'} data-testid="select-group-by">
