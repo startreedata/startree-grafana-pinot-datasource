@@ -135,6 +135,36 @@ test.describe('Create Panel with Time Series Builder', async () => {
   test('Graph renders when all fields are used', async ({ page }) => {
     await checkTimeSeriesRendersAllFields(page);
   });
+
+  test('Leave panel and edit again', async ({ page }) => {
+    await checkTimeSeriesRendersAllFields(page);
+    await page.getByRole('button', { name: 'Go Back', exact: true }).click();
+    await page.getByRole('heading', { name: 'Panel Title' }).click();
+    await page.getByText('Edit e').click();
+
+
+    await page.getByTestId('run-query-btn').click();
+    await expect(page.getByTestId('sql-preview')).toContainText(
+        // language=text
+        `SELECT
+    "browser",
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
+    MAX("errors") AS "__metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137
+    AND ("country" != 'CN')
+GROUP BY
+    "browser",
+    "__time"
+ORDER BY
+    "browser" ASC
+LIMIT 4000;
+
+SET timeoutMs=100;`
+    );
+  })
 });
 
 test.describe('Explore with Time Series Builder', async () => {
