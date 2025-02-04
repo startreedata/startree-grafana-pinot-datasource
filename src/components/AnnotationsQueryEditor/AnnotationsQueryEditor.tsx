@@ -17,7 +17,7 @@ GROUP BY "time"
 LIMIT 100000`;
 
 export function AnnotationsQueryEditor(props: PinotQueryEditorProps) {
-  const savedParams:CodeQuery.Params = CodeQuery.paramsFrom(props.query);
+  const savedParams = CodeQuery.paramsFrom(props.query);
   savedParams.displayType = DisplayType.ANNOTATIONS;
   if (!savedParams.pinotQlCode) {
     savedParams.pinotQlCode = DefaultAnnotationsQuery;
