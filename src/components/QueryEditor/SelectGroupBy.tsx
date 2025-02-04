@@ -1,7 +1,7 @@
 import { MultiSelect } from '@grafana/ui';
 import { styles } from '../../styles';
 import { SelectableValue } from '@grafana/data';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
