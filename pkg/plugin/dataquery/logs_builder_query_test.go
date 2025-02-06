@@ -31,7 +31,7 @@ func TestExecuteLogsBuilderQuery(t *testing.T) {
 			Alias:   "httpVer",
 		}},
 		Limit: 1,
-	}.Execute(ctx, client)
+	}.Execute(client, ctx)
 
 	assert.Equal(t, backend.Status(200), got.Status)
 	assert.NotEmpty(t, got.Frames)

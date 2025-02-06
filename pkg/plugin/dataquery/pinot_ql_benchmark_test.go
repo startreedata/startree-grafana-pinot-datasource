@@ -35,7 +35,7 @@ func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
 
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		result := query.Execute(context.Background(), client)
+		result := query.Execute(client, context.Background())
 		if result.Error != nil {
 			b.Fatal(result.Error)
 		}

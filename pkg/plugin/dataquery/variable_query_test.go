@@ -20,7 +20,7 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 		t.Run("happy path", func(t *testing.T) {
 			got := VariableQuery{
 				VariableType: VariableQueryTypeTableList,
-			}.Execute(ctx, client)
+			}.Execute(client, ctx)
 
 			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 			if assert.Len(t, got.Frames, 1, "DataResponse.Frames") && assert.Len(t, got.Frames[0].Fields, 1, "DataResponse.Frames[0].Fields") {
@@ -41,7 +41,7 @@ func TestPinotVariableQueryDriver_Execute(t *testing.T) {
 			got := VariableQuery{
 				VariableType: VariableQueryTypeColumnList,
 				TableName:    "benchmark",
-			}.Execute(ctx, client)
+			}.Execute(client, ctx)
 
 			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 			assert.Equal(t, data.Frames{data.NewFrame("result",

@@ -7,6 +7,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
@@ -56,19 +57,13 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 
 func newQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-		var thisClient *pinotlib.PinotClient
-		if token := req.GetHTTPHeader(backend.OAuthIdentityTokenHeaderName); token != "" {
-			thisClient = client.WithAuthorization(token)
-		} else {
-			thisClient = client
-		}
-
-		response := backend.NewQueryDataResponse()
+		thisClient := auth.PassThroughOAuth(client, req)
+		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
-			log.FromContext(ctx).Debug("received query", "contents", string(query.JSON))
-			response.Responses[query.RefID] = dataquery.ExecuteQuery(ctx, thisClient, query)
+			log.FromContext(ctx).Debug("received Pinot data query", "contents", string(query.JSON))
+			resp.Responses[query.RefID] = dataquery.ExecuteQuery(thisClient, ctx, query)
 		}
-		return response, nil
+		return resp, nil
 	})
 }
 
@@ -81,14 +76,7 @@ func newCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHand
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-
-		var thisClient *pinotlib.PinotClient
-		if token := req.GetHTTPHeader(backend.OAuthIdentityTokenHeaderName); token != "" {
-			log.Info("!!! LOOK AT ME !!!", "token", token)
-			thisClient = client.WithAuthorization(token)
-		} else {
-			thisClient = client
-		}
+		thisClient := auth.PassThroughOAuth(client, req)
 
 		// Test connection to controller
 		if tables, err := thisClient.ListTables(ctx); err != nil {

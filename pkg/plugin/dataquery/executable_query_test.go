@@ -90,7 +90,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 
 func TestNoOpDriver_Execute(t *testing.T) {
 	var driver NoOpQuery
-	got := driver.Execute(context.Background(), nil)
+	got := driver.Execute(nil, context.Background())
 	assert.Equal(t, backend.StatusOK, got.Status)
 	assert.Equal(t, data.Frames(nil), got.Frames)
 	assert.NoError(t, got.Error)
@@ -154,7 +154,7 @@ func runSqlQuerySumHappyPath(t *testing.T, newDriver func(testCase DriverTestCas
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]time.Time{
@@ -194,7 +194,7 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 			To:   time.Date(2024, 10, 2, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]time.Time{
@@ -223,7 +223,7 @@ func runSqlQueryDistinctValsHappyPath(t *testing.T, newDriver func(testCase Driv
 	got := newDriver(DriverTestCase{
 		TableName:    "infraMetrics",
 		TargetColumn: "metric",
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames([]string{
 		"db_record_write",
@@ -240,7 +240,7 @@ func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase
 	got := newDriver(DriverTestCase{
 		TableName:    "partial",
 		TargetColumn: "value",
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Equal(t, wantFrames(
 		[]string{
@@ -307,7 +307,7 @@ func runSqlQueryNoRows(t *testing.T, newDriver func(testCase DriverTestCase) Exe
 			To:   time.Date(2024, 11, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
@@ -331,7 +331,7 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	}).Execute(context.Background(), client)
+	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
@@ -360,7 +360,7 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 			To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
 		},
 		IntervalSize: 1 * time.Minute,
-	}).Execute(context.Background(), unreachableClient)
+	}).Execute(unreachableClient, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
 	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")
