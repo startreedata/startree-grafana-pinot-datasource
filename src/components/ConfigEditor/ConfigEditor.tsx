@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { PinotConnectionConfig, PinotSecureConfig } from '../../dataquery/PinotConnectionConfig';
+import { PinotConnectionConfig, PinotSecureConfig } from '../../config/PinotConnectionConfig';
 import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
 import allLabels from 'labels';
-import { Switch, useTheme2 } from '@grafana/ui';
+import { InlineField, InlineSwitch, useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { InputDatabase } from './InputDatabase';
 import { SelectQueryOptions } from './SelectQueryOptions';
@@ -51,11 +51,6 @@ export function ConfigEditor(props: ConfigEditorProps) {
       <DataSourceDescription dataSourceName={labels.dataSourceName} docsLink={labels.docsLinks} />
       <hr style={{ marginTop: '50px', marginBottom: '56px' }} />
 
-      <p>Pass through oauth</p>
-      <Switch
-        value={jsonData.oauthPassThru}
-        onChange={() => onConfigChange({ ...jsonData, oauthPassThru: !jsonData.oauthPassThru })}
-      />
       <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">
         <InputUrl
@@ -105,8 +100,27 @@ export function ConfigEditor(props: ConfigEditorProps) {
         />
       </div>
       <h3>Authentication</h3>
+      <p className={styles.text}>
+        If Grafana uses OAuth for user logins, this option directs Grafana to authenticate with Pinot using the user
+        token instead of an API token.
+      </p>
+      <div className="gf-form-group">
+        <InlineField
+          data-testid="switch-oauth-pass-thru"
+          label={'Enable OAuth Pass-Through'}
+          labelWidth={24}
+          tooltip={''}
+          grow
+          interactive
+        >
+          <InlineSwitch
+            value={jsonData.oauthPassThru || false}
+            onChange={() => onConfigChange({ ...jsonData, oauthPassThru: !jsonData.oauthPassThru })}
+          />
+        </InlineField>
+      </div>
       <p className={styles.text} data-testid="auth-description">
-        This plugin requires a Pinot authentication token. For detailed instructions on generating a token,{' '}
+        Configure a Pinot API token. For detailed instructions on generating a token,{' '}
         <a href={labels.token.help} target="_blank" rel="noreferrer" data-testid="view-doc-link">
           view the documentation
         </a>

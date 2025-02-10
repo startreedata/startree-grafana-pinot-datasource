@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
@@ -12,6 +11,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
+	"net/http"
 )
 
 var (
@@ -29,24 +29,13 @@ type Datasource struct {
 	instancemgmt.InstanceDisposer
 }
 
-func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var config Config
 	if err := config.ReadFrom(settings); err != nil {
 		return nil, err
 	}
 
-	opts, err := settings.HTTPClientOptions(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("http client options: %w", err)
-	}
-	opts.ForwardHTTPHeaders = true
-
-	httpClient, err := httpclient.New(opts)
-	if err != nil {
-		return nil, fmt.Errorf("httpclient new: %w", err)
-	}
-
-	client := PinotClientOf(httpClient, config)
+	client := PinotClientOf(http.DefaultClient, config)
 	return &Datasource{
 		QueryDataHandler:    newQueryDataHandler(client),
 		CallResourceHandler: newCallResourceHandler(client),

@@ -1,9 +1,6 @@
-import {DataSourceJsonData} from '@grafana/data';
-import {QueryOption} from './QueryOption';
+import { DataSourceJsonData } from '@grafana/data';
+import { QueryOption } from '../dataquery/QueryOption';
 
-/**
- * These are options configured for each DataSource instance
- */
 export interface PinotConnectionConfig extends DataSourceJsonData {
   controllerUrl?: string;
   brokerUrl?: string;
@@ -13,9 +10,6 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   oauthPassThru?: boolean;
 }
 
-/**
- * Value that is used in the backend, but never sent over HTTP to the frontend
- */
 export interface PinotSecureConfig {
   authToken?: string;
 }

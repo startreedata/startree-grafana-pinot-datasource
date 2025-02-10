@@ -34,8 +34,6 @@ func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) erro
 		return errors.New("broker url cannot be empty")
 	} else if config.ControllerUrl == "" {
 		return errors.New("controller url cannot be empty")
-	} else if config.TokenType == "" {
-		return errors.New("token type cannot be empty")
 	}
 
 	config.TokenSecret = settings.DecryptedSecureJSONData["authToken"]
