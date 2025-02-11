@@ -589,8 +589,16 @@ func listMapColumnKeys(client *pinotlib.PinotClient, ctx context.Context, tableN
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("Query to extract map keys failed")
 		return nil
+	} else if !results.HasData() {
+		log.FromContext(ctx).Info("Query to extract map keys returned no data")
+		return nil
 	}
-	col, _ := pinotlib.DecodeJsonFromColumn[map[string]any](results.ResultTable, 0)
+
+	col, err := pinotlib.DecodeJsonFromColumn[map[string]any](results.ResultTable, 0)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("Query to extract map keys returned column with invalid json")
+		return nil
+	}
 
 	keys := collections.NewSet[string](0)
 	for _, entry := range col {
