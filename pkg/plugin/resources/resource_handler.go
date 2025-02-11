@@ -590,7 +590,7 @@ func listMapColumnKeys(client *pinotlib.PinotClient, ctx context.Context, tableN
 		log.WithError(err).FromContext(ctx).Error("Query to extract map keys failed")
 		return nil
 	} else if !results.HasData() {
-		log.FromContext(ctx).Info("Query to extract map keys returned no data")
+		log.FromContext(ctx).Debug("Query to extract map keys returned no data")
 		return nil
 	}
 
