@@ -36,6 +36,8 @@ export interface Resources {
   timeColumns: Column[];
   filterColumns: Column[];
   logMessageColumns: Column[];
+  jsonExtractorColumns: Column[];
+  regexpExtractorColumns: Column[];
   isColumnsLoading: boolean;
   sqlPreview: string;
   isSqlPreviewLoading: boolean;
@@ -145,6 +147,8 @@ export function resourcesFrom(
     timeColumns: columns.filter(({ isTime, isDerived }) => isTime && !isDerived),
     logMessageColumns: columns.filter(({ dataType }) => dataType === PinotDataType.STRING),
     filterColumns: columns.filter(({ isTime }) => !isTime),
+    jsonExtractorColumns: columns.filter(({ dataType }) => [PinotDataType.STRING, PinotDataType.JSON].includes(dataType)),
+    regexpExtractorColumns: columns.filter(({ dataType }) => [PinotDataType.STRING].includes(dataType)),
     isColumnsLoading,
     sqlPreview,
     isSqlPreviewLoading,

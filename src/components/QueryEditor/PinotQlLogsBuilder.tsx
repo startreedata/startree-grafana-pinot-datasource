@@ -71,13 +71,13 @@ export function PinotQlLogsBuilder(props: {
       </div>
       <SelectJsonExtractors
         extractors={savedParams.jsonExtractors}
-        columns={resources.logMessageColumns}
+        columns={resources.jsonExtractorColumns}
         isLoadingColumns={resources.isColumnsLoading}
         onChange={(jsonExtractors) => onChangeAndRun({ ...savedParams, jsonExtractors })}
       />
       <SelectRegexpExtractors
         extractors={savedParams.regexpExtractors}
-        columns={resources.logMessageColumns}
+        columns={resources.regexpExtractorColumns}
         isLoadingColumns={resources.isColumnsLoading}
         onChange={(regexpExtractors) => onChangeAndRun({ ...savedParams, regexpExtractors })}
       />
