@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const PluginName = "startree-pinot-datasource"
@@ -34,28 +35,44 @@ type ExternalRelease struct {
 
 // Hard coded external releases
 
-var ExternalReleases = []ExternalRelease{
-	{
-		name: "epicgames",
-		repo: "external-startree-releases-for-epicgames",
-		urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud/"},
-	},
-	{
-		name: "doordash",
-		repo: "external-startree-releases-for-doordash",
-		urls: []string{"https://grafana.doordash.team/"},
-	},
-}
+var ExternalReleases = []ExternalRelease{{
+	name: "epicgames",
+	repo: "external-startree-releases-for-epicgames",
+	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud/"},
+}, {
+	name: "doordash",
+	repo: "external-startree-releases-for-doordash",
+	urls: []string{"https://grafana.doordash.team/"},
+}}
 
 const PackageJsonFile = "package.json"
 const BuildArtifactsDir = "dist"
 const PodInstallerFile = "pod_installer.sh"
 
-const DemoK8sNamespace = "default"
+type DemoRelease struct {
+	Name         string
+	K8sNamespace string
+	K8sContext   string
+	GrafanaUrl   string
+	AdminUrl     string
+}
+
+var DemoReleases = []DemoRelease{{
+	Name:         "internal",
+	K8sNamespace: "default",
+	K8sContext:   "arn:aws:eks:us-west-2:381492139006:cluster/sc-analytics-metrics",
+	GrafanaUrl:   "https://pinot-grafana-demo.metrics.analytics.startree.cloud",
+	AdminUrl:     "https://admin.startree.cloud/admin/organizations/dd56b223-3018-4beb-bb1a-7084220bf556/environments/dd56b223-3018-4beb-bb1a-7084220bf556-metrics",
+}, {
+	Name:         "external",
+	K8sNamespace: "cell-wvqikq-default",
+	K8sContext:   "scs-acc-2mpxfsc0y-2owvqjimo:ConsistentPush:galileo-demo-setup",
+	GrafanaUrl:   "https://pinot-grafana-demo.wvqikq.cp.s7e.startree-staging.cloud/",
+	AdminUrl:     "https://admin-portal.startree-staging.cloud/accounts/acct-2mpg1mgad538/organizations/org-2mpg7mzzzum9/environments/env-2owvqjdb5ptd/account",
+}}
+
 const DemoK8sPod = "pinot-grafana-demo-0"
 const DemoContainerPluginPath = "/var/lib/grafana/plugins"
-const DemoGrafanaUrl = "https://pinot-grafana-demo.metrics.analytics.startree.cloud"
-const DemoK8sContext = "arn:aws:eks:us-west-2:381492139006:cluster/sc-analytics-metrics"
 
 const ZipCmd = "zip"
 const UnzipCmd = "unzip"
@@ -95,9 +112,6 @@ func main() {
 		rootUrls := parseRootUrls(os.Args[2:])
 		releaseManager.ResignRelease(rootUrls)
 
-	case "deploy_demo":
-		releaseManager.DeployDemo()
-
 	case "pod_installer":
 		releaseManager.uploadInternalFile("cmd/release/" + PodInstallerFile)
 
@@ -105,7 +119,15 @@ func main() {
 		releaseManager.InstallPluginIntoDataPlane()
 
 	case "demo":
-		releaseManager.DeployDemo()
+		target := os.Args[2]
+		for _, demo := range DemoReleases {
+			if demo.Name == target {
+				releaseManager.DeployDemo(demo)
+				return
+			}
+		}
+		fmt.Printf("No demo for `%s` found!\n", target)
+		os.Exit(1)
 
 	case "build_backend":
 		releaseManager.buildBackend()
@@ -136,7 +158,10 @@ func (x *ReleaseManager) CreateInternalRelease() {
 	releaseArchive := fmt.Sprintf("%s-%s.zip", PluginName, version)
 	fmt.Println("Preparing release", releaseArchive)
 
-	rootUrls := []string{DemoGrafanaUrl}
+	var rootUrls []string
+	for _, demo := range DemoReleases {
+		rootUrls = append(rootUrls, demo.GrafanaUrl)
+	}
 	fmt.Println("Valid for urls:", strings.Join(rootUrls, " "))
 
 	x.buildPlugin()
@@ -169,11 +194,11 @@ func (x *ReleaseManager) CreateExternalRelease(release ExternalRelease) {
 	}
 }
 
-func (x *ReleaseManager) DeployDemo() {
+func (x *ReleaseManager) DeployDemo(demo DemoRelease) {
 	fmt.Println("Preparing demo...")
 
-	if x.getK8sContext() != DemoK8sContext {
-		fmt.Println("Please set k8s context from https://admin-portal.startree.cloud/accounts/acct_2X0clUhn6jdER10iW0YFZuEbnvt/organizations/org-2j9iooe5zcog/environments/env-2j9itlsbtdax/account")
+	if x.getK8sContext() != demo.K8sContext {
+		fmt.Printf("Please set k8s context from %s\n", demo.AdminUrl)
 		os.Exit(1)
 	}
 
@@ -181,19 +206,28 @@ func (x *ReleaseManager) DeployDemo() {
 	containerArchive := path.Join(DemoContainerPluginPath, localArchive)
 
 	x.buildPlugin()
-	x.signPlugin([]string{DemoGrafanaUrl})
+	x.signPlugin([]string{demo.GrafanaUrl})
 	x.zipPlugin(localArchive)
 
-	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", demo.K8sNamespace,
 		"cp", localArchive, DemoK8sPod+":"+containerArchive)
-	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", demo.K8sNamespace,
 		"exec", DemoK8sPod, "--", "rm", "-rf", path.Join(DemoContainerPluginPath, PluginName))
-	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", demo.K8sNamespace,
 		"exec", DemoK8sPod, "--", "unzip", containerArchive, "-d", DemoContainerPluginPath)
-	runCmd(nil, nil, KubectlCmd, "--namespace", DemoK8sNamespace,
+	runCmd(nil, nil, KubectlCmd, "--namespace", demo.K8sNamespace,
 		"delete", "pod", DemoK8sPod)
 
-	fmt.Println("Demo deployed.")
+	fmt.Printf("Waiting for Grafana...")
+	for {
+		resp, err := http.Get(demo.GrafanaUrl)
+		if err == nil && (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusFound) {
+			fmt.Println("Demo deployed!\nVisit", demo.GrafanaUrl)
+			return
+		}
+		time.Sleep(1 * time.Second)
+		fmt.Print(".")
+	}
 }
 
 func (x *ReleaseManager) InstallPluginIntoDataPlane() {
