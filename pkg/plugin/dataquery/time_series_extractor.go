@@ -6,7 +6,6 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +17,7 @@ type TimeSeriesExtractorParams struct {
 	TimeColumnAlias   string
 	TimeColumnFormat  pinotlib.DateTimeFormat
 	MetricColumnAlias string
+	SeriesLimit       int
 }
 
 type Metric struct {
@@ -32,9 +32,10 @@ type MetricLabel struct {
 }
 
 type MetricSeries struct {
-	name   string
-	values []*float64
-	labels map[string]string
+	name    string
+	sortKey int
+	values  []*float64
+	labels  map[string]string
 }
 
 func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinotlib.ResultTable) (*data.Frame, error) {
@@ -43,11 +44,7 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 		return nil, err
 	}
 
-	timeCol, metricSeries := PivotToTimeSeries(metrics, params.Legend)
-	slices.SortFunc(metricSeries, func(a, b MetricSeries) int {
-		return strings.Compare(a.name, b.name)
-	})
-
+	timeCol, metricSeries := PivotToTimeSeries(metrics, params.Legend, params.SeriesLimit)
 	fields := make([]*data.Field, 0, len(metricSeries)+1)
 	for _, series := range metricSeries {
 		field := data.NewField(params.MetricName, series.labels, series.values)
@@ -117,7 +114,7 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 	return metrics, nil
 }
 
-func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSeries) {
+func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time, []MetricSeries) {
 	timeCol := GetTimeColumn(metrics)
 
 	timestampToIdx := make(map[time.Time]int, len(timeCol))
@@ -131,15 +128,20 @@ func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSe
 
 	for _, met := range metrics {
 		tsKey := seriesMapper.GetKey(met.Labels)
+		if tsKey >= limit && limit >= 0 {
+			continue
+		}
+
 		if _, ok := timeSeriesMap[tsKey]; !ok {
 			labels := make(map[string]string, len(met.Labels))
 			for _, label := range met.Labels {
 				labels[label.name] = label.value
 			}
 			timeSeriesMap[tsKey] = MetricSeries{
-				name:   formatter.FormatSeriesName(legend, labels),
-				values: make([]*float64, len(timeCol)),
-				labels: labels,
+				name:    formatter.FormatSeriesName(legend, labels),
+				values:  make([]*float64, len(timeCol)),
+				sortKey: tsKey,
+				labels:  labels,
 			}
 		}
 		colIdx := timestampToIdx[met.Timestamp]
@@ -151,6 +153,7 @@ func PivotToTimeSeries(metrics []Metric, legend string) ([]time.Time, []MetricSe
 	for _, ts := range timeSeriesMap {
 		metricSeries = append(metricSeries, ts)
 	}
+	sort.Slice(metricSeries, func(i, j int) bool { return metricSeries[i].sortKey < metricSeries[j].sortKey })
 	return timeCol, metricSeries
 }
 
@@ -168,9 +171,9 @@ func GetTimeColumn(metrics []Metric) []time.Time {
 }
 
 type SeriesMapper struct {
-	order  map[string]int
-	caches []map[string]int
-	next   int
+	order map[string]int
+	nodes []map[string]int
+	next  int
 }
 
 // GetKey generates a unique key for a slice of metric labels.
@@ -207,28 +210,28 @@ func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
 		return 0
 	}
 
-	if x.caches == nil {
-		x.caches = make([]map[string]int, 1)
+	if x.nodes == nil {
+		x.nodes = make([]map[string]int, 1)
 	}
-	if x.caches[0] == nil {
-		x.caches[0] = make(map[string]int)
+	if x.nodes[0] == nil {
+		x.nodes[0] = make(map[string]int)
 	}
-	cache := x.caches[0]
+	curNode := x.nodes[0]
 	for i := 0; i < len(labels)-1; i++ {
 		val := labels[i].value
-		if _, ok := cache[val]; !ok {
-			cache[val] = len(x.caches)
-			x.caches = append(x.caches, make(map[string]int))
+		if _, ok := curNode[val]; !ok {
+			curNode[val] = len(x.nodes)
+			x.nodes = append(x.nodes, make(map[string]int))
 		}
-		cache = x.caches[cache[val]]
+		curNode = x.nodes[curNode[val]]
 	}
 
 	finalVal := labels[len(labels)-1].value
-	if _, ok := cache[finalVal]; !ok {
-		cache[finalVal] = x.next
+	if _, ok := curNode[finalVal]; !ok {
+		curNode[finalVal] = x.next
 		x.next++
 	}
-	return cache[finalVal]
+	return curNode[finalVal]
 }
 
 type LegendFormatter struct {

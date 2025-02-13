@@ -185,6 +185,7 @@ func (query TimeSeriesBuilderQuery) ExtractResults(results *pinotlib.ResultTable
 		MetricColumnAlias: BuilderMetricColumn,
 		TimeColumnAlias:   BuilderTimeColumn,
 		TimeColumnFormat:  outputTimeFormat,
+		SeriesLimit:       2,
 	}, results)
 }
 

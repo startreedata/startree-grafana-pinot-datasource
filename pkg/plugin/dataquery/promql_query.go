@@ -37,19 +37,25 @@ func (params PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Cont
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize)
+	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize, 1)
 	return NewOkDataResponse(frames...)
 }
 
-func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration) []*data.Frame {
+func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
 	var legendFormatter LegendFormatter
 
-	frames := make([]*data.Frame, len(results))
-	for i, res := range results {
-		tsField := data.NewField("time", nil, res.Timestamps).SetConfig(&data.FieldConfig{
+	var seriesCount int
+	if limit < 0 {
+		seriesCount = len(results)
+	} else {
+		seriesCount = min(limit, len(results))
+	}
+	frames := make([]*data.Frame, seriesCount)
+	for i := 0; i < seriesCount; i++ {
+		tsField := data.NewField("time", nil, results[i].Timestamps).SetConfig(&data.FieldConfig{
 			Interval: float64(intervalSize.Milliseconds())})
-		metField := data.NewField("", res.Metric, res.Values).SetConfig(&data.FieldConfig{
-			DisplayNameFromDS: legendFormatter.FormatSeriesName(legend, res.Metric),
+		metField := data.NewField("", results[i].Metric, results[i].Values).SetConfig(&data.FieldConfig{
+			DisplayNameFromDS: legendFormatter.FormatSeriesName(legend, results[i].Metric),
 		})
 		frames[i] = data.NewFrame("", tsField, metField)
 	}

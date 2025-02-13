@@ -103,6 +103,7 @@ func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*da
 			TimeColumnAlias:   query.resolveTimeColumnAlias(),
 			MetricColumnAlias: query.resolveMetricColumnAlias(),
 			TimeColumnFormat:  OutputTimeFormat(),
+			SeriesLimit:       2,
 		}, results)
 	}
 }
