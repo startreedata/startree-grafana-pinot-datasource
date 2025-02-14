@@ -19,7 +19,7 @@ export function InputTextField({
   const [value, setValue] = useState<string | undefined>(current);
 
   return (
-    <div className={'gf-form'}>
+    <>
       <FormLabel tooltip={tooltip} label={label} />
       <Input
         className={`${styles.QueryEditor.inputForm}`}
@@ -29,6 +29,6 @@ export function InputTextField({
         value={value}
         onBlur={() => value !== undefined && current !== value && onChange(value)}
       />
-    </div>
+    </>
   );
 }

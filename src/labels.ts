@@ -29,8 +29,12 @@ export default {
         label: 'Query Type',
       },
       limit: {
-        label: 'Limit',
-        tooltip: 'Query limit. Defaults to 1,000,000.',
+        label: 'Query Limit',
+        tooltip: 'Set the query limit. Defaults to 1,000,000.',
+      },
+      seriesLimit: {
+        label: 'Series Limit',
+        tooltip: 'Limit the number of time series returned. Defaults to 10,000.',
       },
       metricAlias: {
         tooltip: 'The name of the metric column in the query result. Required for time series display.',

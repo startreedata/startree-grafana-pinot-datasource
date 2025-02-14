@@ -3,7 +3,7 @@ import { AggregationFunction, SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
 import React from 'react';
-import { InputLimit } from './InputLimit';
+import { InputLimit, InputSeriesLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
 import { SelectGranularity } from './SelectGranularity';
@@ -15,7 +15,6 @@ import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
 import { columnLabelOf } from '../../dataquery/ComplexField';
 import { TimeSeriesBuilder } from '../../pinotql';
-import { DisplayType } from '../../dataquery/DisplayType';
 
 export function PinotQlTimeSeriesBuilder(props: {
   datasource: DataSource;
@@ -109,11 +108,16 @@ export function PinotQlTimeSeriesBuilder(props: {
       />
       <InputLimit current={savedParams.limit} onChange={(limit) => onChangeAndRun({ ...savedParams, limit })} />
       <SqlPreview sql={resources.sqlPreview} />
-      <InputMetricLegend
-        displayType={DisplayType.TIMESERIES}
-        current={savedParams.legend}
-        onChange={(legend) => onChangeAndRun({ ...savedParams, legend })}
-      />
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <InputMetricLegend
+          current={savedParams.legend}
+          onChange={(legend) => onChangeAndRun({ ...savedParams, legend })}
+        />
+        <InputSeriesLimit
+          current={savedParams.seriesLimit}
+          onChange={(seriesLimit) => onChange({ ...savedParams, seriesLimit })}
+        />
+      </div>
     </>
   );
 }

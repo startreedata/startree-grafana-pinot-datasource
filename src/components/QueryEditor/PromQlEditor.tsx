@@ -9,10 +9,13 @@ import { useIsPromQlSupported } from '../../resources/isPromQlSupported';
 import { QueryType } from '../../dataquery/QueryType';
 import { DataSource } from '../../datasource';
 import { PromQlExpressionEditor } from './PromQlExpressionEditor';
-import { DisplayType } from '../../dataquery/DisplayType';
+import { InputSeriesLimit } from './InputLimit';
+import { dataQueryOf, Params, paramsFrom } from '../../promql/params';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
   const { result: tables, loading: isTablesLoading } = useTimeSeriesTables(props.datasource);
+  const params = paramsFrom(props.query);
+  const onChange = (newParams: Params) => props.onChange(dataQueryOf(props.query, newParams));
   const timeRange = {
     to: props.range?.to,
     from: props.range?.from,
@@ -25,32 +28,30 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
         onClose={() => props.onChange({ ...props.query, queryType: QueryType.PinotQL })}
       />
 
-      <div className={'gf-form'}>
-        <SelectTable
-          selected={props.query.tableName || ''}
-          options={tables || []}
-          isLoading={isTablesLoading}
-          onChange={(tableName) => props.onChange({ ...props.query, tableName })}
-        />
-      </div>
+      <SelectTable
+        selected={params.tableName || ''}
+        options={tables || []}
+        isLoading={isTablesLoading}
+        onChange={(tableName) => onChange({ ...params, tableName })}
+      />
       <div className={'gf-form'}>
         <>
           <FormLabel tooltip={'Query'} label={'Query'} />
           <PromQlExpressionEditor
             datasource={props.datasource}
-            tableName={props.query.tableName}
+            tableName={params.tableName}
             timeRange={timeRange}
-            value={props.query.promQlCode}
-            onChange={(promQlCode) => props.onChange({ ...props.query, promQlCode })}
+            value={params.promQlCode}
+            onChange={(promQlCode) => onChange({ ...params, promQlCode })}
             onRunQuery={props.onRunQuery}
           />
         </>
       </div>
-      <div className={'gf-form'}>
-        <InputMetricLegend
-          current={props.query.legend || ''}
-          displayType={props.query.displayType || DisplayType.TIMESERIES}
-          onChange={(legend) => props.onChange({ ...props.query, legend })}
+      <div style={{ display: 'flex', flexDirection: 'row' }}>
+        <InputMetricLegend current={params.legend} onChange={(legend) => onChange({ ...params, legend })} />
+        <InputSeriesLimit
+          current={params.seriesLimit}
+          onChange={(seriesLimit) => onChange({ ...params, seriesLimit })}
         />
       </div>
     </>

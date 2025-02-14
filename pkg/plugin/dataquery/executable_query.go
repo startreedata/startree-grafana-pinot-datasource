@@ -29,6 +29,8 @@ var queryDuration = promauto.NewSummaryVec(
 	[]string{"query_type", "status"},
 )
 
+const SeriesLimitDisabled int = -1
+
 type ExecutableQuery interface {
 	Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse
 }
@@ -54,6 +56,13 @@ func ExecuteQuery(client *pinotlib.PinotClient, ctx context.Context, backendQuer
 }
 
 func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
+	var seriesLimit int
+	if query.SeriesLimit == nil {
+		seriesLimit = SeriesLimitDisabled
+	} else {
+		seriesLimit = *query.SeriesLimit
+	}
+
 	switch {
 	case query.Hide:
 		return new(NoOpQuery)
@@ -65,6 +74,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			TimeRange:    query.TimeRange,
 			IntervalSize: query.IntervalSize,
 			Legend:       query.Legend,
+			SeriesLimit:  seriesLimit,
 		}
 
 	case query.QueryType == QueryTypePinotVariableQuery:
@@ -87,6 +97,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			IntervalSize:      query.IntervalSize,
 			DisplayType:       query.DisplayType,
 			Legend:            query.Legend,
+			SeriesLimit:       seriesLimit,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
@@ -105,13 +116,26 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder:
+		var metricColumn ComplexField
+		if query.MetricColumnV2.Name != "" {
+			metricColumn = query.MetricColumnV2
+		} else {
+			metricColumn = ComplexField{Name: query.MetricColumn}
+		}
+
+		groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
+		for _, col := range query.GroupByColumns {
+			groupByColumns = append(groupByColumns, ComplexField{Name: col})
+		}
+		groupByColumns = append(groupByColumns, query.GroupByColumnsV2...)
+
 		return TimeSeriesBuilderQuery{
 			TimeRange:           query.TimeRange,
 			IntervalSize:        query.IntervalSize,
 			TableName:           query.TableName,
 			TimeColumn:          query.TimeColumn,
-			MetricColumn:        builderMetricColumnFrom(query),
-			GroupByColumns:      builderGroupByColumnsFrom(query),
+			MetricColumn:        metricColumn,
+			GroupByColumns:      groupByColumns,
 			AggregationFunction: query.AggregationFunction,
 			DimensionFilters:    query.DimensionFilters,
 			Limit:               query.Limit,
@@ -119,26 +143,11 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			OrderByClauses:      query.OrderByClauses,
 			QueryOptions:        query.QueryOptions,
 			Legend:              query.Legend,
+			SeriesLimit:         seriesLimit,
 		}
 
 	default:
 		return new(NoOpQuery)
-	}
-}
-
-func builderGroupByColumnsFrom(query DataQuery) []ComplexField {
-	groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
-	for _, col := range query.GroupByColumns {
-		groupByColumns = append(groupByColumns, ComplexField{Name: col})
-	}
-	return append(groupByColumns, query.GroupByColumnsV2...)
-}
-
-func builderMetricColumnFrom(query DataQuery) ComplexField {
-	if query.MetricColumnV2.Name != "" {
-		return query.MetricColumnV2
-	} else {
-		return ComplexField{Name: query.MetricColumn}
 	}
 }
 

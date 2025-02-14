@@ -21,6 +21,7 @@ type PinotQlCodeQuery struct {
 	IntervalSize      time.Duration
 	DisplayType       DisplayType
 	Legend            string
+	SeriesLimit       int
 }
 
 func (query PinotQlCodeQuery) Validate() error {
@@ -103,7 +104,7 @@ func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*da
 			TimeColumnAlias:   query.resolveTimeColumnAlias(),
 			MetricColumnAlias: query.resolveMetricColumnAlias(),
 			TimeColumnFormat:  OutputTimeFormat(),
-			SeriesLimit:       2,
+			SeriesLimit:       -1, // TODO: Magic number
 		}, results)
 	}
 }

@@ -1,13 +1,8 @@
 import React from 'react';
 import labels from '../../labels';
 import { InputTextField } from './InputTextField';
-import { DisplayType } from '../../dataquery/DisplayType';
 
-export function InputMetricLegend(props: { current: string; displayType: string; onChange: (val: string) => void }) {
-  if (props.displayType !== DisplayType.TIMESERIES) {
-    return <></>;
-  }
-
+export function InputMetricLegend(props: { current: string; onChange: (val: string) => void }) {
   return (
     <div className={'gf-form'} data-testid="input-metric-legend">
       <InputTextField

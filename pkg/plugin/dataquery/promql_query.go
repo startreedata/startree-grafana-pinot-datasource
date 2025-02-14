@@ -17,39 +17,39 @@ type PromQlQuery struct {
 	TimeRange    TimeRange
 	IntervalSize time.Duration
 	Legend       string
+	SeriesLimit  int
 }
 
-func (params PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
-	if strings.TrimSpace(params.PromQlCode) == "" {
+func (query PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+	if strings.TrimSpace(query.PromQlCode) == "" {
 		return NewEmptyDataResponse()
 	}
 
 	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
 		Language:  pinotlib.TimeSeriesQueryLanguagePromQl,
-		Query:     params.PromQlCode,
-		Start:     params.TimeRange.From,
-		End:       params.TimeRange.To,
-		Step:      params.IntervalSize,
-		TableName: params.TableName,
+		Query:     query.PromQlCode,
+		Start:     query.TimeRange.From,
+		End:       query.TimeRange.To,
+		Step:      query.IntervalSize,
+		TableName: query.TableName,
 	})
 	if err != nil {
-		// TODO: Separate downstream and plugin errors.
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize, 1)
+	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, query.Legend, query.IntervalSize, query.SeriesLimit)
 	return NewOkDataResponse(frames...)
 }
 
 func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
-	var legendFormatter LegendFormatter
-
 	var seriesCount int
-	if limit < 0 {
+	if limit == SeriesLimitDisabled {
 		seriesCount = len(results)
 	} else {
 		seriesCount = min(limit, len(results))
 	}
+
+	var legendFormatter LegendFormatter
 	frames := make([]*data.Frame, seriesCount)
 	for i := 0; i < seriesCount; i++ {
 		tsField := data.NewField("time", nil, results[i].Timestamps).SetConfig(&data.FieldConfig{

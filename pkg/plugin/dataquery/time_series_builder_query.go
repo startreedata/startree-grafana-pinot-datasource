@@ -38,6 +38,7 @@ type TimeSeriesBuilderQuery struct {
 	OrderByClauses      []OrderByClause
 	QueryOptions        []QueryOption
 	Legend              string
+	SeriesLimit         int
 }
 
 func (query TimeSeriesBuilderQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
@@ -185,7 +186,7 @@ func (query TimeSeriesBuilderQuery) ExtractResults(results *pinotlib.ResultTable
 		MetricColumnAlias: BuilderMetricColumn,
 		TimeColumnAlias:   BuilderTimeColumn,
 		TimeColumnFormat:  outputTimeFormat,
-		SeriesLimit:       2,
+		SeriesLimit:       -1, // TODO: Magic number
 	}, results)
 }
 

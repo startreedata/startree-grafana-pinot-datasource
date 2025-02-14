@@ -128,7 +128,7 @@ func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time,
 
 	for _, met := range metrics {
 		tsKey := seriesMapper.GetKey(met.Labels)
-		if tsKey >= limit && limit >= 0 {
+		if limit != SeriesLimitDisabled && tsKey >= limit {
 			continue
 		}
 

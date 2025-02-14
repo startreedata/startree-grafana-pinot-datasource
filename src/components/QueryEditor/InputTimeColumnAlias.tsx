@@ -4,7 +4,7 @@ import { InputTextField } from './InputTextField';
 
 export function InputTimeColumnAlias(props: { current: string | undefined; onChange: (val: string) => void }) {
   return (
-    <div data-testid="input-time-alias">
+    <div className={'gf-form'} data-testid="input-time-alias">
       <InputTextField
         placeholder={'time'}
         current={props.current}

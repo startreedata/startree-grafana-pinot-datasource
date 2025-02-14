@@ -55,6 +55,8 @@ const (
 	ColumnTypeAll       ColumnType = "ALL"
 )
 
+type Optional[T any] *T
+
 type DataQuery struct {
 	TimeRange     TimeRange     `json:"-"`
 	MaxDataPoints int64         `json:"-"`
@@ -67,6 +69,7 @@ type DataQuery struct {
 
 	TableName    string        `json:"tableName"`
 	QueryOptions []QueryOption `json:"queryOptions"`
+	SeriesLimit  Optional[int] `json:"seriesLimit"`
 
 	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`

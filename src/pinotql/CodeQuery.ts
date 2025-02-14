@@ -28,6 +28,7 @@ export interface Params {
   metricColumnAlias: string;
   logColumnAlias: string;
   legend: string;
+  seriesLimit: number;
 }
 
 export function paramsFrom(query: PinotDataQuery): Params {
@@ -39,6 +40,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     metricColumnAlias: query.metricColumnAlias || '',
     logColumnAlias: query.logColumnAlias || '',
     legend: query.legend || '',
+    seriesLimit: query.seriesLimit || 0,
   };
 }
 
@@ -91,6 +93,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     metricColumnAlias: params.metricColumnAlias || undefined,
     logColumnAlias: params.logColumnAlias || undefined,
     legend: params.legend || undefined,
+    seriesLimit: params.seriesLimit || undefined,
   };
 }
 
