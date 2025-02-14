@@ -16,6 +16,10 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
   const { result: tables, loading: isTablesLoading } = useTimeSeriesTables(props.datasource);
   const params = paramsFrom(props.query);
   const onChange = (newParams: Params) => props.onChange(dataQueryOf(props.query, newParams));
+  const onChangeAndRun = (newParams: Params) => {
+    onChange(newParams);
+    props.onRunQuery();
+  };
   const timeRange = {
     to: props.range?.to,
     from: props.range?.from,
@@ -48,10 +52,10 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
         </>
       </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
-        <InputMetricLegend current={params.legend} onChange={(legend) => onChange({ ...params, legend })} />
+        <InputMetricLegend current={params.legend} onChange={(legend) => onChangeAndRun({ ...params, legend })} />
         <InputSeriesLimit
           current={params.seriesLimit}
-          onChange={(seriesLimit) => onChange({ ...params, seriesLimit })}
+          onChange={(seriesLimit) => onChangeAndRun({ ...params, seriesLimit })}
         />
       </div>
     </>
