@@ -115,7 +115,7 @@ export function PinotQlTimeSeriesBuilder(props: {
         />
         <InputSeriesLimit
           current={savedParams.seriesLimit}
-          onChange={(seriesLimit) => onChange({ ...savedParams, seriesLimit })}
+          onChange={(seriesLimit) => onChangeAndRun({ ...savedParams, seriesLimit })}
         />
       </div>
     </>

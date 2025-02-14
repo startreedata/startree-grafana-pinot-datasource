@@ -104,7 +104,7 @@ func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*da
 			TimeColumnAlias:   query.resolveTimeColumnAlias(),
 			MetricColumnAlias: query.resolveMetricColumnAlias(),
 			TimeColumnFormat:  OutputTimeFormat(),
-			SeriesLimit:       -1, // TODO: Magic number
+			SeriesLimit:       query.SeriesLimit,
 		}, results)
 	}
 }

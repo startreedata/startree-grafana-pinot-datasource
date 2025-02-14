@@ -29,7 +29,13 @@ var queryDuration = promauto.NewSummaryVec(
 	[]string{"query_type", "status"},
 )
 
-const SeriesLimitDisabled int = -1
+const (
+	DefaultQueryLimit   = 100_000
+	DefaultSeriesLimit  = 20
+	BuilderTimeColumn   = "__time"
+	BuilderMetricColumn = "__metric"
+	BuilderLogColumn    = "__message"
+)
 
 type ExecutableQuery interface {
 	Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse
@@ -56,13 +62,6 @@ func ExecuteQuery(client *pinotlib.PinotClient, ctx context.Context, backendQuer
 }
 
 func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
-	var seriesLimit int
-	if query.SeriesLimit == nil {
-		seriesLimit = SeriesLimitDisabled
-	} else {
-		seriesLimit = *query.SeriesLimit
-	}
-
 	switch {
 	case query.Hide:
 		return new(NoOpQuery)
@@ -74,7 +73,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			TimeRange:    query.TimeRange,
 			IntervalSize: query.IntervalSize,
 			Legend:       query.Legend,
-			SeriesLimit:  seriesLimit,
+			SeriesLimit:  query.SeriesLimit,
 		}
 
 	case query.QueryType == QueryTypePinotVariableQuery:
@@ -97,7 +96,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			IntervalSize:      query.IntervalSize,
 			DisplayType:       query.DisplayType,
 			Legend:            query.Legend,
-			SeriesLimit:       seriesLimit,
+			SeriesLimit:       query.SeriesLimit,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
@@ -143,7 +142,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			OrderByClauses:      query.OrderByClauses,
 			QueryOptions:        query.QueryOptions,
 			Legend:              query.Legend,
-			SeriesLimit:         seriesLimit,
+			SeriesLimit:         query.SeriesLimit,
 		}
 
 	default:

@@ -19,6 +19,7 @@ const newEmptyParams = (): TimeSeriesBuilder.Params => ({
   queryOptions: [],
   legend: '',
   groupByColumns: [],
+  seriesLimit: 0,
 });
 
 describe('paramsFrom', () => {
@@ -38,6 +39,7 @@ describe('paramsFrom', () => {
     legend: '{{test_dim_column}}',
     groupByColumns: ['test_dim_column_1'],
     groupByColumnsV2: [{ name: 'test_dim_column2', key: 'test_dim_column2_key' }],
+    seriesLimit: 101,
   };
 
   test('query is fully populated', () => {
@@ -53,6 +55,7 @@ describe('paramsFrom', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column_1' }, { name: 'test_dim_column2', key: 'test_dim_column2_key' }],
+      seriesLimit: 101,
     });
   });
 
@@ -69,6 +72,7 @@ describe('paramsFrom', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column_1' }, { name: 'test_dim_column2', key: 'test_dim_column2_key' }],
+      seriesLimit: 101,
     });
   });
 
@@ -85,6 +89,7 @@ describe('paramsFrom', () => {
       queryOptions: [],
       legend: '',
       groupByColumns: [],
+      seriesLimit: 0
     });
   });
 });
@@ -102,6 +107,7 @@ describe('canRunQuery', () => {
     queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
     legend: '{{test_dim_column}}',
     groupByColumns: [{ name: 'test_dim_column' }],
+    seriesLimit: 101,
   };
 
   test('params are empty', () => {
@@ -188,6 +194,7 @@ describe('applyDefaults', () => {
       queryOptions: [],
       legend: '',
       groupByColumns: [],
+      seriesLimit: 0
     });
   });
 
@@ -204,6 +211,7 @@ describe('applyDefaults', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column' }],
+      seriesLimit: 101,
     };
     expect(TimeSeriesBuilder.applyDefaults(params, { timeColumns, metricColumns })).toEqual(false);
     expect(params).toEqual<TimeSeriesBuilder.Params>({
@@ -218,6 +226,7 @@ describe('applyDefaults', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumns: [{ name: 'test_dim_column' }],
+      seriesLimit: 101,
     });
   });
 });
@@ -261,6 +270,7 @@ describe('dataQueryOf', () => {
         queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
         legend: '{{test_dim_column}}',
         groupByColumns: [{ name: 'test_dim_column' }],
+        seriesLimit: 101,
       })
     ).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -278,6 +288,7 @@ describe('dataQueryOf', () => {
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
       legend: '{{test_dim_column}}',
       groupByColumnsV2: [{ name: 'test_dim_column' }],
+      seriesLimit: 101,
     });
   });
 });

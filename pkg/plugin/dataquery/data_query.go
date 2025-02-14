@@ -55,7 +55,10 @@ const (
 	ColumnTypeAll       ColumnType = "ALL"
 )
 
-type Optional[T any] *T
+const (
+	AggregationFunctionCount = "COUNT"
+	AggregationFunctionNone  = "NONE"
+)
 
 type DataQuery struct {
 	TimeRange     TimeRange     `json:"-"`
@@ -69,7 +72,7 @@ type DataQuery struct {
 
 	TableName    string        `json:"tableName"`
 	QueryOptions []QueryOption `json:"queryOptions"`
-	SeriesLimit  Optional[int] `json:"seriesLimit"`
+	SeriesLimit  int           `json:"seriesLimit"`
 
 	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`

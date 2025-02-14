@@ -115,6 +115,10 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 }
 
 func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time, []MetricSeries) {
+	if limit < 1 {
+		limit = DefaultSeriesLimit
+	}
+
 	timeCol := GetTimeColumn(metrics)
 
 	timestampToIdx := make(map[time.Time]int, len(timeCol))
@@ -128,7 +132,7 @@ func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time,
 
 	for _, met := range metrics {
 		tsKey := seriesMapper.GetKey(met.Labels)
-		if limit != SeriesLimitDisabled && tsKey >= limit {
+		if tsKey >= limit {
 			continue
 		}
 

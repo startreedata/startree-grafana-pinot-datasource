@@ -8,6 +8,7 @@ describe('paramsFrom', () => {
       tableName: '',
       promQlCode: '',
       legend: '',
+      seriesLimit: 0,
     });
   });
 
@@ -18,11 +19,13 @@ describe('paramsFrom', () => {
         tableName: 'test_table',
         promQlCode: 'sum(rate(http_requests[15m])) by(path)',
         legend: '{{path}}',
+        seriesLimit: 101,
       })
     ).toEqual<Params>({
       tableName: 'test_table',
       promQlCode: 'sum(rate(http_requests[15m])) by(path)',
       legend: '{{path}}',
+      seriesLimit: 101,
     });
   });
 });
@@ -35,6 +38,7 @@ describe('dataQueryWithParams', () => {
         tableName: '',
         promQlCode: '',
         legend: '',
+        seriesLimit: 0,
       })
     ).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -42,6 +46,7 @@ describe('dataQueryWithParams', () => {
       tableName: undefined,
       promQlCode: undefined,
       legend: undefined,
+      seriesLimit: undefined,
     });
   });
 
@@ -51,6 +56,7 @@ describe('dataQueryWithParams', () => {
         tableName: 'test_table',
         promQlCode: 'sum(rate(http_requests[15m])) by(path)',
         legend: '{{path}}',
+        seriesLimit: 101,
       })
     ).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -58,6 +64,7 @@ describe('dataQueryWithParams', () => {
       tableName: 'test_table',
       promQlCode: 'sum(rate(http_requests[15m])) by(path)',
       legend: '{{path}}',
+      seriesLimit: 101,
     });
   });
 });

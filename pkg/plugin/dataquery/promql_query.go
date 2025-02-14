@@ -42,16 +42,13 @@ func (query PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Conte
 }
 
 func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
-	var seriesCount int
-	if limit == SeriesLimitDisabled {
-		seriesCount = len(results)
-	} else {
-		seriesCount = min(limit, len(results))
+	if limit < 1 {
+		limit = DefaultSeriesLimit
 	}
 
 	var legendFormatter LegendFormatter
-	frames := make([]*data.Frame, seriesCount)
-	for i := 0; i < seriesCount; i++ {
+	frames := make([]*data.Frame, min(limit, len(results)))
+	for i := range frames {
 		tsField := data.NewField("time", nil, results[i].Timestamps).SetConfig(&data.FieldConfig{
 			Interval: float64(intervalSize.Milliseconds())})
 		metField := data.NewField("", results[i].Metric, results[i].Values).SetConfig(&data.FieldConfig{

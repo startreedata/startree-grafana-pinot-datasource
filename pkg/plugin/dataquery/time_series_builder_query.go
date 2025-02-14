@@ -10,16 +10,7 @@ import (
 	"time"
 )
 
-const (
-	BuilderTimeColumn   = "__time"
-	BuilderMetricColumn = "__metric"
-	BuilderLogColumn    = "__message"
-
-	AggregationFunctionCount = "COUNT"
-	AggregationFunctionNone  = "NONE"
-
-	DefaultLimit = 100_000
-)
+const ()
 
 var _ ExecutableQuery = TimeSeriesBuilderQuery{}
 
@@ -186,7 +177,7 @@ func (query TimeSeriesBuilderQuery) ExtractResults(results *pinotlib.ResultTable
 		MetricColumnAlias: BuilderMetricColumn,
 		TimeColumnAlias:   BuilderTimeColumn,
 		TimeColumnFormat:  outputTimeFormat,
-		SeriesLimit:       -1, // TODO: Magic number
+		SeriesLimit:       query.SeriesLimit,
 	}, results)
 }
 
@@ -223,11 +214,11 @@ func (query TimeSeriesBuilderQuery) resolveLimit() int64 {
 		return query.Limit
 	case query.AggregationFunction != AggregationFunctionNone && len(query.GroupByColumns) > 0:
 		// Use default limit for group by queries.
-		return DefaultLimit
+		return DefaultQueryLimit
 	case query.MaxDataPoints > 0:
 		return query.MaxDataPoints
 	default:
-		return DefaultLimit
+		return DefaultQueryLimit
 	}
 }
 
