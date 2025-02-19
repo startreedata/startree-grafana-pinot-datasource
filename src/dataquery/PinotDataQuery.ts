@@ -7,7 +7,7 @@ import { ScopedVars } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
 import { ComplexField } from './ComplexField';
 import { JsonExtractor } from './JsonExtractor';
-import { RegexpExtractor } from './RegexpExtractor'; // TODO: It's not entirely clear to me how these defaults are populated.
+import { RegexpExtractor } from './RegexpExtractor';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -48,7 +48,7 @@ export interface PinotDataQuery extends DataQuery {
   promQlCode?: string;
 }
 
-export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVars | undefined): PinotDataQuery {
+export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
 
   function mapIfExists<T>(target: T | undefined, mapper: (val: T) => T): T | undefined {
@@ -69,6 +69,10 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
+    logColumn: mapIfExists(query.logColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
     granularity: replaceIfExists(query.granularity),
     aggregationFunction: replaceIfExists(query.aggregationFunction),
     groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),
@@ -76,14 +80,36 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars: ScopedVa
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
+    metadataColumns: query.metadataColumns?.map(({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    jsonExtractors: query.jsonExtractors?.map(({ source, path, resultType, alias }) => ({
+      source: mapIfExists(source, ({ name, key }) => ({
+        name: replaceIfExists(name),
+        key: replaceIfExists(key),
+      })),
+      alias: replaceIfExists(alias),
+      path: replaceIfExists(path),
+      resultType,
+    })),
+    regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias }) => ({
+      source: mapIfExists(source, ({ name, key }) => ({
+        name: replaceIfExists(name),
+        key: replaceIfExists(key),
+      })),
+      alias: replaceIfExists(alias),
+      pattern: replaceIfExists(pattern),
+      group,
+    })),
     filters: query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => ({
       columnName: replaceIfExists(columnName),
       columnKey: replaceIfExists(columnKey),
       operator,
       valueExprs: valueExprs?.map((expr) => replace(expr)),
     })),
-    queryOptions: (query.queryOptions || []).map(({ name, value }) => ({
-      name,
+    queryOptions: query.queryOptions?.map(({ name, value }) => ({
+      name: replaceIfExists(name),
       value: replaceIfExists(value),
     })),
 
