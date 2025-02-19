@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestPinotResourceHandler_PreviewSqlBuilder(t *testing.T) {
+func TestPreviewSqlBuilder(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
@@ -53,7 +53,7 @@ SET timeoutMs=1;`
 	assert.Equal(t, want, got["result"])
 }
 
-func TestPinotResourceHandler_DistinctValues(t *testing.T) {
+func TestDistinctValues(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
@@ -72,7 +72,7 @@ func TestPinotResourceHandler_DistinctValues(t *testing.T) {
 	assertEqualJson(t, want, got)
 }
 
-func TestPinotResourceHandler_CodeSqlPreview(t *testing.T) {
+func TestCodeSqlPreview(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
@@ -113,7 +113,7 @@ LIMIT 1000000`
 	assert.Equal(t, want, got["result"])
 }
 
-func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
+func TestPreviewLogSql(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
@@ -206,7 +206,7 @@ SET myOption=myOptionValue;`
 
 }
 
-func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
+func TestListSuggestedGranularities(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 
@@ -267,7 +267,7 @@ func TestPinotResourceHandler_ListSuggestedGranularities(t *testing.T) {
 	}
 }
 
-func TestPinotResourceHandler_ListColumns(t *testing.T) {
+func TestListColumns(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
 	testCases := []struct {

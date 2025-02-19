@@ -2,7 +2,7 @@ import { AdHocVariableFilter, DataSourceInstanceSettings, ScopedVars } from '@gr
 import { DataSourceWithBackend } from '@grafana/runtime';
 
 import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
-import { PinotConnectionConfig } from './dataquery/PinotConnectionConfig';
+import { PinotConnectionConfig } from './config/PinotConnectionConfig';
 import { PinotVariableSupport } from './variables';
 import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/AnnotationsQueryEditor';
 

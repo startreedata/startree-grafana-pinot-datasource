@@ -6,10 +6,12 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
+	"net/http"
 )
 
 var (
@@ -33,7 +35,7 @@ func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings)
 		return nil, err
 	}
 
-	client := PinotClientOf(config)
+	client := PinotClientOf(http.DefaultClient, config)
 	return &Datasource{
 		QueryDataHandler:    newQueryDataHandler(client),
 		CallResourceHandler: newCallResourceHandler(client),
@@ -44,12 +46,13 @@ func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings)
 
 func newQueryDataHandler(client *pinotlib.PinotClient) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
-		response := backend.NewQueryDataResponse()
+		thisClient := auth.PassThroughOAuth(client, req)
+		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
-			log.FromContext(ctx).Debug("received query", "contents", string(query.JSON))
-			response.Responses[query.RefID] = dataquery.ExecuteQuery(ctx, client, query)
+			log.FromContext(ctx).Debug("received Pinot data query", "contents", string(query.JSON))
+			resp.Responses[query.RefID] = dataquery.ExecuteQuery(thisClient, ctx, query)
 		}
-		return response, nil
+		return resp, nil
 	})
 }
 
@@ -62,9 +65,10 @@ func newCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHand
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
+		thisClient := auth.PassThroughOAuth(client, req)
 
 		// Test connection to controller
-		if tables, err := client.ListTables(ctx); err != nil {
+		if tables, err := thisClient.ListTables(ctx); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),
@@ -77,7 +81,7 @@ func newCheckHealthHandler(client *pinotlib.PinotClient) backend.CheckHealthHand
 		}
 
 		// Test connection to broker
-		if _, err := client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery("SELECT 1")); err != nil {
+		if _, err := thisClient.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery("SELECT 1")); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),

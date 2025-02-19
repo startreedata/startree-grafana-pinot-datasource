@@ -34,7 +34,7 @@ func (query PinotQlCodeQuery) Validate() error {
 	}
 }
 
-func (query PinotQlCodeQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query PinotQlCodeQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
 	if err := query.Validate(); err != nil {
 		return NewBadRequestErrorResponse(err)
 	}

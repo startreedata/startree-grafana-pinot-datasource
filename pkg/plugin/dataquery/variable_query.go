@@ -18,7 +18,7 @@ type VariableQuery struct {
 	PinotQlCode  string
 }
 
-func (query VariableQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query VariableQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
 	switch query.VariableType {
 	case VariableQueryTypeColumnList:
 		return query.getColumnList(ctx, client)
