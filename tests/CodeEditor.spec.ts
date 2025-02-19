@@ -187,7 +187,59 @@ LIMIT 100000;`
       );
     });
   });
+
+  test('Use dashboard variables', async ({ page }) => {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByText('complex_website', { exact: true }).click();
+
+    await addDashboardConstant(page, 'granularity', '12:HOURS');
+
+    const codebox = page.getByTestId('sql-editor-content').getByRole('code');
+    await codebox.click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('ControlOrMeta+x');
+    await page.keyboard.type(
+        // language=text
+        `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("hoursSinceEpoch", '$granularity')
+GROUP BY $__timeAlias()
+ORDER BY $__timeAlias() DESC
+LIMIT 100000;`
+    );
+
+    await page.getByTestId('run-query-btn').click();
+    await expect(page.getByTestId('sql-preview')).toContainText(
+        // language=text
+        `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "__metric" 
+FROM  "complex_website" 
+WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
+GROUP BY  "__time" 
+ORDER BY  "__time"  DESC
+LIMIT 100000;`
+    );
+  });
 });
+
+async function addDashboardConstant(page: Page, name: string, value: string) {
+  await page.getByRole('button', { name: 'Open dashboard settings' }).click();
+  await page.getByRole('link', { name: 'Variables' }).click();
+
+  if (await page.getByTestId('data-testid Call to action button Add variable').isVisible()) {
+    await page.getByTestId('data-testid Call to action button Add variable').click();
+  } else {
+    await page.getByRole('button', { name: 'Variable editor New variable' }).click();
+  }
+
+  await page.getByTestId('data-testid Variable editor Form Type select').getByRole('img').click();
+  await page.getByText('Constant', { exact: true }).click();
+  await page.getByTestId('data-testid Variable editor Form Name field').click();
+  await page.getByTestId('data-testid Variable editor Form Name field').fill(name);
+  await page.getByTestId('data-testid Variable editor Form Constant Query field').click();
+  await page.getByTestId('data-testid Variable editor Form Constant Query field').fill(value);
+  await page.getByRole('button', { name: 'Variable editor Submit button' }).click();
+  await page.getByRole('dialog', { name: 'Dashboard settings' }).getByLabel('Go Back').click();
+}
 
 async function checkSqlEditor(page: Page) {
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
