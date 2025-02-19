@@ -36,7 +36,7 @@ func (query LogsBuilderQuery) Validate() error {
 	}
 }
 
-func (query LogsBuilderQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query LogsBuilderQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
 	if err := query.Validate(); err != nil {
 		return NewBadRequestErrorResponse(err)
 	}

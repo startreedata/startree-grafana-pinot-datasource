@@ -23,7 +23,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 			},
 			IntervalSize: 60 * time.Second,
 			Legend:       "legend",
-		}.Execute(context.Background(), client)
+		}.Execute(client, context.Background())
 		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 		assert.Equal(t, data.Frames{
 			data.NewFrame("",
@@ -82,7 +82,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 			Legend:       "legend",
 		}
 
-		got := query.Execute(context.Background(), client)
+		got := query.Execute(client, context.Background())
 		assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
 		assert.Empty(t, got.Frames, "DataResponse.Frames")
 		assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
@@ -99,7 +99,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 			},
 			IntervalSize: 60 * time.Second,
 			Legend:       "legend",
-		}.Execute(context.Background(), client)
+		}.Execute(client, context.Background())
 		assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 		assert.Empty(t, got.Frames, "DataResponse.Frames")
 		assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")

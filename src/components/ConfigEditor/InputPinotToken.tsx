@@ -35,18 +35,22 @@ export function InputPinotToken(props: {
           onChange={(change) => onChangeType(change.value)}
         />
       </InlineField>
-      {tokenType !== 'None' && (
-        <InlineField label={labels.valueLabel} labelWidth={8} required data-testid="input-pinot-token-value">
-          <SecretInput
-            isConfigured={isConfigured}
-            value={tokenValue}
-            placeholder={labels.valuePlaceholder}
-            width={40}
-            onReset={onResetToken}
-            onChange={(event: ChangeEvent<HTMLInputElement>) => onChangeToken(event.target.value)}
-          />
-        </InlineField>
-      )}
+      <InlineField
+        label={labels.valueLabel}
+        labelWidth={8}
+        required
+        data-testid="input-pinot-token-value"
+        disabled={tokenType === 'None'}
+      >
+        <SecretInput
+          isConfigured={isConfigured}
+          value={tokenValue}
+          placeholder={labels.valuePlaceholder}
+          width={40}
+          onReset={onResetToken}
+          onChange={(event: ChangeEvent<HTMLInputElement>) => onChangeToken(event.target.value)}
+        />
+      </InlineField>
     </div>
   );
 }

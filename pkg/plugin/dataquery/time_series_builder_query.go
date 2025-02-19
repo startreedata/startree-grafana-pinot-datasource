@@ -40,7 +40,7 @@ type TimeSeriesBuilderQuery struct {
 	Legend              string
 }
 
-func (query TimeSeriesBuilderQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query TimeSeriesBuilderQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
 	if err := query.Validate(); err != nil {
 		return NewBadRequestErrorResponse(err)
 	}

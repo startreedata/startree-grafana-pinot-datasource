@@ -30,30 +30,26 @@ var queryDuration = promauto.NewSummaryVec(
 )
 
 type ExecutableQuery interface {
-	Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse
+	Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse
 }
 
-func ExecuteQuery(ctx context.Context, client *pinotlib.PinotClient, backendQuery backend.DataQuery) backend.DataResponse {
-	var query DataQuery
-	if err := query.ReadFrom(backendQuery); err != nil {
-		queryCounter.With(prometheus.Labels{
-			"query_type": query.QueryType.String(),
-			"status":     "400",
-		}).Inc()
-		return backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
-	}
-
+func ExecuteQuery(client *pinotlib.PinotClient, ctx context.Context, backendQuery backend.DataQuery) backend.DataResponse {
 	startTime := time.Now()
-	resp := ExecutableQueryFrom(query).Execute(ctx, client)
-	duration := time.Since(startTime)
+
+	var query DataQuery
+	var resp backend.DataResponse
+	if err := query.ReadFrom(backendQuery); err != nil {
+		resp = backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
+	} else {
+		resp = ExecutableQueryFrom(query).Execute(client, ctx)
+	}
 
 	labels := prometheus.Labels{
 		"query_type": query.QueryType.String(),
 		"status":     strconv.FormatInt(int64(resp.Status), 10),
 	}
 	queryCounter.With(labels).Inc()
-	queryDuration.With(labels).Observe(duration.Seconds())
-
+	queryDuration.With(labels).Observe(time.Since(startTime).Seconds())
 	return resp
 }
 
@@ -150,7 +146,7 @@ var _ ExecutableQuery = NoOpQuery{}
 
 type NoOpQuery struct{}
 
-func (d NoOpQuery) Execute(context.Context, *pinotlib.PinotClient) backend.DataResponse {
+func (d NoOpQuery) Execute(*pinotlib.PinotClient, context.Context) backend.DataResponse {
 	return NewEmptyDataResponse()
 }
 

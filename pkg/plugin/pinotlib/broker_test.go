@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"net/http"
 	"testing"
 )
 
@@ -43,7 +44,7 @@ func TestBrokerExceptionError_Error(t *testing.T) {
 }
 
 func TestPinotClient_RenderSql(t *testing.T) {
-	client := NewPinotClient(PinotClientProperties{
+	client := NewPinotClient(http.DefaultClient, PinotClientProperties{
 		QueryOptions: []QueryOption{
 			{Name: "useMultistageEngine", Value: "true"},
 			{Name: "timeoutMs", Value: "100"},

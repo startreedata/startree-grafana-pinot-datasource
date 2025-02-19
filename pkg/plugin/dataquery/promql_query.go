@@ -19,7 +19,7 @@ type PromQlQuery struct {
 	Legend       string
 }
 
-func (params PromQlQuery) Execute(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (params PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
 	if strings.TrimSpace(params.PromQlCode) == "" {
 		return NewEmptyDataResponse()
 	}

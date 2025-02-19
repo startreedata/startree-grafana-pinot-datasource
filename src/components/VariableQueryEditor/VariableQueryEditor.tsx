@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { interpolateVariables, PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from '../../datasource';
-import { PinotConnectionConfig } from '../../dataquery/PinotConnectionConfig';
+import { PinotConnectionConfig } from '../../config/PinotConnectionConfig';
 import { SelectVariableType, VariableType } from './SelectVariableType';
 import { DistinctValuesVariableEditor } from './DistinctValuesVariableEditor';
 import { SqlVariableEditor } from './SqlVariableEditor';
