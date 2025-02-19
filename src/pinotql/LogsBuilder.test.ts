@@ -386,6 +386,14 @@ test('resourcesFrom', () => {
         isDerived: false,
         isMetric: false,
       },
+      {
+        name: 'json',
+        dataType: 'JSON',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
     ],
   };
 
@@ -447,6 +455,14 @@ test('resourcesFrom', () => {
         isDerived: false,
         isMetric: false,
       },
+      {
+        name: 'json',
+        dataType: 'JSON',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
     ],
     timeColumns: [
       {
@@ -470,6 +486,50 @@ test('resourcesFrom', () => {
       {
         name: 'string2',
         dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    regexpExtractorColumns: [
+      {
+        name: 'string1',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'string2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+    ],
+    jsonExtractorColumns: [
+      {
+        name: 'string1',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'string2',
+        dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'json',
+        dataType: 'JSON',
         key: null,
         isTime: false,
         isDerived: false,
@@ -504,6 +564,14 @@ test('resourcesFrom', () => {
       {
         name: 'string2',
         dataType: 'STRING',
+        key: null,
+        isTime: false,
+        isDerived: false,
+        isMetric: false,
+      },
+      {
+        name: 'json',
+        dataType: 'JSON',
         key: null,
         isTime: false,
         isDerived: false,

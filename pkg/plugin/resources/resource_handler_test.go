@@ -138,7 +138,7 @@ func TestPinotResourceHandler_PreviewLogSql(t *testing.T) {
 			"group":   0,
 			"alias":   "regexpFieldAlias",
 		}},
-		"dimensionFilters": []map[string]interface{}{{
+		"filters": []map[string]interface{}{{
 			"columnName": "dim1",
 			"valueExprs": []string{"val1"},
 			"operator":   "=",

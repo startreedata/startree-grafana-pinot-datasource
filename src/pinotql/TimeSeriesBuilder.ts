@@ -228,3 +228,4 @@ function useSqlPreview(
   }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return { result, loading };
 }
+
