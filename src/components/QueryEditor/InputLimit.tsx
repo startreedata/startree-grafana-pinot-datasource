@@ -4,28 +4,45 @@ import { InputTextField } from './InputTextField';
 
 const LimitAuto = -1;
 
-export function InputLimit(props: { current: number | undefined; onChange: (val: number) => void }) {
-  const { current, onChange } = props;
-  const labels = allLabels.components.QueryEditor.limit;
+export function InputSeriesLimit(props: { current: number; onChange: (val: number) => void }) {
+  return (
+    <div className={'gf-form'} data-testid="input-series-limit">
+      <InputLimitForm {...props} labels={allLabels.components.QueryEditor.seriesLimit} />
+    </div>
+  );
+}
 
-  const [limitText, setLimitText] = useState<string>(current && current >= 1 ? current?.toString(10) : '');
+export function InputLimit(props: { current: number; onChange: (val: number) => void }) {
+  return (
+    <div className={'gf-form'} data-testid="input-limit">
+      <InputLimitForm {...props} labels={allLabels.components.QueryEditor.limit} />
+    </div>
+  );
+}
+
+function InputLimitForm(props: {
+  current: number;
+  onChange: (val: number) => void;
+  labels: { label: string; tooltip: string };
+}) {
+  const { current, onChange, labels } = props;
+
+  const [limitText, setLimitText] = useState<string>(current >= 1 ? current.toString(10) : '');
   const [isValid, setIsValid] = useState<boolean>(true);
 
   return (
-    <div className={'gf-form'} data-testid="input-limit">
-      <InputTextField
-        current={limitText}
-        labels={labels}
-        invalid={!isValid}
-        placeholder={'auto'}
-        onChange={(value) => {
-          setLimitText(value);
-          const [newLimit, valid] = parseLimit(value);
-          setIsValid(valid);
-          onChange(newLimit);
-        }}
-      />
-    </div>
+    <InputTextField
+      current={limitText}
+      labels={labels}
+      invalid={!isValid}
+      placeholder={'auto'}
+      onChange={(value) => {
+        setLimitText(value);
+        const [newLimit, valid] = parseLimit(value);
+        setIsValid(valid);
+        onChange(newLimit);
+      }}
+    />
   );
 }
 

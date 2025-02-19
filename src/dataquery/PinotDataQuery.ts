@@ -31,6 +31,7 @@ export interface PinotDataQuery extends DataQuery {
   metadataColumns?: ComplexField[];
   jsonExtractors?: JsonExtractor[];
   regexpExtractors?: RegexpExtractor[];
+  seriesLimit?: number;
 
   // PinotQl Code
   pinotQlCode?: string;

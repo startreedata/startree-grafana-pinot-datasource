@@ -157,7 +157,7 @@ func (query LogsBuilderQuery) logsMetadataColumns() []pinotlib.ExprWithAlias {
 
 func (query LogsBuilderQuery) resolveLimit() int64 {
 	if query.Limit <= 0 {
-		return DefaultLimit
+		return DefaultQueryLimit
 	} else {
 		return query.Limit
 	}

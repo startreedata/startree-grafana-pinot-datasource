@@ -11,6 +11,7 @@ const newEmptyParams = (): CodeQuery.Params => {
     metricColumnAlias: '',
     logColumnAlias: '',
     legend: '',
+    seriesLimit: 0,
   };
 };
 
@@ -24,6 +25,7 @@ describe('paramsFrom', () => {
       pinotQlCode: '',
       tableName: '',
       timeColumnAlias: '',
+      seriesLimit: 0,
     });
   });
 
@@ -38,6 +40,7 @@ describe('paramsFrom', () => {
         pinotQlCode: 'SELECT * FROM "test_table";',
         tableName: 'test_table',
         timeColumnAlias: 'test_time_column_alias',
+        seriesLimit: 101,
       })
     ).toEqual<CodeQuery.Params>({
       displayType: 'LOGS',
@@ -47,6 +50,7 @@ describe('paramsFrom', () => {
       pinotQlCode: 'SELECT * FROM "test_table";',
       tableName: 'test_table',
       timeColumnAlias: 'test_time_column_alias',
+      seriesLimit: 101,
     });
   });
 });
@@ -126,6 +130,7 @@ WHERE $__timeFilter("timestamp")
 GROUP BY $__timeGroup("timestamp")
 ORDER BY $__timeAlias() DESC
 LIMIT 100000`,
+      seriesLimit: 0,
     });
   });
 
@@ -138,6 +143,7 @@ LIMIT 100000`,
       metricColumnAlias: 'test_metric_column_alias',
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
+      seriesLimit: 101,
     };
     expect(CodeQuery.applyDefaults(params)).toEqual(false);
     expect(params).toEqual<CodeQuery.Params>({
@@ -148,6 +154,7 @@ LIMIT 100000`,
       metricColumnAlias: 'test_metric_column_alias',
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
+      seriesLimit: 101,
     });
   });
 });
@@ -165,6 +172,7 @@ describe('dataQueryOf', () => {
       metricColumnAlias: undefined,
       logColumnAlias: undefined,
       legend: undefined,
+      seriesLimit: undefined,
     });
   });
 
@@ -177,6 +185,7 @@ describe('dataQueryOf', () => {
       metricColumnAlias: 'test_metric_column_alias',
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
+      seriesLimit: 101,
     };
 
     expect(CodeQuery.dataQueryOf({ refId: 'test_id' }, params)).toEqual<PinotDataQuery>({
@@ -190,6 +199,7 @@ describe('dataQueryOf', () => {
       metricColumnAlias: 'test_metric_column_alias',
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
+      seriesLimit: 101,
     });
   });
 });

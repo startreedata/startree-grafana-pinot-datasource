@@ -17,39 +17,42 @@ type PromQlQuery struct {
 	TimeRange    TimeRange
 	IntervalSize time.Duration
 	Legend       string
+	SeriesLimit  int
 }
 
-func (params PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
-	if strings.TrimSpace(params.PromQlCode) == "" {
+func (query PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+	if strings.TrimSpace(query.PromQlCode) == "" {
 		return NewEmptyDataResponse()
 	}
 
 	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
 		Language:  pinotlib.TimeSeriesQueryLanguagePromQl,
-		Query:     params.PromQlCode,
-		Start:     params.TimeRange.From,
-		End:       params.TimeRange.To,
-		Step:      params.IntervalSize,
-		TableName: params.TableName,
+		Query:     query.PromQlCode,
+		Start:     query.TimeRange.From,
+		End:       query.TimeRange.To,
+		Step:      query.IntervalSize,
+		TableName: query.TableName,
 	})
 	if err != nil {
-		// TODO: Separate downstream and plugin errors.
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, params.Legend, params.IntervalSize)
+	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, query.Legend, query.IntervalSize, query.SeriesLimit)
 	return NewOkDataResponse(frames...)
 }
 
-func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration) []*data.Frame {
-	var legendFormatter LegendFormatter
+func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
+	if limit < 1 {
+		limit = DefaultSeriesLimit
+	}
 
-	frames := make([]*data.Frame, len(results))
-	for i, res := range results {
-		tsField := data.NewField("time", nil, res.Timestamps).SetConfig(&data.FieldConfig{
+	var legendFormatter LegendFormatter
+	frames := make([]*data.Frame, min(limit, len(results)))
+	for i := range frames {
+		tsField := data.NewField("time", nil, results[i].Timestamps).SetConfig(&data.FieldConfig{
 			Interval: float64(intervalSize.Milliseconds())})
-		metField := data.NewField("", res.Metric, res.Values).SetConfig(&data.FieldConfig{
-			DisplayNameFromDS: legendFormatter.FormatSeriesName(legend, res.Metric),
+		metField := data.NewField("", results[i].Metric, results[i].Values).SetConfig(&data.FieldConfig{
+			DisplayNameFromDS: legendFormatter.FormatSeriesName(legend, results[i].Metric),
 		})
 		frames[i] = data.NewFrame("", tsField, metField)
 	}

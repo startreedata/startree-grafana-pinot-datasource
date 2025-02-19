@@ -29,6 +29,7 @@ export interface Params {
   queryOptions: QueryOption[];
   legend: string;
   groupByColumns: ComplexField[];
+  seriesLimit: number;
 }
 
 export interface Resources {
@@ -59,6 +60,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     queryOptions: query.queryOptions || [],
     legend: query.legend || '',
     groupByColumns: groupByColumnsFrom(query),
+    seriesLimit: query.seriesLimit || 0,
   };
 }
 
@@ -137,6 +139,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     legend: params.legend || undefined,
     groupByColumns: undefined,
     groupByColumnsV2: isEmpty(params.groupByColumns) ? undefined : params.groupByColumns,
+    seriesLimit: params.seriesLimit || undefined,
   };
 }
 

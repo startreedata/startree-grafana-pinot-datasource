@@ -25,10 +25,7 @@ import { useTheme2 } from '@grafana/ui';
 import { DateTime, GrafanaTheme2 } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { PinotSupportedKeywords } from '../../promql/pinotSupport';
-import { listTimeSeriesLabels, listTimeSeriesLabelValues, listTimeSeriesMetrics } from '../../resources/timeseries'; // Making very good progress on the editor. Needs theming and to remove unsupported functions.
-
-// TODO: This is how
-//const dynamicConfigCompartment = new Compartment();
+import { listTimeSeriesLabels, listTimeSeriesLabelValues, listTimeSeriesMetrics } from '../../resources/timeseries';
 
 export function PromQlExpressionEditor(props: {
   datasource: DataSource;
