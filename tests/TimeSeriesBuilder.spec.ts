@@ -49,16 +49,16 @@ LIMIT 100000;`
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
-     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')  AS  "time" ,
+     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')  AS  "__time" ,
     SUM("views") AS  "views" 
 FROM
      "complex_website" 
 WHERE
      "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137 
 GROUP BY
-     "time" 
+     "__time" 
 ORDER BY
-     "time"  DESC
+     "__time"  DESC
 LIMIT 100000;`
   );
 

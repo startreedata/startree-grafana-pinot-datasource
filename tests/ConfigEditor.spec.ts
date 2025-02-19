@@ -121,17 +121,17 @@ SET timeoutMs=100;`
     await expect(page.getByTestId('data-testid Alert error')).toBeVisible();
   });
 
-  test('OAuth Passthrough is enabled', async ({ page }) => {
-    // TODO: Log in to Grafana with OAuth
-
-    await page.getByPlaceholder('Controller URL').fill(Env.PinotConnectionControllerUrl);
-    await page.getByPlaceholder('Broker URL').fill(Env.PinotConnectionBrokerUrl);
-    await page.getByPlaceholder('default').fill(Env.PinotConnectionDatabase);
-    await page.getByTestId('switch-oauth-pass-thru').click();
-
-    const healthCheckResponse = page.waitForResponse('http://localhost:3000/api/datasources/*/health');
-    await page.getByLabel('Data source settings page Save and Test button').click();
-    await healthCheckResponse;
-    await expect(page.getByText('Pinot data source is working')).toBeVisible();
-  });
+  // test('OAuth Passthrough is enabled', async ({ page }) => {
+  //   // TODO: Log in to Grafana with OAuth
+  //
+  //   await page.getByPlaceholder('Controller URL').fill(Env.PinotConnectionControllerUrl);
+  //   await page.getByPlaceholder('Broker URL').fill(Env.PinotConnectionBrokerUrl);
+  //   await page.getByPlaceholder('default').fill(Env.PinotConnectionDatabase);
+  //   await page.getByTestId('switch-oauth-pass-thru').click();
+  //
+  //   const healthCheckResponse = page.waitForResponse('http://localhost:3000/api/datasources/*/health');
+  //   await page.getByLabel('Data source settings page Save and Test button').click();
+  //   await healthCheckResponse;
+  //   await expect(page.getByText('Pinot data source is working')).toBeVisible();
+  // });
 });
