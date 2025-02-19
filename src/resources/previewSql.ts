@@ -54,7 +54,7 @@ export interface PreviewLogsSqlRequest {
   metadataColumns: ComplexField[] | undefined;
   jsonExtractors: JsonExtractor[] | undefined;
   regexpExtractors: RegexpExtractor[] | undefined;
-  dimensionFilters: DimensionFilter[] | undefined;
+  filters: DimensionFilter[] | undefined;
   queryOptions: QueryOption[] | undefined;
   limit: number | undefined;
   expandMacros: boolean | undefined;

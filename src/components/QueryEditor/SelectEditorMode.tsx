@@ -5,11 +5,10 @@ import React, { useState } from 'react';
 import { PinotDataQuery } from '../../dataquery/PinotDataQuery';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
-import { previewSqlBuilder } from '../../resources/previewSql';
+import { previewLogsSql, previewSqlBuilder } from '../../resources/previewSql';
 import { QueryType } from '../../dataquery/QueryType';
-import { columnLabelOf } from '../../dataquery/ComplexField';
 import { DisplayType } from '../../dataquery/DisplayType';
-import { CodeQuery, TimeSeriesBuilder } from '../../pinotql';
+import { CodeQuery, LogsBuilder, TimeSeriesBuilder } from '../../pinotql';
 
 export function SelectEditorMode(props: {
   query: PinotDataQuery;
@@ -52,39 +51,27 @@ export function SelectEditorMode(props: {
       <RadioButtonGroup
         data-testid="radio"
         options={Object.keys(EditorMode).map((name) => ({ label: name, value: name }))}
-        onChange={(value) => {
-          if (value === EditorMode.Builder) {
+        onChange={(newValue) => {
+          if (newValue === EditorMode.Builder) {
             setShowConfirm(true);
-          }
-          const builderParams = TimeSeriesBuilder.paramsFrom(query);
-
-          if (value === EditorMode.Code) {
+          } else if (query.displayType === DisplayType.LOGS) {
+            const builderParams = LogsBuilder.paramsFrom(query);
+            previewLogsSql(datasource, {
+              ...builderParams,
+              timeRange: timeRange,
+              expandMacros: false,
+            }).then((sql) =>
+              onChange(CodeQuery.dataQueryOf(query, CodeQuery.paramsFromLogsBuilder(builderParams, sql)))
+            );
+          } else if (query.displayType === DisplayType.TIMESERIES) {
+            const builderParams = TimeSeriesBuilder.paramsFrom(query);
             previewSqlBuilder(datasource, {
+              ...builderParams,
               intervalSize: intervalSize,
               timeRange: timeRange,
               expandMacros: false,
-              aggregationFunction: builderParams.aggregationFunction,
-              groupByColumns: builderParams.groupByColumns,
-              metricColumn: builderParams.metricColumn,
-              tableName: builderParams.tableName,
-              timeColumn: builderParams.timeColumn,
-              filters: builderParams.filters,
-              limit: builderParams.limit,
-              granularity: builderParams.granularity,
-              orderBy: builderParams.orderBy,
-              queryOptions: builderParams.queryOptions,
             }).then((sql) =>
-              onChange(
-                CodeQuery.dataQueryOf(query, {
-                  displayType: DisplayType.TIMESERIES,
-                  tableName: builderParams.tableName,
-                  timeColumnAlias: 'time',
-                  metricColumnAlias: columnLabelOf(builderParams.metricColumn.name, builderParams.metricColumn.key),
-                  logColumnAlias: '',
-                  legend: builderParams.legend,
-                  pinotQlCode: sql,
-                })
-              )
+              onChange(CodeQuery.dataQueryOf(query, CodeQuery.paramsFromTimeSeriesBuilder(builderParams, sql)))
             );
           }
         }}

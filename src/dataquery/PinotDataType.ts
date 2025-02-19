@@ -6,6 +6,7 @@ export const PinotDataType = Object.freeze({
   STRING: 'STRING',
   MAP: 'MAP',
   BYTES: 'BYTES',
+  JSON: 'JSON',
   BIG_DECIMAL: 'BIG_DECIMAL',
 });
 

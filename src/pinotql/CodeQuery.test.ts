@@ -1,5 +1,6 @@
 import { PinotDataQuery } from '../dataquery/PinotDataQuery';
 import * as CodeQuery from './CodeQuery';
+import { TimeSeriesBuilder } from './index';
 
 const newEmptyParams = (): CodeQuery.Params => {
   return {
@@ -47,6 +48,63 @@ describe('paramsFrom', () => {
       tableName: 'test_table',
       timeColumnAlias: 'test_time_column_alias',
     });
+  });
+});
+
+describe('paramsFromTimeSeriesBuilder', () => {
+  const params: TimeSeriesBuilder.Params = {
+    tableName: 'test_table',
+    timeColumn: 'test_time_column',
+    metricColumn: { name: 'test_metric', key: 'test_metric_key' },
+    legend: '{{ dim }}',
+
+    // These fields are not used in the function.
+    aggregationFunction: '',
+    filters: [],
+    granularity: '',
+    groupByColumns: [],
+    limit: 0,
+    orderBy: [],
+    queryOptions: [],
+  };
+
+  expect(CodeQuery.paramsFromTimeSeriesBuilder(params, 'SELECT * FROM "test_table";')).toEqual<CodeQuery.Params>({
+    displayType: 'TIMESERIES',
+    legend: '{{ dim }}',
+    logColumnAlias: '',
+    metricColumnAlias: "test_metric['test_metric_key']",
+    pinotQlCode: 'SELECT * FROM "test_table";',
+    tableName: 'test_table',
+    timeColumnAlias: '',
+  });
+});
+
+describe('paramsFromLogsBuilder', () => {
+  expect(
+    CodeQuery.paramsFromLogsBuilder(
+      {
+        tableName: 'test_table',
+        logColumn: { name: 'test_log', key: 'test_log_key' },
+
+        // These fields are not used in the function.
+        filters: [],
+        jsonExtractors: [],
+        limit: 0,
+        metadataColumns: [],
+        queryOptions: [],
+        regexpExtractors: [],
+        timeColumn: '',
+      },
+      'SELECT * FROM "test_table";'
+    )
+  ).toEqual<CodeQuery.Params>({
+    displayType: 'LOGS',
+    logColumnAlias: "test_log['test_log_key']",
+    metricColumnAlias: '',
+    pinotQlCode: 'SELECT * FROM "test_table";',
+    tableName: 'test_table',
+    legend: '',
+    timeColumnAlias: '',
   });
 });
 
