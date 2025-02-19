@@ -12,6 +12,7 @@ import { InputLogColumnAlias } from './InputLogColumnAlias';
 import { SelectTable } from './SelectTable';
 import { DisplayType } from '../../dataquery/DisplayType';
 import { CodeQuery } from '../../pinotql';
+import { InputSeriesLimit } from './InputLimit';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -34,7 +35,7 @@ export function PinotQlCode(props: {
   };
 
   return (
-    <div>
+    <>
       {savedParams.displayType !== DisplayType.ANNOTATIONS && (
         <SelectDisplayType
           value={savedParams.displayType}
@@ -42,14 +43,12 @@ export function PinotQlCode(props: {
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <SelectTable
-          options={resources.tables}
-          selected={savedParams.tableName}
-          isLoading={resources.isTablesLoading}
-          onChange={(tableName) => onChangeAndRun({ ...savedParams, tableName })}
-        />
-      </div>
+      <SelectTable
+        options={resources.tables}
+        selected={savedParams.tableName}
+        isLoading={resources.isTablesLoading}
+        onChange={(tableName) => onChangeAndRun({ ...savedParams, tableName })}
+      />
       {savedParams.displayType === DisplayType.TABLE && (
         <InputTimeColumnAlias
           current={savedParams.timeColumnAlias}
@@ -57,16 +56,18 @@ export function PinotQlCode(props: {
         />
       )}
       {savedParams.displayType === DisplayType.TIMESERIES && (
-        <div style={{ display: 'flex', flexDirection: 'row' }}>
-          <InputTimeColumnAlias
-            current={savedParams.timeColumnAlias}
-            onChange={(timeColumnAlias) => onChange({ ...savedParams, timeColumnAlias })}
-          />
-          <InputMetricColumnAlias
-            current={savedParams.metricColumnAlias}
-            onChange={(metricColumnAlias) => onChange({ ...savedParams, metricColumnAlias })}
-          />
-        </div>
+        <>
+          <div style={{ display: 'flex', flexDirection: 'row' }}>
+            <InputTimeColumnAlias
+              current={savedParams.timeColumnAlias}
+              onChange={(timeColumnAlias) => onChange({ ...savedParams, timeColumnAlias })}
+            />
+            <InputMetricColumnAlias
+              current={savedParams.metricColumnAlias}
+              onChange={(metricColumnAlias) => onChange({ ...savedParams, metricColumnAlias })}
+            />
+          </div>
+        </>
       )}
       {savedParams.displayType === DisplayType.LOGS && (
         <div style={{ display: 'flex', flexDirection: 'row' }}>
@@ -84,17 +85,19 @@ export function PinotQlCode(props: {
         current={savedParams.pinotQlCode}
         onChange={(pinotQlCode) => onChange({ ...savedParams, pinotQlCode })}
       />
-
-      <div>
-        <SqlPreview sql={resources.sqlPreview} />
-      </div>
-      <div>
-        <InputMetricLegend
-          current={savedParams.legend}
-          displayType={savedParams.displayType}
-          onChange={(legend) => onChange({ ...savedParams, legend })}
-        />
-      </div>
-    </div>
+      <SqlPreview sql={resources.sqlPreview} />
+      {savedParams.displayType === DisplayType.TIMESERIES && (
+        <div style={{ display: 'flex', flexDirection: 'row' }}>
+          <InputMetricLegend
+            current={savedParams.legend}
+            onChange={(legend) => onChangeAndRun({ ...savedParams, legend })}
+          />
+          <InputSeriesLimit
+            current={savedParams.seriesLimit}
+            onChange={(seriesLimit) => onChange({ ...savedParams, seriesLimit })}
+          />
+        </div>
+      )}
+    </>
   );
 }
