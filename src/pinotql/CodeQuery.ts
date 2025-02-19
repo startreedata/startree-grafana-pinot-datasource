@@ -53,6 +53,7 @@ export function paramsFromTimeSeriesBuilder(params: TimeSeriesBuilderParams, sql
     legend: params.legend,
     timeColumnAlias: '',
     logColumnAlias: '',
+    seriesLimit: params.seriesLimit,
   };
 }
 
@@ -65,6 +66,7 @@ export function paramsFromLogsBuilder(params: LogsBuilderParams, sql: string): P
     timeColumnAlias: '',
     metricColumnAlias: '',
     legend: '',
+    seriesLimit: 0,
   };
 }
 

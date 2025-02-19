@@ -61,6 +61,7 @@ describe('paramsFromTimeSeriesBuilder', () => {
     timeColumn: 'test_time_column',
     metricColumn: { name: 'test_metric', key: 'test_metric_key' },
     legend: '{{ dim }}',
+    seriesLimit: 1,
 
     // These fields are not used in the function.
     aggregationFunction: '',
@@ -80,6 +81,7 @@ describe('paramsFromTimeSeriesBuilder', () => {
     pinotQlCode: 'SELECT * FROM "test_table";',
     tableName: 'test_table',
     timeColumnAlias: '',
+    seriesLimit: 1,
   });
 });
 
@@ -109,6 +111,7 @@ describe('paramsFromLogsBuilder', () => {
     tableName: 'test_table',
     legend: '',
     timeColumnAlias: '',
+    seriesLimit: 0,
   });
 });
 

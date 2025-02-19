@@ -65,7 +65,7 @@ test.describe('Explore with Code Editor', async () => {
     test('Table renders', async ({ page }) => {
       await checkTableRenders(page);
       await expect(page.getByLabel('Explore Table')).toHaveText(
-        `timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN2024-07-24 12:00:00.000888109US2024-07-24 12:00:00.000874261CN2024-07-24 12:00:00.000904955KR2024-07-24 12:00:00.000849660IN2024-07-24 00:00:00.000935868IN2024-07-24 00:00:00.000876624KR2024-07-24 00:00:00.000859081CN2024-07-24 00:00:00.000919988US2024-07-23 12:00:00.000891722IN2024-07-23 12:00:00.000922426KR2024-07-23 12:00:00.000905138US2024-07-23 12:00:00.000881045CN`
+        `__timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN2024-07-24 12:00:00.000888109US2024-07-24 12:00:00.000874261CN2024-07-24 12:00:00.000904955KR2024-07-24 12:00:00.000849660IN2024-07-24 00:00:00.000935868IN2024-07-24 00:00:00.000876624KR2024-07-24 00:00:00.000859081CN2024-07-24 00:00:00.000919988US2024-07-23 12:00:00.000891722IN2024-07-23 12:00:00.000922426KR2024-07-23 12:00:00.000905138US2024-07-23 12:00:00.000881045CN`
       );
     });
   });
@@ -132,7 +132,7 @@ test.describe('Create Panel with Code Editor', async () => {
     test('Table renders', async ({ page }) => {
       await checkTableRenders(page);
       await expect(page.getByLabel('Panel Title panel').getByRole('table')).toContainText(
-        `timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN`
+        `__timeviewscountry2024-07-25 12:00:00.000484284CN2024-07-25 12:00:00.000490686US2024-07-25 12:00:00.000534112KR2024-07-25 12:00:00.000528431IN2024-07-25 00:00:00.000943341US2024-07-25 00:00:00.000885242CN2024-07-25 00:00:00.000911732KR2024-07-25 00:00:00.000907448IN`
       );
     });
   });
@@ -173,10 +173,10 @@ LIMIT 100000;`
       await sqlPreviewResponse;
       await expect(page.getByTestId('sql-preview')).toContainText(
         // language=text
-        `SELECT "ts" as  "time" , "message", "method", "bytesSent"
+        `SELECT "ts" as  "__time" , "message", "method", "bytesSent"
 FROM  "nginxLogs" 
 WHERE  "ts" >= 1672531200000 AND "ts" < 1735732800000 
-ORDER BY  "time"  DESC
+ORDER BY  "__time"  DESC
 LIMIT 100000;`
       );
 
@@ -236,11 +236,11 @@ LIMIT 100000;`
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
-    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "time" , SUM("views") AS  "views" 
+    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "views" 
 FROM  "complex_website" 
 WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
-GROUP BY  "time"
-ORDER BY  "time"  DESC
+GROUP BY  "__time" 
+ORDER BY  "__time"  DESC
 LIMIT 100000;`
   );
 
@@ -273,11 +273,11 @@ LIMIT 100000;`
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
-    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "time" , SUM("views") AS "views", "country" 
-FROM  "complex_website"
-WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148
-GROUP BY  "time" , "country"
-ORDER BY  "time"  DESC
+    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS "views", "country" 
+FROM  "complex_website" 
+WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
+GROUP BY  "__time" , "country"
+ORDER BY  "__time"  DESC
 LIMIT 100000;`
   );
 
