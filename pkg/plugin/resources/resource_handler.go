@@ -166,7 +166,7 @@ type PreviewLogsBuilderSqlRequest struct {
 	MetadataColumns  []dataquery.ComplexField    `json:"metadataColumns"`
 	JsonExtractors   []dataquery.JsonExtractor   `json:"jsonExtractors"`
 	RegexpExtractors []dataquery.RegexpExtractor `json:"regexpExtractors"`
-	DimensionFilters []dataquery.DimensionFilter `json:"dimensionFilters"`
+	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 	QueryOptions     []dataquery.QueryOption     `json:"queryOptions"`
 	Limit            int64                       `json:"limit"`
 	ExpandMacros     bool                        `json:"expandMacros"`

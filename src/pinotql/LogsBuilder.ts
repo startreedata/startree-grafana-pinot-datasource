@@ -180,7 +180,7 @@ function useSqlPreview(
     metadataColumns: interpolatedParams.metadataColumns,
     jsonExtractors: interpolatedParams.jsonExtractors,
     regexpExtractors: interpolatedParams.regexpExtractors,
-    dimensionFilters: interpolatedParams.filters,
+    filters: interpolatedParams.filters,
   };
 
   useEffect(() => {

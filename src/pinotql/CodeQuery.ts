@@ -7,7 +7,10 @@ import { DateTime } from '@grafana/data';
 import { useTables } from '../resources/tables';
 import { UseResourceResult } from '../resources/UseResourceResult';
 import { useEffect, useState } from 'react';
-import { previewSqlCode, PreviewSqlCodeRequest } from '../resources/previewSql'; //language=text
+import { previewSqlCode, PreviewSqlCodeRequest } from '../resources/previewSql';
+import { columnLabelOf } from '../dataquery/ComplexField'; //language=text
+import { Params as TimeSeriesBuilderParams } from './TimeSeriesBuilder';
+import { Params as LogsBuilderParams } from './LogsBuilder'; //language=text
 
 //language=text
 export const DefaultQuerySql = `SELECT $__timeGroup("timestamp") AS $__timeAlias()
@@ -36,6 +39,30 @@ export function paramsFrom(query: PinotDataQuery): Params {
     metricColumnAlias: query.metricColumnAlias || '',
     logColumnAlias: query.logColumnAlias || '',
     legend: query.legend || '',
+  };
+}
+
+export function paramsFromTimeSeriesBuilder(params: TimeSeriesBuilderParams, sql: string): Params {
+  return {
+    displayType: DisplayType.TIMESERIES,
+    tableName: params.tableName,
+    metricColumnAlias: columnLabelOf(params.metricColumn.name, params.metricColumn.key),
+    pinotQlCode: sql,
+    legend: params.legend,
+    timeColumnAlias: '',
+    logColumnAlias: '',
+  };
+}
+
+export function paramsFromLogsBuilder(params: LogsBuilderParams, sql: string): Params {
+  return {
+    displayType: DisplayType.LOGS,
+    tableName: params.tableName,
+    logColumnAlias: columnLabelOf(params.logColumn.name, params.logColumn.key),
+    pinotQlCode: sql,
+    timeColumnAlias: '',
+    metricColumnAlias: '',
+    legend: '',
   };
 }
 
