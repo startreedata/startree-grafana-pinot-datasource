@@ -13,10 +13,6 @@ import {
 } from '@helpers/helpers';
 
 test('Switch between Builder and Code editor', async ({ page, datasource }) => {
-  const tablesResponse = page.waitForResponse('/**/resources/tables');
-  const builderPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
-  const codePreviewResponse = page.waitForResponse('/**/resources/preview/sql/code');
-
   await page.goto('http://localhost:3000/dashboard/new?orgId=1');
   await page.getByLabel('Add new panel', { exact: true }).click();
   await setPanelTimeWindow(page);
@@ -28,7 +24,6 @@ test('Switch between Builder and Code editor', async ({ page, datasource }) => {
   await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
   await page.getByTestId('select-granularity-dropdown').click();
   await page.getByLabel('Select options menu').getByText('HOURS', { exact: true }).click();
-  await builderPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
@@ -46,7 +41,6 @@ LIMIT 100000;`
   );
 
   await page.getByTestId('select-editor-mode').getByText('Code').click();
-  await codePreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
@@ -167,7 +161,6 @@ SET timeoutMs=100;`
   });
 
   test('Use dashboard variables', async ({ page }) => {
-
     await page.getByTestId('select-table-dropdown').click();
     await page.getByText('complex_website', { exact: true }).click();
 
@@ -194,29 +187,37 @@ SET timeoutMs=100;`
     await page.keyboard.type('$aggregation');
     await page.keyboard.press('Enter');
 
+    await addDashboardConstant(page, 'orderBy', '__metric');
     await page.getByTestId('select-order-by-dropdown').click();
-    await page.getByLabel('Select options menu').getByText('browser asc', { exact: true }).click();
-
+    await page.keyboard.type('$orderBy asc');
+    await page.keyboard.press('Enter');
 
     await page.getByTestId('add-filter-btn').click();
+
+    await addDashboardConstant(page, 'filterColumn', 'country');
     await page.getByTestId('select-query-filter-column').click();
-    await page.getByLabel('Select options menu').getByText('country', { exact: true }).click();
+    await page.keyboard.type('$filterColumn');
+    await page.keyboard.press('Enter');
+
     await page.getByTestId('select-query-filter-operator').click();
     await page.getByLabel('Select options menu').getByText('!=', { exact: true }).click();
+
+    await addDashboardConstant(page, 'filterValue', "'CN'");
     await page.getByTestId('select-query-filter-value').click();
-    await page.getByLabel('Select options menu').getByText(`'CN'`, { exact: true }).click();
-    await page.getByText("'CN'", { exact: true }).click();
-    await page.locator('body').click();
+    await page.keyboard.type('$filterValue');
+    await page.keyboard.press('Enter');
 
     await page.getByTestId('add-query-option-btn').click();
+
+    await addDashboardConstant(page, 'queryOptionName', 'timeoutMs');
     await page.getByTestId('select-query-option-name').click();
-    await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
-    await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
-    await page.getByTestId('input-limit').getByRole('textbox').fill('4000');
-    await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
+    await page.keyboard.type('$queryOptionName');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'queryOptionValue', '100');
+    await page.getByTestId('input-query-option-value').getByRole('textbox').fill('$queryOptionValue');
 
     await page.getByTestId('run-query-btn').click();
-
     await expect(page.getByTestId('sql-preview')).toContainText(
       // language=text
       `SELECT
@@ -232,8 +233,8 @@ GROUP BY
     "browser",
     "__time"
 ORDER BY
-    "browser" ASC
-LIMIT 4000;
+    "__metric" ASC
+LIMIT 100000;
 
 SET timeoutMs=100;`
     );
@@ -434,7 +435,8 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('add-query-option-btn').click();
   await page.getByTestId('select-query-option-name').click();
   await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
-  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
+  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('1000');
+
   await page.getByTestId('input-limit').getByRole('textbox').fill('4000');
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
@@ -458,7 +460,7 @@ ORDER BY
     "browser" ASC
 LIMIT 4000;
 
-SET timeoutMs=100;`
+SET timeoutMs=1000;`
   );
 
   await expect(page.getByText('No data')).not.toBeVisible();

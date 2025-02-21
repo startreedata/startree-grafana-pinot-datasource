@@ -18,6 +18,7 @@ describe('interpolateVariables', () => {
       granularity: undefined,
       groupByColumns: undefined,
       groupByColumnsV2: undefined,
+      orderBy: undefined,
       metricColumn: undefined,
       metricColumnV2: undefined,
       logColumn: undefined,
@@ -53,15 +54,15 @@ describe('interpolateVariables', () => {
             $filterColumnValue: 'filterColumnValueReplaced',
             $groupByColumn: 'groupByColumnReplaced',
             $groupByColumnKey: 'groupByColumnKeyReplaced',
+            $orderByColumn: 'orderByColumnReplaced',
+            $orderByColumnKey: 'orderByColumnKeyReplaced',
             $metadataColumn: 'metadataColumnReplaced',
             $metadataColumnKey: 'metadataColumnKeyReplaced',
             $jsonExtractorColumn: 'jsonExtractorColumnReplaced',
             $jsonExtractorKey: 'jsonExtractorKeyReplaced',
-            $jsonExtractorPath: 'jsonExtractorPathReplaced',
             $jsonExtractorAlias: 'jsonExtractorAliasReplaced',
             $regexpExtractorColumn: 'regexpExtractorColumnReplaced',
             $regexpExtractorKey: 'regexpExtractorKeyReplaced',
-            $regexpExtractorPattern: 'regexpExtractorPatternReplaced',
             $regexpExtractorAlias: 'regexpExtractorAliasReplaced',
             $queryOptionName: 'queryOptionNameReplaced',
             $queryOptionValue: 'queryOptionValueReplaced',
@@ -94,11 +95,12 @@ describe('interpolateVariables', () => {
         granularity: '$granularity',
         groupByColumns: ['$groupByColumn'],
         groupByColumnsV2: [{ name: '$groupByColumn', key: '$groupByColumnKey' }],
+        orderBy: [{ columnName: '$orderByColumn', columnKey: '$orderByColumnKey', direction: 'asc' }],
         metadataColumns: [{ name: '$metadataColumn', key: '$metadataColumnKey' }],
         jsonExtractors: [
           {
             source: { name: '$jsonExtractorColumn', key: '$jsonExtractorKey' },
-            path: '$jsonExtractorPath',
+            path: '$.key',
             resultType: PinotDataType.STRING,
             alias: '$jsonExtractorAlias',
           },
@@ -106,7 +108,7 @@ describe('interpolateVariables', () => {
         regexpExtractors: [
           {
             source: { name: '$regexpExtractorColumn', key: '$regexpExtractorKey' },
-            pattern: '$regexpExtractorPattern',
+            pattern: '.*',
             group: 0,
             alias: '$regexpExtractorAlias',
           },
@@ -142,11 +144,12 @@ describe('interpolateVariables', () => {
       granularity: 'granularityReplaced',
       groupByColumns: ['groupByColumnReplaced'],
       groupByColumnsV2: [{ name: 'groupByColumnReplaced', key: 'groupByColumnKeyReplaced' }],
+      orderBy: [{ columnName: 'orderByColumnReplaced', columnKey: 'orderByColumnKeyReplaced', direction: 'asc' }],
       metadataColumns: [{ name: 'metadataColumnReplaced', key: 'metadataColumnKeyReplaced' }],
       jsonExtractors: [
         {
           source: { name: 'jsonExtractorColumnReplaced', key: 'jsonExtractorKeyReplaced' },
-          path: 'jsonExtractorPathReplaced',
+          path: '$.key',
           resultType: PinotDataType.STRING,
           alias: 'jsonExtractorAliasReplaced',
         },
@@ -154,7 +157,7 @@ describe('interpolateVariables', () => {
       regexpExtractors: [
         {
           source: { name: 'regexpExtractorColumnReplaced', key: 'regexpExtractorKeyReplaced' },
-          pattern: 'regexpExtractorPatternReplaced',
+          pattern: '.*',
           group: 0,
           alias: 'regexpExtractorAliasReplaced',
         },

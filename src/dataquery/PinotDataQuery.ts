@@ -80,6 +80,11 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
+    orderBy: query.orderBy?.map(({ columnName, columnKey, direction }) => ({
+      columnName: replaceIfExists(columnName),
+      columnKey: replaceIfExists(columnKey),
+      direction,
+    })),
     metadataColumns: query.metadataColumns?.map(({ name, key }) => ({
       name: replaceIfExists(name),
       key: replaceIfExists(key),
@@ -89,17 +94,17 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
         name: replaceIfExists(name),
         key: replaceIfExists(key),
       })),
-      alias: replaceIfExists(alias),
-      path: replaceIfExists(path),
+      path,
       resultType,
+      alias: replaceIfExists(alias),
     })),
     regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias }) => ({
       source: mapIfExists(source, ({ name, key }) => ({
         name: replaceIfExists(name),
         key: replaceIfExists(key),
       })),
+      pattern,
       alias: replaceIfExists(alias),
-      pattern: replaceIfExists(pattern),
       group,
     })),
     filters: query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => ({

@@ -13,8 +13,8 @@ import { SelectQueryOptions } from './SelectQueryOptions';
 import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
-import { columnLabelOf } from '../../dataquery/ComplexField';
 import { TimeSeriesBuilder } from '../../pinotql';
+import {columnLabelOf} from "../../pinotql/complexField";
 
 export function PinotQlTimeSeriesBuilder(props: {
   datasource: DataSource;

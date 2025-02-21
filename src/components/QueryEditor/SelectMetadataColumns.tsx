@@ -1,16 +1,11 @@
-import {
-  ComplexField,
-  findComplexFieldByLabel,
-  optionsOf,
-  selectableComplexFieldsOf,
-} from '../../dataquery/ComplexField';
+import { ComplexField } from '../../dataquery/ComplexField';
 import { Column } from '../../resources/columns';
 import allLabels from '../../labels';
 import React from 'react';
 import { FormLabel } from './FormLabel';
 import { MultiSelect } from '@grafana/ui';
 import { styles } from '../../styles';
-import { SelectableValue } from '@grafana/data';
+import { multiSelectFormDataOf } from '../../pinotql/complexField';
 
 export function SelectMetadataColumns(props: {
   selected: ComplexField[];
@@ -20,8 +15,7 @@ export function SelectMetadataColumns(props: {
 }) {
   const { columns, selected, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metadataColumns;
-
-  const complexFields = selectableComplexFieldsOf(selected, columns);
+  const formData = multiSelectFormDataOf(selected, columns);
   return (
     <div className={'gf-form'} data-testid="select-metadata">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
@@ -29,12 +23,10 @@ export function SelectMetadataColumns(props: {
         <MultiSelect
           className={`${styles.QueryEditor.inputForm}`}
           allowCustomValue
-          options={optionsOf(complexFields)}
-          value={optionsOf(selected)}
+          options={formData.options}
+          value={formData.usedOptions}
           isLoading={isLoading}
-          onChange={(item: Array<SelectableValue<string>>) =>
-            onChange(item.map((v) => findComplexFieldByLabel(v.label, complexFields)).filter(({ name }) => name))
-          }
+          onChange={(items) => onChange(formData.getChange(items))}
         />
       </div>
     </div>

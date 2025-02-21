@@ -1,9 +1,9 @@
 import React, { ChangeEvent } from 'react';
-import { columnLabelOf } from '../../dataquery/ComplexField';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { Input, Select } from '@grafana/ui';
 import { JsonExtractor, ResultTypes } from '../../dataquery/JsonExtractor';
 import { Column } from '../../resources/columns';
+import { formDataOf } from '../../pinotql/complexField';
 
 export function EditJsonExtractor(props: {
   extractor: JsonExtractor;
@@ -13,21 +13,20 @@ export function EditJsonExtractor(props: {
   onDelete: () => void;
 }) {
   const { extractor, columns, isLoadingColumns, onChange, onDelete } = props;
-  const colOptions = columns.map(({ name, key }) => columnLabelOf(name, key)).map((label) => ({ label, value: label }));
+  const columnFormData = formDataOf(extractor.source || {}, columns);
   const resultTypeOptions = ResultTypes.map((t) => ({ label: t, value: t }));
-
   return (
     <InputGroup data-testid={'edit-json-extractor'}>
       <div data-testid="json-extractor-select-column">
         <Select
           placeholder="Column"
           width="auto"
-          value={columnLabelOf(extractor.source?.name, extractor.source?.key)}
+          value={columnFormData.usedOption}
           allowCustomValue
-          options={colOptions}
+          options={columnFormData.options}
           isLoading={isLoadingColumns}
-          onChange={(change) => {
-            const col = columns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
+          onChange={(item) => {
+            const col = columnFormData.getChange(item);
             onChange({
               ...extractor,
               source: { name: col?.name, key: col?.key || undefined },
