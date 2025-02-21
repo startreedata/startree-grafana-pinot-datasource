@@ -6,26 +6,29 @@ import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { EditFilter } from './EditFilter';
 import { DimensionFilter } from '../../dataquery/DimensionFilter';
-import { columnLabelOf } from '../../dataquery/ComplexField';
 import { Column } from '../../resources/columns';
+import { columnLabelOf } from '../../pinotql/complexField';
 
 export function SelectFilters(props: {
   datasource: DataSource;
-  tableName: string | undefined;
-  timeColumn: string | undefined;
+  tableName: string;
+  timeColumn: string;
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
-  columns: Column[] | undefined;
+  columns: Column[];
   filters: DimensionFilter[];
+  isColumnsLoading: boolean;
   onChange: (val: DimensionFilter[]) => void;
 }) {
   const labels = allLabels.components.QueryEditor.filters;
 
-  const { datasource, columns, filters, tableName, timeColumn, timeRange, onChange } = props;
-  const filteredColumns = (filters || [])
+  const { datasource, columns, filters, tableName, timeColumn, timeRange, isColumnsLoading, onChange } = props;
+
+  // TODO: extract logic to a separate function
+
+  const filteredColumns = filters
     .filter(({ columnName }) => columnName)
     .map((f) => columnLabelOf(f.columnName || '', f.columnKey));
-  const unusedColumns =
-    columns?.filter(({ name, key }) => !filteredColumns.includes(columnLabelOf(name, key))) || [];
+  const unusedColumns = columns?.filter(({ name, key }) => !filteredColumns.includes(columnLabelOf(name, key))) || [];
 
   const onChangeFilter = (val: DimensionFilter, idx: number) => {
     onChange(filters.map((existing, i) => (i === idx ? val : existing)));
@@ -46,11 +49,9 @@ export function SelectFilters(props: {
               timeColumn={timeColumn}
               timeRange={timeRange}
               unusedColumns={unusedColumns}
-              thisColumn={columns?.find(
-                ({ name, key }) => filter.columnName === name && filter.columnKey === key
-              )}
+              thisColumn={columns?.find(({ name, key }) => filter.columnName === name && filter.columnKey === key)}
               thisFilter={filter}
-              isLoadingColumns={columns === undefined}
+              isLoadingColumns={isColumnsLoading}
               remainingFilters={[...filters.slice(0, idx), ...filters.slice(idx + 1)]}
               onChange={(val: DimensionFilter) => onChangeFilter(val, idx)}
               onDelete={() => onDeleteFilter(idx)}

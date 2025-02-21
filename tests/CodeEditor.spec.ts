@@ -1,5 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import {
+  addDashboardConstant,
   checkDropdown,
   checkRunQueryButton,
   checkTextForm,
@@ -186,6 +187,38 @@ LIMIT 100000;`
         '143.110.222.166 - - [06/Nov/2024:21:06:58 +0000] "GET / HTTP/1.1" 403 134 "-" "Mozilla/5.0 (iPhone; CPU iPhone OS 16_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Mobile/15E148 Safari/604.1" "-"'
       );
     });
+  });
+
+  test('Use dashboard variables', async ({ page }) => {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByText('complex_website', { exact: true }).click();
+
+    await addDashboardConstant(page, 'granularity', '12:HOURS');
+
+    const codebox = page.getByTestId('sql-editor-content').getByRole('code');
+    await codebox.click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('ControlOrMeta+x');
+    await page.keyboard.type(
+      // language=text
+      `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
+FROM $__table()
+WHERE $__timeFilter("hoursSinceEpoch", '$granularity')
+GROUP BY $__timeAlias()
+ORDER BY $__timeAlias() DESC
+LIMIT 100000;`
+    );
+
+    await page.getByTestId('run-query-btn').click();
+    await expect(page.getByTestId('sql-preview')).toContainText(
+      // language=text
+      `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "__metric" 
+FROM  "complex_website" 
+WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
+GROUP BY  "__time" 
+ORDER BY  "__time"  DESC
+LIMIT 100000;`
+    );
   });
 });
 

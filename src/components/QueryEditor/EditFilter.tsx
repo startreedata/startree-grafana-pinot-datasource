@@ -7,7 +7,7 @@ import { PinotDataType, PinotDataTypes } from '../../dataquery/PinotDataType';
 import { DimensionFilter } from '../../dataquery/DimensionFilter';
 import { queryDistinctValuesForFilters } from '../../resources/distinctValues';
 import { Column } from '../../resources/columns';
-import { columnLabelOf } from '../../dataquery/ComplexField';
+import { complexFieldOf, formDataOf } from '../../pinotql/complexField';
 
 const FilterOperators = [
   { label: '=', value: '=', types: PinotDataTypes, multi: true },
@@ -59,11 +59,7 @@ export function EditFilter(props: {
     onDelete,
   } = props;
 
-  const filterableColumns = thisColumn ? [thisColumn, ...unusedColumns] : unusedColumns;
-  const colOptions = filterableColumns
-    .map(({ name, key }) => columnLabelOf(name, key))
-    .filter((d, i, a) => a.indexOf(d) === i)
-    .map((label) => ({ label, value: label }));
+  const columnFormData = formDataOf(complexFieldOf(thisFilter.columnName, thisFilter.columnKey), unusedColumns);
 
   const operatorOptions = thisColumn?.dataType
     ? FilterOperators.filter((op) => op.types.includes(thisColumn.dataType))
@@ -96,12 +92,12 @@ export function EditFilter(props: {
         <Select
           placeholder="Select column"
           width="auto"
-          value={thisFilter.columnName}
+          value={columnFormData.usedOption}
           allowCustomValue
-          options={colOptions}
+          options={columnFormData.options}
           isLoading={isLoadingColumns}
-          onChange={(change) => {
-            const col = filterableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
+          onChange={(item) => {
+            const col = columnFormData.getChange(item);
             onChange({
               ...thisFilter,
               columnName: col?.name,

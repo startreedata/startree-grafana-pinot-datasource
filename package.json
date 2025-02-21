@@ -9,7 +9,7 @@
     "dev:backend": "yarn run build && mage -v && yarn run server",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --cache --ignore-path ./.gitignore --ext .js,.jsx,.ts,.tsx .",
-    "lint:fix": "yarn run lint -- --fix",
+    "lint:fix": "yarn run lint --fix",
     "test": "jest --passWithNoTests --maxWorkers 4",
     "test:ci": "yarn run typecheck && yarn run lint && yarn run test",
     "test:e2e": "playwright test",

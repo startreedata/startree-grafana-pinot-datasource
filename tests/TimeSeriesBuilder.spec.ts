@@ -1,5 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import {
+  addDashboardConstant,
   checkDropdown,
   checkFilterEditor,
   checkQueryOptionEditor,
@@ -12,10 +13,6 @@ import {
 } from '@helpers/helpers';
 
 test('Switch between Builder and Code editor', async ({ page, datasource }) => {
-  const tablesResponse = page.waitForResponse('/**/resources/tables');
-  const builderPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
-  const codePreviewResponse = page.waitForResponse('/**/resources/preview/sql/code');
-
   await page.goto('http://localhost:3000/dashboard/new?orgId=1');
   await page.getByLabel('Add new panel', { exact: true }).click();
   await setPanelTimeWindow(page);
@@ -27,7 +24,6 @@ test('Switch between Builder and Code editor', async ({ page, datasource }) => {
   await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
   await page.getByTestId('select-granularity-dropdown').click();
   await page.getByLabel('Select options menu').getByText('HOURS', { exact: true }).click();
-  await builderPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
@@ -45,7 +41,6 @@ LIMIT 100000;`
   );
 
   await page.getByTestId('select-editor-mode').getByText('Code').click();
-  await codePreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     //language=text
     `SELECT
@@ -142,11 +137,10 @@ test.describe('Create Panel with Time Series Builder', async () => {
     await page.getByRole('heading', { name: 'Panel Title' }).click();
     await page.getByText('Edit e').click();
 
-
     await page.getByTestId('run-query-btn').click();
     await expect(page.getByTestId('sql-preview')).toContainText(
-        // language=text
-        `SELECT
+      // language=text
+      `SELECT
     "browser",
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
     MAX("errors") AS "__metric"
@@ -162,9 +156,89 @@ ORDER BY
     "browser" ASC
 LIMIT 4000;
 
+SET timeoutMs=1000;`
+    );
+  });
+
+  test('Use dashboard variables', async ({ page }) => {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByText('complex_website', { exact: true }).click();
+
+    await page.getByTestId('select-time-column-dropdown').click();
+    await page.getByLabel('Select options menu').getByText('hoursSinceEpoch').click();
+
+    await addDashboardConstant(page, 'metric', 'errors');
+    await page.getByTestId('select-metric-column-dropdown').click();
+    await page.keyboard.type('$metric');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'groupBy', 'browser');
+    await page.getByTestId('select-group-by-dropdown').click();
+    await page.keyboard.type('$groupBy');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'granularity', '1:HOURS');
+    await page.getByTestId('select-granularity-dropdown').click();
+    await page.keyboard.type('$granularity');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'aggregation', 'MAX');
+    await page.getByTestId('select-aggregation-dropdown').click();
+    await page.keyboard.type('$aggregation');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'orderBy', '__metric');
+    await page.getByTestId('select-order-by-dropdown').click();
+    await page.keyboard.type('$orderBy asc');
+    await page.keyboard.press('Enter');
+
+    await page.getByTestId('add-filter-btn').click();
+
+    await addDashboardConstant(page, 'filterColumn', 'country');
+    await page.getByTestId('select-query-filter-column').click();
+    await page.keyboard.type('$filterColumn');
+    await page.keyboard.press('Enter');
+
+    await page.getByTestId('select-query-filter-operator').click();
+    await page.getByLabel('Select options menu').getByText('!=', { exact: true }).click();
+
+    await addDashboardConstant(page, 'filterValue', "'CN'");
+    await page.getByTestId('select-query-filter-value').click();
+    await page.keyboard.type('$filterValue');
+    await page.keyboard.press('Enter');
+
+    await page.getByTestId('add-query-option-btn').click();
+
+    await addDashboardConstant(page, 'queryOptionName', 'timeoutMs');
+    await page.getByTestId('select-query-option-name').click();
+    await page.keyboard.type('$queryOptionName');
+    await page.keyboard.press('Enter');
+
+    await addDashboardConstant(page, 'queryOptionValue', '100');
+    await page.getByTestId('input-query-option-value').getByRole('textbox').fill('$queryOptionValue');
+
+    await page.getByTestId('run-query-btn').click();
+    await expect(page.getByTestId('sql-preview')).toContainText(
+      // language=text
+      `SELECT
+    "browser",
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
+    MAX("errors") AS "__metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137
+    AND ("country" != 'CN')
+GROUP BY
+    "browser",
+    "__time"
+ORDER BY
+    "__metric" ASC
+LIMIT 100000;
+
 SET timeoutMs=100;`
     );
-  })
+  });
 });
 
 test.describe('Explore with Time Series Builder', async () => {
@@ -309,13 +383,9 @@ async function checkOrderByDropdown(page: Page) {
 }
 
 async function checkTimeSeriesRendersMinFields(page: Page) {
-  const queryResponse = page.waitForResponse('/api/ds/query');
-  const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
-
   await page.getByTestId('select-table-dropdown').click();
   await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
 
-  await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT
@@ -332,19 +402,12 @@ ORDER BY
 LIMIT 100000;`
   );
 
-  await queryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
 }
 
 async function checkTimeSeriesRendersAllFields(page: Page) {
-  const columnsResponse = page.waitForResponse('/**/resources/columns');
-  const distinctValuesResponse = page.waitForResponse('/**/resources/query/distinctValues');
-  const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
-  const dataQueryResponse = page.waitForResponse('/api/ds/query');
-
   await page.getByTestId('select-table-dropdown').click();
   await page.getByText('complex_website', { exact: true }).click();
-  await columnsResponse;
 
   await page.getByTestId('select-time-column-dropdown').click();
   await page.getByLabel('Select options menu').getByText('hoursSinceEpoch').click();
@@ -365,7 +428,6 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('select-query-filter-operator').click();
   await page.getByLabel('Select options menu').getByText('!=', { exact: true }).click();
   await page.getByTestId('select-query-filter-value').click();
-  await distinctValuesResponse;
   await page.getByLabel('Select options menu').getByText(`'CN'`, { exact: true }).click();
   await page.getByText("'CN'", { exact: true }).click();
   await page.locator('body').click();
@@ -373,13 +435,13 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('add-query-option-btn').click();
   await page.getByTestId('select-query-option-name').click();
   await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
-  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
+  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('1000');
+
   await page.getByTestId('input-limit').getByRole('textbox').fill('4000');
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
   await page.getByTestId('run-query-btn').click();
 
-  await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT
@@ -398,9 +460,8 @@ ORDER BY
     "browser" ASC
 LIMIT 4000;
 
-SET timeoutMs=100;`
+SET timeoutMs=1000;`
   );
 
-  await dataQueryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
 }

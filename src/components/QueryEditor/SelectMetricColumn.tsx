@@ -4,10 +4,11 @@ import React from 'react';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { Column } from '../../resources/columns';
-import { columnLabelOf, ComplexField } from '../../dataquery/ComplexField';
+import { ComplexField } from '../../dataquery/ComplexField';
+import { formDataOf } from '../../pinotql/complexField';
 
 export function SelectMetricColumn(props: {
-  selected: ComplexField | undefined;
+  selected: ComplexField;
   metricColumns: Column[];
   isCount: boolean;
   isLoading: boolean;
@@ -15,13 +16,7 @@ export function SelectMetricColumn(props: {
 }) {
   const { isCount, selected, metricColumns, isLoading, onChange } = props;
   const labels = allLabels.components.QueryEditor.metricColumn;
-
-  const selectableColumns = selected?.name ? [selected, ...metricColumns] : metricColumns;
-  const options = selectableColumns
-    .map(({ name, key }) => columnLabelOf(name, key))
-    .filter((v, i, a) => a.indexOf(v) === i)
-    .map((label) => ({ label, value: label }));
-
+  const formData = formDataOf(selected, metricColumns);
   return (
     <div className={'gf-form'} data-testid="select-metric-column">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
@@ -31,13 +26,10 @@ export function SelectMetricColumn(props: {
           allowCustomValue
           invalid={!selected}
           isLoading={isLoading}
-          options={isCount ? [{ label: '*', value: '*' }] : options}
-          value={isCount ? '*' : columnLabelOf(selected?.name, selected?.key) || null}
+          options={isCount ? [{ label: '*', value: '*' }] : formData.options}
+          value={isCount ? '*' : formData.usedOption}
           disabled={isCount}
-          onChange={(change) => {
-            const col = selectableColumns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
-            onChange({ name: col?.name, key: col?.key || undefined });
-          }}
+          onChange={(item) => onChange(formData.getChange(item))}
         />
       </div>
     </div>

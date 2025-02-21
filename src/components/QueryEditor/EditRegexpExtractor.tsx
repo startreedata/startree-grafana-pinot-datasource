@@ -1,9 +1,9 @@
 import { RegexpExtractor } from '../../dataquery/RegexpExtractor';
 import { Column } from '../../resources/columns';
-import { columnLabelOf } from '../../dataquery/ComplexField';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
 import { Input, Select } from '@grafana/ui';
 import React, { ChangeEvent, useState } from 'react';
+import { formDataOf } from '../../pinotql/complexField';
 
 export function EditRegexpExtractor(props: {
   extractor: RegexpExtractor;
@@ -13,7 +13,7 @@ export function EditRegexpExtractor(props: {
   onDelete: () => void;
 }) {
   const { extractor, columns, isLoadingColumns, onChange, onDelete } = props;
-  const colOptions = columns.map(({ name, key }) => columnLabelOf(name, key)).map((label) => ({ label, value: label }));
+  const columnFormData = formDataOf(extractor.source || {}, columns);
   const [pattern, setPattern] = useState<string>(extractor.pattern || '');
   const [isPatternValid, setIsPatternValid] = useState<boolean>(true);
 
@@ -32,12 +32,12 @@ export function EditRegexpExtractor(props: {
       <div data-testid="regexp-extractor-select-column">
         <Select
           placeholder="Column"
-          value={columnLabelOf(extractor.source?.name, extractor.source?.key)}
+          value={columnFormData.usedOption}
           allowCustomValue
-          options={colOptions}
+          options={columnFormData.options}
           isLoading={isLoadingColumns}
-          onChange={(change) => {
-            const col = columns.find(({ name, key }) => columnLabelOf(name, key) === change.label);
+          onChange={(item) => {
+            const col = columnFormData.getChange(item);
             onChange({
               ...extractor,
               source: { name: col?.name, key: col?.key || undefined },

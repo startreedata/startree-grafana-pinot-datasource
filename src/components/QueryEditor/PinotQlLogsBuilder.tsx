@@ -88,6 +88,7 @@ export function PinotQlLogsBuilder(props: {
         timeRange={timeRange}
         columns={resources.filterColumns}
         filters={savedParams.filters}
+        isColumnsLoading={resources.isColumnsLoading}
         onChange={(val) => onChangeAndRun({ ...savedParams, filters: val })}
       />
       <SelectQueryOptions
