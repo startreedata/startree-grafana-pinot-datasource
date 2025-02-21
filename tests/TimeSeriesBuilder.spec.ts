@@ -156,7 +156,7 @@ ORDER BY
     "browser" ASC
 LIMIT 4000;
 
-SET timeoutMs=100;`
+SET timeoutMs=1000;`
     );
   });
 
