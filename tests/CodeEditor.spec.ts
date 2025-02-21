@@ -1,5 +1,6 @@
 import { expect, Page } from '@playwright/test';
 import {
+  addDashboardConstant,
   checkDropdown,
   checkRunQueryButton,
   checkTextForm,
@@ -199,8 +200,8 @@ LIMIT 100000;`
     await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.press('ControlOrMeta+x');
     await page.keyboard.type(
-        // language=text
-        `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
+      // language=text
+      `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
 FROM $__table()
 WHERE $__timeFilter("hoursSinceEpoch", '$granularity')
 GROUP BY $__timeAlias()
@@ -210,8 +211,8 @@ LIMIT 100000;`
 
     await page.getByTestId('run-query-btn').click();
     await expect(page.getByTestId('sql-preview')).toContainText(
-        // language=text
-        `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "__metric" 
+      // language=text
+      `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "__metric" 
 FROM  "complex_website" 
 WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
 GROUP BY  "__time" 
@@ -220,26 +221,6 @@ LIMIT 100000;`
     );
   });
 });
-
-async function addDashboardConstant(page: Page, name: string, value: string) {
-  await page.getByRole('button', { name: 'Open dashboard settings' }).click();
-  await page.getByRole('link', { name: 'Variables' }).click();
-
-  if (await page.getByTestId('data-testid Call to action button Add variable').isVisible()) {
-    await page.getByTestId('data-testid Call to action button Add variable').click();
-  } else {
-    await page.getByRole('button', { name: 'Variable editor New variable' }).click();
-  }
-
-  await page.getByTestId('data-testid Variable editor Form Type select').getByRole('img').click();
-  await page.getByText('Constant', { exact: true }).click();
-  await page.getByTestId('data-testid Variable editor Form Name field').click();
-  await page.getByTestId('data-testid Variable editor Form Name field').fill(name);
-  await page.getByTestId('data-testid Variable editor Form Constant Query field').click();
-  await page.getByTestId('data-testid Variable editor Form Constant Query field').fill(value);
-  await page.getByRole('button', { name: 'Variable editor Submit button' }).click();
-  await page.getByRole('dialog', { name: 'Dashboard settings' }).getByLabel('Go Back').click();
-}
 
 async function checkSqlEditor(page: Page) {
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
