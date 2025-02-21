@@ -131,7 +131,7 @@ jobs:
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        run: yarn playwright test
+        run: yarn playwright test --reporter github
         env:
           PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
           PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
@@ -147,6 +147,7 @@ jobs:
           retention-days: 30
 
       - name: Collect Grafana logs
+        if: ${{ failure() }}
         run: docker compose logs grafana > grafana.log
 
       - name: Upload Grafana logs

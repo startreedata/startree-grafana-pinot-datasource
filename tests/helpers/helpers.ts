@@ -223,3 +223,23 @@ export async function checkQueryOptionEditor(page: Page) {
   await page.getByTestId('delete-query-option-btn').click();
   await expect(page.getByTestId('select-query-option-name')).not.toBeVisible();
 }
+
+export async function addDashboardConstant(page: Page, name: string, value: string) {
+  await page.getByRole('button', { name: 'Open dashboard settings' }).click();
+  await page.getByRole('link', { name: 'Variables' }).click();
+
+  if (await page.getByTestId('data-testid Call to action button Add variable').isVisible()) {
+    await page.getByTestId('data-testid Call to action button Add variable').click();
+  } else {
+    await page.getByRole('button', { name: 'Variable editor New variable' }).click();
+  }
+
+  await page.getByTestId('data-testid Variable editor Form Type select').getByRole('img').click();
+  await page.getByText('Constant', { exact: true }).click();
+  await page.getByTestId('data-testid Variable editor Form Name field').click();
+  await page.getByTestId('data-testid Variable editor Form Name field').fill(name);
+  await page.getByTestId('data-testid Variable editor Form Constant Query field').click();
+  await page.getByTestId('data-testid Variable editor Form Constant Query field').fill(value);
+  await page.getByRole('button', { name: 'Variable editor Submit button' }).click();
+  await page.getByRole('dialog', { name: 'Dashboard settings' }).getByLabel('Go Back').click();
+}

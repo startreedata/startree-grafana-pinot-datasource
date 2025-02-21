@@ -23,13 +23,17 @@ export function SelectGranularity(props: {
           className={`${styles.QueryEditor.inputForm}`}
           allowCustomValue
           placeholder={'auto'}
-          options={options.map((g) => ({ label: `${g.name}${g.optimized ? '*' : ''}`, value: g.name }))}
+          options={options.map((g) => ({ label: granularityLabelOf(g), value: g.name }))}
           value={selected || null}
           disabled={disabled}
           isLoading={isLoading}
-          onChange={(change) => (change.value === 'auto' ? onChange('') : onChange(change.value || ''))}
+          onChange={(change) => onChange(change.value || '')}
         />
       </div>
     </div>
   );
+}
+
+function granularityLabelOf(granularity: Granularity): string {
+  return `${granularity.name}${granularity.optimized ? '*' : ''}`;
 }

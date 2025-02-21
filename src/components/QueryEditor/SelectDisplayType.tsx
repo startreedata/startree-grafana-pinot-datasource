@@ -4,8 +4,6 @@ import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { DisplayType } from '../../dataquery/DisplayType';
 
-export const DisplayTypeTimeSeries = 'TIMESERIES';
-
 const DisplayTypeOptions = [
   { label: 'Time Series', value: DisplayType.TIMESERIES },
   { label: 'Table', value: DisplayType.TABLE },
