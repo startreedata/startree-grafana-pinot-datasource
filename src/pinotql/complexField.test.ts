@@ -12,7 +12,7 @@ describe('formDataOf', () => {
 
   test('should return columns and selected column as options', () => {
     const selected: ComplexField = { name: 'custom', key: 'customKey' };
-    expect(formDataOf(selected, columns).options).toEqual<SelectableValue<string>[]>([
+    expect(formDataOf(selected, columns).options).toEqual<Array<SelectableValue<string>>>([
       { label: "custom['customKey']", value: "custom['customKey']" },
       { label: "name1['key1']", value: "name1['key1']" },
       { label: "name2['key2']", value: "name2['key2']" },
@@ -70,7 +70,7 @@ describe('multiSelectFormDataOf', () => {
       { name: 'custom1', key: 'customKey1' },
       { name: 'name1', key: 'key1' },
     ];
-    expect(multiSelectFormDataOf(selected, columns).options).toEqual<SelectableValue<string>[]>([
+    expect(multiSelectFormDataOf(selected, columns).options).toEqual<Array<SelectableValue<string>>>([
       { label: "custom1['customKey1']", value: "custom1['customKey1']" },
       { label: "name1['key1']", value: "name1['key1']" },
       { label: "name2['key2']", value: "name2['key2']" },
@@ -82,7 +82,7 @@ describe('multiSelectFormDataOf', () => {
       { name: 'custom1', key: 'customKey1' },
       { name: 'name1', key: 'key1' },
     ];
-    expect(multiSelectFormDataOf(selected, columns).usedOptions).toEqual<SelectableValue<string>[]>([
+    expect(multiSelectFormDataOf(selected, columns).usedOptions).toEqual<Array<SelectableValue<string>>>([
       { label: "custom1['customKey1']", value: "custom1['customKey1']" },
       { label: "name1['key1']", value: "name1['key1']" },
     ]);
@@ -90,7 +90,7 @@ describe('multiSelectFormDataOf', () => {
 
   test('should return empty used options if no selected columns', () => {
     const selected: ComplexField[] = [];
-    expect(multiSelectFormDataOf(selected, columns).usedOptions).toEqual<SelectableValue<string>[]>([]);
+    expect(multiSelectFormDataOf(selected, columns).usedOptions).toEqual<Array<SelectableValue<string>>>([]);
   });
 
   describe('getChange', () => {

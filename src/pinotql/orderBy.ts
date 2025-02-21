@@ -4,10 +4,10 @@ import { SelectableValue } from '@grafana/data';
 import {columnLabelOf, parseColumnName} from "./complexField";
 
 export interface FormData {
-  options: SelectableValue<string>[];
-  usedOptions: SelectableValue<string>[];
+  options: Array<SelectableValue<string>>;
+  usedOptions: Array<SelectableValue<string>>;
 
-  getChange(items: SelectableValue<string>[]): OrderByClause[];
+  getChange(items: Array<SelectableValue<string>>): OrderByClause[];
 }
 
 export function formDataOf(selected: OrderByClause[], columns: ComplexField[]): FormData {

@@ -3,17 +3,17 @@ import { SelectableValue } from '@grafana/data';
 import { ComplexField } from '../dataquery/ComplexField';
 
 export interface FormData {
-  options: SelectableValue<string>[];
+  options: Array<SelectableValue<string>>;
   usedOption: SelectableValue<string> | null;
 
   getChange(item: SelectableValue<string>): ComplexField;
 }
 
 export interface MultiSelectFormData {
-  options: SelectableValue<string>[];
-  usedOptions: SelectableValue<string>[];
+  options: Array<SelectableValue<string>>;
+  usedOptions: Array<SelectableValue<string>>;
 
-  getChange(items: SelectableValue<string>[]): ComplexField[];
+  getChange(items: Array<SelectableValue<string>>): ComplexField[];
 }
 
 export function formDataOf(selected: ComplexField, columns: Column[]): FormData {

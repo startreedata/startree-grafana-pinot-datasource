@@ -14,7 +14,7 @@ import { DateTime } from '@grafana/data';
 import { DataSource } from '../../datasource';
 import { InputMetricLegend } from './InputMetricLegend';
 import { TimeSeriesBuilder } from '../../pinotql';
-import {columnLabelOf} from "../../pinotql/complexField";
+import { columnLabelOf } from '../../pinotql/complexField';
 
 export function PinotQlTimeSeriesBuilder(props: {
   datasource: DataSource;
@@ -100,6 +100,7 @@ export function PinotQlTimeSeriesBuilder(props: {
         timeRange={timeRange}
         columns={resources.filterColumns}
         filters={savedParams.filters}
+        isColumnsLoading={resources.isColumnsLoading}
         onChange={(filters) => onChangeAndRun({ ...savedParams, filters })}
       />
       <SelectQueryOptions

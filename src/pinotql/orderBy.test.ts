@@ -14,7 +14,7 @@ describe('formDataOf', () => {
 
   it('should return form data with expected options', () => {
     const result = formDataOf(selected, columns);
-    expect(result.options).toEqual<SelectableValue<string>[]>([
+    expect(result.options).toEqual<Array<SelectableValue<string>>>([
       { label: "column1['key1'] asc", value: "column1['key1'] asc" },
       { label: "column2['key2'] desc", value: "column2['key2'] desc" },
       { label: "column3['key3'] asc", value: "column3['key3'] asc" },
@@ -24,7 +24,7 @@ describe('formDataOf', () => {
 
   it('should return form data with expected used options', () => {
     const result = formDataOf(selected, columns);
-    expect(result.usedOptions).toEqual<SelectableValue<string>[]>([
+    expect(result.usedOptions).toEqual<Array<SelectableValue<string>>>([
       { label: "column1['key1'] asc", value: "column1['key1'] asc" },
       { label: "column2['key2'] desc", value: "column2['key2'] desc" },
     ]);
