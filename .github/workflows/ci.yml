@@ -147,6 +147,7 @@ jobs:
           retention-days: 30
 
       - name: Collect Grafana logs
+        if: ${{ failure() }}
         run: docker compose logs grafana > grafana.log
 
       - name: Upload Grafana logs
