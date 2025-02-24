@@ -27,7 +27,7 @@ const PluginName = "startree-pinot-datasource"
 const ArtifactoryUrl = "https://repo.startreedata.io/artifactory"
 const ArtifactoryRepository = "startree-grafana-plugin"
 
-type ExternalRelease struct {
+type CustomerRelease struct {
 	name string
 	repo string
 	urls []string
@@ -35,14 +35,14 @@ type ExternalRelease struct {
 
 // Hard coded external releases
 
-var ExternalReleases = []ExternalRelease{{
+var CustomerReleases = []CustomerRelease{{
 	name: "epicgames",
 	repo: "external-startree-releases-for-epicgames",
-	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud/"},
+	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud", "https://grafana.yowo6r.cp.s7e.startree.cloud"},
 }, {
 	name: "doordash",
 	repo: "external-startree-releases-for-doordash",
-	urls: []string{"https://grafana.doordash.team/"},
+	urls: []string{"https://grafana.doordash.team"},
 }}
 
 const PackageJsonFile = "package.json"
@@ -97,11 +97,18 @@ func main() {
 	case "create":
 		releaseManager.CreateInternalRelease()
 
-	case "external":
+	case "customer":
 		target := os.Args[2]
-		for _, release := range ExternalReleases {
+		if target == "all" || target == "--all" {
+			for _, release := range CustomerReleases {
+				releaseManager.CreateCustomerRelease(release)
+			}
+			return
+		}
+
+		for _, release := range CustomerReleases {
 			if release.name == target {
-				releaseManager.CreateExternalRelease(release)
+				releaseManager.CreateCustomerRelease(release)
 				return
 			}
 		}
@@ -186,9 +193,10 @@ func (x *ReleaseManager) ResignRelease(rootUrls []string) {
 	x.uploadInternalFile(customerRelease)
 }
 
-func (x *ReleaseManager) CreateExternalRelease(release ExternalRelease) {
+func (x *ReleaseManager) CreateCustomerRelease(release CustomerRelease) {
 	x.releaseName = release.name
 	x.ResignRelease(release.urls)
+	x.uploadInternalFile(x.getCustomerArchiveName())
 	if release.repo != "" {
 		x.uploadExternalFile(x.getCustomerArchiveName(), release.repo)
 	}
