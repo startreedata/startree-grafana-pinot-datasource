@@ -38,7 +38,8 @@ type CustomerRelease struct {
 var CustomerReleases = []CustomerRelease{{
 	name: "epicgames",
 	repo: "external-startree-releases-for-epicgames",
-	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud", "https://grafana.yowo6r.cp.s7e.startree.cloud"},
+	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud",
+		"https://grafana.yowo6r.cp.s7e.startree.cloud", "https://grafana.yhzyvd.cp.s7e.startree.cloud"},
 }, {
 	name: "doordash",
 	repo: "external-startree-releases-for-doordash",
@@ -126,7 +127,12 @@ func main() {
 		releaseManager.InstallPluginIntoDataPlane()
 
 	case "demo":
-		target := os.Args[2]
+		var target string
+		if len(os.Args) == 1 {
+			target = "internal"
+		} else {
+			target = os.Args[2]
+		}
 		for _, demo := range DemoReleases {
 			if demo.Name == target {
 				releaseManager.DeployDemo(demo)
