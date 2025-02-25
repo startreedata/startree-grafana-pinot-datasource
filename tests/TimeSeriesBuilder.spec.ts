@@ -119,12 +119,25 @@ test.describe('Create Panel with Time Series Builder', async () => {
     await expect(page.getByTestId('input-limit').getByRole('textbox')).toHaveValue('100');
   });
 
+  test('Set series limit', async ({ page }) => {
+    await page.getByTestId('input-series-limit').getByRole('textbox').fill('100');
+    await expect(page.getByTestId('input-series-limit').getByRole('textbox')).toHaveValue('100');
+  });
+
   test('Set legend', async ({ page }) => {
     await checkTextForm(page.getByTestId('input-metric-legend').getByRole('textbox'));
   });
 
   test('Graph renders when minimum fields are used', async ({ page }) => {
     await checkTimeSeriesRendersMinFields(page);
+  });
+
+  test('Graph renders when no aggregation is selected', async ({ page }) => {
+    await checkTimeSeriesRendersNoAgg(page);
+  });
+
+  test('Graph renders when count aggregation is selected', async ({ page }) => {
+    await checkTimeSeriesRendersCountAgg(page);
   });
 
   test('Graph renders when all fields are used', async ({ page }) => {
@@ -298,12 +311,25 @@ test.describe('Explore with Time Series Builder', async () => {
     await expect(page.getByTestId('input-limit').getByRole('textbox')).toHaveValue('100');
   });
 
+  test('Set series limit', async ({ page }) => {
+    await page.getByTestId('input-series-limit').getByRole('textbox').fill('100');
+    await expect(page.getByTestId('input-series-limit').getByRole('textbox')).toHaveValue('100');
+  });
+
   test('Set legend', async ({ page }) => {
     await checkTextForm(page.getByTestId('input-metric-legend').getByRole('textbox'));
   });
 
   test('Graph renders when minimum fields are used', async ({ page }) => {
     await checkTimeSeriesRendersMinFields(page);
+  });
+
+  test('Graph renders when no aggregation is selected', async ({ page }) => {
+    await checkTimeSeriesRendersNoAgg(page);
+  });
+
+  test('Graph renders when count aggregation is selected', async ({ page }) => {
+    await checkTimeSeriesRendersCountAgg(page);
   });
 
   test('Graph renders when all fields are used', async ({ page }) => {
@@ -405,6 +431,56 @@ LIMIT 100000;`
   await expect(page.getByText('No data')).not.toBeVisible();
 }
 
+async function checkTimeSeriesRendersNoAgg(page: Page) {
+  await page.getByTestId('select-table-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
+
+  await page.getByTestId('select-aggregation-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('NONE', { exact: true }).click();
+
+  await expect(page.getByTestId('sql-preview')).toContainText(
+    // language=text
+    `SELECT
+    "views" AS "__metric",
+    "hoursSinceEpoch" AS "__time"
+FROM
+    "complex_website"
+WHERE
+    "views" IS NOT NULL
+    AND "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482136
+ORDER BY "__time" DESC
+LIMIT 100000;`
+  );
+
+  await expect(page.getByText('No data')).not.toBeVisible();
+}
+
+async function checkTimeSeriesRendersCountAgg(page: Page) {
+  await page.getByTestId('select-table-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
+
+  await page.getByTestId('select-aggregation-dropdown').click();
+  await page.getByLabel('Select options menu').getByText('COUNT', { exact: true }).click();
+
+  await expect(page.getByTestId('sql-preview')).toContainText(
+    // language=text
+    `SELECT
+    DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
+    COUNT("*") AS "__metric"
+FROM
+    "complex_website"
+WHERE
+    "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148
+GROUP BY
+    "__time"
+ORDER BY
+    "__time" DESC
+LIMIT 100000;`
+  );
+
+  await expect(page.getByText('No data')).not.toBeVisible();
+}
+
 async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('select-table-dropdown').click();
   await page.getByText('complex_website', { exact: true }).click();
@@ -429,7 +505,6 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByLabel('Select options menu').getByText('!=', { exact: true }).click();
   await page.getByTestId('select-query-filter-value').click();
   await page.getByLabel('Select options menu').getByText(`'CN'`, { exact: true }).click();
-  await page.getByText("'CN'", { exact: true }).click();
   await page.locator('body').click();
 
   await page.getByTestId('add-query-option-btn').click();
@@ -438,6 +513,7 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('input-query-option-value').getByRole('textbox').fill('1000');
 
   await page.getByTestId('input-limit').getByRole('textbox').fill('4000');
+  await page.getByTestId('input-series-limit').getByRole('textbox').fill('2');
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
   await page.getByTestId('run-query-btn').click();
@@ -464,4 +540,7 @@ SET timeoutMs=1000;`
   );
 
   await expect(page.getByText('No data')).not.toBeVisible();
+  await expect(page.getByLabel('VizLegend series chrome')).toBeVisible();
+  await expect(page.getByLabel('VizLegend series edge')).toBeVisible();
+  await expect(page.getByText('chromeedge', { exact: true })).toBeVisible();
 }
