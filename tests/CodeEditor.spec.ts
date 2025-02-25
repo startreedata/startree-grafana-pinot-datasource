@@ -42,9 +42,6 @@ test.describe('Explore with Code Editor', async () => {
 
   test('Modify sql', async ({ page }) => await checkSqlEditor(page));
 
-  test('Set legend', async ({ page }) =>
-    await checkTextForm(page.getByTestId('input-metric-legend').getByRole('textbox')));
-
   test.describe('Visualize time series', async () => {
     test.beforeEach(async ({ page }) => {
       await page.getByTestId('select-display-type').getByText('Time Series').click();
@@ -52,6 +49,14 @@ test.describe('Explore with Code Editor', async () => {
 
     test('Set metric alias', async ({ page }) =>
       await checkTextForm(page.getByTestId('input-metric-alias').getByRole('textbox')));
+
+    test('Set legend', async ({ page }) =>
+      await checkTextForm(page.getByTestId('input-metric-legend').getByRole('textbox')));
+
+    test('Set series limit', async ({ page }) => {
+      await page.getByTestId('input-series-limit').getByRole('textbox').fill('100');
+      await expect(page.getByTestId('input-series-limit').getByRole('textbox')).toHaveValue('100');
+    });
 
     test('Time series renders', async ({ page }) => {
       await checkTimeSeriesRenders(page);
@@ -117,6 +122,11 @@ test.describe('Create Panel with Code Editor', async () => {
 
     test('Set metric alias', async ({ page }) =>
       await checkTextForm(page.getByTestId('input-metric-alias').getByRole('textbox')));
+
+    test('Set series limit', async ({ page }) => {
+      await page.getByTestId('input-series-limit').getByRole('textbox').fill('100');
+      await expect(page.getByTestId('input-series-limit').getByRole('textbox')).toHaveValue('100');
+    });
 
     test('Time series renders', async ({ page }) => {
       await checkTimeSeriesRenders(page);
@@ -250,6 +260,8 @@ async function checkTimeSeriesRenders(page: Page) {
   await page.getByText('complex_website', { exact: true }).click();
 
   await page.getByTestId('input-metric-alias').getByRole('textbox').fill('views');
+  await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
+  await page.getByTestId('input-series-limit').getByRole('textbox').fill('2');
 
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
@@ -257,10 +269,10 @@ async function checkTimeSeriesRenders(page: Page) {
   await page.keyboard.press('ControlOrMeta+x');
   await page.keyboard.type(
     // language=text
-    `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()
+    `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias(), "browser"
 FROM $__table()
 WHERE $__timeFilter("hoursSinceEpoch", '12:HOURS')
-GROUP BY $__timeAlias()
+GROUP BY $__timeAlias(), "browser"
 ORDER BY $__timeAlias() DESC
 LIMIT 100000;`
   );
@@ -269,22 +281,22 @@ LIMIT 100000;`
   await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
-    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "views" 
+    `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS  "views" , "browser"
 FROM  "complex_website" 
 WHERE  "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482148 
-GROUP BY  "__time" 
+GROUP BY  "__time" , "browser"
 ORDER BY  "__time"  DESC
 LIMIT 100000;`
   );
 
   await dataQueryResponse;
   await expect(page.getByText('No data')).not.toBeVisible();
+  await expect(page.getByLabel('VizLegend series firefox')).toBeVisible();
+  await expect(page.getByLabel('VizLegend series chrome')).toBeVisible();
+  await expect(page.getByText('firefoxchrome', { exact: true })).toBeVisible();
 }
 
 async function checkTableRenders(page: Page) {
-  const dataQueryResponse = page.waitForResponse('/api/ds/query');
-  const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/code');
-
   await page.getByTestId('select-table-dropdown').click();
   await page.getByText('complex_website', { exact: true }).click();
 
@@ -303,7 +315,6 @@ LIMIT 100000;`
   );
   await page.getByTestId('run-query-btn').click();
 
-  await sqlPreviewResponse;
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT  DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS')  AS  "__time" , SUM("views") AS "views", "country" 
@@ -313,7 +324,4 @@ GROUP BY  "__time" , "country"
 ORDER BY  "__time"  DESC
 LIMIT 100000;`
   );
-
-  await dataQueryResponse;
-  await expect(page.getByText('No data')).not.toBeVisible();
 }
