@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"github.com/stretchr/testify/assert"

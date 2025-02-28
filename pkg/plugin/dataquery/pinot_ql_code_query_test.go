@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -255,15 +255,17 @@ func TestExtractColumnToField(t *testing.T) {
 
 	client := test_helpers.SetupPinotAndCreateClient(t)
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		pinotlib.NewSqlQuery(`select * from "allDataTypes" order by "__timestamp" asc limit 3`))
+		pinot.NewSqlQuery(`select * from "allDataTypes" order by "__timestamp" asc limit 3`))
 	require.NoError(t, err, "client.ExecuteSqlQuery()")
 	require.True(t, resp.HasData(), "resp.HasData()")
 
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
-			colIdx, err := pinotlib.GetColumnIdx(resp.ResultTable, tt.column)
+			colIdx, err := pinot.GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ExtractColumnAsField(resp.ResultTable, colIdx))
+			got, err := ExtractColumnAsField(resp.ResultTable, colIdx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

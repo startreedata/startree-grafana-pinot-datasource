@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"strings"
 )
 
@@ -18,7 +18,7 @@ type VariableQuery struct {
 	PinotQlCode  string
 }
 
-func (query VariableQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+func (query VariableQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
 	switch query.VariableType {
 	case VariableQueryTypeColumnList:
 		return query.getColumnList(ctx, client)
@@ -31,7 +31,7 @@ func (query VariableQuery) Execute(client *pinotlib.PinotClient, ctx context.Con
 	}
 }
 
-func (query VariableQuery) getSqlResults(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query VariableQuery) getSqlResults(ctx context.Context, client *pinot.Client) backend.DataResponse {
 	sqlCode := strings.TrimSpace(query.PinotQlCode)
 	if sqlCode == "" {
 		return NewEmptyDataResponse()
@@ -42,47 +42,59 @@ func (query VariableQuery) getSqlResults(ctx context.Context, client *pinotlib.P
 		return NewPluginErrorResponse(err)
 	}
 
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinotlib.NewSqlQuery(sqlCode))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinot.NewSqlQuery(sqlCode))
 	if !ok {
 		return backendResp
 	}
 
-	values := make([]string, results.RowCount()*results.ColumnCount())
+	cols := make([][]string, results.ColumnCount())
 	for colId := 0; colId < results.ColumnCount(); colId++ {
-		for rowId, val := range pinotlib.ExtractColumnAsStrings(results, colId) {
+		col, err := pinot.ExtractColumnAsStrings(results, colId)
+		if err != nil {
+			return NewPluginErrorResponse(err)
+		}
+		cols[colId] = col
+	}
+
+	values := make([]string, results.RowCount()*results.ColumnCount())
+	for colIdx, col := range cols {
+		for rowIdx, val := range col {
 			// Extract values in table order.
-			values[rowId*results.ColumnCount()+colId] = val
+			values[rowIdx*results.ColumnCount()+colIdx] = val
 		}
 	}
-	values = pinotlib.GetDistinctValues(values)
+	values = pinot.GetDistinctValues(values)
 	frame := data.NewFrame("result", data.NewField("codeValues", nil, values))
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query VariableQuery) getDistinctValues(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query VariableQuery) getDistinctValues(ctx context.Context, client *pinot.Client) backend.DataResponse {
 	if query.TableName == "" || query.ColumnName == "" {
 		return NewEmptyDataResponse()
 	}
 
-	sql, err := pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
-		ColumnExpr: pinotlib.ObjectExpr(query.ColumnName),
+	sql, err := pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
+		ColumnExpr: pinot.ObjectExpr(query.ColumnName),
 		TableName:  query.TableName,
 	})
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinotlib.NewSqlQuery(sql))
+	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, pinot.NewSqlQuery(sql))
 	if !ok {
 		return backendResp
 	}
 
-	values := pinotlib.ExtractColumnAsStrings(results, 0)
+	values, err := pinot.ExtractColumnAsStrings(results, 0)
+	if err != nil {
+		return NewPluginErrorResponse(err)
+	}
 	frame := data.NewFrame("result", data.NewField("distinctValues", nil, values))
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query VariableQuery) getColumnList(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query VariableQuery) getColumnList(ctx context.Context, client *pinot.Client) backend.DataResponse {
 	if query.TableName == "" {
 		return NewEmptyDataResponse()
 	}
@@ -113,7 +125,7 @@ func (query VariableQuery) getColumnList(ctx context.Context, client *pinotlib.P
 	return NewOkDataResponse(frame)
 }
 
-func (query VariableQuery) getTableList(ctx context.Context, client *pinotlib.PinotClient) backend.DataResponse {
+func (query VariableQuery) getTableList(ctx context.Context, client *pinot.Client) backend.DataResponse {
 	tables, err := client.ListTables(ctx)
 	if err != nil {
 		return NewPluginErrorResponse(err)

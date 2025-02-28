@@ -8,11 +8,10 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"net/http"
 	"sort"
 	"strconv"
@@ -38,7 +37,7 @@ var requestDuration = promauto.NewSummaryVec(
 	[]string{"endpoint", "status"},
 )
 
-func NewResourceHandler(client *pinotlib.PinotClient) http.Handler {
+func NewResourceHandler(client *pinot.Client) http.Handler {
 	router := mux.NewRouter()
 	router.HandleFunc("/databases", adaptHandler(client, ListDatabases))
 	router.HandleFunc("/isPromQlSupported", adaptHandler(client, IsPromQlSupported))
@@ -64,10 +63,10 @@ type Response[T any] struct {
 	Result T      `json:"result,omitempty"`
 }
 
-func ListDatabases(client *pinotlib.PinotClient, r *http.Request) *Response[[]string] {
+func ListDatabases(client *pinot.Client, r *http.Request) *Response[[]string] {
 	databases, err := client.ListDatabases(r.Context())
 
-	if pinotlib.IsStatusForbiddenError(err) {
+	if pinot.IsStatusForbiddenError(err) {
 		log.WithError(err).Error("PinotClient.ListDatabases() failed.")
 		return newOkResponse[[]string](nil)
 	} else if err != nil {
@@ -76,7 +75,7 @@ func ListDatabases(client *pinotlib.PinotClient, r *http.Request) *Response[[]st
 	return newOkResponse(databases)
 }
 
-func ListTables(client *pinotlib.PinotClient, r *http.Request) *Response[[]string] {
+func ListTables(client *pinot.Client, r *http.Request) *Response[[]string] {
 	tables, err := client.ListTables(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse[[]string](err)
@@ -88,13 +87,13 @@ type GetTablesResponse struct {
 	Tables []string `json:"tables"`
 }
 
-func GetTableSchema(client *pinotlib.PinotClient, r *http.Request) *Response[pinotlib.TableSchema] {
+func GetTableSchema(client *pinot.Client, r *http.Request) *Response[pinot.TableSchema] {
 	vars := mux.Vars(r)
 	table := vars["table"]
 
 	schema, err := client.GetTableSchema(r.Context(), table)
 	if err != nil {
-		return newInternalServerErrorResponse[pinotlib.TableSchema](err)
+		return newInternalServerErrorResponse[pinot.TableSchema](err)
 	}
 	return newOkResponse(schema)
 }
@@ -115,7 +114,7 @@ type PreviewSqlBuilderRequest struct {
 	ExpandMacros        bool                        `json:"expandMacros"`
 }
 
-func PreviewSqlBuilder(client *pinotlib.PinotClient, ctx context.Context, data PreviewSqlBuilderRequest) *Response[string] {
+func PreviewSqlBuilder(client *pinot.Client, ctx context.Context, data PreviewSqlBuilderRequest) *Response[string] {
 	if data.TableName == "" {
 		return newOkResponse("")
 	}
@@ -167,7 +166,7 @@ type PreviewLogsBuilderSqlRequest struct {
 	ExpandMacros     bool                        `json:"expandMacros"`
 }
 
-func PreviewLogsSql(client *pinotlib.PinotClient, ctx context.Context, data PreviewLogsBuilderSqlRequest) *Response[string] {
+func PreviewLogsSql(client *pinot.Client, ctx context.Context, data PreviewLogsBuilderSqlRequest) *Response[string] {
 	if data.TableName == "" {
 		return newOkResponse("")
 	}
@@ -213,7 +212,7 @@ type PreviewSqlCodeRequest struct {
 	Code              string              `json:"code"`
 }
 
-func PreviewSqlCode(client *pinotlib.PinotClient, ctx context.Context, data PreviewSqlCodeRequest) *Response[string] {
+func PreviewSqlCode(client *pinot.Client, ctx context.Context, data PreviewSqlCodeRequest) *Response[string] {
 	if data.TableName == "" {
 		log.FromContext(ctx).Info("Received code preview request without table selection")
 		return newOkResponse("")
@@ -245,7 +244,7 @@ type QueryDistinctValuesRequest struct {
 	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
 }
 
-func QueryDistinctValues(client *pinotlib.PinotClient, ctx context.Context, data QueryDistinctValuesRequest) *Response[[]string] {
+func QueryDistinctValues(client *pinot.Client, ctx context.Context, data QueryDistinctValuesRequest) *Response[[]string] {
 	sql, err := getDistinctValuesSql(client, ctx, data)
 	if err != nil {
 		return newInternalServerErrorResponse[[]string](err)
@@ -254,21 +253,24 @@ func QueryDistinctValues(client *pinotlib.PinotClient, ctx context.Context, data
 		return newOkResponse[[]string](nil)
 	}
 
-	results, err := client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
+	results, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery(sql))
 	if err != nil {
 		return newInternalServerErrorResponse[[]string](err)
 	}
 
 	var valueExprs []string
 	if results.HasData() {
-		valueExprs = pinotlib.ExtractColumnAsExprs(results.ResultTable, 0)
+		valueExprs, err = pinot.ExtractColumnAsExprs(results.ResultTable, 0)
+		if err != nil {
+			return newInternalServerErrorResponse[[]string](err)
+		}
 	}
 	return newOkResponse(valueExprs)
 }
 
 type PreviewSqlDistinctValuesRequest QueryDistinctValuesRequest
 
-func PreviewSqlDistinctValues(client *pinotlib.PinotClient, ctx context.Context, data PreviewSqlDistinctValuesRequest) *Response[string] {
+func PreviewSqlDistinctValues(client *pinot.Client, ctx context.Context, data PreviewSqlDistinctValuesRequest) *Response[string] {
 	sql, err := getDistinctValuesSql(client, ctx, QueryDistinctValuesRequest(data))
 	if err != nil {
 		return newErrorResponse[string](http.StatusInternalServerError, err)
@@ -277,24 +279,24 @@ func PreviewSqlDistinctValues(client *pinotlib.PinotClient, ctx context.Context,
 	return newOkResponse(sql)
 }
 
-func getDistinctValuesSql(client *pinotlib.PinotClient, ctx context.Context, data QueryDistinctValuesRequest) (string, error) {
+func getDistinctValuesSql(client *pinot.Client, ctx context.Context, data QueryDistinctValuesRequest) (string, error) {
 	if data.TableName == "" || data.ColumnName == "" {
 		return "", nil
 	}
 
-	var timeFilterExpr pinotlib.SqlExpr
+	var timeFilterExpr pinot.SqlExpr
 	if data.TimeRange != nil {
 		tableSchema, err := client.GetTableSchema(ctx, data.TableName)
 		if err != nil {
 			return "", err
 		}
 
-		format, err := pinotlib.GetTimeColumnFormat(tableSchema, data.TimeColumn)
+		format, err := pinot.GetTimeColumnFormat(tableSchema, data.TimeColumn)
 		if err != nil {
 			return "", err
 		}
 
-		timeFilterExpr = pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+		timeFilterExpr = pinot.TimeFilterExpr(pinot.TimeFilter{
 			Column: data.TimeColumn,
 			Format: format,
 			From:   data.TimeRange.From,
@@ -302,15 +304,15 @@ func getDistinctValuesSql(client *pinotlib.PinotClient, ctx context.Context, dat
 		})
 	}
 
-	return pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
-		ColumnExpr:           pinotlib.ComplexFieldExpr(data.ColumnName, data.ColumnKey),
+	return pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
+		ColumnExpr:           pinot.ComplexFieldExpr(data.ColumnName, data.ColumnKey),
 		TableName:            data.TableName,
 		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: dataquery.FilterExprsFrom(data.DimensionFilters),
 	})
 }
 
-func ListTimeSeriesTables(client *pinotlib.PinotClient, r *http.Request) *Response[[]string] {
+func ListTimeSeriesTables(client *pinot.Client, r *http.Request) *Response[[]string] {
 	tables, err := client.ListTimeSeriesTables(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse[[]string](err)
@@ -323,7 +325,7 @@ type ListTimeSeriesMetricsRequest struct {
 	TimeRange dataquery.TimeRange `json:"timeRange"`
 }
 
-func ListTimeSeriesMetrics(client *pinotlib.PinotClient, ctx context.Context, data ListTimeSeriesMetricsRequest) *Response[[]string] {
+func ListTimeSeriesMetrics(client *pinot.Client, ctx context.Context, data ListTimeSeriesMetricsRequest) *Response[[]string] {
 	if data.TableName == "" {
 		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if ok, err := client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
@@ -332,7 +334,7 @@ func ListTimeSeriesMetrics(client *pinotlib.PinotClient, ctx context.Context, da
 		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	metrics, err := client.ListTimeSeriesMetrics(ctx, pinotlib.TimeSeriesMetricNamesQuery{
+	metrics, err := client.ListTimeSeriesMetrics(ctx, pinot.TimeSeriesMetricNamesQuery{
 		TableName: data.TableName,
 		From:      data.TimeRange.From,
 		To:        data.TimeRange.To,
@@ -349,7 +351,7 @@ type ListTimeSeriesLabelsRequest = struct {
 	TimeRange  dataquery.TimeRange `json:"timeRange"`
 }
 
-func ListTimeSeriesLabels(client *pinotlib.PinotClient, ctx context.Context, data ListTimeSeriesLabelsRequest) *Response[[]string] {
+func ListTimeSeriesLabels(client *pinot.Client, ctx context.Context, data ListTimeSeriesLabelsRequest) *Response[[]string] {
 	if data.TableName == "" {
 		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if ok, err := client.IsTimeSeriesTable(ctx, data.TableName); err != nil {
@@ -358,7 +360,7 @@ func ListTimeSeriesLabels(client *pinotlib.PinotClient, ctx context.Context, dat
 		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	labels, err := client.ListTimeSeriesLabelNames(ctx, pinotlib.TimeSeriesLabelNamesQuery{
+	labels, err := client.ListTimeSeriesLabelNames(ctx, pinot.TimeSeriesLabelNamesQuery{
 		TableName:  data.TableName,
 		MetricName: data.MetricName,
 		From:       data.TimeRange.From,
@@ -377,7 +379,7 @@ type ListTimeSeriesLabelValuesRequest struct {
 	TimeRange  dataquery.TimeRange `json:"timeRange"`
 }
 
-func ListTimeSeriesLabelValues(client *pinotlib.PinotClient, ctx context.Context, data ListTimeSeriesLabelValuesRequest) *Response[[]string] {
+func ListTimeSeriesLabelValues(client *pinot.Client, ctx context.Context, data ListTimeSeriesLabelValuesRequest) *Response[[]string] {
 	if data.TableName == "" {
 		return newBadRequestResponse[[]string](errors.New("tableName is required"))
 	} else if data.LabelName == "" {
@@ -388,7 +390,7 @@ func ListTimeSeriesLabelValues(client *pinotlib.PinotClient, ctx context.Context
 		return newBadRequestResponse[[]string](fmt.Errorf("table `%s` is not a time series table", data.TableName))
 	}
 
-	values, err := client.ListTimeSeriesLabelValues(ctx, pinotlib.TimeSeriesLabelValuesQuery{
+	values, err := client.ListTimeSeriesLabelValues(ctx, pinot.TimeSeriesLabelValuesQuery{
 		TableName:  data.TableName,
 		MetricName: data.MetricName,
 		LabelName:  data.LabelName,
@@ -401,7 +403,7 @@ func ListTimeSeriesLabelValues(client *pinotlib.PinotClient, ctx context.Context
 	return newOkResponse(values)
 }
 
-func IsPromQlSupported(client *pinotlib.PinotClient, r *http.Request) *Response[bool] {
+func IsPromQlSupported(client *pinot.Client, r *http.Request) *Response[bool] {
 	ok, err := client.IsTimeseriesSupported(r.Context())
 	if err != nil {
 		return newInternalServerErrorResponse[bool](err)
@@ -429,7 +431,7 @@ var commonGranularities = []Granularity{
 	{Name: "DAYS", Optimized: false, Seconds: 86400},
 }
 
-func ListSuggestedGranularities(client *pinotlib.PinotClient, ctx context.Context, req ListSuggestedGranularitiesRequest) *Response[[]Granularity] {
+func ListSuggestedGranularities(client *pinot.Client, ctx context.Context, req ListSuggestedGranularitiesRequest) *Response[[]Granularity] {
 	if req.TableName == "" || req.TimeColumn == "" {
 		return newOkResponse(commonGranularities)
 	}
@@ -439,7 +441,7 @@ func ListSuggestedGranularities(client *pinotlib.PinotClient, ctx context.Contex
 		return newInternalServerErrorResponse[[]Granularity](err)
 	}
 
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
+	timeColumnFormat, err := pinot.GetTimeColumnFormat(schema, req.TimeColumn)
 	if err != nil {
 		return newInternalServerErrorResponse[[]Granularity](err)
 	}
@@ -457,7 +459,7 @@ func ListSuggestedGranularities(client *pinotlib.PinotClient, ctx context.Contex
 		}
 	}
 
-	derivedGranularities := pinotlib.DerivedGranularitiesFor(configs, req.TimeColumn, dataquery.OutputTimeFormat())
+	derivedGranularities := pinot.DerivedGranularitiesFor(configs, req.TimeColumn, dataquery.OutputTimeFormat())
 	for _, pinotGranularity := range derivedGranularities {
 		distinctSuggestions[pinotGranularity.Duration().Seconds()] = Granularity{
 			Name:      pinotGranularity.ShortString(),
@@ -499,7 +501,7 @@ type Column = struct {
 	IsDerived bool   `json:"isDerived,omitempty"`
 }
 
-func ListColumns(client *pinotlib.PinotClient, ctx context.Context, req ListColumnsRequest) *Response[[]Column] {
+func ListColumns(client *pinot.Client, ctx context.Context, req ListColumnsRequest) *Response[[]Column] {
 	if req.TableName == "" {
 		return newOkResponse[[]Column](nil)
 	}
@@ -514,33 +516,32 @@ func ListColumns(client *pinotlib.PinotClient, ctx context.Context, req ListColu
 		return newInternalServerErrorResponse[[]Column](err)
 	}
 
-	derivedTimeCols := collections.NewSet[string](0)
-	for _, col := range pinotlib.DerivedTimeColumnsFrom(tableConfigs) {
-		derivedTimeCols.Add(col.ColumnName)
+	isDerivedTimeCol := make(map[string]bool)
+	for _, col := range pinot.DerivedTimeColumnsFrom(tableConfigs) {
+		isDerivedTimeCol[col.ColumnName] = true
 	}
 
 	var columns []Column
-
 	for _, spec := range schema.DateTimeFieldSpecs {
 		columns = append(columns, Column{
 			Name:      spec.Name,
 			DataType:  spec.DataType,
 			IsTime:    true,
-			IsDerived: derivedTimeCols.Contains(spec.Name),
+			IsDerived: isDerivedTimeCol[spec.Name],
 		})
 	}
 	for _, spec := range schema.DimensionFieldSpecs {
 		columns = append(columns, Column{
 			Name:     spec.Name,
 			DataType: spec.DataType,
-			IsMetric: pinotlib.IsNumericDataType(spec.DataType),
+			IsMetric: pinot.IsNumericDataType(spec.DataType),
 		})
 	}
 	for _, spec := range schema.MetricFieldSpecs {
 		columns = append(columns, Column{
 			Name:     spec.Name,
 			DataType: spec.DataType,
-			IsMetric: pinotlib.IsNumericDataType(spec.DataType),
+			IsMetric: pinot.IsNumericDataType(spec.DataType),
 		})
 	}
 	if len(schema.ComplexFieldSpecs) == 0 {
@@ -549,12 +550,12 @@ func ListColumns(client *pinotlib.PinotClient, ctx context.Context, req ListColu
 
 	// Complex fields
 
-	format, err := pinotlib.GetTimeColumnFormat(schema, req.TimeColumn)
+	format, err := pinot.GetTimeColumnFormat(schema, req.TimeColumn)
 	if err != nil {
 		return newOkResponse(columns)
 	}
 
-	timeFilterExpr := pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+	timeFilterExpr := pinot.TimeFilterExpr(pinot.TimeFilter{
 		Column: req.TimeColumn,
 		Format: format,
 		From:   req.TimeRange.From,
@@ -569,23 +570,23 @@ func ListColumns(client *pinotlib.PinotClient, ctx context.Context, req ListColu
 				Name:     spec.Name,
 				Key:      key,
 				DataType: dataType,
-				IsMetric: pinotlib.IsNumericDataType(dataType),
+				IsMetric: pinot.IsNumericDataType(dataType),
 			})
 		}
 	}
 	return newOkResponse(columns)
 }
 
-func listMapColumnKeys(client *pinotlib.PinotClient, ctx context.Context, tableName string, columnName string, timeFilterExpr pinotlib.SqlExpr, filterExprs []pinotlib.SqlExpr) []string {
-	columnExpr := pinotlib.CastExpr(pinotlib.ObjectExpr(columnName), pinotlib.DataTypeJson)
-	sql, _ := pinotlib.RenderDistinctValuesSql(pinotlib.DistinctValuesSqlParams{
+func listMapColumnKeys(client *pinot.Client, ctx context.Context, tableName string, columnName string, timeFilterExpr pinot.SqlExpr, filterExprs []pinot.SqlExpr) []string {
+	columnExpr := pinot.CastExpr(pinot.ObjectExpr(columnName), pinot.DataTypeJson)
+	sql, _ := pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
 		ColumnExpr:           columnExpr,
 		TableName:            tableName,
 		TimeFilterExpr:       timeFilterExpr,
 		DimensionFilterExprs: filterExprs,
 	})
 
-	results, err := client.ExecuteSqlQuery(ctx, pinotlib.NewSqlQuery(sql))
+	results, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery(sql))
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("Query to extract map keys failed")
 		return nil
@@ -594,21 +595,24 @@ func listMapColumnKeys(client *pinotlib.PinotClient, ctx context.Context, tableN
 		return nil
 	}
 
-	col, err := pinotlib.DecodeJsonFromColumn[map[string]any](results.ResultTable, 0)
+	col, err := pinot.DecodeJsonFromColumn[map[string]any](results.ResultTable, 0)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("Query to extract map keys returned column with invalid json")
 		return nil
 	}
 
-	keys := collections.NewSet[string](0)
+	var keys []string
+	keySet := make(map[string]struct{})
 	for _, entry := range col {
 		for k := range entry {
-			keys.Add(k)
+			if _, ok := keySet[k]; !ok {
+				keySet[k] = struct{}{}
+				keys = append(keys, k)
+			}
 		}
 	}
-	values := keys.Values()
-	sort.Strings(values)
-	return values
+	sort.Strings(keys)
+	return keys
 }
 
 func newOkResponse[T any](result T) *Response[T] {
@@ -627,20 +631,20 @@ func newErrorResponse[T any](code int, err error) *Response[T] {
 	return &Response[T]{Code: code, Error: err.Error()}
 }
 
-func adaptHandler[T any](client *pinotlib.PinotClient, handler func(*pinotlib.PinotClient, *http.Request) *Response[T]) http.HandlerFunc {
+func adaptHandler[T any](client *pinot.Client, handler func(*pinot.Client, *http.Request) *Response[T]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		thisClient := auth.PassThroughOAuth(client, req)
+		thisClient := auth.PinotClientFor(client, req.Context(), req)
 		resp := handler(thisClient, req)
 		writeResponse(w, resp)
 		captureMetrics(startTime, req, resp)
 	}
 }
 
-func adaptHandlerWithBody[TIn any, TOut any](client *pinotlib.PinotClient, handler func(*pinotlib.PinotClient, context.Context, TIn) *Response[TOut]) http.HandlerFunc {
+func adaptHandlerWithBody[TIn any, TOut any](client *pinot.Client, handler func(*pinot.Client, context.Context, TIn) *Response[TOut]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		thisClient := auth.PassThroughOAuth(client, req)
+		thisClient := auth.PinotClientFor(client, req.Context(), req)
 
 		var data TIn
 		var resp *Response[TOut]

@@ -1,16 +1,13 @@
-package pinotlib
+package pinot
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/collections"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"math"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
@@ -98,15 +95,15 @@ func flattenLabels(metric map[string]string) map[string]string {
 	}
 
 	var labels map[string]string
-	err := json.Unmarshal([]byte(metric["labels"]), &labels)
-	if err != nil {
-		log.WithError(err).Info("Failed to unmarshal time series labels", "labelsJson", labelsJson)
+	if err := json.Unmarshal([]byte(metric["labels"]), &labels); err != nil {
+		return metric
 	}
+
 	labels["__name__"] = metric["__name__"]
 	return labels
 }
 
-func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
+func (p *Client) IsTimeseriesSupported(ctx context.Context) (bool, error) {
 	if ctx.Err() != nil {
 		return false, ctx.Err()
 	}
@@ -125,7 +122,7 @@ func (p *PinotClient) IsTimeseriesSupported(ctx context.Context) (bool, error) {
 	return resp.StatusCode != http.StatusNotFound, nil
 }
 
-func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*TimeSeriesQueryResponse, error) {
+func (p *Client) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRangeQuery) (*TimeSeriesQueryResponse, error) {
 	tableMetadata, err := p.GetTableMetadata(ctx, req.TableName)
 	if err != nil {
 		return nil, err
@@ -154,14 +151,14 @@ func (p *PinotClient) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSerie
 	}
 
 	var resp TimeSeriesQueryResponse
-	p.newLogger(ctx).Info("Executing timeseries query", "queryString", req.Query)
+	p.logger.Info("pinot/http: Executing timeseries query.", "queryString", req.Query)
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}
 	return &resp, nil
 }
 
-func (p *PinotClient) ListTimeSeriesTables(ctx context.Context) ([]string, error) {
+func (p *Client) ListTimeSeriesTables(ctx context.Context) ([]string, error) {
 	// TODO: Replace with pinot api call when implemented.
 
 	allTables, err := p.ListTables(ctx)
@@ -211,7 +208,7 @@ type TimeSeriesMetricNamesQuery struct {
 	To        time.Time
 }
 
-func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSeriesMetricNamesQuery) ([]string, error) {
+func (p *Client) ListTimeSeriesMetrics(ctx context.Context, query TimeSeriesMetricNamesQuery) ([]string, error) {
 	// TODO: Replace with pinot api call when implemented.
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -236,7 +233,7 @@ func (p *PinotClient) ListTimeSeriesMetrics(ctx context.Context, query TimeSerie
 	case err != nil:
 		return nil, err
 	case resp.HasData():
-		return ExtractColumnAsStrings(resp.ResultTable, 0), nil
+		return ExtractColumnAsStrings(resp.ResultTable, 0)
 	default:
 		return nil, nil
 	}
@@ -249,17 +246,17 @@ type TimeSeriesLabelNamesQuery struct {
 	To         time.Time
 }
 
-func (p *PinotClient) ListTimeSeriesLabelNames(ctx context.Context, query TimeSeriesLabelNamesQuery) ([]string, error) {
+func (p *Client) ListTimeSeriesLabelNames(ctx context.Context, query TimeSeriesLabelNamesQuery) ([]string, error) {
 	// TODO: Replace with pinot api call when implemented.
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 
-	collection, err := p.FetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
+	collection, err := p.fetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
 	if err != nil {
 		return nil, err
 	}
-	return collection.Names(), nil
+	return collection.names(), nil
 }
 
 type TimeSeriesLabelValuesQuery struct {
@@ -270,44 +267,60 @@ type TimeSeriesLabelValuesQuery struct {
 	To         time.Time
 }
 
-func (p *PinotClient) ListTimeSeriesLabelValues(ctx context.Context, query TimeSeriesLabelValuesQuery) ([]string, error) {
+func (p *Client) ListTimeSeriesLabelValues(ctx context.Context, query TimeSeriesLabelValuesQuery) ([]string, error) {
 	// TODO: Replace with pinot api call when implemented.
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
 
-	collection, err := p.FetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
+	collection, err := p.fetchTimeSeriesLabels(ctx, query.TableName, query.MetricName, query.From, query.To)
 	if err != nil {
 		return nil, err
 	}
-	return collection.Values(query.LabelName), nil
+	return collection.valuesOf(query.LabelName), nil
 }
 
-type LabelsCollection map[string]collections.Set[string]
+type labelsCollection struct {
+	labelNames  []string
+	nameToLabel map[string]label
+}
 
-func (x LabelsCollection) Names() []string {
-	names := make([]string, 0, len(x))
-	for key := range x {
-		names = append(names, key)
+type label struct {
+	name     string
+	values   []string
+	valueSet map[string]struct{}
+}
+
+func (x *labelsCollection) names() []string {
+	return x.labelNames
+}
+
+func (x *labelsCollection) valuesOf(name string) []string {
+	return x.nameToLabel[name].values
+}
+
+func (x *labelsCollection) add(name, value string) {
+	if x.nameToLabel == nil {
+		x.nameToLabel = make(map[string]label)
 	}
-	sort.Strings(names)
-	return names
-}
 
-func (x LabelsCollection) Values(name string) []string {
-	values := x[name].Values()
-	sort.Strings(values)
-	return values
-}
-
-func (x LabelsCollection) Add(name, value string) {
-	if _, ok := x[name]; !ok {
-		x[name] = collections.NewSet[string](1)
+	if _, ok := x.nameToLabel[name]; !ok {
+		x.labelNames = append(x.labelNames, name)
+		x.nameToLabel[name] = label{
+			name:     name,
+			valueSet: make(map[string]struct{}),
+		}
 	}
-	x[name].Add(value)
+	thisLabel := x.nameToLabel[name]
+
+	if _, ok := thisLabel.valueSet[value]; !ok {
+		thisLabel.valueSet[value] = struct{}{}
+		thisLabel.values = append(thisLabel.values, value)
+		x.nameToLabel[name] = thisLabel
+	}
 }
 
-func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) (LabelsCollection, error) {
+func (p *Client) fetchTimeSeriesLabels(ctx context.Context, tableName string, metricName string, from time.Time, to time.Time) (*labelsCollection, error) {
 	var filterExprs []SqlExpr
 	if metricName != "" {
 		filterExprs = []SqlExpr{SqlExpr(fmt.Sprintf(`"%s" = '%s'`, TimeSeriesTableColumnMetricName, metricName))}
@@ -351,7 +364,7 @@ func (p *PinotClient) FetchTimeSeriesLabels(ctx context.Context, tableName strin
 	}
 }
 
-func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string) (string, error) {
+func (p *Client) timeSeriesLabelType(ctx context.Context, tableName string) (string, error) {
 	schema, err := p.GetTableSchema(ctx, tableName)
 	if err != nil {
 		return "", err
@@ -370,22 +383,22 @@ func (p *PinotClient) timeSeriesLabelType(ctx context.Context, tableName string)
 	return "", fmt.Errorf("not a time series table")
 }
 
-func extractLabels(results *ResultTable) (LabelsCollection, error) {
+func extractLabels(results *ResultTable) (*labelsCollection, error) {
 	labelRecords, err := DecodeJsonFromColumn[map[string]string](results, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	collection := make(LabelsCollection, len(labelRecords))
-	for _, label := range labelRecords {
-		for k, v := range label {
-			collection.Add(k, v)
+	var collection labelsCollection
+	for _, record := range labelRecords {
+		for k, v := range record {
+			collection.add(k, v)
 		}
 	}
-	return collection, nil
+	return &collection, nil
 }
 
-func (p *PinotClient) IsTimeSeriesTable(ctx context.Context, tableName string) (bool, error) {
+func (p *Client) IsTimeSeriesTable(ctx context.Context, tableName string) (bool, error) {
 	schema, err := p.GetTableSchema(ctx, tableName)
 	if err != nil {
 		return false, err
@@ -451,6 +464,6 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 	return true
 }
 
-func (p *PinotClient) newTimeseriesGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+func (p *Client) newTimeseriesGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	return p.newRequest(ctx, http.MethodGet, p.properties.BrokerUrl+TimeSeriesEndpoint+endpoint, nil)
 }

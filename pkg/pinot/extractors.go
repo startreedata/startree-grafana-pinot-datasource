@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"math"
 	"math/big"
 	"time"
@@ -27,6 +26,18 @@ const (
 	DataTypeBigDecimal = "BIG_DECIMAL"
 	DataTypeMap        = "MAP"
 )
+
+type ExtractorError struct {
+	ColumnIdx int
+	RowIdx    int
+	Err       error
+}
+
+func (x *ExtractorError) Unwrap() error { return x.Err }
+
+func (x *ExtractorError) Error() string {
+	return fmt.Sprintf("failed to decode value at row %d, column %d: %v", x.RowIdx, x.ColumnIdx, x.Err)
+}
 
 func IsNumericDataType(dataType string) bool {
 	switch dataType {
@@ -64,61 +75,64 @@ func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (DateTimeFo
 
 // ExtractColumn extracts a column from the table.
 // The column data type is mapped to the corresponding golang type.
-func ExtractColumn(results *ResultTable, colIdx int) any {
+func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case DataTypeBoolean:
-		return extractTypedColumn(results, func(rowIdx int) (bool, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (bool, error) {
 			return (results.Rows[rowIdx][colIdx]).(bool), nil
 		})
 	case DataTypeInt:
-		return extractTypedColumn(results, func(rowIdx int) (int32, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int32, error) {
 			val, err := (results.Rows[rowIdx][colIdx]).(json.Number).Int64()
 			return int32(val), err
 		})
 	case DataTypeLong:
-		return extractTypedColumn(results, func(rowIdx int) (int64, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int64, error) {
 			return (results.Rows[rowIdx][colIdx]).(json.Number).Int64()
 		})
 	case DataTypeFloat:
-		return extractTypedColumn(results, func(rowIdx int) (float32, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (float32, error) {
 			val, err := extractDouble(results.Rows[rowIdx][colIdx])
 			return float32(val), err
 		})
 	case DataTypeDouble:
-		return extractTypedColumn(results, func(rowIdx int) (float64, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (float64, error) {
 			return extractDouble(results.Rows[rowIdx][colIdx])
 		})
 	case DataTypeBigDecimal:
 		// ref: https://github.com/apache/pinot/issues/8418
-		return extractTypedColumn(results, func(rowIdx int) (*big.Int, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (*big.Int, error) {
 			var val big.Int
 			return &val, val.UnmarshalText([]byte(results.Rows[rowIdx][colIdx].(string)))
 		})
 	case DataTypeString:
-		return extractTypedColumn(results, func(rowIdx int) (string, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			return results.Rows[rowIdx][colIdx].(string), nil
 		})
 	case DataTypeBytes:
-		return extractTypedColumn(results, func(rowIdx int) ([]byte, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) ([]byte, error) {
 			return hex.DecodeString(results.Rows[rowIdx][colIdx].(string))
 		})
 	case DataTypeJson:
-		return extractTypedColumn(results, func(rowIdx int) (json.RawMessage, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
 			return json.RawMessage(results.Rows[rowIdx][colIdx].(string)), nil
 		})
 	case DataTypeTimestamp:
-		return extractTypedColumn(results, func(rowIdx int) (time.Time, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (time.Time, error) {
 			return ParseJodaTime(results.Rows[rowIdx][colIdx].(string))
 		})
 	case DataTypeMap:
 		// ref: https://github.com/apache/pinot/pull/13906
-		return extractTypedColumn(results, func(rowIdx int) (map[string]any, error) {
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (map[string]any, error) {
 			return results.Rows[rowIdx][colIdx].(map[string]any), nil
 		})
 	default:
-		log.Error("Column has unknown data type", "columnIdx", colIdx, "dataType", colDataType)
-		return make([]int64, results.RowCount())
+		return nil, &ExtractorError{
+			ColumnIdx: colIdx,
+			RowIdx:    0,
+			Err:       fmt.Errorf("unknown data type `%s`", colDataType),
+		}
 	}
 }
 
@@ -132,12 +146,17 @@ func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error)
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
-		return extractTypedColumn[float64](results, func(rowIdx int) (float64, error) {
+		return extractTypedColumn[float64](results.RowCount(), colIdx, func(rowIdx int) (float64, error) {
 			return extractDouble(results.Rows[rowIdx][colIdx])
-		}), nil
+		})
 	}
 
-	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	col, err := ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch rawVals := col.(type) {
 	case []*big.Int:
 		vals := make([]float64, results.RowCount())
 		for i := range rawVals {
@@ -165,23 +184,28 @@ func extractDouble(v interface{}) (float64, error) {
 
 // ExtractColumnAsStrings returns the column as a slice of strings.
 // Non-string types are coerced into strings.
-func ExtractColumnAsStrings(results *ResultTable, colIdx int) []string {
+func ExtractColumnAsStrings(results *ResultTable, colIdx int) ([]string, error) {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case DataTypeFloat, DataTypeDouble:
 		// Parse the floats to standardize the format.
 	case DataTypeInt, DataTypeLong:
-		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeTimestamp, DataTypeBigDecimal:
-		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			return (results.Rows[rowIdx][colIdx]).(string), nil
 		})
 	}
 
+	col, err := ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+
 	vals := make([]string, results.RowCount())
-	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	switch rawVals := col.(type) {
 	case []float32:
 		for i := range rawVals {
 			vals[i] = fmt.Sprintf("%v", rawVals[i])
@@ -204,29 +228,34 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) []string {
 			vals[i] = string(valJson)
 		}
 	}
-	return vals
+	return vals, nil
 }
 
-// ExtractColumnAsExprs returns the column as a slice of sql expressions representing the column value.
+// ExtractColumnAsExprs returns the column as a slice of SQL expressions representing the column value.
 // Strings will be single-quoted. Numbers and booleans are unquoted.
-func ExtractColumnAsExprs(results *ResultTable, colIdx int) []string {
+func ExtractColumnAsExprs(results *ResultTable, colIdx int) ([]string, error) {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
-		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {
 				return StringLiteralExpr(str).String(), nil
 			}
 			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeBigDecimal:
-		return extractTypedColumn[string](results, func(rowIdx int) (string, error) {
+		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			return StringLiteralExpr(results.Rows[rowIdx][colIdx].(string)).String(), nil
 		})
 	}
 
+	col, err := ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+
 	exprs := make([]string, results.RowCount())
-	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	switch rawVals := col.(type) {
 	case []time.Time:
 		for i := range rawVals {
 			exprs[i] = fmt.Sprintf("%d", rawVals[i].UnixMilli())
@@ -236,7 +265,7 @@ func ExtractColumnAsExprs(results *ResultTable, colIdx int) []string {
 			exprs[i] = fmt.Sprintf("%v", rawVals[i])
 		}
 	}
-	return exprs
+	return exprs, nil
 }
 
 // ExtractColumnAsTime returns the column as a slice of time.Time.
@@ -262,7 +291,12 @@ func ExtractColumnAsTime(results *ResultTable, colIdx int, format DateTimeFormat
 		}
 	}
 
-	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	col, err := ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+
+	switch rawVals := col.(type) {
 	case []int64:
 		exprs := make([]time.Time, results.RowCount())
 		for i := range rawVals {
@@ -292,28 +326,37 @@ func DecodeJsonFromColumn[V any](results *ResultTable, colIdx int) ([]V, error) 
 		decoder := json.NewDecoder(bytes.NewReader(src))
 		decoder.UseNumber()
 		if err := decoder.Decode(&dest); err != nil {
-			return fmt.Errorf("failed to unmarshal json at row %d, column %d: %v", rowIdx, colIdx, err)
+			return &ExtractorError{
+				ColumnIdx: colIdx,
+				RowIdx:    rowIdx,
+				Err:       err,
+			}
 		}
 		return nil
 	}
 
+	col, err := ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+
 	vals := make([]V, results.RowCount())
-	switch rawVals := ExtractColumn(results, colIdx).(type) {
+	switch rawVals := col.(type) {
 	case []string:
 		for i := range rawVals {
-			if err := decode([]byte(rawVals[i]), &vals[i], i); err != nil {
+			if err = decode([]byte(rawVals[i]), &vals[i], i); err != nil {
 				return nil, err
 			}
 		}
 	case []json.RawMessage:
 		for i := range rawVals {
-			if err := decode(rawVals[i], &vals[i], i); err != nil {
+			if err = decode(rawVals[i], &vals[i], i); err != nil {
 				return nil, err
 			}
 		}
 	case [][]byte:
 		for i := range rawVals {
-			if err := decode(rawVals[i], &vals[i], i); err != nil {
+			if err = decode(rawVals[i], &vals[i], i); err != nil {
 				return nil, err
 			}
 		}
@@ -321,24 +364,24 @@ func DecodeJsonFromColumn[V any](results *ResultTable, colIdx int) ([]V, error) 
 	return vals, nil
 }
 
-type nativeColumnType interface {
+type NativeColumnType interface {
 	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]any
 }
 
-func extractTypedColumn[V nativeColumnType](results *ResultTable, getter func(rowIdx int) (V, error)) []V {
-	values := make([]V, results.RowCount())
-	hasError := false
-	for rowIdx := 0; rowIdx < results.RowCount(); rowIdx++ {
+func extractTypedColumn[V NativeColumnType](rowCount int, colIdx int, getter func(rowIdx int) (V, error)) ([]V, error) {
+	values := make([]V, rowCount)
+	for rowIdx := 0; rowIdx < rowCount; rowIdx++ {
 		val, err := getter(rowIdx)
-		values[rowIdx] = val
-
-		// Only log the first error.
-		if err != nil && !hasError {
-			log.WithError(err).Error("Failed to extract column")
-			hasError = true
+		if err != nil {
+			return nil, &ExtractorError{
+				ColumnIdx: colIdx,
+				RowIdx:    rowIdx,
+				Err:       err,
+			}
 		}
+		values[rowIdx] = val
 	}
-	return values
+	return values, nil
 }
 
 func GetDistinctValues[T comparable](vals []T) []T {

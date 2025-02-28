@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"strings"
 	"time"
 )
@@ -20,13 +20,13 @@ type PromQlQuery struct {
 	SeriesLimit  int
 }
 
-func (query PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+func (query PromQlQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
 	if strings.TrimSpace(query.PromQlCode) == "" {
 		return NewEmptyDataResponse()
 	}
 
-	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinotlib.TimeSeriesRangeQuery{
-		Language:  pinotlib.TimeSeriesQueryLanguagePromQl,
+	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinot.TimeSeriesRangeQuery{
+		Language:  pinot.TimeSeriesQueryLanguagePromQl,
 		Query:     query.PromQlCode,
 		Start:     query.TimeRange.From,
 		End:       query.TimeRange.To,
@@ -41,7 +41,7 @@ func (query PromQlQuery) Execute(client *pinotlib.PinotClient, ctx context.Conte
 	return NewOkDataResponse(frames...)
 }
 
-func extractTimeSeriesMatrix(results []pinotlib.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
+func extractTimeSeriesMatrix(results []pinot.TimeSeriesResult, legend string, intervalSize time.Duration, limit int) []*data.Frame {
 	if limit < 1 {
 		limit = DefaultSeriesLimit
 	}

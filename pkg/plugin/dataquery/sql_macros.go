@@ -3,7 +3,7 @@ package dataquery
 import (
 	"context"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"regexp"
 	"strings"
 	"time"
@@ -28,14 +28,14 @@ type MacroEngine struct {
 	TableName    string
 	TimeAlias    string
 	MetricAlias  string
-	TableSchema  pinotlib.TableSchema
-	TableConfigs pinotlib.ListTableConfigsResponse
+	TableSchema  pinot.TableSchema
+	TableConfigs pinot.ListTableConfigsResponse
 	TimeRange
 	IntervalSize time.Duration
 }
 
-func MacroExprFor(macroName string, args ...string) pinotlib.SqlExpr {
-	return pinotlib.SqlExpr(fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", ")))
+func MacroExprFor(macroName string, args ...string) pinot.SqlExpr {
+	return pinot.SqlExpr(fmt.Sprintf("$__%s(%s)", macroName, strings.Join(args, ", ")))
 }
 
 func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, error) {
@@ -75,17 +75,17 @@ func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		timeColumn := pinotlib.UnquoteObjectName(args[0])
+		timeColumn := pinot.UnquoteObjectName(args[0])
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
+			granularityExpr = pinot.UnquoteStringLiteral(args[1])
 		}
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
+		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
 		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
-		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
+		return pinot.TimeFilterBucketAlignedExpr(pinot.TimeFilter{
 			Column: timeColumn,
 			Format: format,
 			From:   x.TimeRange.From,
@@ -94,10 +94,10 @@ func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string
 	})
 }
 
-func getDateTimeFormatOrFallback(tableSchema pinotlib.TableSchema, timeColumn string) pinotlib.DateTimeFormat {
-	format, err := pinotlib.GetTimeColumnFormat(tableSchema, timeColumn)
+func getDateTimeFormatOrFallback(tableSchema pinot.TableSchema, timeColumn string) pinot.DateTimeFormat {
+	format, err := pinot.GetTimeColumnFormat(tableSchema, timeColumn)
 	if err != nil {
-		return pinotlib.DateTimeFormatMillisecondsEpoch()
+		return pinot.DateTimeFormatMillisecondsEpoch()
 	}
 	return format
 }
@@ -108,20 +108,20 @@ func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string,
 			// TODO: Fix confusing error since 2 args is also valid.
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		timeColumn := pinotlib.UnquoteObjectName(args[0])
+		timeColumn := pinot.UnquoteObjectName(args[0])
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
+			granularityExpr = pinot.UnquoteStringLiteral(args[1])
 		}
 
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
+		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
 		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
-		return pinotlib.TimeGroupExpr(x.TableConfigs, pinotlib.DateTimeConversion{
+		return pinot.TimeGroupExpr(x.TableConfigs, pinot.DateTimeConversion{
 			TimeColumn:   timeColumn,
 			InputFormat:  format,
-			OutputFormat: pinotlib.DateTimeFormatMillisecondsEpoch(),
+			OutputFormat: pinot.DateTimeFormatMillisecondsEpoch(),
 			Granularity:  granularity,
 		}).String(), nil
 	})
@@ -132,9 +132,9 @@ func (x MacroEngine) ExpandTimeTo(_ context.Context, query string) (string, erro
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
-		timeColumn := pinotlib.UnquoteObjectName(args[0])
+		timeColumn := pinot.UnquoteObjectName(args[0])
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinotlib.TimeExpr(x.To, format).String(), nil
+		return pinot.TimeExpr(x.To, format).String(), nil
 	})
 }
 
@@ -143,9 +143,9 @@ func (x MacroEngine) ExpandTimeFrom(_ context.Context, query string) (string, er
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
 		}
-		timeColumn := pinotlib.UnquoteObjectName(args[0])
+		timeColumn := pinot.UnquoteObjectName(args[0])
 		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinotlib.TimeExpr(x.From, format).String(), nil
+		return pinot.TimeExpr(x.From, format).String(), nil
 	})
 }
 
@@ -166,17 +166,17 @@ func (x MacroEngine) ExpandTimeFilterMillis(ctx context.Context, query string) (
 		if len(args) < 1 {
 			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
 		}
-		timeColumn := pinotlib.UnquoteObjectName(args[0])
+		timeColumn := pinot.UnquoteObjectName(args[0])
 
 		var granularityExpr string
 		if len(args) > 1 {
-			granularityExpr = pinotlib.UnquoteStringLiteral(args[1])
+			granularityExpr = pinot.UnquoteStringLiteral(args[1])
 		}
 
-		format := pinotlib.DateTimeFormatMillisecondsEpoch()
-		derived := pinotlib.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
+		format := pinot.DateTimeFormatMillisecondsEpoch()
+		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
 		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
-		return pinotlib.TimeFilterBucketAlignedExpr(pinotlib.TimeFilter{
+		return pinot.TimeFilterBucketAlignedExpr(pinot.TimeFilter{
 			Column: timeColumn,
 			Format: format,
 			From:   x.TimeRange.From,
@@ -203,7 +203,7 @@ func (x MacroEngine) ExpandGranularityMillis(_ context.Context, query string) (s
 			return fmt.Sprintf("%d", x.IntervalSize.Milliseconds()), nil
 		}
 
-		duration, err := ParseGranularityExpr(pinotlib.UnquoteStringLiteral(args[0]))
+		duration, err := ParseGranularityExpr(pinot.UnquoteStringLiteral(args[0]))
 		if err != nil {
 			return "", err
 		}

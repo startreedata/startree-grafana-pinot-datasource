@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,10 +16,11 @@ func TestExtractTableDataFrame(t *testing.T) {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		pinotlib.NewSqlQuery(`select __timestamp, __string, __long from allDataTypes limit 1`))
+		pinot.NewSqlQuery(`select __timestamp, __string, __long from allDataTypes limit 1`))
 	require.NoError(t, err)
 	require.True(t, resp.HasData())
-	got := ExtractTableDataFrame(resp.ResultTable, "__timestamp")
+	got, err := ExtractTableDataFrame(resp.ResultTable, "__timestamp")
+	require.NoError(t, err)
 
 	want := data.NewFrame("response",
 		data.NewField("__timestamp", nil, []time.Time{time.Date(2024, time.November, 1, 0, 0, 0, 0, time.UTC)}),
@@ -33,7 +34,7 @@ func TestExtractLogsDataFrame(t *testing.T) {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		pinotlib.NewSqlQuery(`select ts, message, ipAddr from nginxLogs limit 1`))
+		pinot.NewSqlQuery(`select ts, message, ipAddr from nginxLogs limit 1`))
 	require.NoError(t, err)
 	require.True(t, resp.HasData())
 	got, err := ExtractLogsDataFrame(resp.ResultTable, "ts", "message")
@@ -53,7 +54,7 @@ func TestExtractColumnAsField(t *testing.T) {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
 	resp, err := client.ExecuteSqlQuery(context.Background(),
-		pinotlib.NewSqlQuery(`select * from allDataTypes limit 3`))
+		pinot.NewSqlQuery(`select * from allDataTypes limit 3`))
 
 	require.NoError(t, err)
 	require.True(t, resp.HasData())
@@ -90,9 +91,10 @@ func TestExtractColumnAsField(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.column, func(t *testing.T) {
-			colIdx, err := pinotlib.GetColumnIdx(resp.ResultTable, tt.column)
+			colIdx, err := pinot.GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			got := ExtractColumnAsField(resp.ResultTable, colIdx)
+			got, err := ExtractColumnAsField(resp.ResultTable, colIdx)
+			require.NoError(t, err)
 			require.Equal(t, data.NewField(tt.column, nil, tt.wantValues), got)
 		})
 	}

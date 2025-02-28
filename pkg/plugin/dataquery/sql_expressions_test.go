@@ -2,7 +2,7 @@ package dataquery
 
 import (
 	"encoding/json"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -71,7 +71,7 @@ func TestFilterExprsFrom(t *testing.T) {
 	]`)).Decode(&filters))
 
 	got := FilterExprsFrom(filters)
-	assert.EqualValues(t, []pinotlib.SqlExpr{
+	assert.EqualValues(t, []pinot.SqlExpr{
 		`("AirlineID" = 19393 OR "AirlineID" = 19790)`,
 		`("ArrTime" > -2147483648)`,
 		`("Cancelled" = 0)`,

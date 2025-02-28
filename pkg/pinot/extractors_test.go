@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"context"
@@ -130,7 +130,8 @@ func TestExtractColumn(t *testing.T) {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			got := ExtractColumn(resp.ResultTable, colIdx)
+			got, err := ExtractColumn(resp.ResultTable, colIdx)
+			require.NoError(t, err)
 			if tt.wantNaNs {
 				assertNaNs(t, got, 3)
 			} else {
@@ -248,7 +249,9 @@ func TestExtractColumnAsStrings(t *testing.T) {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ExtractColumnAsStrings(resp.ResultTable, colIdx))
+			got, err := ExtractColumnAsStrings(resp.ResultTable, colIdx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -284,7 +287,9 @@ func TestExtractColumnAsExprs(t *testing.T) {
 		t.Run(tt.column, func(t *testing.T) {
 			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ExtractColumnAsExprs(resp.ResultTable, colIdx))
+			got, err := ExtractColumnAsExprs(resp.ResultTable, colIdx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -344,9 +349,9 @@ func TestDecodeJsonFromColumn(t *testing.T) {
 			{"key1": "val1", "key2": json.Number("2"), "key3": []any{"val3_1", "val3_2"}},
 		}},
 		{column: "__string",
-			wantErr: errors.New("failed to unmarshal json at row 0, column 10: invalid character 'r' looking for beginning of value")},
+			wantErr: errors.New("failed to decode value at row 0, column 10: invalid character 'r' looking for beginning of value")},
 		{column: "__bytes",
-			wantErr: errors.New("failed to unmarshal json at row 0, column 2: invalid character 'r' looking for beginning of value")},
+			wantErr: errors.New("failed to decode value at row 0, column 2: invalid character 'r' looking for beginning of value")},
 		{column: "__int", wantErr: errors.New("column does not contain json")},
 		{column: "__long", wantErr: errors.New("column does not contain json")},
 		{column: "__double", wantErr: errors.New("column does not contain json")},
