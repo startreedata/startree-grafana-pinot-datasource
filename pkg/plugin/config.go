@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"net/http"
 )
 
@@ -40,20 +40,20 @@ func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) erro
 	return nil
 }
 
-func PinotClientOf(httpClient *http.Client, config Config) *pinotlib.PinotClient {
+func PinotClientOf(httpClient *http.Client, config Config) *pinot.Client {
 	var authorization string
 	if config.TokenType != TokenTypeNone {
 		authorization = fmt.Sprintf("%s %s", config.TokenType, config.TokenSecret)
 	}
 
-	var queryOptions []pinotlib.QueryOption
+	var queryOptions []pinot.QueryOption
 	for _, o := range config.QueryOptions {
 		if o.Name != "" || o.Value != "" {
-			queryOptions = append(queryOptions, pinotlib.QueryOption{Name: o.Name, Value: o.Value})
+			queryOptions = append(queryOptions, pinot.QueryOption{Name: o.Name, Value: o.Value})
 		}
 	}
 
-	return pinotlib.NewPinotClient(httpClient, pinotlib.PinotClientProperties{
+	return pinot.NewPinotClient(httpClient, pinot.ClientProperties{
 		ControllerUrl: config.ControllerUrl,
 		BrokerUrl:     config.BrokerUrl,
 		DatabaseName:  config.DatabaseName,

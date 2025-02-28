@@ -2,7 +2,7 @@ package dataquery
 
 import (
 	"context"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
@@ -16,8 +16,8 @@ func TestExpandMacros(t *testing.T) {
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: pinotlib.TableSchema{
-			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
+		TableSchema: pinot.TableSchema{
+			DateTimeFieldSpecs: []pinot.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
@@ -28,12 +28,12 @@ func TestExpandMacros(t *testing.T) {
 				Format:   "1:MILLISECONDS:EPOCH",
 			}},
 		},
-		TableConfigs: map[pinotlib.TableType]pinotlib.TableConfig{
-			pinotlib.TableTypeRealTime: {
+		TableConfigs: map[pinot.TableType]pinot.TableConfig{
+			pinot.TableTypeRealTime: {
 				TableName: "CleanLogisticData",
-				TableType: pinotlib.TableTypeRealTime,
-				IngestionConfig: pinotlib.IngestionConfig{
-					TransformConfigs: []pinotlib.TransformConfig{
+				TableType: pinot.TableTypeRealTime,
+				IngestionConfig: pinot.IngestionConfig{
+					TransformConfigs: []pinot.TransformConfig{
 						{ColumnName: "timestamp_1m", TransformFunction: `DATETIMECONVERT("timestamp", '1:SECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')`},
 					},
 				},
@@ -97,8 +97,8 @@ func TestMacroExprFor(t *testing.T) {
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: pinotlib.TableSchema{
-			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
+		TableSchema: pinot.TableSchema{
+			DateTimeFieldSpecs: []pinot.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",
@@ -166,8 +166,8 @@ LIMIT 1000000
 		TableName:   "CleanLogisticData",
 		TimeAlias:   "time",
 		MetricAlias: "metric",
-		TableSchema: pinotlib.TableSchema{
-			DateTimeFieldSpecs: []pinotlib.DateTimeFieldSpec{{
+		TableSchema: pinot.TableSchema{
+			DateTimeFieldSpecs: []pinot.DateTimeFieldSpec{{
 				Name:        "timestamp",
 				DataType:    "LONG",
 				Format:      "1:SECONDS:EPOCH",

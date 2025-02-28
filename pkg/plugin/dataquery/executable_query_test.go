@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -115,7 +115,7 @@ func sliceToStrings[V any](arr []V) []string {
 
 func assertBrokerExceptionErrorWithCodes(t *testing.T, err error, codes ...int) {
 	t.Helper()
-	var brokerError *pinotlib.BrokerExceptionError
+	var brokerError *pinot.BrokerExceptionError
 	if assert.ErrorAs(t, err, &brokerError) {
 		assert.NotEmpty(t, brokerError.Exceptions)
 		var exceptionCodes []int
@@ -131,7 +131,7 @@ func assertBrokerExceptionErrorWithCodes(t *testing.T, err error, codes ...int) 
 type DriverTestCase struct {
 	TimeRange    TimeRange
 	TableName    string
-	TableSchema  pinotlib.TableSchema
+	TableSchema  pinot.TableSchema
 	TimeColumn   string
 	TargetColumn string
 	IntervalSize time.Duration
@@ -345,7 +345,7 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	benchmarkTableSchema, err := client.GetTableSchema(context.Background(), "benchmark")
 	require.NoError(t, err)
 
-	unreachableClient := pinotlib.NewPinotClient(http.DefaultClient, pinotlib.PinotClientProperties{
+	unreachableClient := pinot.NewPinotClient(http.DefaultClient, pinot.ClientProperties{
 		ControllerUrl: "not a url",
 		BrokerUrl:     "not a url",
 	})

@@ -1,9 +1,9 @@
-package pinotlib
+package pinot
 
 import (
 	"context"
-	"github.com/startreedata/pinot-client-go/pinot"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
+	osspinot "github.com/startreedata/pinot-client-go/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot/pinottest"
 	"net/http"
 	"testing"
 )
@@ -30,14 +30,14 @@ LIMIT 1000000000;`
 
 	const tableName = "benchmark"
 
-	sdkClient, err := pinot.NewWithConfig(&pinot.ClientConfig{
+	sdkClient, err := osspinot.NewWithConfig(&osspinot.ClientConfig{
 		BrokerList: []string{pinottest.BrokerUrl},
 	})
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	pluginClient := NewPinotClient(http.DefaultClient, PinotClientProperties{
+	pluginClient := NewPinotClient(http.DefaultClient, ClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})

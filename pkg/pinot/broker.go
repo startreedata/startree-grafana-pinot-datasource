@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"bytes"
@@ -113,12 +113,12 @@ func (query SqlQuery) cacheKey() string {
 
 // RenderSql renders the actual SQL query string sent to Pinot.
 // The rendered query includes all query options provided in the client properties and query.
-func (p *PinotClient) RenderSql(query SqlQuery) string {
+func (p *Client) RenderSql(query SqlQuery) string {
 	query.QueryOptions = slices.Concat(query.QueryOptions, p.properties.QueryOptions)
 	return query.RenderSql()
 }
 
-func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
+func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
 	request := struct {
 		Sql   string `json:"sql"`
 		Trace bool   `json:"trace,omitempty"`
@@ -137,7 +137,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 		return nil, err
 	}
 
-	p.newLogger(ctx).Info("Executing sql query.", "queryString", request.Sql)
+	p.logger.Info("pinot/http: Executing sql query.", "queryString", request.Sql)
 
 	var respData BrokerResponse
 	if err = p.doRequestAndDecodeResponse(req, &respData); err != nil {
@@ -146,7 +146,7 @@ func (p *PinotClient) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*Bro
 	return &respData, nil
 }
 
-func (p *PinotClient) newBrokerPostRequest(ctx context.Context, endpoint string, body io.Reader) (*http.Request, error) {
+func (p *Client) newBrokerPostRequest(ctx context.Context, endpoint string, body io.Reader) (*http.Request, error) {
 	req, err := p.newRequest(ctx, http.MethodPost, p.properties.BrokerUrl+endpoint, body)
 	if err != nil {
 		return nil, err

@@ -1,9 +1,9 @@
-package pinotlib
+package pinot
 
 import (
 	"context"
 	"encoding/json"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot/pinottest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sort"

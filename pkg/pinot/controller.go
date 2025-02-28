@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
+func (p *Client) ListDatabases(ctx context.Context) ([]string, error) {
 	req, err := p.newControllerGetRequest(ctx, "/databases")
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func (p *PinotClient) ListDatabases(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
+func (p *Client) ListTables(ctx context.Context) ([]string, error) {
 	endpoint := p.listTablesEndpoint(ctx)
 	req, err := p.newControllerGetRequest(ctx, endpoint)
 	if err != nil {
@@ -46,7 +46,7 @@ func (p *PinotClient) ListTables(ctx context.Context) ([]string, error) {
 	return tables, nil
 }
 
-func (p *PinotClient) listTablesEndpoint(ctx context.Context) string {
+func (p *Client) listTablesEndpoint(ctx context.Context) string {
 	req, err := p.newControllerHeadRequest(ctx, "/mytables")
 	if err != nil {
 		return "/tables"
@@ -84,7 +84,7 @@ type TransformConfig struct {
 	TransformFunction string `json:"transformFunction"`
 }
 
-func (p *PinotClient) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
+func (p *Client) ListTableConfigs(ctx context.Context, table string) (ListTableConfigsResponse, error) {
 	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table))
 	if err != nil {
 		return ListTableConfigsResponse{}, err
@@ -143,7 +143,7 @@ type ChildFieldSpec struct {
 	NotNull   bool   `json:"notNull"`
 }
 
-func (p *PinotClient) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
+func (p *Client) GetTableSchema(ctx context.Context, table string) (TableSchema, error) {
 	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/schema")
 	if err != nil {
 		return TableSchema{}, err
@@ -163,7 +163,7 @@ type TableMetadata struct {
 	NumRows          uint64 `json:"numRows"`
 }
 
-func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (TableMetadata, error) {
+func (p *Client) GetTableMetadata(ctx context.Context, table string) (TableMetadata, error) {
 	req, err := p.newControllerGetRequest(ctx, "/tables/"+url.PathEscape(table)+"/metadata")
 	if err != nil {
 		return TableMetadata{}, err
@@ -175,11 +175,11 @@ func (p *PinotClient) GetTableMetadata(ctx context.Context, table string) (Table
 	return metadata, nil
 }
 
-func (p *PinotClient) newControllerHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+func (p *Client) newControllerHeadRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	return p.newRequest(ctx, http.MethodHead, p.properties.ControllerUrl+endpoint, nil)
 }
 
-func (p *PinotClient) newControllerGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
+func (p *Client) newControllerGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	req, err := p.newRequest(ctx, http.MethodGet, p.properties.ControllerUrl+endpoint, nil)
 	if err != nil {
 		return nil, err

@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"net/http"
 )
 
-func PassThroughOAuth[T *http.Request | *backend.QueryDataRequest | *backend.CheckHealthRequest](client *pinotlib.PinotClient, req T) *pinotlib.PinotClient {
+func PinotClientFor[T *http.Request | *backend.QueryDataRequest | *backend.CheckHealthRequest](client *pinot.Client, ctx context.Context, req T) *pinot.Client {
 	var auth string
 	switch r := any(req).(type) {
 	case *http.Request:
@@ -17,9 +19,10 @@ func PassThroughOAuth[T *http.Request | *backend.QueryDataRequest | *backend.Che
 		auth = r.GetHTTPHeader(backend.OAuthIdentityTokenHeaderName)
 	}
 
+	logger := log.FromContext(ctx)
 	if auth != "" {
-		return client.WithAuthorization(auth)
+		return client.WithAuthorization(auth).WithLogger(logger.With("oauthPassThru", true))
 	} else {
-		return client
+		return client.WithLogger(logger)
 	}
 }

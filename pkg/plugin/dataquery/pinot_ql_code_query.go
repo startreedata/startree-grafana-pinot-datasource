@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"time"
 )
 
@@ -35,7 +35,7 @@ func (query PinotQlCodeQuery) Validate() error {
 	}
 }
 
-func (query PinotQlCodeQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+func (query PinotQlCodeQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
 	if err := query.Validate(); err != nil {
 		return NewBadRequestErrorResponse(err)
 	}
@@ -62,15 +62,15 @@ func (query PinotQlCodeQuery) Execute(client *pinotlib.PinotClient, ctx context.
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinotlib.PinotClient) (pinotlib.SqlQuery, error) {
+func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinot.Client) (pinot.SqlQuery, error) {
 	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
-		return pinotlib.SqlQuery{}, err
+		return pinot.SqlQuery{}, err
 	}
 
 	tableConfigs, err := client.ListTableConfigs(ctx, query.TableName)
 	if err != nil {
-		return pinotlib.SqlQuery{}, err
+		return pinot.SqlQuery{}, err
 	}
 
 	sql, err := MacroEngine{
@@ -84,17 +84,17 @@ func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinotl
 	}.ExpandMacros(ctx, query.Code)
 	if err != nil {
 		if err != nil {
-			return pinotlib.SqlQuery{}, err
+			return pinot.SqlQuery{}, err
 		}
 	}
 
-	return pinotlib.NewSqlQuery(sql), nil
+	return pinot.NewSqlQuery(sql), nil
 }
 
-func (query PinotQlCodeQuery) ExtractResults(results *pinotlib.ResultTable) (*data.Frame, error) {
+func (query PinotQlCodeQuery) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {
 	switch query.DisplayType {
 	case DisplayTypeTable, DisplayTypeAnnotations:
-		return ExtractTableDataFrame(results, query.resolveTimeColumnAlias()), nil
+		return ExtractTableDataFrame(results, query.resolveTimeColumnAlias())
 	case DisplayTypeLogs:
 		return ExtractLogsDataFrame(results, query.resolveTimeColumnAlias(), query.resolveLogColumnAlias())
 	default:

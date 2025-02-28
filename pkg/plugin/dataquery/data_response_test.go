@@ -4,7 +4,7 @@ import (
 	"errors"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -28,11 +28,11 @@ func TestNewSqlQueryDataResponse(t *testing.T) {
 	})
 
 	t.Run("partial", func(t *testing.T) {
-		exceptions := []pinotlib.BrokerException{{Message: "error", ErrorCode: 1}}
+		exceptions := []pinot.BrokerException{{Message: "error", ErrorCode: 1}}
 		got := NewSqlQueryDataResponse(frame, exceptions)
 		assert.Equal(t, backend.StatusInternal, got.Status)
 		assert.Equal(t, data.Frames{frame}, got.Frames)
-		assert.Equal(t, pinotlib.NewBrokerExceptionError(exceptions), got.Error)
+		assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
 		assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 	})
 }
@@ -48,20 +48,20 @@ func TestNewOkDataResponse(t *testing.T) {
 
 func TestNewPartialDataResponse(t *testing.T) {
 	frame := data.NewFrame("test")
-	exceptions := []pinotlib.BrokerException{{Message: "error", ErrorCode: 1}}
+	exceptions := []pinot.BrokerException{{Message: "error", ErrorCode: 1}}
 	got := NewSqlQueryDataResponse(frame, exceptions)
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Equal(t, data.Frames{frame}, got.Frames)
-	assert.Equal(t, pinotlib.NewBrokerExceptionError(exceptions), got.Error)
+	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
 	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 }
 
 func TestNewPinotExceptionsDataResponse(t *testing.T) {
-	exceptions := []pinotlib.BrokerException{{Message: "error", ErrorCode: 1}}
+	exceptions := []pinot.BrokerException{{Message: "error", ErrorCode: 1}}
 	got := NewPinotExceptionsDataResponse(exceptions)
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
-	assert.Equal(t, pinotlib.NewBrokerExceptionError(exceptions), got.Error)
+	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
 	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 }
 

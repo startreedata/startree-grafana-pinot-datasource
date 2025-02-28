@@ -3,7 +3,7 @@ package dataquery
 import (
 	"context"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -12,11 +12,11 @@ import (
 func TestResolveGranularity(t *testing.T) {
 	ctx := context.Background()
 
-	format := pinotlib.DateTimeFormatMillisecondsEpoch()
-	derivedGranularities := []pinotlib.Granularity{
-		{Unit: pinotlib.TimeUnitSeconds, Size: 5},
-		{Unit: pinotlib.TimeUnitSeconds, Size: 15},
-		{Unit: pinotlib.TimeUnitSeconds, Size: 30},
+	format := pinot.DateTimeFormatMillisecondsEpoch()
+	derivedGranularities := []pinot.Granularity{
+		{Unit: pinot.TimeUnitSeconds, Size: 5},
+		{Unit: pinot.TimeUnitSeconds, Size: 15},
+		{Unit: pinot.TimeUnitSeconds, Size: 30},
 	}
 
 	testCases := []struct {

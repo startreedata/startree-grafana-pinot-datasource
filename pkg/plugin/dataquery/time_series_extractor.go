@@ -3,8 +3,8 @@ package dataquery
 import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"regexp"
 	"sort"
 	"strings"
@@ -15,7 +15,7 @@ type TimeSeriesExtractorParams struct {
 	MetricName        string
 	Legend            string
 	TimeColumnAlias   string
-	TimeColumnFormat  pinotlib.DateTimeFormat
+	TimeColumnFormat  pinot.DateTimeFormat
 	MetricColumnAlias string
 	SeriesLimit       int
 }
@@ -38,7 +38,7 @@ type MetricSeries struct {
 	labels  map[string]string
 }
 
-func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinotlib.ResultTable) (*data.Frame, error) {
+func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot.ResultTable) (*data.Frame, error) {
 	metrics, err := ExtractMetrics(results, params.TimeColumnAlias, params.TimeColumnFormat, params.MetricColumnAlias)
 	if err != nil {
 		return nil, err
@@ -58,23 +58,23 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 	return data.NewFrame("response", fields...), nil
 }
 
-func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeColumnFormat pinotlib.DateTimeFormat, metricColumnAlias string) ([]Metric, error) {
-	timeColIdx, err := pinotlib.GetColumnIdx(results, timeColumnAlias)
+func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColumnFormat pinot.DateTimeFormat, metricColumnAlias string) ([]Metric, error) {
+	timeColIdx, err := pinot.GetColumnIdx(results, timeColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeColIdx, timeColumnFormat)
+	timeCol, err := pinot.ExtractColumnAsTime(results, timeColIdx, timeColumnFormat)
 	if err != nil {
 		return nil, err
 	}
 
-	metColIdx, err := pinotlib.GetColumnIdx(results, metricColumnAlias)
+	metColIdx, err := pinot.GetColumnIdx(results, metricColumnAlias)
 	if err != nil {
 		return nil, err
 	}
 
-	metCol, err := pinotlib.ExtractColumnAsDoubles(results, metColIdx)
+	metCol, err := pinot.ExtractColumnAsDoubles(results, metColIdx)
 	if err != nil {
 		return nil, err
 	}
@@ -84,8 +84,12 @@ func ExtractMetrics(results *pinotlib.ResultTable, timeColumnAlias string, timeC
 		if colIdx == timeColIdx || colIdx == metColIdx {
 			continue
 		}
-		name, _ := pinotlib.GetColumnName(results, colIdx)
-		dimensions[name] = pinotlib.ExtractColumnAsStrings(results, colIdx)
+		name, _ := pinot.GetColumnName(results, colIdx)
+		dimCol, err := pinot.ExtractColumnAsStrings(results, colIdx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract dimension column %s: %w", name, err)
+		}
+		dimensions[name] = dimCol
 	}
 
 	dimensionNames := make([]string, 0, len(dimensions))
