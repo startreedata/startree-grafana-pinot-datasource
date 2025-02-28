@@ -3,7 +3,7 @@ package dataquery
 import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"net/http"
 )
 
@@ -11,7 +11,7 @@ func NewEmptyDataResponse() backend.DataResponse {
 	return backend.DataResponse{Status: http.StatusOK}
 }
 
-func NewSqlQueryDataResponse(frame *data.Frame, exceptions []pinotlib.BrokerException) backend.DataResponse {
+func NewSqlQueryDataResponse(frame *data.Frame, exceptions []pinot.BrokerException) backend.DataResponse {
 	if len(exceptions) == 0 {
 		return NewOkDataResponse(frame)
 	} else {
@@ -26,19 +26,19 @@ func NewOkDataResponse(frames ...*data.Frame) backend.DataResponse {
 	}
 }
 
-func NewPartialDataResponse(frames []*data.Frame, exceptions []pinotlib.BrokerException) backend.DataResponse {
+func NewPartialDataResponse(frames []*data.Frame, exceptions []pinot.BrokerException) backend.DataResponse {
 	return backend.DataResponse{
 		Status:      backend.StatusInternal,
 		Frames:      frames,
-		Error:       pinotlib.NewBrokerExceptionError(exceptions),
+		Error:       pinot.NewBrokerExceptionError(exceptions),
 		ErrorSource: backend.ErrorSourceDownstream,
 	}
 }
 
-func NewPinotExceptionsDataResponse(exceptions []pinotlib.BrokerException) backend.DataResponse {
+func NewPinotExceptionsDataResponse(exceptions []pinot.BrokerException) backend.DataResponse {
 	return backend.DataResponse{
 		Status:      backend.StatusInternal,
-		Error:       pinotlib.NewBrokerExceptionError(exceptions),
+		Error:       pinot.NewBrokerExceptionError(exceptions),
 		ErrorSource: backend.ErrorSourceDownstream,
 	}
 }

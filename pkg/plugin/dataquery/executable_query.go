@@ -5,7 +5,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"strconv"
 	"time"
 )
@@ -38,10 +38,10 @@ const (
 )
 
 type ExecutableQuery interface {
-	Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse
+	Execute(client *pinot.Client, ctx context.Context) backend.DataResponse
 }
 
-func ExecuteQuery(client *pinotlib.PinotClient, ctx context.Context, backendQuery backend.DataQuery) backend.DataResponse {
+func ExecuteQuery(client *pinot.Client, ctx context.Context, backendQuery backend.DataQuery) backend.DataResponse {
 	startTime := time.Now()
 
 	var query DataQuery
@@ -154,22 +154,22 @@ var _ ExecutableQuery = NoOpQuery{}
 
 type NoOpQuery struct{}
 
-func (d NoOpQuery) Execute(*pinotlib.PinotClient, context.Context) backend.DataResponse {
+func (d NoOpQuery) Execute(*pinot.Client, context.Context) backend.DataResponse {
 	return NewEmptyDataResponse()
 }
 
-func newSqlQueryWithOptions(sql string, options []QueryOption) pinotlib.SqlQuery {
-	query := pinotlib.NewSqlQuery(sql)
+func newSqlQueryWithOptions(sql string, options []QueryOption) pinot.SqlQuery {
+	query := pinot.NewSqlQuery(sql)
 	for _, o := range options {
 		if o.Name == "" || o.Value == "" {
 			continue
 		}
-		query.QueryOptions = append(query.QueryOptions, pinotlib.QueryOption{Name: o.Name, Value: o.Value})
+		query.QueryOptions = append(query.QueryOptions, pinot.QueryOption{Name: o.Name, Value: o.Value})
 	}
 	return query
 }
 
-func doSqlQuery(ctx context.Context, pinotClient *pinotlib.PinotClient, query pinotlib.SqlQuery) (*pinotlib.ResultTable, []pinotlib.BrokerException, bool, backend.DataResponse) {
+func doSqlQuery(ctx context.Context, pinotClient *pinot.Client, query pinot.SqlQuery) (*pinot.ResultTable, []pinot.BrokerException, bool, backend.DataResponse) {
 	resp, err := pinotClient.ExecuteSqlQuery(ctx, query)
 	if err != nil {
 		return nil, nil, false, NewPluginErrorResponse(err)

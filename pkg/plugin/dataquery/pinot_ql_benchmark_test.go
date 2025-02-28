@@ -2,9 +2,9 @@ package dataquery
 
 import (
 	"context"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot/pinottest"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib/pinottest"
 	"net/http"
 	"testing"
 	"time"
@@ -15,7 +15,7 @@ func init() {
 }
 
 func BenchmarkPinotQlBuilderDriver_Execute(b *testing.B) {
-	client := pinotlib.NewPinotClient(http.DefaultClient, pinotlib.PinotClientProperties{
+	client := pinot.NewPinotClient(http.DefaultClient, pinot.ClientProperties{
 		ControllerUrl: pinottest.ControllerUrl,
 		BrokerUrl:     pinottest.BrokerUrl,
 	})

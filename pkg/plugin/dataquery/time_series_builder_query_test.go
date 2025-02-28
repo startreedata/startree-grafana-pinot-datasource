@@ -3,7 +3,7 @@ package dataquery
 import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -86,7 +86,7 @@ func TestTimeSeriesBuilderQuery_RenderSql(t *testing.T) {
 			Legend: "test-legend",
 		}
 
-		want := pinotlib.NewSqlQuery(`SELECT
+		want := pinot.NewSqlQuery(`SELECT
     "fabric",
     "ts_1m" AS "__time",
     SUM("value") AS "__metric"
@@ -146,8 +146,8 @@ GROUP BY
 ORDER BY
     "__time" DESC
 LIMIT 100000;`, gotQuery.Sql)
-		assert.Equal(t, []pinotlib.QueryOption{{Name: "timeoutMs", Value: "1"}}, gotQuery.QueryOptions)
-		assert.Equal(t, pinotlib.DateTimeFormatMillisecondsEpoch(), gotTimeFormat)
+		assert.Equal(t, []pinot.QueryOption{{Name: "timeoutMs", Value: "1"}}, gotQuery.QueryOptions)
+		assert.Equal(t, pinot.DateTimeFormatMillisecondsEpoch(), gotTimeFormat)
 	})
 
 	t.Run("AggregationFunction=NONE", func(t *testing.T) {
@@ -184,7 +184,7 @@ WHERE
     AND "ts" >= 0 AND "ts" < 1
 ORDER BY "__time" DESC
 LIMIT 1000;`, gotQuery.Sql)
-		assert.Equal(t, []pinotlib.QueryOption{{Name: "timeoutMs", Value: "1"}}, gotQuery.QueryOptions)
+		assert.Equal(t, []pinot.QueryOption{{Name: "timeoutMs", Value: "1"}}, gotQuery.QueryOptions)
 		assert.Equal(t, "1:HOURS:EPOCH", gotTimeFormat.LegacyString())
 	})
 }

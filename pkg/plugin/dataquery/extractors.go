@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"math/big"
 )
 
-func ExtractTableDataFrame(results *pinotlib.ResultTable, timeColumn string) *data.Frame {
+func ExtractTableDataFrame(results *pinot.ResultTable, timeColumn string) (*data.Frame, error) {
 	frame := data.NewFrame("response")
 
 	timeIdx, timeCol := ExtractTimeField(results, timeColumn)
@@ -21,23 +21,30 @@ func ExtractTableDataFrame(results *pinotlib.ResultTable, timeColumn string) *da
 		if colId == timeIdx {
 			continue
 		}
-		frame.Fields = append(frame.Fields, ExtractColumnAsField(results, colId))
+		field, err := ExtractColumnAsField(results, colId)
+		if err != nil {
+			return nil, err
+		}
+		frame.Fields = append(frame.Fields, field)
 	}
-	return frame
+	return frame, nil
 }
 
-func ExtractLogsDataFrame(results *pinotlib.ResultTable, timeColumn, logColumn string) (*data.Frame, error) {
-	linesIdx, err := pinotlib.GetColumnIdx(results, logColumn)
+func ExtractLogsDataFrame(results *pinot.ResultTable, timeColumn, logColumn string) (*data.Frame, error) {
+	linesIdx, err := pinot.GetColumnIdx(results, logColumn)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract log lines column: %w", err)
 	}
-	linesCol := pinotlib.ExtractColumnAsStrings(results, linesIdx)
+	linesCol, err := pinot.ExtractColumnAsStrings(results, linesIdx)
+	if err != nil {
+		return nil, fmt.Errorf("could not extract log lines column: %w", err)
+	}
 
-	timeIdx, err := pinotlib.GetColumnIdx(results, timeColumn)
+	timeIdx, err := pinot.GetColumnIdx(results, timeColumn)
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
+	timeCol, err := pinot.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
 	if err != nil {
 		return nil, fmt.Errorf("could not extract time column: %w", err)
 	}
@@ -51,7 +58,11 @@ func ExtractLogsDataFrame(results *pinotlib.ResultTable, timeColumn, logColumn s
 			continue
 		}
 		colName := results.DataSchema.ColumnNames[colIdx]
-		dims[colName] = pinotlib.ExtractColumnAsStrings(results, colIdx)
+		dimCol, err := pinot.ExtractColumnAsStrings(results, colIdx)
+		if err != nil {
+			return nil, fmt.Errorf("could not extract dimension column %s: %w", colName, err)
+		}
+		dims[colName] = dimCol
 	}
 
 	labelsCol := make([]json.RawMessage, results.RowCount())
@@ -78,13 +89,13 @@ func ExtractLogsDataFrame(results *pinotlib.ResultTable, timeColumn, logColumn s
 	return frame, nil
 }
 
-func ExtractTimeField(results *pinotlib.ResultTable, timeColumn string) (int, *data.Field) {
-	timeIdx, err := pinotlib.GetColumnIdx(results, timeColumn)
+func ExtractTimeField(results *pinot.ResultTable, timeColumn string) (int, *data.Field) {
+	timeIdx, err := pinot.GetColumnIdx(results, timeColumn)
 	if err != nil {
 		return -1, nil
 	}
 
-	timeCol, err := pinotlib.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
+	timeCol, err := pinot.ExtractColumnAsTime(results, timeIdx, OutputTimeFormat())
 	if err != nil {
 		return -1, nil
 	}
@@ -92,29 +103,33 @@ func ExtractTimeField(results *pinotlib.ResultTable, timeColumn string) (int, *d
 	return timeIdx, data.NewField(timeColumn, nil, timeCol)
 }
 
-func ExtractColumnAsField(results *pinotlib.ResultTable, colIdx int) *data.Field {
+func ExtractColumnAsField(results *pinot.ResultTable, colIdx int) (*data.Field, error) {
 	colName := results.DataSchema.ColumnNames[colIdx]
-	switch col := pinotlib.ExtractColumn(results, colIdx).(type) {
+	col, err := pinot.ExtractColumn(results, colIdx)
+	if err != nil {
+		return nil, err
+	}
+	switch rawValues := col.(type) {
 	case [][]byte:
-		vals := make([]string, len(col))
-		for i := range col {
-			vals[i] = hex.EncodeToString(col[i])
+		vals := make([]string, len(rawValues))
+		for i := range rawValues {
+			vals[i] = hex.EncodeToString(rawValues[i])
 		}
-		return data.NewField(colName, nil, vals)
+		return data.NewField(colName, nil, vals), nil
 	case []map[string]interface{}:
-		vals := make([]json.RawMessage, len(col))
-		for i := range col {
-			vals[i], _ = json.Marshal(col[i])
+		vals := make([]json.RawMessage, len(rawValues))
+		for i := range rawValues {
+			vals[i], _ = json.Marshal(rawValues[i])
 		}
-		return data.NewField(colName, nil, vals)
+		return data.NewField(colName, nil, vals), nil
 	case []*big.Int:
-		vals := make([]string, len(col))
-		for i := range col {
-			vals[i] = col[i].String()
+		vals := make([]string, len(rawValues))
+		for i := range rawValues {
+			vals[i] = rawValues[i].String()
 		}
-		return data.NewField(colName, nil, vals)
+		return data.NewField(colName, nil, vals), nil
 
 	default:
-		return data.NewField(colName, nil, col)
+		return data.NewField(colName, nil, rawValues), nil
 	}
 }

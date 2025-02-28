@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 )
 
 var _ ExecutableQuery = LogsBuilderQuery{}
@@ -36,7 +36,7 @@ func (query LogsBuilderQuery) Validate() error {
 	}
 }
 
-func (query LogsBuilderQuery) Execute(client *pinotlib.PinotClient, ctx context.Context) backend.DataResponse {
+func (query LogsBuilderQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
 	if err := query.Validate(); err != nil {
 		return NewBadRequestErrorResponse(err)
 	}
@@ -59,26 +59,26 @@ func (query LogsBuilderQuery) Execute(client *pinotlib.PinotClient, ctx context.
 	return NewSqlQueryDataResponse(frame, exceptions)
 }
 
-func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotlib.PinotClient) (pinotlib.SqlQuery, error) {
+func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinot.Client) (pinot.SqlQuery, error) {
 	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
-		return pinotlib.SqlQuery{}, err
+		return pinot.SqlQuery{}, err
 	}
 
-	timeColumnFormat, err := pinotlib.GetTimeColumnFormat(tableSchema, query.TimeColumn)
+	timeColumnFormat, err := pinot.GetTimeColumnFormat(tableSchema, query.TimeColumn)
 	if err != nil {
-		return pinotlib.SqlQuery{}, err
+		return pinot.SqlQuery{}, err
 	}
 
-	sql, err := pinotlib.RenderLogSql(pinotlib.LogSqlParams{
-		TableNameExpr:        pinotlib.ObjectExpr(query.TableName),
+	sql, err := pinot.RenderLogSql(pinot.LogSqlParams{
+		TableNameExpr:        pinot.ObjectExpr(query.TableName),
 		TimeColumn:           query.TimeColumn,
-		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
+		LogColumnExpr:        pinot.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
 		Limit:                query.resolveLimit(),
-		TimeFilterExpr: pinotlib.TimeFilterExpr(pinotlib.TimeFilter{
+		TimeFilterExpr: pinot.TimeFilterExpr(pinot.TimeFilter{
 			Column: query.TimeColumn,
 			Format: timeColumnFormat,
 			From:   query.TimeRange.From,
@@ -86,20 +86,20 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinotl
 		}),
 	})
 	if err != nil {
-		return pinotlib.SqlQuery{}, err
+		return pinot.SqlQuery{}, err
 	}
 
 	return newSqlQueryWithOptions(sql, query.QueryOptions), nil
 }
 
 func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
-	sql, err := pinotlib.RenderLogSql(pinotlib.LogSqlParams{
+	sql, err := pinot.RenderLogSql(pinot.LogSqlParams{
 		TableNameExpr:        MacroExprFor(MacroTable),
 		TimeColumn:           query.TimeColumn,
-		LogColumnExpr:        pinotlib.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
+		LogColumnExpr:        pinot.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
-		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinotlib.ObjectExpr(query.TimeColumn).String()),
+		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinot.ObjectExpr(query.TimeColumn).String()),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
 		Limit:                query.resolveLimit(),
 	})
@@ -110,12 +110,12 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 
 }
 
-func (query LogsBuilderQuery) logsMetadataColumns() []pinotlib.ExprWithAlias {
-	var metadataColumns []pinotlib.ExprWithAlias
+func (query LogsBuilderQuery) logsMetadataColumns() []pinot.ExprWithAlias {
+	var metadataColumns []pinot.ExprWithAlias
 
 	for _, column := range query.MetadataColumns {
-		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
-			Expr:  pinotlib.ComplexFieldExpr(column.Name, column.Key),
+		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
+			Expr:  pinot.ComplexFieldExpr(column.Name, column.Key),
 			Alias: complexFieldAlias(column.Name, column.Key),
 		})
 	}
@@ -125,18 +125,18 @@ func (query LogsBuilderQuery) logsMetadataColumns() []pinotlib.ExprWithAlias {
 			continue
 		}
 
-		var defaultValueExpr pinotlib.SqlExpr
+		var defaultValueExpr pinot.SqlExpr
 		switch extractor.ResultType {
-		case pinotlib.DataTypeInt, pinotlib.DataTypeLong, pinotlib.DataTypeFloat, pinotlib.DataTypeDouble:
-			defaultValueExpr = pinotlib.LiteralExpr(0)
-		case pinotlib.DataTypeBoolean:
-			defaultValueExpr = pinotlib.LiteralExpr(false)
+		case pinot.DataTypeInt, pinot.DataTypeLong, pinot.DataTypeFloat, pinot.DataTypeDouble:
+			defaultValueExpr = pinot.LiteralExpr(0)
+		case pinot.DataTypeBoolean:
+			defaultValueExpr = pinot.LiteralExpr(false)
 		default:
-			defaultValueExpr = pinotlib.LiteralExpr("")
+			defaultValueExpr = pinot.LiteralExpr("")
 		}
-		columnExpr := pinotlib.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
-		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
-			Expr:  pinotlib.JsonExtractScalarExpr(columnExpr, extractor.Path, extractor.ResultType, defaultValueExpr),
+		columnExpr := pinot.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
+		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
+			Expr:  pinot.JsonExtractScalarExpr(columnExpr, extractor.Path, extractor.ResultType, defaultValueExpr),
 			Alias: extractor.Alias,
 		})
 	}
@@ -146,9 +146,9 @@ func (query LogsBuilderQuery) logsMetadataColumns() []pinotlib.ExprWithAlias {
 			continue
 		}
 
-		columnExpr := pinotlib.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
-		metadataColumns = append(metadataColumns, pinotlib.ExprWithAlias{
-			Expr:  pinotlib.RegexpExtractExpr(columnExpr, extractor.Pattern, extractor.Group, pinotlib.LiteralExpr("")),
+		columnExpr := pinot.ComplexFieldExpr(extractor.Source.Name, extractor.Source.Key)
+		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
+			Expr:  pinot.RegexpExtractExpr(columnExpr, extractor.Pattern, extractor.Group, pinot.LiteralExpr("")),
 			Alias: extractor.Alias,
 		})
 	}

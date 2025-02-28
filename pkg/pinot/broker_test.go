@@ -1,4 +1,4 @@
-package pinotlib
+package pinot
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func TestBrokerExceptionError_Error(t *testing.T) {
 }
 
 func TestPinotClient_RenderSql(t *testing.T) {
-	client := NewPinotClient(http.DefaultClient, PinotClientProperties{
+	client := NewPinotClient(http.DefaultClient, ClientProperties{
 		QueryOptions: []QueryOption{
 			{Name: "useMultistageEngine", Value: "true"},
 			{Name: "timeoutMs", Value: "100"},

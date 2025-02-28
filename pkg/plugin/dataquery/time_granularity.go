@@ -3,8 +3,8 @@ package dataquery
 import (
 	"context"
 	"fmt"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/pinotlib"
 	"sort"
 	"strconv"
 	"strings"
@@ -13,16 +13,16 @@ import (
 
 const GranularityAuto = "auto"
 
-func OutputTimeFormat() pinotlib.DateTimeFormat {
-	return pinotlib.DateTimeFormatMillisecondsEpoch()
+func OutputTimeFormat() pinot.DateTimeFormat {
+	return pinot.DateTimeFormatMillisecondsEpoch()
 }
 
-func ResolveGranularity(ctx context.Context, expr string, timeColumnFormat pinotlib.DateTimeFormat, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
+func ResolveGranularity(ctx context.Context, expr string, timeColumnFormat pinot.DateTimeFormat, fallback time.Duration, derived []pinot.Granularity) pinot.Granularity {
 	if expr == "" || expr == GranularityAuto {
 		return resolveAutoGranularity(timeColumnFormat, fallback, derived)
 	}
 
-	granularity, err := pinotlib.ParseGranularityExpr(expr)
+	granularity, err := pinot.ParseGranularityExpr(expr)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Info("Failed to parse user provided granularity; using fallback")
 		return resolveAutoGranularity(timeColumnFormat, fallback, derived)
@@ -30,7 +30,7 @@ func ResolveGranularity(ctx context.Context, expr string, timeColumnFormat pinot
 	return granularity
 }
 
-func resolveAutoGranularity(timeColumnFormat pinotlib.DateTimeFormat, fallback time.Duration, derived []pinotlib.Granularity) pinotlib.Granularity {
+func resolveAutoGranularity(timeColumnFormat pinot.DateTimeFormat, fallback time.Duration, derived []pinot.Granularity) pinot.Granularity {
 	if fallback <= timeColumnFormat.MinimumGranularity().Duration() {
 		return timeColumnFormat.MinimumGranularity()
 	}
@@ -41,7 +41,7 @@ func resolveAutoGranularity(timeColumnFormat pinotlib.DateTimeFormat, fallback t
 			return option
 		}
 	}
-	return pinotlib.GranularityOf(fallback)
+	return pinot.GranularityOf(fallback)
 }
 
 func ParseGranularityExpr(granularity string) (time.Duration, error) {
