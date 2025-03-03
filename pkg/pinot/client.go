@@ -105,7 +105,7 @@ func (p *Client) doRequestAndDecodeResponse(req *http.Request, dest interface{})
 	decoder := json.NewDecoder(resp.Body)
 	decoder.UseNumber()
 	if err = decoder.Decode(&dest); err != nil {
-		return fmt.Errorf("pinot/http failed to decode response json: %w", err)
+		return fmt.Errorf("pinot/http: Failed to decode response json: %w", err)
 	}
 	return nil
 }

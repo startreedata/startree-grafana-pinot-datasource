@@ -22,7 +22,7 @@ import (
 import _ "embed"
 
 //go:embed data/*
-var dataFS embed.FS
+var TestDataFS embed.FS
 
 const (
 	Timeout      = 5 * time.Minute
@@ -348,7 +348,7 @@ func createTableSchema(schemaFile string) {
 	formWriter, err := multipartWriter.CreateFormFile("schemaName", schemaFile)
 	requireNoError(err)
 
-	file, err := dataFS.Open(schemaFile)
+	file, err := TestDataFS.Open(schemaFile)
 	requireNoError(err)
 	defer safeClose(file)
 
@@ -420,7 +420,7 @@ func tableExists(tableName string) bool {
 
 func createTableConfig(configFile string) {
 	create := func() (int, string) {
-		file, err := dataFS.Open(configFile)
+		file, err := TestDataFS.Open(configFile)
 		requireNoError(err)
 		defer safeClose(file)
 
@@ -459,7 +459,7 @@ func uploadJsonTableData(tableNameWithType string, dataFile string) {
 	formWriter, err := multipartWriter.CreateFormFile("file", dataFile)
 	requireNoError(err)
 
-	file, err := dataFS.Open(dataFile)
+	file, err := TestDataFS.Open(dataFile)
 	requireNoError(err)
 	defer safeClose(file)
 
