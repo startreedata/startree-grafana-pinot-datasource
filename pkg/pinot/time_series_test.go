@@ -296,8 +296,9 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 						time.Unix(1726617600, 0).UTC(),
 						time.Unix(1726617660, 0).UTC(),
 						time.Unix(1726617720, 0).UTC(),
+						time.Unix(1726617780, 0).UTC(),
 					},
-					Values: []float64{24022, 48066, 60102},
+					Values: []float64{6003, 30029, 54082, 60102},
 				},
 				{
 					Metric: map[string]string{
@@ -310,8 +311,9 @@ func TestPinotClient_ExecuteTimeSeriesQuery(t *testing.T) {
 						time.Unix(1726617600, 0).UTC(),
 						time.Unix(1726617660, 0).UTC(),
 						time.Unix(1726617720, 0).UTC(),
+						time.Unix(1726617780, 0).UTC(),
 					},
-					Values: []float64{4018, 8045, 10061},
+					Values: []float64{1005, 5025, 9053, 10061},
 				},
 			},
 		},

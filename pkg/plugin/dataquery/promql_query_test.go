@@ -31,6 +31,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 					time.Unix(1726617600, 0).UTC(),
 					time.Unix(1726617660, 0).UTC(),
 					time.Unix(1726617720, 0).UTC(),
+					time.Unix(1726617780, 0).UTC(),
 				}).SetConfig(&data.FieldConfig{
 					Interval: float64(60 * time.Second.Milliseconds()),
 				}),
@@ -40,17 +41,17 @@ func TestPromQlDriver_Execute(t *testing.T) {
 					"path":     "/app",
 					"status":   "200",
 				}, []float64{
-					24022, 48066, 60102,
+					6003, 30029, 54082, 60102,
 				}).SetConfig(&data.FieldConfig{
 					DisplayNameFromDS: "legend",
 				}),
 			),
-
 			data.NewFrame("",
 				data.NewField("time", nil, []time.Time{
 					time.Unix(1726617600, 0).UTC(),
 					time.Unix(1726617660, 0).UTC(),
 					time.Unix(1726617720, 0).UTC(),
+					time.Unix(1726617780, 0).UTC(),
 				}).SetConfig(&data.FieldConfig{
 					Interval: float64(60 * time.Second.Milliseconds()),
 				}),
@@ -60,7 +61,7 @@ func TestPromQlDriver_Execute(t *testing.T) {
 					"path":     "/app",
 					"status":   "400",
 				}, []float64{
-					4018, 8045, 10061,
+					1005, 5025, 9053, 10061,
 				}).SetConfig(&data.FieldConfig{
 					DisplayNameFromDS: "legend",
 				}),
