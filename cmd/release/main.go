@@ -38,8 +38,13 @@ type CustomerRelease struct {
 var CustomerReleases = []CustomerRelease{{
 	name: "epicgames",
 	repo: "external-startree-releases-for-epicgames",
-	urls: []string{"https://grafana.ol.epicgames.net", "https://grafana.pilot.epicgames.startree.cloud",
-		"https://grafana.yowo6r.cp.s7e.startree.cloud", "https://grafana.yhzyvd.cp.s7e.startree.cloud"},
+	urls: []string{
+		"https://grafana-ci.ol.epicgames.net/",
+		"https://grafana.ol.epicgames.net",
+		"https://grafana.pilot.epicgames.startree.cloud",
+		"https://grafana.yowo6r.cp.s7e.startree.cloud",
+		"https://grafana.yhzyvd.cp.s7e.startree.cloud",
+	},
 }, {
 	name: "doordash",
 	repo: "external-startree-releases-for-doordash",
@@ -83,7 +88,7 @@ const CloudVersionV1 = "v1"
 const CloudVersionV2 = "v2"
 
 func printUsage() {
-	fmt.Printf("Usage: %s create|resign|install|demo [ROOT_URLS...]\n", os.Args[0])
+	fmt.Printf("Usage: %s create|customer|install|demo [ROOT_URLS...]\n", os.Args[0])
 }
 
 func main() {
