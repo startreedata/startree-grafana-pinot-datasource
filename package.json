@@ -1,6 +1,6 @@
 {
   "name": "pinot",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "Pinot connector for Grafana.",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
