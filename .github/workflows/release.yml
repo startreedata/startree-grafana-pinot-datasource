@@ -71,12 +71,9 @@ jobs:
 
       - name: Set prerelease version
         run: |
-          git config --global user.email "ci@startree.ai"
-          git config --global user.name "CI"
-          version=$(npm version ${{ github.event.inputs.newVersion }})
-          git push --follow-tags
-          echo "version=$version" >> $GITHUB_OUTPUT
-          npm version --no-git-tag-version "$version-pre"
+          npm version --no-git-tag-version "${VERSION}-pre"
           git add package.json
           git commit -m'prepare for next version'
           #git push --follow-tags
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
