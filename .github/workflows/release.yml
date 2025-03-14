@@ -70,7 +70,6 @@ jobs:
             repo.startreedata.io/startree-docker-registry/startree-grafana:latest
 
       - name: Set prerelease version
-        id: version
         run: |
           git config --global user.email "ci@startree.ai"
           git config --global user.name "CI"
