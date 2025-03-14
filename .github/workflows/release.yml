@@ -79,4 +79,4 @@ jobs:
           npm version --no-git-tag-version "$version-pre"
           git add package.json
           git commit -m'prepare for next version'
-          git push --follow-tags
+          #git push --follow-tags
