@@ -71,7 +71,7 @@ jobs:
 
       - name: Set prerelease version
         run: |
-          npm version --no-git-tag-version "${VERSION}-pre"
+          npm version --no-git-tag-version prerelease --preid pre
           git add package.json
           git commit -m'prepare for next version'
           #git push --follow-tags
