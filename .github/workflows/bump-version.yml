@@ -1,0 +1,35 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      newVersion:
+        type: choice
+        description: New version is
+        options:
+          - patch
+          - minor
+          - major
+jobs:
+  bump_version:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Bump the release version
+        id: version
+        run: |
+          git config --global user.email "ci@startree.ai"
+          git config --global user.name "CI"
+          version=$(npm version ${{ github.event.inputs.newVersion }})
+          npm version --no-git-tag-version "$version-SNAPSHOT"
+          git add package.json
+          git commit -m'prepare for next development iteration'
+          git push --follow-tags
