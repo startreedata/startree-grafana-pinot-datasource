@@ -54,7 +54,7 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Build & upload the release
-        run: go run cmd/release/main.go release
+        run: go run cmd/release/main.go create
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
