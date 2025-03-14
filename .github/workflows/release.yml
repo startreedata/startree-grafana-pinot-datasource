@@ -3,7 +3,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
   push:
     tags:
       - 'v*' # Run workflow on version tags, e.g. v1.0.0.
@@ -28,8 +27,30 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-      - name: Sign release
-        run: go run cmd/release/main.go create
+
+      - name: Get version
+        id: get_version
+        run: echo "version=$(jq -r .version < package.json)" >> $GITHUB_OUTPUT
+
+      - name: Build & upload the release
+        run: go run cmd/release/main.go release
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+      - name: Login in Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+
+      - name: Publish startree-grafana image
+        uses: docker/build-push-action@v6
+        with:
+          file: startree-cloud/Dockerfile
+          context: .
+          push: true
+          tags: |
+            repo.startreedata.io/startree-docker-registry/startree-grafana:${{ steps.get_version.outputs.version }}
+            repo.startreedata.io/startree-docker-registry/startree-grafana:latest
