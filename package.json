@@ -90,7 +90,7 @@
     "@lezer/highlight": "^1.2.0",
     "@lezer/lr": "^1.4.2",
     "@prometheus-io/codemirror-promql": "^0.55.0",
-    "prismjs": "^1.29.0",
+    "prismjs": "^1.30.0",
     "react": "^17.0.0",
     "react-dom": "^17.0.0",
     "react-select": "^5.2.1",
