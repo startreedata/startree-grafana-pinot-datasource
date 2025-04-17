@@ -48,6 +48,10 @@ export interface PinotDataQuery extends DataQuery {
   promQlCode?: string;
 }
 
+export function isEmpty(query: PinotDataQuery): boolean {
+  return query.displayType === undefined || query.displayType === '';
+}
+
 export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedVars): PinotDataQuery {
   const templateSrv = getTemplateSrv();
 

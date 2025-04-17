@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
 
 import { QueryEditorHeader } from './QueryEditorHeader';
 import { QueryType } from '../../dataquery/QueryType';
 import { PromQlEditor } from './PromQlEditor';
 import { PinotQlEditor } from './PinotQlEditor';
-import { DisplayType } from '../../dataquery/DisplayType';
-import { EditorMode } from '../../dataquery/EditorMode';
+import { isEmpty } from '../../dataquery/PinotDataQuery';
+import { fetchDefaultQuery } from '../../resources/defaultQuery';
 
 export function QueryEditor(props: PinotQueryEditorProps) {
-  props.query.queryType = props.query.queryType || QueryType.PinotQL;
-  props.query.editorMode = props.query.editorMode || EditorMode.Builder;
-  props.query.displayType = props.query.displayType || DisplayType.TIMESERIES;
+  useEffect(() => {
+    if (isEmpty(props.query)) {
+      fetchDefaultQuery(props.datasource).then((resp) => props.onChange({ ...props.query, ...resp }));
+    }
+  }, [props.query]);
 
   return (
     <div>

@@ -54,6 +54,7 @@ func NewResourceHandler(client *pinot.Client) http.Handler {
 	router.HandleFunc("/timeseries/labelValues", adaptHandlerWithBody(client, ListTimeSeriesLabelValues))
 	router.HandleFunc("/granularities", adaptHandlerWithBody(client, ListSuggestedGranularities))
 	router.HandleFunc("/columns", adaptHandlerWithBody(client, ListColumns))
+	router.HandleFunc("/defaultQuery", adaptHandler(client, GetDefaultQuery))
 	return router
 }
 
@@ -411,6 +412,52 @@ func IsPromQlSupported(client *pinot.Client, r *http.Request) *Response[bool] {
 	return newOkResponse(ok)
 }
 
+func GetDefaultQuery(client *pinot.Client, r *http.Request) *Response[dataquery.DataQuery] {
+	ctx := r.Context()
+
+	defaultQueryOf := func(tableName, timeColumn string) dataquery.DataQuery {
+		return dataquery.DataQuery{
+			QueryType:           dataquery.QueryTypePinotQl,
+			DisplayType:         dataquery.DisplayTypeTimeSeries,
+			EditorMode:          dataquery.EditorModeBuilder,
+			TableName:           tableName,
+			TimeColumn:          timeColumn,
+			AggregationFunction: dataquery.AggregationFunctionCount,
+		}
+	}
+
+	tables, err := client.ListTables(ctx)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("ListTables() failed")
+		return newOkResponse(defaultQueryOf("", ""))
+	} else if len(tables) == 0 {
+		log.FromContext(ctx).Error("ListTables() returned no tables")
+		return newOkResponse(defaultQueryOf("", ""))
+	}
+
+	for _, tableName := range tables {
+		// Find a table with a time column and data.
+		schema, err := client.GetTableSchema(ctx, tableName)
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("GetTableSchema() failed", "table", tableName)
+			continue
+		}
+
+		tableConfigs, err := client.ListTableConfigs(ctx, tableName)
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("ListTableConfigs() failed", "table", tableName)
+			continue
+		}
+
+		for _, col := range listTimeColumns(tableConfigs, schema) {
+			if !col.IsDerived {
+				return newOkResponse(defaultQueryOf(tableName, col.Name))
+			}
+		}
+	}
+	return newOkResponse(defaultQueryOf("", ""))
+}
+
 type ListSuggestedGranularitiesRequest = struct {
 	TableName  string `json:"tableName"`
 	TimeColumn string `json:"timeColumn"`
@@ -516,20 +563,8 @@ func ListColumns(client *pinot.Client, ctx context.Context, req ListColumnsReque
 		return newInternalServerErrorResponse[[]Column](err)
 	}
 
-	isDerivedTimeCol := make(map[string]bool)
-	for _, col := range pinot.DerivedTimeColumnsFrom(tableConfigs) {
-		isDerivedTimeCol[col.ColumnName] = true
-	}
+	columns := listTimeColumns(tableConfigs, schema)
 
-	var columns []Column
-	for _, spec := range schema.DateTimeFieldSpecs {
-		columns = append(columns, Column{
-			Name:      spec.Name,
-			DataType:  spec.DataType,
-			IsTime:    true,
-			IsDerived: isDerivedTimeCol[spec.Name],
-		})
-	}
 	for _, spec := range schema.DimensionFieldSpecs {
 		columns = append(columns, Column{
 			Name:     spec.Name,
@@ -548,22 +583,19 @@ func ListColumns(client *pinot.Client, ctx context.Context, req ListColumnsReque
 		return newOkResponse(columns)
 	}
 
-	// Complex fields
-
 	format, err := pinot.GetTimeColumnFormat(schema, req.TimeColumn)
 	if err != nil {
 		return newOkResponse(columns)
 	}
-
 	timeFilterExpr := pinot.TimeFilterExpr(pinot.TimeFilter{
 		Column: req.TimeColumn,
 		Format: format,
 		From:   req.TimeRange.From,
 		To:     req.TimeRange.To,
 	})
-	filterExprs := dataquery.FilterExprsFrom(req.DimensionFilters)
+	dimFilterExprs := dataquery.FilterExprsFrom(req.DimensionFilters)
 	for _, spec := range schema.ComplexFieldSpecs {
-		keys := listMapColumnKeys(client, ctx, req.TableName, spec.Name, timeFilterExpr, filterExprs)
+		keys := listMapColumnKeys(client, ctx, req.TableName, spec.Name, timeFilterExpr, dimFilterExprs)
 		for _, key := range keys {
 			dataType := spec.ChildFieldSpecs.Value.DataType
 			columns = append(columns, Column{
@@ -577,13 +609,31 @@ func ListColumns(client *pinot.Client, ctx context.Context, req ListColumnsReque
 	return newOkResponse(columns)
 }
 
-func listMapColumnKeys(client *pinot.Client, ctx context.Context, tableName string, columnName string, timeFilterExpr pinot.SqlExpr, filterExprs []pinot.SqlExpr) []string {
+func listTimeColumns(tableConfigs pinot.ListTableConfigsResponse, schema pinot.TableSchema) []Column {
+	isDerivedTimeCol := make(map[string]bool)
+	for _, col := range pinot.DerivedTimeColumnsFrom(tableConfigs) {
+		isDerivedTimeCol[col.ColumnName] = true
+	}
+
+	var columns []Column
+	for _, spec := range schema.DateTimeFieldSpecs {
+		columns = append(columns, Column{
+			Name:      spec.Name,
+			DataType:  spec.DataType,
+			IsTime:    true,
+			IsDerived: isDerivedTimeCol[spec.Name],
+		})
+	}
+	return columns
+}
+
+func listMapColumnKeys(client *pinot.Client, ctx context.Context, tableName string, columnName string, timeFilterExpr pinot.SqlExpr, dimFilterExprs []pinot.SqlExpr) []string {
 	columnExpr := pinot.CastExpr(pinot.ObjectExpr(columnName), pinot.DataTypeJson)
 	sql, _ := pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
 		ColumnExpr:           columnExpr,
 		TableName:            tableName,
 		TimeFilterExpr:       timeFilterExpr,
-		DimensionFilterExprs: filterExprs,
+		DimensionFilterExprs: dimFilterExprs,
 	})
 
 	results, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery(sql))

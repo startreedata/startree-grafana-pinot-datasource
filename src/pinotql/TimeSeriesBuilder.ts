@@ -104,17 +104,9 @@ export function applyDefaults(
     params.timeColumn = timeColumnCandidates[0].name;
   }
 
-  if (!params.metricColumn?.name && resources.metricColumns.length > 0) {
-    changed = true;
-    params.metricColumn = {
-      name: resources.metricColumns[0].name,
-      key: resources.metricColumns[0].key || undefined,
-    };
-  }
-
   if (!params.aggregationFunction) {
     changed = true;
-    params.aggregationFunction = AggregationFunction.SUM;
+    params.aggregationFunction = AggregationFunction.COUNT;
   }
 
   return changed;
@@ -231,5 +223,3 @@ function useSqlPreview(
   }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return { result, loading };
 }
-
-
