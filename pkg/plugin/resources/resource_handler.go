@@ -435,24 +435,27 @@ func GetDefaultQuery(client *pinot.Client, r *http.Request) *Response[dataquery.
 		return newOkResponse(defaultQueryOf("", ""))
 	}
 
-	for _, tableName := range tables {
-		// Find a table with a time column and data.
-		schema, err := client.GetTableSchema(ctx, tableName)
-		if err != nil {
+	// Find a table with a time column.
+	var tableName string
+	var schema pinot.TableSchema
+	for _, tableName = range tables {
+		if schema, err = client.GetTableSchema(ctx, tableName); err != nil {
 			log.WithError(err).FromContext(ctx).Error("GetTableSchema() failed", "table", tableName)
 			continue
-		}
-
-		tableConfigs, err := client.ListTableConfigs(ctx, tableName)
-		if err != nil {
-			log.WithError(err).FromContext(ctx).Error("ListTableConfigs() failed", "table", tableName)
+		} else if len(schema.DateTimeFieldSpecs) == 0 {
 			continue
 		}
+	}
 
-		for _, col := range listTimeColumns(tableConfigs, schema) {
-			if !col.IsDerived {
-				return newOkResponse(defaultQueryOf(tableName, col.Name))
-			}
+	tableConfigs, err := client.ListTableConfigs(ctx, tableName)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("ListTableConfigs() failed", "table", tableName)
+		return newOkResponse(defaultQueryOf("", ""))
+	}
+
+	for _, col := range listTimeColumns(tableConfigs, schema) {
+		if !col.IsDerived {
+			return newOkResponse(defaultQueryOf(tableName, col.Name))
 		}
 	}
 	return newOkResponse(defaultQueryOf("", ""))
