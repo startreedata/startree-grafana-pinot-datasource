@@ -410,13 +410,11 @@ async function checkOrderByDropdown(page: Page) {
 
 async function checkTimeSeriesRendersMinFields(page: Page) {
   await page.getByTestId('select-table-dropdown').click();
-  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
-
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
-    SUM("views") AS "__metric"
+    COUNT("*") AS "__metric"
 FROM
     "complex_website"
 WHERE

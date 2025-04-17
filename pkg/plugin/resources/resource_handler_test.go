@@ -374,8 +374,8 @@ func TestGetDefaultQuery(t *testing.T) {
 		"queryType": "PinotQL",
 		"displayType": "TIMESERIES",
 		"editorMode": "Builder",
-		"tableName": "timeSeriesWithMapLabels",
-		"timeColumn": "ts",
+		"tableName": "allDataTypes",
+		"timeColumn": "__timestamp",
 		"aggregationFunction": "COUNT"
 	  }
 	}`
