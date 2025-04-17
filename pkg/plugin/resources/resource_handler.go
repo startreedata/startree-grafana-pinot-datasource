@@ -412,11 +412,20 @@ func IsPromQlSupported(client *pinot.Client, r *http.Request) *Response[bool] {
 	return newOkResponse(ok)
 }
 
-func GetDefaultQuery(client *pinot.Client, r *http.Request) *Response[dataquery.DataQuery] {
+type DefaultQuery struct {
+	QueryType           dataquery.QueryType   `json:"queryType"`
+	DisplayType         dataquery.DisplayType `json:"displayType"`
+	EditorMode          dataquery.EditorMode  `json:"editorMode"`
+	TableName           string                `json:"tableName"`
+	TimeColumn          string                `json:"timeColumn"`
+	AggregationFunction string                `json:"aggregationFunction"`
+}
+
+func GetDefaultQuery(client *pinot.Client, r *http.Request) *Response[DefaultQuery] {
 	ctx := r.Context()
 
-	defaultQueryOf := func(tableName, timeColumn string) dataquery.DataQuery {
-		return dataquery.DataQuery{
+	defaultQueryOf := func(tableName, timeColumn string) DefaultQuery {
+		return DefaultQuery{
 			QueryType:           dataquery.QueryTypePinotQl,
 			DisplayType:         dataquery.DisplayTypeTimeSeries,
 			EditorMode:          dataquery.EditorModeBuilder,
@@ -435,7 +444,6 @@ func GetDefaultQuery(client *pinot.Client, r *http.Request) *Response[dataquery.
 		return newOkResponse(defaultQueryOf("", ""))
 	}
 
-	// Find a table with a time column.
 	var tableName string
 	var schema pinot.TableSchema
 	for _, tableName = range tables {
