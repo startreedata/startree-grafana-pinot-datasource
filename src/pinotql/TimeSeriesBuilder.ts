@@ -89,26 +89,12 @@ export function canRunQuery(params: Params): boolean {
   }
 }
 
-export function applyDefaults(
-  params: Params,
-  resources: {
-    timeColumns: Column[];
-    metricColumns: Column[];
-  }
-): boolean {
+export function applyDefaults(params: Params): boolean {
   let changed = false;
-
-  const timeColumnCandidates = resources.timeColumns.filter((t) => !t.isDerived);
-  if (!params.timeColumn && timeColumnCandidates.length > 0) {
-    changed = true;
-    params.timeColumn = timeColumnCandidates[0].name;
-  }
-
   if (!params.aggregationFunction) {
     changed = true;
     params.aggregationFunction = AggregationFunction.COUNT;
   }
-
   return changed;
 }
 
