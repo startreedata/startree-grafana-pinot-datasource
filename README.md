@@ -73,6 +73,12 @@ Install dependencies:
 yarn install
 ```
 
+Launch backend in a separate terminal:
+
+```bash
+yarn run dev:backend
+```
+
 Build plugin in development mode and run in watch mode:
 
 ```bash
@@ -82,6 +88,8 @@ yarn run dev
 #### Unit tests
 
 Unit tests are written in [Jest](https://jestjs.io/).
+
+Run unit tests:
 
 ```bash
 yarn run test
