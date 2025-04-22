@@ -1,0 +1,10 @@
+apiVersion: 1
+
+datasources:
+  - name: Pinot-Test
+    type: startree-pinot-datasource
+    typeName: Pinot
+    jsonData:
+      brokerUrl: http://pinot:8000
+      controllerUrl: http://pinot:9000
+
