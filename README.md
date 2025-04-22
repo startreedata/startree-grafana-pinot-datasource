@@ -95,7 +95,7 @@ Run unit tests:
 yarn run test
 ```
 
-# E2E tests
+#### E2E tests
 
 * E2E tests are written in [Playwright](https://playwright.dev/).
 * Test specs are located in `tests/`.
