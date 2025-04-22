@@ -131,7 +131,7 @@ yarn run test:e2e:ui
 
 ## Release
 
-New releases should be tested and approved by [#ask-galileo](https://startreedata.slack.com/archives/C06LUQ8UYD6).
+New releases should be tested and approved by [#galileo-dev](https://startreedata.slack.com/archives/C06LUQ8UYD6).
 
 Pushing a new version tag should automatically trigger a new unsigned release build.
 
