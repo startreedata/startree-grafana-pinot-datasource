@@ -89,8 +89,10 @@ yarn run test
 
 # E2E tests
 
-E2E tests are written in [Playwright](https://playwright.dev/).
-Test specs are located in `tests/`.
+* E2E tests are written in [Playwright](https://playwright.dev/).
+* Test specs are located in `tests/`.
+* See [Grafana Plugin Features](https://docs.google.com/spreadsheets/d/1pRcVIEchaQ2S25uydlLbOh0IBYkwQtxgL5eMrm1c0v8/edit?gid=0#gid=0) for E2E test coverage.
+
 
 Set the following environment variables in `tests/.env`:
 
