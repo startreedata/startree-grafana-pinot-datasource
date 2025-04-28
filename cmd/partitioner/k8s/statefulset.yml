@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: metrics-partitioner
+  namespace: cell-u5gvpr-default
+spec:
+  serviceName: metrics-partitioner
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-partitioner
+  template:
+    metadata:
+      labels:
+        app: metrics-partitioner
+    spec:
+      containers:
+        - name: metrics-partitioner
+          image: repo.startreedata.io/startree-docker-registry/jackson-metrics-partitioner:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1500Mi
+          volumeMounts:
+            - mountPath: /offset
+              name: data
+  volumeClaimTemplates:
+    - kind: PersistentVolumeClaim
+      apiVersion: v1
+      metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Mi
+        volumeMode: Filesystem
