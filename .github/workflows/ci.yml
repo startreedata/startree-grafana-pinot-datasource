@@ -21,8 +21,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: repo.startreedata.io/startree-docker-registry
-          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+          username: ${{ secrets.MVN_REPOSITORY_USERNAME }}
+          password: ${{ secrets.MVN_REPOSITORY_PASSWORD }}
 
       - name: Start Pinot
         run: docker compose up pinot --quiet-pull --detach
@@ -108,8 +108,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: repo.startreedata.io/startree-docker-registry
-          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
-          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+          username: ${{ secrets.MVN_REPOSITORY_USERNAME }}
+          password: ${{ secrets.MVN_REPOSITORY_PASSWORD }}
 
       - name: Install Node.js environment
         uses: actions/setup-node@v4
