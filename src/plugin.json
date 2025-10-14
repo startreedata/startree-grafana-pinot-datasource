@@ -33,7 +33,7 @@
     "links": [
       {
         "name": "Documentation",
-        "url": "https://github.com/startreedata/startree-grafana-pinot-datasource/blob/main/src/README.md"
+        "url": "https://github.com/startreedata/startree-grafana-pinot-datasource/blob/main/README.md"
       },
       {
         "name": "Testing Guide",
