@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/grafana/grafana/master/docs/sources/developers/plugins/plugin.schema.json",
   "type": "datasource",
-  "name": "Pinot",
+  "name": "StarTree Pinot",
   "id": "startree-pinot-datasource",
   "metrics": true,
   "backend": true,
@@ -9,21 +9,67 @@
   "alerting": true,
   "annotations": true,
   "info": {
-    "description": "Pinot",
+    "description": "A comprehensive Grafana data source plugin for StarTree Pinot, enabling real-time analytics and visualization of your StarTree Pinot cluster data with support for time series, logs, and annotations.",
     "author": {
-      "name": "Startree"
+      "name": "StarTree",
+      "url": "https://www.startree.ai"
     },
     "keywords": [
       "pinot",
       "startree",
-      "datasource"
+      "datasource",
+      "analytics",
+      "real-time",
+      "time-series",
+      "logs",
+      "apache-pinot",
+      "olap",
+      "real-time-analytics"
     ],
     "logos": {
-      "small": "img/logo.svg",
-      "large": "img/logo.svg"
+      "small": "img/startree-logo.svg",
+      "large": "img/startree-logo.svg"
     },
-    "links": [],
-    "screenshots": [],
+    "links": [
+      {
+        "name": "Documentation",
+        "url": "https://github.com/startreedata/startree-grafana-pinot-datasource/blob/main/README.md"
+      },
+      {
+        "name": "Testing Guide",
+        "url": "https://github.com/startreedata/startree-grafana-pinot-datasource/blob/main/TESTING.md"
+      },
+      {
+        "name": "Support",
+        "url": "https://github.com/startreedata/startree-grafana-pinot-datasource/issues"
+      },
+      {
+        "name": "Startree",
+        "url": "https://www.startree.ai"
+      },
+      {
+        "name": "Apache Pinot",
+        "url": "https://pinot.apache.org"
+      }
+    ],
+    "screenshots": [
+      {
+        "name": "Data Source Configuration",
+        "path": "img/screenshots/startree-pinot-sample-datasource-config.png"
+      },
+      {
+        "name": "Query Editor - Builder Mode",
+        "path": "img/screenshots/startree-pinot-sample-datasource-query-editor.png"
+      },
+      {
+        "name": "Time Series Visualization",
+        "path": "img/screenshots/startree-pinot-sample-datasource-timeseries-viz.png"
+      },
+      {
+        "name": "Overview",
+        "path": "img/screenshots/startree-pinot-sample-datasource-overview.png"
+      }
+    ],
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
