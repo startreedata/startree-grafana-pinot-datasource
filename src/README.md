@@ -18,7 +18,7 @@ a new Pinot token for their cluster.
 
 The builder helps you build a time series query for Pinot. The Table, Time Column, and Metric Column fields are
 required.
-The query results are formated for the time series panel in Grafana.
+The query results are formatted for the time series panel in Grafana.
 
 ### Code Editor
 
