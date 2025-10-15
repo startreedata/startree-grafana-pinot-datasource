@@ -1,7 +1,7 @@
 services:
   pinot:
     container_name: 'pinot'
-    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:1.4.0-ST.26'
+    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:2.12.27'
     ports:
       - '9000:9000/tcp' # Controller
       - '8000:8000/tcp' # Broker
