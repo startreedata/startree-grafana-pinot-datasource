@@ -14,6 +14,21 @@ services:
       - '-type'
       - 'PROMQL_TIME_SERIES'
 
+  oss-pinot:
+    container_name: 'oss-pinot'
+    image: 'apachepinot/pinot:latest'
+    ports:
+      - '9000:9000/tcp' # Controller
+      - '8000:8000/tcp' # Broker
+      - '2123:2123/tcp' # Zookeeper
+      - '7050:7050/tcp' # Server
+      - '6000:6000/tcp' # Minion
+      - '8097:8097/tcp'
+    command:
+      - 'QuickStart'
+      - '-type'
+      - 'batch'
+
   grafana:
     user: root
     container_name: 'startree-pinot-datasource'
