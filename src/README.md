@@ -9,7 +9,7 @@ This plugin is compatible with Grafana version 9.1.1 and higher.
 You must provide the Controller URL and Broker URL of the Pinot instance.
 
 Authentication tokens supported. StarTree customers
-can [visit this link](https://dev.startree.ai/docs/query-data/use-apis-and-build-apps/generate-an-api-token) to generate
+can [visit this link](https://docs.startree.ai/corecapabilities/security/manage-api-tokens#generating-an-api-token) to generate
 a new Pinot token for their cluster.
 
 ## Query
