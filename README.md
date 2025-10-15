@@ -1,149 +1,85 @@
-# Pinot Data Source plugin for Grafana
+# Pinot Data Source Plugin for Grafana
 
-The Pinot Data Source Plugin for Grafana allows you to create visualizations in Grafana from data in your Pinot cluster.
+The Pinot Data Source Plugin for Grafana enables you to visualize and query data from your Apache Pinot cluster directly within Grafana. Build powerful dashboards with time-series visualizations, tables, and more.
 
-For system & code architecture, see [Visualizing Pinot Datasets in Grafana](https://docs.google.com/document/d/1gCoF0MN8wQfD-Lq-wq2SagTavRcU4iO1drueCj4XA6M/edit?tab=t.0#heading=h.hx07umlqsfwe).
+## Features
 
-**System Requirements**
+- 🎯 **Visual Query Builder** - Build queries without writing SQL
+- 📊 **Multiple Visualization Types** - Support for time-series, tables, and logs
+- 🔍 **Advanced Query Editor** - Write custom SQL queries with macro support
+- 🔐 **Authentication** - Support for API tokens and OAuth pass-through
+- 📈 **Variables & Annotations** - Full support for Grafana variables and annotations
+- ⚡ **Performance** - Optimized for large-scale data queries
 
-Grafana version >= 9.1.1
+## System Requirements
 
-## Development
+- **Grafana:** Version 9.1.1 or higher
+- **Apache Pinot:** Any version (optimized for latest releases)
 
-**Frontend:** React, Typescript, Jest, Playwright
+## Installation
 
-**Backend:** Golang, Mage
+### From Grafana Marketplace
 
-### Dev Dependencies
+1. Navigate to **Configuration → Plugins** in your Grafana instance
+2. Search for "Pinot" or "StartTree"
+3. Click **Install** on the Pinot data source plugin
 
-| Dependency | Version | Mac Install                                    | Download                                                |
-|------------|---------|------------------------------------------------|---------------------------------------------------------|
-| Golang     | 1.23.0  | `brew install go@1.23`                         | https://go.dev/dl/                                      |
-| Mage       | 1.15.0  | `brew install mage`                            | https://magefile.org/                                   |
-| Docker     | -       |                                                | https://docs.docker.com/desktop/install/mac-install/    |
-| NodeJs     | 20      | `brew install nvm && nvm install 20`           | https://nodejs.org/en/download                          |
-| Yarn       | 1.22.19 | `npm install -g yarn`                          | https://classic.yarnpkg.com/en/docs/install/#mac-stable |
-| Playwright | 1.41.2  | `yarn playwright install --with-deps chromium` | https://playwright.dev/docs/intro                       |
+![Search and Install](src/img/screenshots/startree-pinot-plugin-search-and-listing.png)
 
-### Backend
+### Local Installation with Docker
 
-The backend code handles all interactions with Pinot and provides the data to the frontend.
+For local development and testing using Docker, refer to the [Testing Guide](TESTING.md).
 
-Relevant directories:
+![Pinot Datasource Plugin Docker Setup](src/img/screenshots/startree-pinot-plugin-local-docker-setup.png)
 
-| Description                          | Location               |
-|--------------------------------------|------------------------|
-| Pinot client code                    | `pkg/pinot/`           |
-| Plugin specific code                 | `pkg/plugin/`          |
-| Query handlers for visualizations    | `pkg/plugin/dataquery` |
-| Resource handlers for UI components. | `pkg/plugin/resources` |
-| Helper tools                         | `cmd/`                 |
+## Configuration
 
-Build backend plugin binaries:
+To configure the Pinot data source in Grafana:
 
-```bash
-mage -v
-```
+1. Navigate to **Configuration → Data Sources**
+2. Click **Add data source**
+3. Select **Pinot** from the list
+4. Configure the following:
+   - **Controller URL** - Your Pinot controller endpoint (e.g., `http://localhost:9000`)
+   - **Broker URL** - Your Pinot broker endpoint (e.g., `http://localhost:8000`)
+   - **Database** (optional) - Default database name
+   - **Authentication** - API token if required
 
-Run backend tests:
+For detailed configuration instructions, query builders, macros, and advanced features, see the [Plugin Usage & Features Guide](src/README.md).
 
-```bash
-docker compose up pinot --detach --wait --wait-timeout 500
-go run cmd/testsetup/main.go
-go test ./... -v
-```
+![Pinot Datasource Configuration](src/img/screenshots/startree-pinot-sample-datasource-config.png)
 
-### Frontend
+## Quick Start
 
-The frontend code handles all interactions with Grafana and provides the UI components.
+1. **Install the plugin** from the Grafana marketplace or locally
+2. **Configure a data source** with your Pinot cluster details
+3. **Create a dashboard** and add a new panel
+4. **Select Pinot as the data source** and choose your query type:
+   - Use the **Builder** for visual query construction
+   - Use the **Code Editor** for custom SQL queries
+5. **Visualize your data** with Grafana's powerful visualization options
 
-Relevant directories:
+## Documentation
 
-| Description                | Location                                | Notes                                                                                                                     |
-|----------------------------|-----------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Plugin entrypoint          | `src/module.ts`                         |                                                                                                                           |
-| Data source config editor  | `src/components/ConfigEditor`           | [demo](https://drive.google.com/file/d/1DR87qj90xMRnpaXbLffAD2VfoyPK8SpV/view?usp=drive_link)                             |
-| Panel/explore query editor | `src/components/QueryEditor`            | [demo](https://drive.google.com/file/d/1DR87qj90xMRnpaXbLffAD2VfoyPK8SpV/view?usp=drive_link)                             |
-| Annotations query editor   | `src/components/AnnotationsQueryEditor` | [demo](https://startreedata.slack.com/archives/C071PS6ND1B/p1738709570181519)                                             |
-| Variable query editor      | `src/components/VariableQueryEditor`    | [demo](https://startreedata.slack.com/archives/C071PS6ND1B/p1725653129358349?thread_ts=1725653095.452419&cid=C071PS6ND1B) |
-| Resource fetchers          | `src/resources`                         |                                                                                                                           |
-| E2E Tests                  | `tests/`                                |                                                                                                                           |
+### User Guides
+- **[Plugin Usage & Features](src/README.md)** - Complete guide on using the plugin, including query builders, macros, and visualization options
 
-Install dependencies:
+### Developer Guides
+- **[Development Guide](DEVELOPMENT.md)** - Setup instructions for local development, testing, and contributing
+- **[Testing Guide](TESTING.md)** - Step-by-step instructions for testing the plugin locally with OSS Pinot
 
-```bash
-yarn install
-```
+## Support
 
-Launch backend in a separate terminal:
+- **Issues:** Report bugs and request features on [GitHub Issues](https://github.com/startreedata/startree-grafana-pinot-datasource/issues)
+- **Documentation:** [Apache Pinot Documentation](https://docs.pinot.apache.org/)
 
-```bash
-yarn run dev:backend
-```
+## Contributing
 
-Build plugin in development mode and run in watch mode:
+We welcome contributions! Please see the [Development Guide](DEVELOPMENT.md) for information on setting up your development environment and submitting pull requests.
 
-```bash
-yarn run dev
-```
+## License
 
-#### Unit tests
-
-Unit tests are written in [Jest](https://jestjs.io/).
-
-Run unit tests:
-
-```bash
-yarn run test
-```
-
-#### E2E tests
-
-* E2E tests are written in [Playwright](https://playwright.dev/).
-* Test specs are located in `tests/`.
-* See [Grafana Plugin Features](https://docs.google.com/spreadsheets/d/1pRcVIEchaQ2S25uydlLbOh0IBYkwQtxgL5eMrm1c0v8/edit?gid=0#gid=0) for E2E test coverage.
+See [LICENSE](LICENSE) file for details.
 
 
-Set the following environment variables in `tests/.env`:
-
-```bash
-PINOT_CONNECTION_CONTROLLER_URL="https://pinot.celpxu.cp.s7e.startree.cloud"
-PINOT_CONNECTION_BROKER_URL="https://broker.pinot.celpxu.cp.s7e.startree.cloud"
-PINOT_CONNECTION_DATABASE="ws_2jkxph6tf0nr"
-PINOT_CONNECTION_AUTH_TOKEN="st-..."
-```
-
-Launch the backend in a separate terminal:
-
-```bash
-yarn run dev:backend
-```
-
-Launch the E2E tests:
-
-```bash
-yarn run test:e2e
-```
-
-Launch E2E UI
-
-```bash
-yarn run test:e2e:ui
-```
-
-## Release
-
-New releases should be tested and approved by [#galileo-dev](https://startreedata.slack.com/archives/C06LUQ8UYD6).
-
-Pushing a new version tag should automatically trigger a new unsigned release build.
-
-Due to plugin signing restrictions, we have to create a release artifact for each intended grafana instance. These
-_installable_ releases are signed copies of the unsigned release and only valid for the intended grafana instance.
-
-[Create new signed releases.](https://github.com/startreedata/startree-grafana-pinot-datasource/actions/workflows/customer-release.yml)
-
-### Push a version tag
-
-1. Run `npm version <major|minor|patch>`
-2. Run `git push origin main --follow-tags`
 
