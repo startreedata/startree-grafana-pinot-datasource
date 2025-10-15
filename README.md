@@ -24,6 +24,8 @@ The Pinot Data Source Plugin for Grafana enables you to visualize and query data
 2. Search for "Pinot" or "StartTree"
 3. Click **Install** on the Pinot data source plugin
 
+![Search and Install](src/img/screenshots/startree-pinot-plugin-search-and-listing.png)
+
 ### Local Installation with Docker
 
 For local development and testing using Docker, refer to the [Testing Guide](TESTING.md).
