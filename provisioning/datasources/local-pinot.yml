@@ -5,6 +5,6 @@ datasources:
     type: startree-pinot-datasource
     typeName: Pinot
     jsonData:
-      brokerUrl: http://pinot:8000
-      controllerUrl: http://pinot:9000
+      brokerUrl: http://oss-pinot:8000
+      controllerUrl: http://oss-pinot:9000
 
