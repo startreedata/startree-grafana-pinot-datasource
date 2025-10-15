@@ -15,6 +15,9 @@ docker-compose up oss-pinot grafana
 
 Wait for both services to start completely.
 
+![Pinot Datasource Plugin Docker Setup](src/img/screenshots/startree-pinot-plugin-local-docker-setup.png)
+
+
 ### 2. Access Grafana
 
 Open your browser and navigate to:

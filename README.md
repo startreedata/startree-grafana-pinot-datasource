@@ -2,8 +2,6 @@
 
 The Pinot Data Source Plugin for Grafana enables you to visualize and query data from your Apache Pinot cluster directly within Grafana. Build powerful dashboards with time-series visualizations, tables, and more.
 
-![Sample Grafana Dashboard](src/img/screenshots/grafana-sample-dashboard.png)
-
 ## Features
 
 - 🎯 **Visual Query Builder** - Build queries without writing SQL
@@ -25,6 +23,8 @@ The Pinot Data Source Plugin for Grafana enables you to visualize and query data
 1. Navigate to **Configuration → Plugins** in your Grafana instance
 2. Search for "Pinot" or "StartTree"
 3. Click **Install** on the Pinot data source plugin
+
+![Search and Install](src/img/screenshots/startree-pinot-plugin-search-and-listing.png)
 
 ### Local Installation with Docker
 
@@ -72,7 +72,6 @@ For detailed configuration instructions, query builders, macros, and advanced fe
 
 - **Issues:** Report bugs and request features on [GitHub Issues](https://github.com/startreedata/startree-grafana-pinot-datasource/issues)
 - **Documentation:** [Apache Pinot Documentation](https://docs.pinot.apache.org/)
-- **Architecture:** [System & Code Architecture](https://docs.google.com/document/d/1gCoF0MN8wQfD-Lq-wq2SagTavRcU4iO1drueCj4XA6M/edit?tab=t.0#heading=h.hx07umlqsfwe)
 
 ## Contributing
 
