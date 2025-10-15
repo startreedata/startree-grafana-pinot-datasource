@@ -8,7 +8,7 @@ test.describe('Add Pinot Datasource', async () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:3000/datasources/new');
-    await page.getByLabel('Add data source Pinot').click();
+    await page.getByLabel('Add data source StarTree Pinot').click();
     await page.getByPlaceholder('Name').click();
     await page.getByPlaceholder('Name').fill(randomDatasourceName());
   });
