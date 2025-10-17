@@ -35,9 +35,9 @@ export function PinotQlTimeSeriesBuilder(props: {
     }
   };
 
-  if (TimeSeriesBuilder.applyDefaults(savedParams, resources)) {
-    onChangeAndRun({ ...savedParams });
-  }
+  // if (TimeSeriesBuilder.applyDefaults(savedParams, resources)) {
+  //   onChangeAndRun({ ...savedParams });
+  // }
   return (
     <>
       <SelectTable

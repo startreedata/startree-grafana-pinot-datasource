@@ -364,17 +364,53 @@ func TestListColumns(t *testing.T) {
 	}
 }
 
+func TestGetDefaultQuery(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	want := `{
+	  "code": 200,
+	  "result": {
+		"queryType": "PinotQL",
+		"displayType": "TIMESERIES",
+		"editorMode": "Builder",
+		"tableName": "allDataTypes",
+		"timeColumn": "__timestamp",
+		"aggregationFunction": "COUNT"
+	  }
+	}`
+
+	var got json.RawMessage
+	doGetRequest(t, server.URL+"/defaultQuery", &got)
+	assertEqualJson(t, want, got)
+}
+
 func newTestServer(t *testing.T) *httptest.Server {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 	return httptest.NewServer(NewResourceHandler(client))
 }
 
-func doPostRequest(t *testing.T, url string, data string, dest interface{}) {
+func doGetRequest(t *testing.T, url string, dest any) {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	require.NoError(t, err)
+	req.Header.Set("Accept", "application/json")
+	doRequest(t, req, dest)
+}
+
+func doPostRequest(t *testing.T, url string, data string, dest any) {
 	t.Helper()
 
 	req, err := http.NewRequest(http.MethodPost, url, strings.NewReader(data))
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	doRequest(t, req, dest)
+}
+
+func doRequest(t *testing.T, req *http.Request, dest any) {
+	t.Helper()
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
