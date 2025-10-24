@@ -63,9 +63,13 @@ jobs:
       - name: Build frontend
         run: yarn run build
 
+      - name: Read mage version
+        id: mage_version
+        run: echo "MAGE_VERSION=$(grep 'github.com/magefile/mage' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+
       - name: Install mage
         run: |
-          go install github.com/magefile/mage@latest
+          go install github.com/magefile/mage@${{ steps.mage_version.outputs.MAGE_VERSION }}
 
       - name: Build backend
         run: mage -v
