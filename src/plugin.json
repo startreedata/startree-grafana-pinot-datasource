@@ -67,7 +67,7 @@
       },
       {
         "name": "Overview",
-        "path": "img/screenshots/startree-pinot-sample-datasource-overview.png"
+        "path": "img/screenshots/startree-pinot-plugin-overview.png"
       }
     ],
     "version": "%VERSION%",
