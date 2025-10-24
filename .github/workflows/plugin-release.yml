@@ -6,6 +6,11 @@ on:
       dev_release:
         description: "Dev build for testing"
         type: boolean
+      root_urls:
+        description: "Root URLs for plugin signing (comma-separated)"
+        type: string
+        default: "https://github.com/startreedata/startree-grafana-pinot-datasource"
+        required: true
 
 run-name: ${{ inputs.dev_release && 'Dev Build' || 'Build' }} from ${{ github.ref_name }} triggered by @${{ github.actor }}
 
@@ -78,7 +83,7 @@ jobs:
       - name: Sign plugin
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-        run: npx @grafana/sign-plugin@latest --rootUrls https://github.com/startreedata/startree-grafana-pinot-datasource
+        run: npx @grafana/sign-plugin@latest --rootUrls "${{ inputs.root_urls }}"
 
       - name: Package plugin
         run: |
