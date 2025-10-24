@@ -78,7 +78,7 @@ jobs:
       - name: Sign plugin
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-        run: npx @grafana/sign-plugin@latest
+        run: npx @grafana/sign-plugin@latest --rootUrls https://github.com/startreedata/startree-grafana-pinot-datasource
 
       - name: Package plugin
         run: |
