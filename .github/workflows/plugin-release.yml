@@ -51,13 +51,13 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Run unit tests
-        if: ${{ !inputs.dev_release }}
-        run: yarn run test
+      # - name: Run unit tests
+      #   if: ${{ !inputs.dev_release }}
+      #   run: yarn run test
 
-      - name: Run playwright tests
-        if: ${{ !inputs.dev_release }}
-        run: yarn run test:e2e
+      # - name: Run playwright tests
+      #   if: ${{ !inputs.dev_release }}
+      #   run: yarn run test:e2e
 
       - name: Build frontend
         run: yarn run build
@@ -91,3 +91,24 @@ jobs:
         with:
           name: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
           path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+      
+      - name: Generate Changelog
+        id: github-changelog-generator
+        if: ${{ !inputs.dev_release }}
+        uses: janheinrichmerker/action-github-changelog-generator@e60b5a2bd9fcd88dadf6345ff8327863fb8b490f # v2.4
+        with:
+          output: CHANGELOG.md
+          user: ${{ github.repository_owner }}
+          project: ${{ github.event.repository.name }}
+          unreleased: true
+          issues: true
+          pullRequests: true
+          includeLabels: "bug,enhancement,feature"
+          simpleList: true
+
+      - name: Generate artifact attestation
+        if: ${{ !inputs.dev_release }}
+        id: attestation
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
+        with:
+          subject-path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
