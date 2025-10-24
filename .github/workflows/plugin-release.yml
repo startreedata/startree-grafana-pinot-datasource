@@ -60,15 +60,28 @@ jobs:
         if: ${{ !inputs.dev_release }}
         run: yarn run test:e2e
 
-      - name: Build plugin
-        uses: grafana/plugin-actions/build-plugin@main
-        with:
-          # see https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token to generate it
-          # save the value in your repository secrets
-          # NOTE: This action only builds and packages the plugin - it does NOT commit or modify the repository
-          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-          attestation: true
-          use_changelog_generator: true
+      - name: Build frontend
+        run: yarn run build
 
-      # The build-plugin action automatically creates and uploads the zip file
-      # No additional packaging or upload steps needed
+      - name: Build backend
+        run: mage -v
+
+      - name: Sign plugin
+        env:
+          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+        run: npx @grafana/sign-plugin@latest
+
+      - name: Validate plugin
+        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
+
+      - name: Package plugin
+        run: |
+          cd dist
+          zip -r ../startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip .
+          cd ..
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+          path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
