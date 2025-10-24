@@ -72,13 +72,13 @@ jobs:
       - name: Build backend
         run: mage -v
 
+      - name: Validate plugin
+        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
+      
       - name: Sign plugin
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
         run: npx @grafana/sign-plugin@latest
-
-      - name: Validate plugin
-        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
 
       - name: Package plugin
         run: |
