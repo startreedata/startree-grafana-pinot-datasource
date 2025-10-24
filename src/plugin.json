@@ -77,5 +77,8 @@
     "grafanaDependency": ">=9.1.1",
     "plugins": []
   },
-  "logs": true
+  "logs": true,
+  "rootUrls": [
+    "https://github.com/startreedata/startree-grafana-pinot-datasource"
+  ]
 }
