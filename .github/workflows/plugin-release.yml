@@ -6,8 +6,13 @@ on:
       dev_release:
         description: "Dev release for testing"
         type: boolean
+      target_branch:
+        description: "Branch to build from"
+        type: string
+        default: "main"
+        required: true
 
-run-name: ${{ inputs.dev_release && 'Dev Release' || 'Release' }} triggered by @${{ github.actor }}
+run-name: ${{ inputs.dev_release && 'Dev Release' || 'Release' }} from ${{ inputs.target_branch }} triggered by @${{ github.actor }}
 
 permissions:
   contents: write
@@ -18,6 +23,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+
+      - name: Display build info
+        run: |
+          echo "Building from branch: ${{ inputs.target_branch }}"
+          echo "Dev release mode: ${{ inputs.dev_release }}"
+          echo "Current commit: $(git rev-parse HEAD)"
+          echo "Current branch: $(git branch --show-current)"
 
       - name: Read .nvmrc
         id: node_version
