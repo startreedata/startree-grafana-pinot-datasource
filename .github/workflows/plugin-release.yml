@@ -80,9 +80,8 @@ jobs:
 
       - name: Package plugin
         run: |
-          cd dist
-          zip -r ../startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip .
-          cd ..
+          mv dist/ startree-pinot-datasource
+          zip startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip startree-pinot-datasource -r
 
       - name: Validate plugin
         run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
