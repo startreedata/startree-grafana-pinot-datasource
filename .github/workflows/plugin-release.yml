@@ -112,3 +112,24 @@ jobs:
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
         with:
           subject-path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+      
+      - name: Create Github release
+        uses: softprops/action-gh-release@62c96d0c4e8a889135c1f3a25910db8dbe0e85f7 # v2.3.4
+        with:
+          draft: true
+          generate_release_notes: true
+          files: |
+            ./startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+          body: |
+            **This Github draft release has been created for your plugin.**
+
+            _Note: if this is the first release for your plugin please consult the [distributing-your-plugin section](https://github.com/${{github.repository}}/blob/main/README.md#distributing-your-plugin) of the README_
+
+            If you would like to submit this release to Grafana please consider the following steps:
+
+            - **Edit this draft release**, adjust these notes accordingly and click **Publish Release**
+            - Navigate to https://grafana.com/auth/sign-in/ to sign into your account
+            - Once logged in click **My Plugins** in the admin navigation
+            - Click the **Submit Plugin** button
+
+            If the links above are not working, you must first edit this draft release and publish it.
