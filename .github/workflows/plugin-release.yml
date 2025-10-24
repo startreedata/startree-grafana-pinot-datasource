@@ -6,11 +6,6 @@ on:
       dev_release:
         description: "Dev build for testing"
         type: boolean
-      root_urls:
-        description: "Root URLs for plugin signing (comma-separated)"
-        type: string
-        default: "https://github.com/startreedata/startree-grafana-pinot-datasource"
-        required: true
 
 run-name: ${{ inputs.dev_release && 'Dev Build' || 'Build' }} from ${{ github.ref_name }} triggered by @${{ github.actor }}
 
@@ -76,14 +71,14 @@ jobs:
           go install github.com/magefile/mage@${{ steps.mage_version.outputs.MAGE_VERSION }}
       - name: Build backend
         run: mage -v
-
-      - name: Validate plugin
-        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
       
       - name: Sign plugin
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-        run: npx @grafana/sign-plugin@latest --rootUrls "${{ inputs.root_urls }}"
+        run: npx @grafana/sign-plugin@latest --rootUrls http://localhost:3000/
+
+      - name: Validate plugin
+        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
 
       - name: Package plugin
         run: |
