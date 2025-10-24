@@ -69,6 +69,7 @@ jobs:
       - name: Install mage
         run: |
           go install github.com/magefile/mage@${{ steps.mage_version.outputs.MAGE_VERSION }}
+
       - name: Build backend
         run: mage -v
       
@@ -85,6 +86,7 @@ jobs:
 
       - name: Validate plugin
         run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+
       - name: Upload plugin
         uses: actions/upload-artifact@v4
         with:
