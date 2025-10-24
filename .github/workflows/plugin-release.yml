@@ -1,0 +1,62 @@
+name: Publish to Grafana Marketplace
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run unit tests
+        run: yarn run test
+
+      - name: Run playwright tests
+        run: yarn run test:e2e
+
+      - name: Build frontend
+        run: yarn run build
+
+      - name: Build backend
+        run: mage -v
+
+      - name: Sign plugin
+        env:
+            GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+        run: npx @grafana/sign-plugin@latest
+
+      - name: Validate plugin
+        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
+
+      - name: Package plugin
+        run: |
+          cd dist
+          zip -r ../startree-pinot-datasource-${{ github.event.release.tag_name }}.zip .
+          cd ..
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: startree-pinot-datasource-${{ github.event.release.tag_name }}.zip
+          path: startree-pinot-datasource-${{ github.event.release.tag_name }}.zip
+          
