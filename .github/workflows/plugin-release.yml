@@ -25,7 +25,6 @@ jobs:
           echo "Dev release mode: ${{ inputs.dev_release }}"
           echo "Current commit: $(git rev-parse HEAD)"
           echo "Current branch: $(git branch --show-current)"
-
       - name: Read .nvmrc
         id: node_version
         run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
@@ -52,10 +51,42 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Build plugin
-        uses: grafana/plugin-actions/build-plugin@main
+      - name: Run unit tests
+        if: ${{ !inputs.dev_release }}
+        run: yarn run test
+
+      - name: Run playwright tests
+        if: ${{ !inputs.dev_release }}
+        run: yarn run test:e2e
+
+      - name: Build frontend
+        run: yarn run build
+
+      - name: Read mage version
+        id: mage_version
+        run: echo "MAGE_VERSION=$(grep 'github.com/magefile/mage' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Install mage
+        run: |
+          go install github.com/magefile/mage@${{ steps.mage_version.outputs.MAGE_VERSION }}
+      - name: Build backend
+        run: mage -v
+
+      - name: Sign plugin
+        env:
+          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+        run: npx @grafana/sign-plugin@latest
+
+      - name: Validate plugin
+        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. dist/
+
+      - name: Package plugin
+        run: |
+          cd dist
+          zip -r ../startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip .
+          cd ..
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
         with:
-          use_changelog_generator: true
-          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
-          node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
+          name: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
+          path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
