@@ -64,23 +64,21 @@ jobs:
       - name: Setup Pinot
         run: go run cmd/testsetup/main.go
 
-      # - name: Run unit tests
-      #   if: ${{ !inputs.dev_release }}
-      #   run: yarn run test
+      - name: Run unit tests
+        if: ${{ !inputs.dev_release }}
+        run: yarn run test
 
-      # - name: Run playwright tests
-      #   if: ${{ !inputs.dev_release }}
-      #   run: yarn run test:e2e
-     
+      - name: Run playwright tests
+        if: ${{ !inputs.dev_release }}
+        run: yarn run test:e2e
+
       - name: Build plugin
         uses: grafana/plugin-actions/build-plugin@main
         with:
-          # see https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token to generate it
-          # save the value in your repository secrets
+          use_changelog_generator: true
           policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
-          # creates a signed build provenance attestation to verify the authenticity of the plugin build
           attestation: true
       
           
