@@ -1,6 +1,6 @@
 import React, { ChangeEvent } from 'react';
-import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { Input, Select } from '@grafana/ui';
+import { InputGroup } from '@grafana/experimental';
+import { Button, Input, Select } from '@grafana/ui';
 import { JsonExtractor, ResultTypes } from '../../dataquery/JsonExtractor';
 import { Column } from '../../resources/columns';
 import { formDataOf } from '../../pinotql/complexField';
@@ -69,7 +69,7 @@ export function EditJsonExtractor(props: {
           value={extractor.alias}
         />
       </div>
-      <AccessoryButton data-testid="delete-metadata-field-btn" icon="times" variant="secondary" onClick={onDelete} />
+      <Button data-testid="delete-metadata-field-btn" icon="times" variant="secondary" aria-label="Delete metadata field" onClick={onDelete} />
     </InputGroup>
   );
 }

@@ -1,5 +1,4 @@
 import React from 'react';
-import { AccessoryButton } from '@grafana/experimental';
 import { DataSource } from '../../datasource';
 import { DateTime } from '@grafana/data';
 import { FormLabel } from './FormLabel';
@@ -8,6 +7,7 @@ import { EditFilter } from './EditFilter';
 import { DimensionFilter } from '../../dataquery/DimensionFilter';
 import { Column } from '../../resources/columns';
 import { columnLabelOf } from '../../pinotql/complexField';
+import { Button } from '@grafana/ui';
 
 export function SelectFilters(props: {
   datasource: DataSource;
@@ -59,11 +59,12 @@ export function SelectFilters(props: {
           </div>
         ))}
         <div>
-          <AccessoryButton
+          <Button
             data-testid="add-filter-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
+            aria-label="Add filter"
             onClick={() => {
               onChange([...(filters || []), {}]);
             }}

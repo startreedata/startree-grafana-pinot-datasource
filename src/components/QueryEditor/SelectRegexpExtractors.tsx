@@ -3,8 +3,8 @@ import { RegexpExtractor } from '../../dataquery/RegexpExtractor';
 import { Column } from '../../resources/columns';
 import allLabels from '../../labels';
 import { FormLabel } from './FormLabel';
-import { AccessoryButton } from '@grafana/experimental';
 import { EditRegexpExtractor } from './EditRegexpExtractor';
+import { Button } from '@grafana/ui';
 
 export function SelectRegexpExtractors(props: {
   extractors: RegexpExtractor[];
@@ -38,11 +38,12 @@ export function SelectRegexpExtractors(props: {
           />
         ))}
         <div>
-          <AccessoryButton
+          <Button
             data-testid="add-regexp-extractor-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
+            aria-label="Add regexp extractor"
             onClick={() => {
               onChange([...(extractors || []), {}]);
             }}

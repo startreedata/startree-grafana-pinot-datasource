@@ -1,7 +1,7 @@
 import { DataSource } from '../../datasource';
 import { DateTime, SelectableValue } from '@grafana/data';
-import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { MultiSelect, Select } from '@grafana/ui';
+import { InputGroup } from '@grafana/experimental';
+import { Button, MultiSelect, Select } from '@grafana/ui';
 import React, { useState } from 'react';
 import { PinotDataType, PinotDataTypes } from '../../dataquery/PinotDataType';
 import { DimensionFilter } from '../../dataquery/DimensionFilter';
@@ -62,7 +62,7 @@ export function EditFilter(props: {
   const columnFormData = formDataOf(complexFieldOf(thisFilter.columnName, thisFilter.columnKey), unusedColumns);
 
   const operatorOptions = thisColumn?.dataType
-    ? FilterOperators.filter((op) => op.types.includes(thisColumn.dataType))
+    ? FilterOperators.filter((op) => op.types.map(type => type.toString()).includes(thisColumn.dataType))
     : FilterOperators;
   const operatorIsMulti = FilterOperators.find((op) => op.value === thisFilter.operator)?.multi || false;
 
@@ -164,7 +164,7 @@ export function EditFilter(props: {
         )}
       </div>
 
-      <AccessoryButton data-testid="delete-filter-btn" icon="times" variant="secondary" onClick={onDelete} />
+      <Button data-testid="delete-filter-btn" icon="times" variant="secondary" aria-label="Delete filter" onClick={onDelete} />
     </InputGroup>
   );
 }

@@ -1,7 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { QueryOption } from '../../dataquery/QueryOption';
-import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { Input, Select } from '@grafana/ui';
+import { InputGroup } from '@grafana/experimental';
+import { Button, Input, Select } from '@grafana/ui';
 import { styles } from '../../styles';
 
 export function EditQueryOption(props: {
@@ -39,7 +39,7 @@ export function EditQueryOption(props: {
           onBlur={() => queryOption.value !== value && onChange({ ...queryOption, value })}
         />
       </div>
-      <AccessoryButton data-testid="delete-query-option-btn" icon="times" variant="secondary" onClick={onDelete} />
+      <Button data-testid="delete-query-option-btn" icon="times" variant="secondary" aria-label="Delete query option" onClick={onDelete} />
     </InputGroup>
   );
 }
