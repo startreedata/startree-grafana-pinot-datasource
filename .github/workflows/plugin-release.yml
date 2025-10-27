@@ -91,6 +91,6 @@ jobs:
           # policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
-          attestation: true
+          attestation: false
       
           
