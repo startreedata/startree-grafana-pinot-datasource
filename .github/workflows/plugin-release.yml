@@ -51,6 +51,19 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+
+      - name: Start Pinot
+        run: docker compose up pinot --quiet-pull --detach
+
+      - name: Setup Pinot
+        run: go run cmd/testsetup/main.go
+
       # - name: Run unit tests
       #   if: ${{ !inputs.dev_release }}
       #   run: yarn run test
@@ -58,78 +71,16 @@ jobs:
       # - name: Run playwright tests
       #   if: ${{ !inputs.dev_release }}
       #   run: yarn run test:e2e
-
-      - name: Build frontend
-        run: yarn run build
-
-      - name: Read mage version
-        id: mage_version
-        run: echo "MAGE_VERSION=$(grep 'github.com/magefile/mage' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
-
-      - name: Install mage
-        run: |
-          go install github.com/magefile/mage@${{ steps.mage_version.outputs.MAGE_VERSION }}
-
-      - name: Build backend
-        run: mage -v
+     
+      - name: Build plugin
+        uses: grafana/plugin-actions/build-plugin@main
+        with:
+          # see https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token to generate it
+          # save the value in your repository secrets
+          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
+          node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
+          # creates a signed build provenance attestation to verify the authenticity of the plugin build
+          attestation: true
       
-      - name: Sign plugin
-        env:
-          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-        run: npx @grafana/sign-plugin@latest --rootUrls http://localhost:3000/
-
-      - name: Package plugin
-        run: |
-          mv dist/ startree-pinot-datasource
-          zip startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip startree-pinot-datasource -r
-
-      - name: Validate plugin
-        run: npx @grafana/plugin-validator@latest -sourceCodeUri file://. startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
-
-      - name: Upload plugin
-        uses: actions/upload-artifact@v4
-        with:
-          name: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
-          path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
-      
-      - name: Generate Changelog
-        id: github-changelog-generator
-        if: ${{ !inputs.dev_release }}
-        uses: janheinrichmerker/action-github-changelog-generator@e60b5a2bd9fcd88dadf6345ff8327863fb8b490f # v2.4
-        with:
-          output: CHANGELOG.md
-          user: ${{ github.repository_owner }}
-          project: ${{ github.event.repository.name }}
-          unreleased: true
-          issues: true
-          pullRequests: true
-          includeLabels: "bug,enhancement,feature"
-          simpleList: true
-
-      - name: Generate artifact attestation
-        if: ${{ !inputs.dev_release }}
-        id: attestation
-        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.0.0
-        with:
-          subject-path: startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
-      
-      - name: Create Github release
-        uses: softprops/action-gh-release@62c96d0c4e8a889135c1f3a25910db8dbe0e85f7 # v2.3.4
-        with:
-          draft: true
-          generate_release_notes: true
-          files: |
-            ./startree-pinot-datasource-${{ steps.package_version.outputs.PACKAGE_VERSION }}.zip
-          body: |
-            **This Github draft release has been created for your plugin.**
-
-            _Note: if this is the first release for your plugin please consult the [distributing-your-plugin section](https://github.com/${{github.repository}}/blob/main/README.md#distributing-your-plugin) of the README_
-
-            If you would like to submit this release to Grafana please consider the following steps:
-
-            - **Edit this draft release**, adjust these notes accordingly and click **Publish Release**
-            - Navigate to https://grafana.com/auth/sign-in/ to sign into your account
-            - Once logged in click **My Plugins** in the admin navigation
-            - Click the **Submit Plugin** button
-
-            If the links above are not working, you must first edit this draft release and publish it.
+          
