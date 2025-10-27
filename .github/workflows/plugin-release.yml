@@ -43,10 +43,10 @@ jobs:
       #     node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
       #     cache: 'yarn'
 
-      # - name: Setup Go
-      #   uses: actions/setup-go@v5
-      #   with:
-      #     go-version: ${{ steps.go_version.outputs.GO_VERSION }}
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
 
       # - name: Install dependencies
       #   run: yarn install --frozen-lockfile
@@ -61,8 +61,17 @@ jobs:
       - name: Start Pinot
         run: docker compose up pinot --quiet-pull --detach
 
-      # - name: Setup Pinot
-      #   run: go run cmd/testsetup/main.go
+      - name: Setup Pinot
+        run: go run cmd/testsetup/main.go
+
+      - name: Remove Go after Pinot setup
+        run: |
+          echo "Removing Go installation..."
+          sudo rm -rf /usr/local/go
+          sudo apt-get purge -y golang* || true
+          sudo apt-get autoremove -y
+          echo "Go successfully removed."
+          which go || echo "Go no longer available."
 
       # - name: Run unit tests
       #   if: ${{ !inputs.dev_release }}
