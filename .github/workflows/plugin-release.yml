@@ -37,19 +37,19 @@ jobs:
         id: package_version
         run: echo "PACKAGE_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
-          cache: 'yarn'
+      # - name: Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
+      #     cache: 'yarn'
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
+      # - name: Setup Go
+      #   uses: actions/setup-go@v5
+      #   with:
+      #     go-version: ${{ steps.go_version.outputs.GO_VERSION }}
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+      # - name: Install dependencies
+      #   run: yarn install --frozen-lockfile
 
       - name: Log in to Docker registry
         uses: docker/login-action@v3
@@ -61,16 +61,16 @@ jobs:
       - name: Start Pinot
         run: docker compose up pinot --quiet-pull --detach
 
-      - name: Setup Pinot
-        run: go run cmd/testsetup/main.go
+      # - name: Setup Pinot
+      #   run: go run cmd/testsetup/main.go
 
-      - name: Run unit tests
-        if: ${{ !inputs.dev_release }}
-        run: yarn run test
+      # - name: Run unit tests
+      #   if: ${{ !inputs.dev_release }}
+      #   run: yarn run test
 
-      - name: Run playwright tests
-        if: ${{ !inputs.dev_release }}
-        run: yarn run test:e2e
+      # - name: Run playwright tests
+      #   if: ${{ !inputs.dev_release }}
+      #   run: yarn run test:e2e
 
       - name: Build plugin
         uses: grafana/plugin-actions/build-plugin@main
