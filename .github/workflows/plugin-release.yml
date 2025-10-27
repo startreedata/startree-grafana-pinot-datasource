@@ -66,10 +66,12 @@ jobs:
 
       - name: Remove Go after Pinot setup
         run: |
-          echo "Removing Go installation..."
+          echo "Removing Go installation and cache..."
           sudo rm -rf /usr/local/go
-          sudo apt-get purge -y golang* || true
-          sudo apt-get autoremove -y
+          sudo rm -rf ~/go/pkg/mod
+          sudo rm -rf ~/.cache/go-build
+          sudo apt-get purge -ury golang* || true
+          sudo apt-get autoremove -y || true
           echo "Go successfully removed."
           which go || echo "Go no longer available."
 
