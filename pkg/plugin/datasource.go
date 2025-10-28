@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
@@ -27,20 +27,41 @@ type Datasource struct {
 	backend.CallResourceHandler
 	backend.CheckHealthHandler
 	instancemgmt.InstanceDisposer
+	httpClient  *http.Client
+	pinotClient *pinot.Client
 }
 
-func NewInstance(_ context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
+func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
 	var config Config
 	if err := config.ReadFrom(settings); err != nil {
 		return nil, err
 	}
 
-	client := PinotClientOf(http.DefaultClient, config)
+	// Create HTTP client options from datasource settings
+	opts, err := settings.HTTPClientOptions(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("http client options: %w", err)
+	}
+
+	// Enable forwarding of HTTP headers for OAuth pass-through
+	opts.ForwardHTTPHeaders = true
+
+	// Create the HTTP client using the SDK
+	httpClient, err := httpclient.New(opts)
+	if err != nil {
+		return nil, fmt.Errorf("httpclient new: %w", err)
+	}
+
+	// Create Pinot client with the SDK HTTP client
+	pinotClient := PinotClientOf(httpClient, config)
+
 	return &Datasource{
-		QueryDataHandler:    newQueryDataHandler(client),
-		CallResourceHandler: newCallResourceHandler(client),
-		CheckHealthHandler:  newCheckHealthHandler(client),
+		QueryDataHandler:    newQueryDataHandler(pinotClient),
+		CallResourceHandler: newCallResourceHandler(pinotClient),
+		CheckHealthHandler:  newCheckHealthHandler(pinotClient),
 		InstanceDisposer:    disposerFunc(func() {}),
+		httpClient:          httpClient,
+		pinotClient:         pinotClient,
 	}, nil
 }
 
@@ -49,11 +70,11 @@ func newQueryDataHandler(client *pinot.Client) backend.QueryDataHandler {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		thisClient := auth.PinotClientFor(client, ctx, req)
+		// OAuth pass-through is now handled automatically by the SDK HTTP client
 		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
 			log.FromContext(ctx).Debug("received Pinot data query", "contents", string(query.JSON))
-			resp.Responses[query.RefID] = dataquery.ExecuteQuery(thisClient, ctx, query)
+			resp.Responses[query.RefID] = dataquery.ExecuteQuery(client, ctx, query)
 		}
 		return resp, nil
 	})
@@ -68,10 +89,10 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		thisClient := auth.PinotClientFor(client, ctx, req)
+		// OAuth pass-through is now handled automatically by the SDK HTTP client
 
 		// Test connection to controller
-		if tables, err := thisClient.ListTables(ctx); err != nil {
+		if tables, err := client.ListTables(ctx); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),
@@ -84,7 +105,7 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		}
 
 		// Test connection to broker
-		if _, err := thisClient.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
+		if _, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),
