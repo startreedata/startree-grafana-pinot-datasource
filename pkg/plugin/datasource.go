@@ -11,7 +11,6 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
-	"net/http"
 )
 
 var (
@@ -27,8 +26,6 @@ type Datasource struct {
 	backend.CallResourceHandler
 	backend.CheckHealthHandler
 	instancemgmt.InstanceDisposer
-	httpClient  *http.Client
-	pinotClient *pinot.Client
 }
 
 func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
@@ -56,8 +53,6 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		CallResourceHandler: newCallResourceHandler(pinotClient),
 		CheckHealthHandler:  newCheckHealthHandler(pinotClient),
 		InstanceDisposer:    disposerFunc(func() {}),
-		httpClient:          httpClient,
-		pinotClient:         pinotClient,
 	}, nil
 }
 
