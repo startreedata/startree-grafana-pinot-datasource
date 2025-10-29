@@ -45,7 +45,6 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		return nil, fmt.Errorf("pinot httpclient new: %w", err)
 	}
 
-	// Create Pinot client with the OAuth-enabled HTTP client for external API calls
 	pinotClient := PinotClientOf(httpClient, config)
 	
 	return &Datasource{
@@ -61,7 +60,6 @@ func newQueryDataHandler(client *pinot.Client) backend.QueryDataHandler {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		// OAuth pass-through is now handled automatically by the SDK HTTP client
 		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
 			log.FromContext(ctx).Debug("received Pinot data query", "contents", string(query.JSON))
@@ -80,7 +78,6 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		// OAuth pass-through is now handled automatically by the SDK HTTP client
 
 		// Test connection to controller
 		if tables, err := client.ListTables(ctx); err != nil {
