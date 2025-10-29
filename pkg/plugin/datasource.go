@@ -43,21 +43,29 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
 
-	// Enable forwarding of HTTP headers for OAuth pass-through
-	opts.ForwardHTTPHeaders = true
-
-	// Create the HTTP client using the SDK
+	// Create HTTP client WITHOUT header forwarding for internal plugin resources
+	opts.ForwardHTTPHeaders = false
 	httpClient, err := httpclient.New(opts)
 	if err != nil {
 		return nil, fmt.Errorf("httpclient new: %w", err)
 	}
 
-	// Create Pinot client with the SDK HTTP client
-	pinotClient := PinotClientOf(httpClient, config)
+	// Create HTTP client WITH header forwarding for external Pinot API calls
+	opts.ForwardHTTPHeaders = true
+	pinotHttpClient, err := httpclient.New(opts)
+	if err != nil {
+		return nil, fmt.Errorf("pinot httpclient new: %w", err)
+	}
+
+	// Create Pinot client with the OAuth-enabled HTTP client for external API calls
+	pinotClient := PinotClientOf(pinotHttpClient, config)
+	
+	// Create Pinot client with internal HTTP client for resource operations (SQL preview, etc.)
+	internalPinotClient := PinotClientOf(httpClient, config)
 
 	return &Datasource{
 		QueryDataHandler:    newQueryDataHandler(pinotClient),
-		CallResourceHandler: newCallResourceHandler(pinotClient),
+		CallResourceHandler: newCallResourceHandler(internalPinotClient),
 		CheckHealthHandler:  newCheckHealthHandler(pinotClient),
 		InstanceDisposer:    disposerFunc(func() {}),
 		httpClient:          httpClient,
