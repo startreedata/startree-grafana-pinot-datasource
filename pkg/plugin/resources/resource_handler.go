@@ -633,7 +633,6 @@ func newErrorResponse[T any](code int, err error) *Response[T] {
 func adaptHandler[T any](client *pinot.Client, handler func(*pinot.Client, *http.Request) *Response[T]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		// OAuth pass-through is now handled automatically by the SDK HTTP client
 		resp := handler(client, req)
 		writeResponse(w, resp)
 		captureMetrics(startTime, req, resp)
@@ -643,7 +642,6 @@ func adaptHandler[T any](client *pinot.Client, handler func(*pinot.Client, *http
 func adaptHandlerWithBody[TIn any, TOut any](client *pinot.Client, handler func(*pinot.Client, context.Context, TIn) *Response[TOut]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		// OAuth pass-through is now handled automatically by the SDK HTTP client
 
 		var data TIn
 		var resp *Response[TOut]
