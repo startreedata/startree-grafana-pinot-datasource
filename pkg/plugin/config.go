@@ -1,11 +1,13 @@
 package plugin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"net/http"
 )
 

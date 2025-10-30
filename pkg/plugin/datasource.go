@@ -40,9 +40,13 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		return nil, fmt.Errorf("http client options: %w", err)
 	}
 
+	if config.OAuthPassThru {
+		opts.ForwardHTTPHeaders = true
+	}
+
 	httpClient, err := httpclient.New(opts)
 	if err != nil {
-		return nil, fmt.Errorf("pinot httpclient new: %w", err)
+		return nil, fmt.Errorf("http client creation: %w", err)
 	}
 
 	// Create Pinot client with the OAuth-enabled HTTP client for external API calls
