@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/auth"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"net/http"
@@ -634,8 +633,8 @@ func newErrorResponse[T any](code int, err error) *Response[T] {
 func adaptHandler[T any](client *pinot.Client, handler func(*pinot.Client, *http.Request) *Response[T]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		thisClient := auth.PinotClientFor(client, req.Context(), req)
-		resp := handler(thisClient, req)
+		// OAuth pass-through is now handled automatically by the SDK HTTP client
+		resp := handler(client, req)
 		writeResponse(w, resp)
 		captureMetrics(startTime, req, resp)
 	}
@@ -644,14 +643,14 @@ func adaptHandler[T any](client *pinot.Client, handler func(*pinot.Client, *http
 func adaptHandlerWithBody[TIn any, TOut any](client *pinot.Client, handler func(*pinot.Client, context.Context, TIn) *Response[TOut]) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		startTime := time.Now()
-		thisClient := auth.PinotClientFor(client, req.Context(), req)
+		// OAuth pass-through is now handled automatically by the SDK HTTP client
 
 		var data TIn
 		var resp *Response[TOut]
 		if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
 			resp = newBadRequestResponse[TOut](err)
 		} else {
-			resp = handler(thisClient, req.Context(), data)
+			resp = handler(client, req.Context(), data)
 		}
 
 		writeResponse(w, resp)

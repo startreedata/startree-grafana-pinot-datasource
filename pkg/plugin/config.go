@@ -17,6 +17,7 @@ type Config struct {
 	DatabaseName  string        `json:"databaseName"`
 	TokenType     string        `json:"tokenType"`
 	QueryOptions  []QueryOption `json:"queryOptions"`
+	OAuthPassThru bool          `json:"oauthPassThru"`
 
 	// Secrets
 	TokenSecret string `json:"-"`
@@ -42,7 +43,7 @@ func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) erro
 
 func PinotClientOf(httpClient *http.Client, config Config) *pinot.Client {
 	var authorization string
-	if config.TokenType != TokenTypeNone {
+	if !config.OAuthPassThru && config.TokenType != TokenTypeNone {
 		authorization = fmt.Sprintf("%s %s", config.TokenType, config.TokenSecret)
 	}
 
