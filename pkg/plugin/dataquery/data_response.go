@@ -1,11 +1,10 @@
 package dataquery
 
 import (
-	"net/http"
-
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"net/http"
 )
 
 func NewEmptyDataResponse() backend.DataResponse {
