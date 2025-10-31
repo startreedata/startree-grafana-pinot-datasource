@@ -1,10 +1,10 @@
 import React from 'react';
 import { FormLabel } from './FormLabel';
-import { AccessoryButton } from '@grafana/experimental';
 import allLabels from '../../labels';
 import { QueryOption } from '../../dataquery/QueryOption';
 import { EditQueryOption } from './EditQueryOption';
 import { PinotQueryOptions } from '../../pinotql/pinotQueryOptions';
+import { Button } from '@grafana/ui';
 
 export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (val: QueryOption[]) => void }) {
   const { selected, onChange } = props;
@@ -42,11 +42,12 @@ export function SelectQueryOptions(props: { selected: QueryOption[]; onChange: (
           </div>
         ))}
         <div>
-          <AccessoryButton
+          <Button
             data-testid="add-query-option-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
+            aria-label="Add query option"
             onClick={() => {
               onChange([...(selected || []), {}]);
             }}

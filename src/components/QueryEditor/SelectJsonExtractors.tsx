@@ -3,8 +3,8 @@ import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { Column } from '../../resources/columns';
 import { JsonExtractor } from '../../dataquery/JsonExtractor';
-import { AccessoryButton } from '@grafana/experimental';
 import { EditJsonExtractor } from './EditJsonExtractor';
+import { Button } from '@grafana/ui';
 
 export function SelectJsonExtractors(props: {
   extractors: JsonExtractor[];
@@ -38,11 +38,12 @@ export function SelectJsonExtractors(props: {
           />
         ))}
         <div>
-          <AccessoryButton
+          <Button
             data-testid="add-json-extractor-btn"
             icon="plus"
             variant="secondary"
             fullWidth={false}
+            aria-label="Add json extractor"
             onClick={() => {
               onChange([...(extractors || []), {}]);
             }}
