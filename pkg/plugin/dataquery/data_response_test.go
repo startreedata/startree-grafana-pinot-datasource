@@ -2,11 +2,12 @@ package dataquery
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestNewEmptyDataResponse(t *testing.T) {
@@ -82,17 +83,17 @@ func TestNewDownstreamErrorResponse(t *testing.T) {
 }
 
 func TestNewInternalErrorDataResponse(t *testing.T) {
-	got := NewInternalErrorDataResponse(errors.New("error"), "error-source")
+	got := NewInternalErrorDataResponse(errors.New("error"))
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSource("error-source"), got.ErrorSource)
+	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource)
 }
 
 func TestNewErrorDataResponse(t *testing.T) {
-	got := NewErrorDataResponse(100, errors.New("error"), "error-source")
+	got := NewErrorDataResponse(100, errors.New("error"))
 	assert.Equal(t, backend.Status(100), got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSource("error-source"), got.ErrorSource)
+	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource)
 }
