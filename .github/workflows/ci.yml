@@ -138,7 +138,7 @@ jobs:
           PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
           PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
-      - name: Upload Playwright Report
+      - name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
