@@ -20,8 +20,8 @@ test('Annotations Query Editor', async ({ page, datasource }) => {
 
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+x');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
   await page.keyboard.type(
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS "time", SUM("views") AS "views", "country"
