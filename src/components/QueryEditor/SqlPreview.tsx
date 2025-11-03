@@ -10,10 +10,12 @@ export function SqlPreview(props: { sql: string | undefined }) {
   return (
     <div className="gf-form" data-testid="sql-preview-container">
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
-      <pre data-testid="sql-preview">
-        {sql || ''}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
+        <pre data-testid="sql-preview" style={{ margin: 0, flex: 1 }}>
+          {sql || ''}
+        </pre>
         {sql && <CopyButton text={sql} />}
-      </pre>
+      </div>
     </div>
   );
 }
