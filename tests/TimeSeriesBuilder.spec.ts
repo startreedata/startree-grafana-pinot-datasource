@@ -147,9 +147,16 @@ test.describe('Create Panel with Time Series Builder', async () => {
   test('Leave panel and edit again', async ({ page }) => {
     await checkTimeSeriesRendersAllFields(page);
     await page.getByRole('button', { name: 'Go Back', exact: true }).click();
+    
+    // Wait for dashboard to load
+    await expect(page.getByRole('heading', { name: 'Panel Title' })).toBeVisible();
     await page.getByRole('heading', { name: 'Panel Title' }).click();
     await page.getByText('Edit e').click();
-
+    
+    // Wait for editor to load
+    await expect(page.getByTestId('run-query-btn')).toBeVisible();
+    await page.waitForTimeout(500); // Give editor time to restore state
+    
     await page.getByTestId('run-query-btn').click();
     await expect(page.getByTestId('sql-preview')).toContainText(
       // language=text
@@ -483,32 +490,50 @@ LIMIT 100000;`
 
 async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('select-table-dropdown').click();
+  await expect(page.getByText('complex_website', { exact: true })).toBeVisible();
   await page.getByText('complex_website', { exact: true }).click();
 
   await page.getByTestId('select-time-column-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('hoursSinceEpoch')).toBeVisible();
   await page.getByLabel('Select options menu').getByText('hoursSinceEpoch').click();
+  
   await page.getByTestId('select-metric-column-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('errors', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('errors', { exact: true }).click();
+  
   await page.getByTestId('select-group-by-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('browser', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('browser', { exact: true }).click();
+  
   await page.getByTestId('select-granularity-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('HOURS', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('HOURS', { exact: true }).click();
+  
   await page.getByTestId('select-aggregation-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('MAX', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('MAX', { exact: true }).click();
+  
   await page.getByTestId('select-order-by-dropdown').click();
+  await expect(page.getByLabel('Select options menu').getByText('browser asc', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('browser asc', { exact: true }).click();
 
   await page.getByTestId('add-filter-btn').click();
   await page.getByTestId('select-query-filter-column').click();
+  await expect(page.getByLabel('Select options menu').getByText('country', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('country', { exact: true }).click();
+  
   await page.getByTestId('select-query-filter-operator').click();
+  await expect(page.getByLabel('Select options menu').getByText('!=', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('!=', { exact: true }).click();
+  
   await page.getByTestId('select-query-filter-value').click();
+  await expect(page.getByLabel('Select options menu').getByText(`'CN'`, { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText(`'CN'`, { exact: true }).click();
   await page.locator('body').click();
 
   await page.getByTestId('add-query-option-btn').click();
   await page.getByTestId('select-query-option-name').click();
+  await expect(page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true })).toBeVisible();
   await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
   await page.getByTestId('input-query-option-value').getByRole('textbox').fill('1000');
 
@@ -517,6 +542,9 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
   await page.getByTestId('run-query-btn').click();
+  
+  // Wait for query to complete
+  await page.waitForTimeout(500);
 
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
