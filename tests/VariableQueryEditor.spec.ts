@@ -66,8 +66,8 @@ test('Sql Code', async ({ page }) => {
 
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+x');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
   await page.keyboard.type(
     // language=text
     `SELECT DISTINCT "browser" FROM "complex_website" WHERE "browser" IS NOT NULL ORDER BY "browser" ASC LIMIT 100;`

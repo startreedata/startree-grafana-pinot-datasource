@@ -169,8 +169,8 @@ test.describe('Create Panel with Code Editor', async () => {
 
       const codebox = page.getByTestId('sql-editor-content').getByRole('code');
       await codebox.click();
-      await page.keyboard.press('ControlOrMeta+a');
-      await page.keyboard.press('ControlOrMeta+x');
+      await page.keyboard.press('Control+a');
+      await page.keyboard.press('Control+x');
       await page.keyboard.type(
         // language=text
         `SELECT "ts" as $__timeAlias(), "message", "method", "bytesSent"
@@ -207,8 +207,8 @@ LIMIT 100000;`
 
     const codebox = page.getByTestId('sql-editor-content').getByRole('code');
     await codebox.click();
-    await page.keyboard.press('ControlOrMeta+a');
-    await page.keyboard.press('ControlOrMeta+x');
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Control+x');
     await page.keyboard.type(
       // language=text
       `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
@@ -235,8 +235,8 @@ LIMIT 100000;`
 async function checkSqlEditor(page: Page) {
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+x');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
   await page.keyboard.type(
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()
@@ -248,7 +248,7 @@ LIMIT 100000;`
   );
 
   await expect(codebox).toContainText(
-    `123456SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()FROM $__table()WHERE $__timeFilter("hoursSinceEpoch", '12:HOURS')GROUP BY $__timeAlias()ORDER BY $__timeAlias() DESCLIMIT 100000;Enter to Rename, Shift+Enter to PreviewInsert (⏎)show more (Ctrl+Space)`
+    `123456SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()FROM $__table()WHERE $__timeFilter("hoursSinceEpoch", '12:HOURS')GROUP BY $__timeAlias()ORDER BY $__timeAlias() DESCLIMIT 100000;Enter to Rename, Shift+Enter to Preview`
   );
 }
 
@@ -265,8 +265,8 @@ async function checkTimeSeriesRenders(page: Page) {
 
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+x');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
   await page.keyboard.type(
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias(), "browser"
@@ -302,8 +302,8 @@ async function checkTableRenders(page: Page) {
 
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('ControlOrMeta+x');
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+x');
   await page.keyboard.type(
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS "views", "country"
