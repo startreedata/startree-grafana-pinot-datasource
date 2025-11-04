@@ -30,14 +30,14 @@ func NewPartialDataResponse(frames []*data.Frame, exceptions []pinot.BrokerExcep
 	return backend.DataResponse{
 		Status: backend.StatusInternal,
 		Frames: frames,
-		Error:  backend.DownstreamError(pinot.NewBrokerExceptionError(exceptions)),
+		Error:  pinot.NewBrokerExceptionError(exceptions),
 	}
 }
 
 func NewPinotExceptionsDataResponse(exceptions []pinot.BrokerException) backend.DataResponse {
 	return backend.DataResponse{
 		Status: backend.StatusInternal,
-		Error:  backend.DownstreamError(pinot.NewBrokerExceptionError(exceptions)),
+		Error:  pinot.NewBrokerExceptionError(exceptions),
 	}
 }
 
@@ -50,7 +50,7 @@ func NewPluginErrorResponse(err error) backend.DataResponse {
 }
 
 func NewDownstreamErrorResponse(err error) backend.DataResponse {
-	return NewInternalErrorDataResponse(backend.DownstreamError(err))
+	return NewInternalErrorDataResponse(err)
 }
 
 func NewInternalErrorDataResponse(err error) backend.DataResponse {

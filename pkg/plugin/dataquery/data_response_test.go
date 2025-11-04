@@ -34,7 +34,6 @@ func TestNewSqlQueryDataResponse(t *testing.T) {
 		assert.Equal(t, backend.StatusInternal, got.Status)
 		assert.Equal(t, data.Frames{frame}, got.Frames)
 		assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
-		assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 	})
 }
 
@@ -54,7 +53,6 @@ func TestNewPartialDataResponse(t *testing.T) {
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Equal(t, data.Frames{frame}, got.Frames)
 	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 }
 
 func TestNewPinotExceptionsDataResponse(t *testing.T) {
@@ -63,7 +61,6 @@ func TestNewPinotExceptionsDataResponse(t *testing.T) {
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 }
 
 func TestNewPluginErrorResponse(t *testing.T) {
@@ -71,7 +68,6 @@ func TestNewPluginErrorResponse(t *testing.T) {
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource)
 }
 
 func TestNewDownstreamErrorResponse(t *testing.T) {
@@ -79,7 +75,6 @@ func TestNewDownstreamErrorResponse(t *testing.T) {
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource)
 }
 
 func TestNewInternalErrorDataResponse(t *testing.T) {
@@ -87,7 +82,6 @@ func TestNewInternalErrorDataResponse(t *testing.T) {
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource)
 }
 
 func TestNewErrorDataResponse(t *testing.T) {
@@ -95,5 +89,4 @@ func TestNewErrorDataResponse(t *testing.T) {
 	assert.Equal(t, backend.Status(100), got.Status)
 	assert.Empty(t, got.Frames)
 	assert.Equal(t, errors.New("error"), got.Error)
-	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource)
 }
