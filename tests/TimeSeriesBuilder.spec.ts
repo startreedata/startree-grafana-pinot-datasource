@@ -147,24 +147,19 @@ test.describe('Create Panel with Time Series Builder', async () => {
   test('Leave panel and edit again', async ({ page }) => {
     await checkTimeSeriesRendersAllFields(page);
     
-    // Apply changes before leaving
     await page.getByRole('button', { name: 'Apply changes and go back to dashboard' }).click();
     
-    // Wait for dashboard to load
     await expect(page.getByRole('heading', { name: 'Panel Title' })).toBeVisible();
-    await page.waitForTimeout(500); // Let dashboard settle
+    await page.waitForTimeout(500);
     
-    // Re-enter edit mode
     await page.getByRole('heading', { name: 'Panel Title' }).click();
     await page.getByText('Edit', { exact: true }).click();
     
-    // Wait for editor to fully restore - check multiple indicators
     await expect(page.getByTestId('run-query-btn')).toBeVisible();
     await expect(page.getByTestId('select-table-dropdown')).toContainText('complex_website');
     await expect(page.getByTestId('input-limit').getByRole('textbox')).toHaveValue('4000');
     await expect(page.getByTestId('input-metric-legend').getByRole('textbox')).toHaveValue('{{browser}}');
     
-    // Wait a bit more for all state to be restored
     await page.waitForTimeout(500);
     
     const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
@@ -555,8 +550,7 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
   await page.getByTestId('run-query-btn').click();
-  
-  // Wait for query to complete
+
   await page.waitForTimeout(500);
 
   await expect(page.getByTestId('sql-preview')).toContainText(
