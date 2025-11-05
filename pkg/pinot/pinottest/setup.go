@@ -47,6 +47,7 @@ type CreateTableJob struct {
 }
 
 var createTestTablesOnce sync.Once
+var testTableJobs []CreateTableJob
 
 func CreateTestTables() {
 	jobs := []CreateTableJob{{
