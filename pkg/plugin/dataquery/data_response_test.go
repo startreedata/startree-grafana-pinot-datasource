@@ -32,7 +32,7 @@ func TestNewSqlQueryDataResponse(t *testing.T) {
 		got := NewSqlQueryDataResponse(frame, exceptions)
 		assert.Equal(t, backend.StatusInternal, got.Status)
 		assert.Equal(t, data.Frames{frame}, got.Frames)
-		assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
+		assert.Equal(t, backend.DownstreamError(pinot.NewBrokerExceptionError(exceptions)), got.Error)
 	})
 }
 
@@ -51,7 +51,7 @@ func TestNewPartialDataResponse(t *testing.T) {
 	got := NewSqlQueryDataResponse(frame, exceptions)
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Equal(t, data.Frames{frame}, got.Frames)
-	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
+	assert.Equal(t, backend.DownstreamError(pinot.NewBrokerExceptionError(exceptions)), got.Error)
 }
 
 func TestNewPinotExceptionsDataResponse(t *testing.T) {
@@ -59,7 +59,7 @@ func TestNewPinotExceptionsDataResponse(t *testing.T) {
 	got := NewPinotExceptionsDataResponse(exceptions)
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
-	assert.Equal(t, pinot.NewBrokerExceptionError(exceptions), got.Error)
+	assert.Equal(t, backend.DownstreamError(pinot.NewBrokerExceptionError(exceptions)), got.Error)
 }
 
 func TestNewPluginErrorResponse(t *testing.T) {
@@ -73,7 +73,7 @@ func TestNewDownstreamErrorResponse(t *testing.T) {
 	got := NewDownstreamErrorResponse(errors.New("error"))
 	assert.Equal(t, backend.StatusInternal, got.Status)
 	assert.Empty(t, got.Frames)
-	assert.Equal(t, errors.New("error"), got.Error)
+	assert.Equal(t, backend.DownstreamError(errors.New("error")), got.Error)
 }
 
 func TestNewInternalErrorDataResponse(t *testing.T) {
