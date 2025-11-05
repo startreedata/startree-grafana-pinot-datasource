@@ -117,8 +117,20 @@ func CreateTestTables() {
 		var somethingChanged atomic.Bool
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
+			// Check if table exists AND has segments (if it should have data)
 			if tableExists(job.tableName) {
-				return
+				// For tables with data files, verify they have segments
+				if job.dataFile != "" {
+					segments := listSegmentStatusForTable(job.tableName)
+					if len(segments) > 0 {
+						return // Table exists with segments, nothing to do
+					}
+					// Table exists but has no segments, delete and recreate
+					fmt.Printf("Table %s exists but has no segments, recreating...\n", job.tableName)
+					deleteTable(job.tableName)
+				} else {
+					return // Table exists and doesn't need data
+				}
 			}
 
 			fmt.Printf("Creating table %s...\n", job.tableName)
@@ -416,6 +428,16 @@ func tableExists(tableName string) bool {
 		panic(fmt.Sprintf("Unexpected status code: %d", resp.StatusCode))
 	}
 	return resp.StatusCode == http.StatusOK
+}
+
+func deleteTable(tableName string) {
+	req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/tables/"+tableName, nil)
+	requireNoError(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireStatus(resp, http.StatusOK, http.StatusNotFound)
 }
 
 func createTableConfig(configFile string) {
