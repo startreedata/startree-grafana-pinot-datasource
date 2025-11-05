@@ -169,6 +169,9 @@ func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error)
 }
 
 func extractDouble(v interface{}) (float64, error) {
+	if v == nil {
+		return math.NaN(), nil
+	}
 	if rawVal, ok := v.(string); ok {
 		switch rawVal {
 		case "-Infinity":
