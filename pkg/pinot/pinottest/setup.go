@@ -149,6 +149,8 @@ func CreateTestTables() {
 			createTableSchema(job.schemaFile)
 			waitForTableSchema(job.tableName, Timeout)
 			createTableConfig(job.configFile)
+			// Wait a bit for table to be fully initialized before uploading data
+			time.Sleep(1 * time.Second)
 
 			if job.dataFile == "" {
 				return
@@ -261,6 +263,12 @@ func listSegmentStatusForTable(tableName string) []SegmentStatus {
 	resp, err := http.DefaultClient.Do(req)
 	requireNoError(err)
 	defer safeClose(resp.Body)
+	
+	// Return empty list if table doesn't exist yet (during creation)
+	if resp.StatusCode == http.StatusNotFound {
+		return []SegmentStatus{}
+	}
+	
 	requireOkStatus(resp)
 	var data []SegmentStatus
 	requireNoError(json.NewDecoder(resp.Body).Decode(&data))
