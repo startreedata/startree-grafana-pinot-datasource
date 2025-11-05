@@ -2,12 +2,11 @@ package dataquery
 
 import (
 	"errors"
-	"testing"
-
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNewEmptyDataResponse(t *testing.T) {
