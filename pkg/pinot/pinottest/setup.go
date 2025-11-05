@@ -118,13 +118,9 @@ func CreateTestTables() {
 	})
 
 	// Validate/recreate tables every time this function is called
-	var wg sync.WaitGroup
-	wg.Add(len(jobs))
-
-	var somethingChanged atomic.Bool
-	setupTable := func(job CreateTableJob) {
-		defer wg.Done()
-		// Check if table exists AND has GOOD segments (if it should have data)
+	// First pass: check which tables need recreation (serially to avoid overwhelming Pinot)
+	var tablesToRecreate []CreateTableJob
+	for _, job := range jobs {
 		if tableExists(job.tableName) {
 			// For tables with data files, verify ALL segments are GOOD
 			if job.dataFile != "" {
@@ -135,19 +131,33 @@ func CreateTestTables() {
 						goodSegments++
 					}
 				}
-				// Only return if ALL segments are GOOD
+				// Check if ALL segments are GOOD
 				if len(segments) > 0 && goodSegments == len(segments) {
-					return // Table exists with ALL segments GOOD, nothing to do
+					continue // Table is healthy, skip
 				}
-				// Table exists but has unavailable/bad segments, delete and recreate
-				fmt.Printf("Table %s has %d/%d GOOD segments, recreating...\n", job.tableName, goodSegments, len(segments))
-				deleteTable(job.tableName)
-				deleteTableSchema(job.tableName)
-				// Wait for table deletion to complete
-				waitForTableDeletion(job.tableName, Timeout)
-			} else {
-				return // Table exists and doesn't need data
+				// Table needs recreation
+				fmt.Printf("Table %s has %d/%d GOOD segments, will recreate...\n", job.tableName, goodSegments, len(segments))
+				tablesToRecreate = append(tablesToRecreate, job)
 			}
+		} else if job.dataFile != "" {
+			// Table doesn't exist but should have data
+			tablesToRecreate = append(tablesToRecreate, job)
+		}
+	}
+
+	if len(tablesToRecreate) == 0 {
+		return // All tables are healthy
+	}
+
+	// Second pass: recreate tables serially to avoid overwhelming Pinot in CI
+	var somethingChanged atomic.Bool
+	setupTable := func(job CreateTableJob) {
+		// Delete if exists
+		if tableExists(job.tableName) {
+			fmt.Printf("Deleting table %s...\n", job.tableName)
+			deleteTable(job.tableName)
+			deleteTableSchema(job.tableName)
+			waitForTableDeletion(job.tableName, Timeout)
 		}
 
 		fmt.Printf("Creating table %s...\n", job.tableName)
@@ -179,10 +189,10 @@ func CreateTestTables() {
 		}
 	}
 
-	for _, job := range jobs {
-		go setupTable(job)
+	// Recreate tables serially (not in parallel) to avoid overwhelming Pinot
+	for _, job := range tablesToRecreate {
+		setupTable(job)
 	}
-	wg.Wait()
 
 	if somethingChanged.Load() {
 		fmt.Println("Pinot setup complete.")
