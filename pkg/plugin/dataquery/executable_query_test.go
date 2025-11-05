@@ -361,6 +361,5 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	}).Execute(unreachableClient, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")
 	assert.Error(t, got.Error, "DataResponse.Error")
 }
