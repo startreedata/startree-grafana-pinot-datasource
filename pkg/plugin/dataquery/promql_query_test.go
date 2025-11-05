@@ -2,13 +2,12 @@ package dataquery
 
 import (
 	"context"
-	"testing"
-	"time"
-
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 func TestPromQlDriver_Execute(t *testing.T) {
