@@ -135,6 +135,7 @@ func CreateTestTables() {
 					// Table exists but has unavailable/bad segments, delete and recreate
 					fmt.Printf("Table %s has %d/%d GOOD segments, recreating...\n", job.tableName, goodSegments, len(segments))
 					deleteTable(job.tableName)
+					deleteTableSchema(job.tableName)
 					// Wait for table deletion to complete
 					waitForTableDeletion(job.tableName, Timeout)
 				} else {
@@ -458,6 +459,9 @@ func waitForTableDeletion(tableName string, timeout time.Duration) {
 
 	for {
 		if !tableExists(tableName) {
+			// Table is gone, but give Pinot extra time to clean up external view
+			// to avoid "External view still exists" errors when recreating
+			time.Sleep(2 * time.Second)
 			return
 		}
 
