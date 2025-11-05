@@ -11,6 +11,22 @@ import (
 	"time"
 )
 
+// defaultIfNil returns the value cast to type T, or defaultVal if v is nil.
+// This generic helper prevents panics from type assertions on nil interface values.
+func defaultIfNil[T any](v interface{}, defaultVal T) T {
+	if v == nil {
+		return defaultVal
+	}
+
+	val, ok := v.(T)
+	if ok {
+		return val
+	}
+
+	// If type doesn’t match, return default
+	return defaultVal
+}
+
 // https://docs.pinot.apache.org/configuration-reference/schema
 
 const (
@@ -80,16 +96,16 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	switch colDataType {
 	case DataTypeBoolean:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (bool, error) {
-			return (results.Rows[rowIdx][colIdx]).(bool), nil
+			return defaultIfNil[bool](results.Rows[rowIdx][colIdx], false), nil
 		})
 	case DataTypeInt:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int32, error) {
-			val, err := (results.Rows[rowIdx][colIdx]).(json.Number).Int64()
+			val, err := defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).Int64()
 			return int32(val), err
 		})
 	case DataTypeLong:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int64, error) {
-			return (results.Rows[rowIdx][colIdx]).(json.Number).Int64()
+			return defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).Int64()
 		})
 	case DataTypeFloat:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (float32, error) {
@@ -104,11 +120,11 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 		// ref: https://github.com/apache/pinot/issues/8418
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (*big.Int, error) {
 			var val big.Int
-			return &val, val.UnmarshalText([]byte(results.Rows[rowIdx][colIdx].(string)))
+			return &val, val.UnmarshalText([]byte(defaultIfNil[string](results.Rows[rowIdx][colIdx], "0")))
 		})
 	case DataTypeString:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (string, error) {
-			return results.Rows[rowIdx][colIdx].(string), nil
+			return defaultIfNil[string](results.Rows[rowIdx][colIdx], ""), nil
 		})
 	case DataTypeBytes:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) ([]byte, error) {
@@ -116,11 +132,15 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 		})
 	case DataTypeJson:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
-			return json.RawMessage(results.Rows[rowIdx][colIdx].(string)), nil
+			return json.RawMessage(defaultIfNil[string](results.Rows[rowIdx][colIdx], "null")), nil
 		})
 	case DataTypeTimestamp:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (time.Time, error) {
-			return ParseJodaTime(results.Rows[rowIdx][colIdx].(string))
+			val := results.Rows[rowIdx][colIdx]
+			if val == nil {
+				return time.Time{}, nil
+			}
+			return ParseJodaTime(val.(string))
 		})
 	case DataTypeMap:
 		// ref: https://github.com/apache/pinot/pull/13906
@@ -169,6 +189,9 @@ func ExtractColumnAsDoubles(results *ResultTable, colIdx int) ([]float64, error)
 }
 
 func extractDouble(v interface{}) (float64, error) {
+	if v == nil {
+		return math.NaN(), nil
+	}
 	if rawVal, ok := v.(string); ok {
 		switch rawVal {
 		case "-Infinity":
@@ -191,11 +214,11 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) ([]string, error) 
 		// Parse the floats to standardize the format.
 	case DataTypeInt, DataTypeLong:
 		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
-			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
+			return defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeTimestamp, DataTypeBigDecimal:
 		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
-			return (results.Rows[rowIdx][colIdx]).(string), nil
+			return defaultIfNil[string](results.Rows[rowIdx][colIdx], ""), nil
 		})
 	}
 
@@ -241,11 +264,11 @@ func ExtractColumnAsExprs(results *ResultTable, colIdx int) ([]string, error) {
 			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {
 				return StringLiteralExpr(str).String(), nil
 			}
-			return (results.Rows[rowIdx][colIdx]).(json.Number).String(), nil
+			return defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).String(), nil
 		})
 	case DataTypeString, DataTypeJson, DataTypeBytes, DataTypeBigDecimal:
 		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
-			return StringLiteralExpr(results.Rows[rowIdx][colIdx].(string)).String(), nil
+			return StringLiteralExpr(defaultIfNil[string](results.Rows[rowIdx][colIdx], "")).String(), nil
 		})
 	}
 
