@@ -39,16 +39,17 @@ const (
 	EmptyTableName              = "empty"
 )
 
+type CreateTableJob struct {
+	tableName  string
+	schemaFile string
+	configFile string
+	dataFile   string
+}
+
 var createTestTablesOnce sync.Once
+var testTableJobs []CreateTableJob
 
 func CreateTestTables() {
-	type CreateTableJob struct {
-		tableName  string
-		schemaFile string
-		configFile string
-		dataFile   string
-	}
-
 	jobs := []CreateTableJob{{
 		tableName:  InfraMetricsTableName,
 		schemaFile: "data/infraMetrics_schema.json",
@@ -108,55 +109,96 @@ func CreateTestTables() {
 		dataFile:   "data/nullValues_data.json",
 	}}
 
+	// Store jobs globally for validation on subsequent calls
+	testTableJobs = jobs
+
+	// One-time initialization: wait for Pinot to be ready
 	createTestTablesOnce.Do(func() {
 		WaitForPinot(Timeout)
-
-		var wg sync.WaitGroup
-		wg.Add(len(jobs))
-
-		var somethingChanged atomic.Bool
-		setupTable := func(job CreateTableJob) {
-			defer wg.Done()
-			if tableExists(job.tableName) {
-				return
-			}
-
-			fmt.Printf("Creating table %s...\n", job.tableName)
-			somethingChanged.Store(true)
-			deleteTableSchema(job.tableName)
-			createTableSchema(job.schemaFile)
-			waitForTableSchema(job.tableName, Timeout)
-			createTableConfig(job.configFile)
-
-			if job.dataFile == "" {
-				return
-			}
-			uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
-			WaitForSegmentsAllGood(job.tableName, Timeout)
-
-			// Delete the partial table's segment and upload a new segment
-			if job.tableName == PartialTableName {
-				uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
-				WaitForSegmentsAllGood(job.tableName, Timeout)
-				segments := listOfflineSegments(job.tableName)
-				if len(segments) != 2 {
-					panic("expected 2 segments")
-				}
-				deleteSegmentFromFilesystem(segments[0])
-				resetSegments(PartialTableName)
-				waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
-			}
-		}
-
-		for _, job := range jobs {
-			go setupTable(job)
-		}
-		wg.Wait()
-
-		if somethingChanged.Load() {
-			fmt.Println("Pinot setup complete.")
-		}
 	})
+
+	// Validate/recreate tables every time this function is called
+	// First pass: check which tables need recreation (serially to avoid overwhelming Pinot)
+	var tablesToRecreate []CreateTableJob
+	for _, job := range jobs {
+		if tableExists(job.tableName) {
+			// For tables with data files, verify ALL segments are GOOD
+			if job.dataFile != "" {
+				segments := listSegmentStatusForTable(job.tableName)
+				goodSegments := 0
+				for _, status := range segments {
+					if status.SegmentStatus == "GOOD" {
+						goodSegments++
+					}
+				}
+				// Check if ALL segments are GOOD
+				if len(segments) > 0 && goodSegments == len(segments) {
+					continue // Table is healthy, skip
+				}
+				// Table needs recreation
+				fmt.Printf("Table %s has %d/%d GOOD segments, will recreate...\n", job.tableName, goodSegments, len(segments))
+				tablesToRecreate = append(tablesToRecreate, job)
+			}
+			// else: Table exists and doesn't need data, skip
+		} else {
+			// Table doesn't exist, needs to be created
+			fmt.Printf("Table %s doesn't exist, will create...\n", job.tableName)
+			tablesToRecreate = append(tablesToRecreate, job)
+		}
+	}
+
+	if len(tablesToRecreate) == 0 {
+		return // All tables are healthy
+	}
+
+	// Second pass: recreate tables serially to avoid overwhelming Pinot in CI
+	var somethingChanged atomic.Bool
+	setupTable := func(job CreateTableJob) {
+		// Delete if exists
+		if tableExists(job.tableName) {
+			fmt.Printf("Deleting table %s...\n", job.tableName)
+			deleteTable(job.tableName)
+			deleteTableSchema(job.tableName)
+			waitForTableDeletion(job.tableName, Timeout)
+		}
+
+		fmt.Printf("Creating table %s...\n", job.tableName)
+		somethingChanged.Store(true)
+		deleteTableSchema(job.tableName)
+		createTableSchema(job.schemaFile)
+		waitForTableSchema(job.tableName, Timeout)
+		createTableConfig(job.configFile)
+		// Wait a bit for table to be fully initialized before uploading data
+		time.Sleep(1 * time.Second)
+
+		if job.dataFile == "" {
+			return
+		}
+		uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
+		WaitForSegmentsAllGood(job.tableName, Timeout)
+
+		// Delete the partial table's segment and upload a new segment
+		if job.tableName == PartialTableName {
+			uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
+			WaitForSegmentsAllGood(job.tableName, Timeout)
+			segments := listOfflineSegments(job.tableName)
+			if len(segments) != 2 {
+				panic("expected 2 segments")
+			}
+			deleteSegmentFromFilesystem(segments[0])
+			resetSegments(PartialTableName)
+			waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
+		}
+	}
+
+	// Recreate tables serially (not in parallel) to avoid overwhelming Pinot
+	for _, job := range tablesToRecreate {
+		setupTable(job)
+	}
+
+	if somethingChanged.Load() {
+		fmt.Println("Pinot setup complete.")
+	}
 }
 
 func WaitForSegmentsAllGood(tableName string, timeout time.Duration) {
@@ -239,6 +281,12 @@ func listSegmentStatusForTable(tableName string) []SegmentStatus {
 	resp, err := http.DefaultClient.Do(req)
 	requireNoError(err)
 	defer safeClose(resp.Body)
+	
+	// Return empty list if table doesn't exist yet (during creation)
+	if resp.StatusCode == http.StatusNotFound {
+		return []SegmentStatus{}
+	}
+	
 	requireOkStatus(resp)
 	var data []SegmentStatus
 	requireNoError(json.NewDecoder(resp.Body).Decode(&data))
@@ -416,6 +464,39 @@ func tableExists(tableName string) bool {
 		panic(fmt.Sprintf("Unexpected status code: %d", resp.StatusCode))
 	}
 	return resp.StatusCode == http.StatusOK
+}
+
+func deleteTable(tableName string) {
+	req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/tables/"+tableName, nil)
+	requireNoError(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	requireStatus(resp, http.StatusOK, http.StatusNotFound)
+}
+
+func waitForTableDeletion(tableName string, timeout time.Duration) {
+	pollTicker := time.NewTicker(PollInterval)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	for {
+		if !tableExists(tableName) {
+			// Table is gone, but give Pinot extra time to clean up external view
+			// to avoid "External view still exists" errors when recreating
+			time.Sleep(2 * time.Second)
+			return
+		}
+
+		select {
+		case <-timeoutTicker.C:
+			panic(fmt.Sprintf("Timed out waiting for table %s to be deleted", tableName))
+		case <-pollTicker.C:
+		}
+	}
 }
 
 func createTableConfig(configFile string) {
