@@ -134,6 +134,8 @@ func CreateTestTables() {
 					// Table exists but has no GOOD segments, delete and recreate
 					fmt.Printf("Table %s exists but has no GOOD segments, recreating...\n", job.tableName)
 					deleteTable(job.tableName)
+					// Wait for table deletion to complete
+					waitForTableDeletion(job.tableName, Timeout)
 				} else {
 					return // Table exists and doesn't need data
 				}
@@ -444,6 +446,26 @@ func deleteTable(tableName string) {
 	requireNoError(err)
 	defer safeClose(resp.Body)
 	requireStatus(resp, http.StatusOK, http.StatusNotFound)
+}
+
+func waitForTableDeletion(tableName string, timeout time.Duration) {
+	pollTicker := time.NewTicker(PollInterval)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	for {
+		if !tableExists(tableName) {
+			return
+		}
+
+		select {
+		case <-timeoutTicker.C:
+			panic(fmt.Sprintf("Timed out waiting for table %s to be deleted", tableName))
+		case <-pollTicker.C:
+		}
+	}
 }
 
 func createTableConfig(configFile string) {
