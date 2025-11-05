@@ -117,16 +117,22 @@ func CreateTestTables() {
 		var somethingChanged atomic.Bool
 		setupTable := func(job CreateTableJob) {
 			defer wg.Done()
-			// Check if table exists AND has segments (if it should have data)
+			// Check if table exists AND has GOOD segments (if it should have data)
 			if tableExists(job.tableName) {
-				// For tables with data files, verify they have segments
+				// For tables with data files, verify they have GOOD segments
 				if job.dataFile != "" {
 					segments := listSegmentStatusForTable(job.tableName)
-					if len(segments) > 0 {
-						return // Table exists with segments, nothing to do
+					goodSegments := 0
+					for _, status := range segments {
+						if status.SegmentStatus == "GOOD" {
+							goodSegments++
+						}
 					}
-					// Table exists but has no segments, delete and recreate
-					fmt.Printf("Table %s exists but has no segments, recreating...\n", job.tableName)
+					if goodSegments > 0 {
+						return // Table exists with GOOD segments, nothing to do
+					}
+					// Table exists but has no GOOD segments, delete and recreate
+					fmt.Printf("Table %s exists but has no GOOD segments, recreating...\n", job.tableName)
 					deleteTable(job.tableName)
 				} else {
 					return // Table exists and doesn't need data
