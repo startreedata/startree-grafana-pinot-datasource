@@ -139,8 +139,10 @@ func CreateTestTables() {
 				fmt.Printf("Table %s has %d/%d GOOD segments, will recreate...\n", job.tableName, goodSegments, len(segments))
 				tablesToRecreate = append(tablesToRecreate, job)
 			}
-		} else if job.dataFile != "" {
-			// Table doesn't exist but should have data
+			// else: Table exists and doesn't need data, skip
+		} else {
+			// Table doesn't exist, needs to be created
+			fmt.Printf("Table %s doesn't exist, will create...\n", job.tableName)
 			tablesToRecreate = append(tablesToRecreate, job)
 		}
 	}
