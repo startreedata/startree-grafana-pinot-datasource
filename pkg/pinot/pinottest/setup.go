@@ -40,6 +40,7 @@ const (
 )
 
 var createTestTablesOnce sync.Once
+var testTableJobs []CreateTableJob
 
 func CreateTestTables() {
 	type CreateTableJob struct {
@@ -108,79 +109,84 @@ func CreateTestTables() {
 		dataFile:   "data/nullValues_data.json",
 	}}
 
+	// Store jobs globally for validation on subsequent calls
+	testTableJobs = jobs
+
+	// One-time initialization: wait for Pinot to be ready
 	createTestTablesOnce.Do(func() {
 		WaitForPinot(Timeout)
-
-		var wg sync.WaitGroup
-		wg.Add(len(jobs))
-
-		var somethingChanged atomic.Bool
-		setupTable := func(job CreateTableJob) {
-			defer wg.Done()
-			// Check if table exists AND has GOOD segments (if it should have data)
-			if tableExists(job.tableName) {
-				// For tables with data files, verify ALL segments are GOOD
-				if job.dataFile != "" {
-					segments := listSegmentStatusForTable(job.tableName)
-					goodSegments := 0
-					for _, status := range segments {
-						if status.SegmentStatus == "GOOD" {
-							goodSegments++
-						}
-					}
-					// Only return if ALL segments are GOOD
-					if len(segments) > 0 && goodSegments == len(segments) {
-						return // Table exists with ALL segments GOOD, nothing to do
-					}
-					// Table exists but has unavailable/bad segments, delete and recreate
-					fmt.Printf("Table %s has %d/%d GOOD segments, recreating...\n", job.tableName, goodSegments, len(segments))
-					deleteTable(job.tableName)
-					deleteTableSchema(job.tableName)
-					// Wait for table deletion to complete
-					waitForTableDeletion(job.tableName, Timeout)
-				} else {
-					return // Table exists and doesn't need data
-				}
-			}
-
-			fmt.Printf("Creating table %s...\n", job.tableName)
-			somethingChanged.Store(true)
-			deleteTableSchema(job.tableName)
-			createTableSchema(job.schemaFile)
-			waitForTableSchema(job.tableName, Timeout)
-			createTableConfig(job.configFile)
-			// Wait a bit for table to be fully initialized before uploading data
-			time.Sleep(1 * time.Second)
-
-			if job.dataFile == "" {
-				return
-			}
-			uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
-			WaitForSegmentsAllGood(job.tableName, Timeout)
-
-			// Delete the partial table's segment and upload a new segment
-			if job.tableName == PartialTableName {
-				uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
-				WaitForSegmentsAllGood(job.tableName, Timeout)
-				segments := listOfflineSegments(job.tableName)
-				if len(segments) != 2 {
-					panic("expected 2 segments")
-				}
-				deleteSegmentFromFilesystem(segments[0])
-				resetSegments(PartialTableName)
-				waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
-			}
-		}
-
-		for _, job := range jobs {
-			go setupTable(job)
-		}
-		wg.Wait()
-
-		if somethingChanged.Load() {
-			fmt.Println("Pinot setup complete.")
-		}
 	})
+
+	// Validate/recreate tables every time this function is called
+	var wg sync.WaitGroup
+	wg.Add(len(jobs))
+
+	var somethingChanged atomic.Bool
+	setupTable := func(job CreateTableJob) {
+		defer wg.Done()
+		// Check if table exists AND has GOOD segments (if it should have data)
+		if tableExists(job.tableName) {
+			// For tables with data files, verify ALL segments are GOOD
+			if job.dataFile != "" {
+				segments := listSegmentStatusForTable(job.tableName)
+				goodSegments := 0
+				for _, status := range segments {
+					if status.SegmentStatus == "GOOD" {
+						goodSegments++
+					}
+				}
+				// Only return if ALL segments are GOOD
+				if len(segments) > 0 && goodSegments == len(segments) {
+					return // Table exists with ALL segments GOOD, nothing to do
+				}
+				// Table exists but has unavailable/bad segments, delete and recreate
+				fmt.Printf("Table %s has %d/%d GOOD segments, recreating...\n", job.tableName, goodSegments, len(segments))
+				deleteTable(job.tableName)
+				deleteTableSchema(job.tableName)
+				// Wait for table deletion to complete
+				waitForTableDeletion(job.tableName, Timeout)
+			} else {
+				return // Table exists and doesn't need data
+			}
+		}
+
+		fmt.Printf("Creating table %s...\n", job.tableName)
+		somethingChanged.Store(true)
+		deleteTableSchema(job.tableName)
+		createTableSchema(job.schemaFile)
+		waitForTableSchema(job.tableName, Timeout)
+		createTableConfig(job.configFile)
+		// Wait a bit for table to be fully initialized before uploading data
+		time.Sleep(1 * time.Second)
+
+		if job.dataFile == "" {
+			return
+		}
+		uploadJsonTableData(job.tableName+"_OFFLINE", job.dataFile)
+		WaitForSegmentsAllGood(job.tableName, Timeout)
+
+		// Delete the partial table's segment and upload a new segment
+		if job.tableName == PartialTableName {
+			uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
+			WaitForSegmentsAllGood(job.tableName, Timeout)
+			segments := listOfflineSegments(job.tableName)
+			if len(segments) != 2 {
+				panic("expected 2 segments")
+			}
+			deleteSegmentFromFilesystem(segments[0])
+			resetSegments(PartialTableName)
+			waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
+		}
+	}
+
+	for _, job := range jobs {
+		go setupTable(job)
+	}
+	wg.Wait()
+
+	if somethingChanged.Load() {
+		fmt.Println("Pinot setup complete.")
+	}
 }
 
 func WaitForSegmentsAllGood(tableName string, timeout time.Duration) {
