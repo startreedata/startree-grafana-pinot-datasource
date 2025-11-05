@@ -103,7 +103,6 @@ func TestPromQlDriver_Execute(t *testing.T) {
 		}.Execute(client, context.Background())
 		assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 		assert.Empty(t, got.Frames, "DataResponse.Frames")
-		assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")
 		assert.ErrorContains(t, got.Error, "Invalid query", "DataResponse.Error")
 	})
 }

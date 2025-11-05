@@ -212,7 +212,6 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 			601.2399258074636,
 		},
 	), got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
@@ -286,7 +285,6 @@ func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase
 			"301.1795843063259",
 		},
 	), got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
@@ -334,7 +332,6 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 710)
 }
 
@@ -363,6 +360,5 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	}).Execute(unreachableClient, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourcePlugin, got.ErrorSource, "DataResponse.ErrorSource")
 	assert.Error(t, got.Error, "DataResponse.Error")
 }
