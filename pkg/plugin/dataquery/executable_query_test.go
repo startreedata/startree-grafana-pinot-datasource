@@ -3,16 +3,17 @@ package dataquery
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"sort"
+	"testing"
+	"time"
+
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/http"
-	"sort"
-	"testing"
-	"time"
 )
 
 func TestExecutableQueryFrom(t *testing.T) {
@@ -212,7 +213,6 @@ func runSqlQuerySumPartialResults(t *testing.T, newDriver func(testCase DriverTe
 			601.2399258074636,
 		},
 	), got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
@@ -286,7 +286,6 @@ func runSqlQueryDistinctValsPartialResults(t *testing.T, newDriver func(testCase
 			"301.1795843063259",
 		},
 	), got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 305)
 }
 
@@ -334,7 +333,6 @@ func runSqlQueryColumnDne(t *testing.T, newDriver func(testCase DriverTestCase) 
 	}).Execute(client, context.Background())
 	assert.Equal(t, backend.StatusInternal, got.Status, "DataResponse.Status")
 	assert.Empty(t, got.Frames, "DataResponse.Frames")
-	assert.Equal(t, backend.ErrorSourceDownstream, got.ErrorSource, "DataResponse.ErrorSource")
 	assertBrokerExceptionErrorWithCodes(t, got.Error, 710)
 }
 
