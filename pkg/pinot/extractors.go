@@ -128,7 +128,7 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 		})
 	case DataTypeBytes:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) ([]byte, error) {
-			return hex.DecodeString(defaultIfNil[string](results.Rows[rowIdx][colIdx], ""))
+			return hex.DecodeString(results.Rows[rowIdx][colIdx].(string))
 		})
 	case DataTypeJson:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
@@ -136,7 +136,11 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 		})
 	case DataTypeTimestamp:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (time.Time, error) {
-			return ParseJodaTime(defaultIfNil[string](results.Rows[rowIdx][colIdx], ""))
+			val := results.Rows[rowIdx][colIdx]
+			if val == nil {
+				return time.Time{}, nil
+			}
+			return ParseJodaTime(val.(string))
 		})
 	case DataTypeMap:
 		// ref: https://github.com/apache/pinot/pull/13906
