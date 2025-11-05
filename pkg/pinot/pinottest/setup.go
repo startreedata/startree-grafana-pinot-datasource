@@ -119,7 +119,7 @@ func CreateTestTables() {
 			defer wg.Done()
 			// Check if table exists AND has GOOD segments (if it should have data)
 			if tableExists(job.tableName) {
-				// For tables with data files, verify they have GOOD segments
+				// For tables with data files, verify ALL segments are GOOD
 				if job.dataFile != "" {
 					segments := listSegmentStatusForTable(job.tableName)
 					goodSegments := 0
@@ -128,11 +128,12 @@ func CreateTestTables() {
 							goodSegments++
 						}
 					}
-					if goodSegments > 0 {
-						return // Table exists with GOOD segments, nothing to do
+					// Only return if ALL segments are GOOD
+					if len(segments) > 0 && goodSegments == len(segments) {
+						return // Table exists with ALL segments GOOD, nothing to do
 					}
-					// Table exists but has no GOOD segments, delete and recreate
-					fmt.Printf("Table %s exists but has no GOOD segments, recreating...\n", job.tableName)
+					// Table exists but has unavailable/bad segments, delete and recreate
+					fmt.Printf("Table %s has %d/%d GOOD segments, recreating...\n", job.tableName, goodSegments, len(segments))
 					deleteTable(job.tableName)
 					// Wait for table deletion to complete
 					waitForTableDeletion(job.tableName, Timeout)
