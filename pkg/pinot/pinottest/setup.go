@@ -39,17 +39,17 @@ const (
 	EmptyTableName              = "empty"
 )
 
+type CreateTableJob struct {
+	tableName  string
+	schemaFile string
+	configFile string
+	dataFile   string
+}
+
 var createTestTablesOnce sync.Once
 var testTableJobs []CreateTableJob
 
 func CreateTestTables() {
-	type CreateTableJob struct {
-		tableName  string
-		schemaFile string
-		configFile string
-		dataFile   string
-	}
-
 	jobs := []CreateTableJob{{
 		tableName:  InfraMetricsTableName,
 		schemaFile: "data/infraMetrics_schema.json",
