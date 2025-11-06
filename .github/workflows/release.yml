@@ -58,15 +58,15 @@ jobs:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
 
-      - name: Publish startree-grafana image
-        uses: docker/build-push-action@v6
-        with:
-          file: startree-cloud/Dockerfile
-          context: .
-          push: true
-          tags: |
-            repo.startreedata.io/startree-docker-registry/startree-grafana:${{ steps.version.outputs.version }}
-            repo.startreedata.io/startree-docker-registry/startree-grafana:latest
+#      - name: Publish startree-grafana image
+#        uses: docker/build-push-action@v6
+#        with:
+#          file: startree-cloud/Dockerfile
+#          context: .
+#          push: true
+#          tags: |
+#            repo.startreedata.io/startree-docker-registry/startree-grafana:${{ steps.version.outputs.version }}
+#            repo.startreedata.io/startree-docker-registry/startree-grafana:latest
 
       - name: Set prerelease version
         run: |
