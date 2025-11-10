@@ -53,7 +53,12 @@ func (p *Client) listTablesEndpoint(ctx context.Context) string {
 	}
 
 	resp, err := p.doRequest(req)
-	if err != nil || resp.StatusCode == http.StatusNotFound {
+	if err != nil {
+		return "/tables"
+	}
+
+	defer p.closeResponseBody(ctx, resp)
+	if resp.StatusCode == http.StatusNotFound {
 		return "/tables"
 	}
 	return "/mytables"
