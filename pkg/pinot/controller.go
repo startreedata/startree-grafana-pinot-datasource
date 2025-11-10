@@ -56,8 +56,8 @@ func (p *Client) listTablesEndpoint(ctx context.Context) string {
 	if err != nil {
 		return "/tables"
 	}
+
 	defer p.closeResponseBody(ctx, resp)
-	
 	if resp.StatusCode == http.StatusNotFound {
 		return "/tables"
 	}
