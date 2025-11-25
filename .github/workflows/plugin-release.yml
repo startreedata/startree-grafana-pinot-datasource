@@ -1,16 +1,16 @@
 name: Build plugin for Grafana Marketplace
 
 on:
-  workflow_dispatch:
-    inputs:
-      dev_release:
-        description: "Dev build for testing"
-        type: boolean
+  push:
+    tags:
+      - 'v*' # Run workflow on version tags, e.g. v1.0.0.
 
-run-name: ${{ inputs.dev_release && 'Dev Build' || 'Build' }} from ${{ github.ref_name }} triggered by @${{ github.actor }}
+run-name: Release ${{ github.ref_name }} triggered by @${{ github.actor }}
 
 permissions:
+  id-token: write
   contents: write
+  attestations: write
 
 jobs:
   build:
@@ -21,10 +21,8 @@ jobs:
 
       - name: Display build info
         run: |
-          echo "Building from branch: ${{ github.ref_name }}"
-          echo "Dev release mode: ${{ inputs.dev_release }}"
+          echo "Building from tag: ${{ github.ref_name }}"
           echo "Current commit: $(git rev-parse HEAD)"
-          echo "Current branch: $(git branch --show-current)"
 
       - name: Read .nvmrc
         id: node_version
@@ -55,7 +53,8 @@ jobs:
       - name: Build plugin
         uses: grafana/plugin-actions/build-plugin@main
         with:
-          use_changelog_generator: true
           policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+          attestation: true
+          use_changelog_generator: false
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
