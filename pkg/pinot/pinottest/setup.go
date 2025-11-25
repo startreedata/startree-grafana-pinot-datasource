@@ -525,9 +525,12 @@ func waitForTableDeletion(tableName string, timeout time.Duration) {
 
 	for {
 		if !tableExists(tableName) {
-			// Table is gone, but give Pinot extra time to clean up external view
-			// to avoid "External view still exists" errors when recreating
-			time.Sleep(2 * time.Second)
+			// Table is gone, but give Pinot extra time to clean up all metadata:
+			// - External view cleanup
+			// - Table config cleanup
+			// - Schema associations
+			fmt.Printf("Table %s deleted, waiting for full cleanup...\n", tableName)
+			time.Sleep(5 * time.Second)
 			return
 		}
 
@@ -561,12 +564,29 @@ func createTableConfig(configFile string) {
 
 	var code int
 	var body string
-	for i := 0; i < 3; i++ {
+	maxRetries := 5
+	retryDelay := 2 * time.Second
+	
+	for attempt := 0; attempt < maxRetries; attempt++ {
 		code, body = create()
 		if code == http.StatusOK {
 			return
 		}
+		
+		// If table config already exists (409), wait longer for cleanup
+		if code == http.StatusConflict && attempt < maxRetries-1 {
+			fmt.Printf("Table config already exists (attempt %d/%d), waiting for cleanup...\n", attempt+1, maxRetries)
+			time.Sleep(retryDelay * time.Duration(attempt+1)) // Exponential backoff
+			continue
+		}
+		
+		// For other errors, wait a bit and retry
+		if attempt < maxRetries-1 {
+			time.Sleep(retryDelay)
+			continue
+		}
 	}
+	
 	if code != http.StatusOK {
 		panic(fmt.Sprintf("Unexpected status code: %d %s", code, body))
 	}
