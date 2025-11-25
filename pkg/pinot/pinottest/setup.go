@@ -574,6 +574,26 @@ func waitForTableDeletion(tableName string, timeout time.Duration) {
 	}
 }
 
+func forceDeleteTableIfExists(tableName string) {
+	// Try to delete table config directly via API if it still exists
+	req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/tables/"+tableName, nil)
+	if err != nil {
+		return // Ignore errors, this is best-effort
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return // Ignore errors
+	}
+	defer safeClose(resp.Body)
+	
+	if resp.StatusCode == http.StatusOK {
+		fmt.Printf("Force deleted lingering table config for %s\n", tableName)
+		// Give it a moment to clean up
+		time.Sleep(3 * time.Second)
+	}
+}
+
 func createTableConfig(configFile string) {
 	create := func() (int, string) {
 		file, err := TestDataFS.Open(configFile)
@@ -596,8 +616,8 @@ func createTableConfig(configFile string) {
 
 	var code int
 	var body string
-	maxRetries := 15 // Increased to 15 for extra resilience
-	baseRetryDelay := 5 * time.Second // Increased to 5 seconds
+	maxRetries := 5 // Reduced since we now force-delete first
+	baseRetryDelay := 5 * time.Second
 	
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		code, body = create()
@@ -605,13 +625,20 @@ func createTableConfig(configFile string) {
 			return
 		}
 		
-		// If table config already exists (409), wait longer for cleanup
-		if code == http.StatusConflict && attempt < maxRetries-1 {
-			// Use longer exponential backoff: 5s, 10s, 15s, 20s, 25s...
-			waitTime := baseRetryDelay * time.Duration(attempt+1)
-			fmt.Printf("Table config already exists (attempt %d/%d), waiting %v for cleanup...\n", attempt+1, maxRetries, waitTime)
-			time.Sleep(waitTime)
-			continue
+		// If table config already exists (409), force delete and retry
+		if code == http.StatusConflict {
+			if attempt < maxRetries-1 {
+				fmt.Printf("Table config already exists (attempt %d/%d), force deleting...\n", attempt+1, maxRetries)
+				
+				// Extract table name from config file path (e.g., "data/partial_config.json" -> "partial")
+				tableName := strings.TrimSuffix(strings.TrimPrefix(configFile, "data/"), "_config.json")
+				forceDeleteTableIfExists(tableName)
+				
+				waitTime := baseRetryDelay * time.Duration(attempt+1)
+				fmt.Printf("Waiting %v before retry...\n", waitTime)
+				time.Sleep(waitTime)
+				continue
+			}
 		}
 		
 		// For other errors, wait a bit and retry
