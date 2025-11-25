@@ -172,8 +172,8 @@ func CreateTestTables() {
 		createTableSchema(job.schemaFile)
 		waitForTableSchema(job.tableName, Timeout)
 		createTableConfig(job.configFile)
-		// Wait a bit for table to be fully initialized before uploading data
-		time.Sleep(1 * time.Second)
+		// Wait for table to be fully initialized and ready to accept data
+		waitForTableReady(job.tableName, Timeout)
 
 		if job.dataFile == "" {
 			return
@@ -589,6 +589,52 @@ func createTableConfig(configFile string) {
 	
 	if code != http.StatusOK {
 		panic(fmt.Sprintf("Unexpected status code: %d %s", code, body))
+	}
+}
+
+func waitForTableReady(tableName string, timeout time.Duration) {
+	pollTicker := time.NewTicker(PollInterval)
+	defer pollTicker.Stop()
+
+	timeoutTicker := time.NewTimer(timeout)
+	defer timeoutTicker.Stop()
+
+	isReady := func() bool {
+		// Check if table exists and is accessible
+		req, err := http.NewRequest(http.MethodGet, ControllerUrl+"/tables/"+tableName, nil)
+		if err != nil {
+			return false
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return false
+		}
+		defer safeClose(resp.Body)
+		
+		// Table should return 200 when fully initialized
+		return resp.StatusCode == http.StatusOK
+	}
+
+	// Give it an initial moment to start initializing
+	time.Sleep(2 * time.Second)
+	
+	if isReady() {
+		// Extra wait to ensure table is fully ready to accept data
+		time.Sleep(1 * time.Second)
+		return
+	}
+	
+	for {
+		select {
+		case <-timeoutTicker.C:
+			panic(fmt.Sprintf("Timed out waiting for table %s to be ready", tableName))
+		case <-pollTicker.C:
+			if isReady() {
+				// Extra wait to ensure table is fully ready to accept data
+				time.Sleep(1 * time.Second)
+				return
+			}
+		}
 	}
 }
 
