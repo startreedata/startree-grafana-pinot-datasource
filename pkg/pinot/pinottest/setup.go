@@ -562,7 +562,7 @@ func waitForTableDeletion(tableName string, timeout time.Duration) {
 			// - Table config cleanup
 			// - Schema associations
 			fmt.Printf("Table %s deleted, waiting for full cleanup...\n", tableName)
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second) // Increased from 5 to 10 seconds
 			return
 		}
 
@@ -596,8 +596,8 @@ func createTableConfig(configFile string) {
 
 	var code int
 	var body string
-	maxRetries := 5
-	retryDelay := 2 * time.Second
+	maxRetries := 10 // Increased from 5 to 10
+	baseRetryDelay := 3 * time.Second // Increased from 2 to 3
 	
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		code, body = create()
@@ -607,14 +607,16 @@ func createTableConfig(configFile string) {
 		
 		// If table config already exists (409), wait longer for cleanup
 		if code == http.StatusConflict && attempt < maxRetries-1 {
-			fmt.Printf("Table config already exists (attempt %d/%d), waiting for cleanup...\n", attempt+1, maxRetries)
-			time.Sleep(retryDelay * time.Duration(attempt+1)) // Exponential backoff
+			// Use longer exponential backoff: 3s, 6s, 9s, 12s, 15s...
+			waitTime := baseRetryDelay * time.Duration(attempt+1)
+			fmt.Printf("Table config already exists (attempt %d/%d), waiting %v for cleanup...\n", attempt+1, maxRetries, waitTime)
+			time.Sleep(waitTime)
 			continue
 		}
 		
 		// For other errors, wait a bit and retry
 		if attempt < maxRetries-1 {
-			time.Sleep(retryDelay)
+			time.Sleep(baseRetryDelay)
 			continue
 		}
 	}
