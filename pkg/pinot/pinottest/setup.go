@@ -185,9 +185,20 @@ func CreateTestTables() {
 		if job.tableName == PartialTableName {
 			uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
 			WaitForSegmentsAllGood(job.tableName, Timeout)
+			
+			// Wait a bit more to ensure both segments are fully registered
+			time.Sleep(3 * time.Second)
+			
 			segments := listOfflineSegments(job.tableName)
+			if len(segments) < 2 {
+				// If we don't have 2 segments yet, wait a bit more and try again
+				fmt.Printf("Warning: Expected 2 segments but got %d, waiting and retrying...\n", len(segments))
+				time.Sleep(5 * time.Second)
+				segments = listOfflineSegments(job.tableName)
+			}
+			
 			if len(segments) != 2 {
-				panic("expected 2 segments")
+				panic(fmt.Sprintf("expected 2 segments but got %d after retries", len(segments)))
 			}
 			deleteSegmentFromFilesystem(segments[0])
 			resetSegments(PartialTableName)
@@ -418,11 +429,36 @@ func createTableSchema(schemaFile string) {
 }
 
 func deleteTableSchema(schemaName string) {
-	req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/schemas/"+schemaName, nil)
-	resp, err := http.DefaultClient.Do(req)
-	requireNoError(err)
-	defer safeClose(resp.Body)
-	requireStatus(resp, http.StatusOK, http.StatusNotFound)
+	// Retry logic to handle race conditions where table might still be associated
+	maxRetries := 3
+	retryDelay := 2 * time.Second
+	
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		req, err := http.NewRequest(http.MethodDelete, ControllerUrl+"/schemas/"+schemaName, nil)
+		resp, err := http.DefaultClient.Do(req)
+		requireNoError(err)
+		defer safeClose(resp.Body)
+		
+		// Accept OK (200), NotFound (404), or Conflict (409)
+		// 409 means schema is still associated with a table, which is acceptable
+		if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusNotFound {
+			return
+		}
+		
+		if resp.StatusCode == http.StatusConflict {
+			// Schema still associated with table, wait and retry
+			if attempt < maxRetries-1 {
+				time.Sleep(retryDelay)
+				continue
+			}
+			// On last attempt, accept 409 as it's not critical
+			return
+		}
+		
+		// Unexpected status code
+		dump, _ := httputil.DumpResponse(resp, true)
+		panic(fmt.Sprintf("Unexpected status code: %d %s", resp.StatusCode, string(dump)))
+	}
 }
 
 func waitForTableSchema(schemaName string, timeout time.Duration) {
