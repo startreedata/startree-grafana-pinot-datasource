@@ -54,6 +54,30 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
+        
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: repo.startreedata.io/startree-docker-registry
+          username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
+          password: ${{ secrets.MVN_ARTIFACTORY_TOKEN }}
+  
+      - name: Start Pinot
+        run: docker compose up pinot --quiet-pull --detach
+  
+      - name: Setup Pinot
+        run: go run cmd/testsetup/main.go
+  
+      - name: Remove Go after Pinot setup
+        run: |
+          echo "Removing Go installation and cache..."
+          sudo rm -rf /usr/local/go
+          sudo rm -rf ~/go/pkg/mod
+          sudo rm -rf ~/.cache/go-build
+          sudo apt-get purge -ury golang* || true
+          sudo apt-get autoremove -y || true
+          echo "Go successfully removed."
+          which go || echo "Go no longer available."
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
