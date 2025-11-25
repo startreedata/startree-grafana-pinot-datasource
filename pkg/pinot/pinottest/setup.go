@@ -158,13 +158,17 @@ func CreateTestTables() {
 		if tableExists(job.tableName) {
 			fmt.Printf("Deleting table %s...\n", job.tableName)
 			deleteTable(job.tableName)
-			deleteTableSchema(job.tableName)
 			waitForTableDeletion(job.tableName, Timeout)
+			// Delete schema only after table is fully deleted to avoid 409 conflict
+			deleteTableSchema(job.tableName)
 		}
 
 		fmt.Printf("Creating table %s...\n", job.tableName)
 		somethingChanged.Store(true)
-		deleteTableSchema(job.tableName)
+		// Schema was already deleted if table existed, only delete if it still exists
+		if schemaExists(job.tableName) {
+			deleteTableSchema(job.tableName)
+		}
 		createTableSchema(job.schemaFile)
 		waitForTableSchema(job.tableName, Timeout)
 		createTableConfig(job.configFile)
