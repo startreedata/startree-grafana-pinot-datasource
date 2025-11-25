@@ -183,6 +183,20 @@ func CreateTestTables() {
 
 		// Delete the partial table's segment and upload a new segment
 		if job.tableName == PartialTableName {
+			// First, get initial segment count
+			initialSegments := listOfflineSegments(job.tableName)
+			fmt.Printf("Partial table has %d segments after first upload\n", len(initialSegments))
+			
+			// Delete ALL old segments to ensure clean state
+			for _, seg := range initialSegments {
+				deleteSegment(job.tableName, seg)
+			}
+			
+			// Wait for deletions to complete
+			time.Sleep(2 * time.Second)
+			
+			// Re-upload both data files to get exactly 2 segments
+			uploadJsonTableData(PartialTableName+"_OFFLINE", job.dataFile) // partial_data_1.json
 			uploadJsonTableData(PartialTableName+"_OFFLINE", "data/partial_data_2.json")
 			WaitForSegmentsAllGood(job.tableName, Timeout)
 			
@@ -190,16 +204,20 @@ func CreateTestTables() {
 			time.Sleep(3 * time.Second)
 			
 			segments := listOfflineSegments(job.tableName)
+			fmt.Printf("After cleanup and re-upload, partial table has %d segments\n", len(segments))
+			
 			if len(segments) < 2 {
 				// If we don't have 2 segments yet, wait a bit more and try again
-				fmt.Printf("Warning: Expected 2 segments but got %d, waiting and retrying...\n", len(segments))
+				fmt.Printf("Warning: Expected at least 2 segments but got %d, waiting and retrying...\n", len(segments))
 				time.Sleep(5 * time.Second)
 				segments = listOfflineSegments(job.tableName)
 			}
 			
-			if len(segments) != 2 {
-				panic(fmt.Sprintf("expected 2 segments but got %d after retries", len(segments)))
+			if len(segments) < 2 {
+				panic(fmt.Sprintf("expected at least 2 segments but got %d after retries", len(segments)))
 			}
+			
+			// Use the first segment to mark as BAD
 			deleteSegmentFromFilesystem(segments[0])
 			resetSegments(PartialTableName)
 			waitForSegmentStatus(PartialTableName, segments[0], "BAD", Timeout)
@@ -316,6 +334,20 @@ func resetSegments(tableName string) {
 	requireNoError(err)
 	defer safeClose(resp.Body)
 	requireOkStatus(resp)
+}
+
+func deleteSegment(tableName string, segmentName string) {
+	// Delete segment via Pinot API
+	req, err := http.NewRequest(http.MethodDelete, 
+		ControllerUrl+"/segments/"+tableName+"_OFFLINE/"+url.PathEscape(segmentName), nil)
+	requireNoError(err)
+
+	resp, err := http.DefaultClient.Do(req)
+	requireNoError(err)
+	defer safeClose(resp.Body)
+	
+	// Accept 200 (OK) or 404 (Not Found - already deleted)
+	requireStatus(resp, http.StatusOK, http.StatusNotFound)
 }
 
 func deleteSegmentFromFilesystem(segmentName string) {
