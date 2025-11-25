@@ -4,8 +4,14 @@ on:
   push:
     tags:
       - 'v*' # Run workflow on version tags, e.g. v1.0.0.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.0.0). Leave empty to build from current branch.'
+        required: false
+        type: string
 
-run-name: Release ${{ github.ref_name }} triggered by @${{ github.actor }}
+run-name: Release ${{ inputs.tag || github.ref_name }} triggered by @${{ github.actor }}
 
 permissions:
   id-token: write
@@ -18,10 +24,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Display build info
         run: |
-          echo "Building from tag: ${{ github.ref_name }}"
+          echo "Building from: ${{ inputs.tag || github.ref_name }}"
           echo "Current commit: $(git rev-parse HEAD)"
 
       - name: Read .nvmrc
