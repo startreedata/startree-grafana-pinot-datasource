@@ -1,0 +1,105 @@
+name: Install Plugin to K8s Grafana
+
+on:
+  workflow_dispatch:
+    inputs:
+      k8s_context:
+        description: Kubernetes context (e.g., arn:aws:eks:us-west-2:...)
+        required: true
+        type: string
+      k8s_namespace:
+        description: Kubernetes namespace
+        required: true
+        type: string
+      grafana_pod:
+        description: Grafana pod name (e.g., pinot-grafana-demo-0)
+        required: true
+        type: string
+      release_tag:
+        description: GitHub release tag to install (leave empty for latest)
+        required: false
+        type: string
+        default: ''
+      plugin_path:
+        description: Plugin directory inside the pod
+        required: false
+        type: string
+        default: '/var/lib/grafana/plugins'
+
+run-name: Install plugin to ${{ inputs.grafana_pod }} in ${{ inputs.k8s_namespace }} by @${{ github.actor }}
+
+env:
+  PLUGIN_NAME: startree-pinot-datasource
+
+jobs:
+  install:
+    name: Install Plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "${{ inputs.release_tag }}" ]; then
+            TAG=$(gh release view --json tagName -q '.tagName')
+            echo "Using latest release: $TAG"
+          else
+            TAG="${{ inputs.release_tag }}"
+            echo "Using specified release: $TAG"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Download release artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "${{ steps.release.outputs.tag }}" -p '*.zip'
+          ZIP_FILE=$(ls *.zip | head -1)
+          echo "Downloaded: $ZIP_FILE"
+          echo "ZIP_FILE=$ZIP_FILE" >> $GITHUB_ENV
+
+      - name: Configure kubectl
+        run: |
+          kubectl config use-context "${{ inputs.k8s_context }}"
+
+      - name: Copy plugin to pod
+        run: |
+          DEST="${{ inputs.plugin_path }}/${{ env.ZIP_FILE }}"
+          echo "Copying $ZIP_FILE to ${{ inputs.grafana_pod }}:$DEST"
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            cp "$ZIP_FILE" "${{ inputs.grafana_pod }}:$DEST"
+
+      - name: Remove old plugin and install new version
+        run: |
+          echo "Removing old plugin..."
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            exec "${{ inputs.grafana_pod }}" -- \
+            rm -rf "${{ inputs.plugin_path }}/${{ env.PLUGIN_NAME }}"
+
+          echo "Extracting new plugin..."
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            exec "${{ inputs.grafana_pod }}" -- \
+            unzip "${{ inputs.plugin_path }}/${{ env.ZIP_FILE }}" \
+            -d "${{ inputs.plugin_path }}"
+
+          echo "Cleaning up zip..."
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            exec "${{ inputs.grafana_pod }}" -- \
+            rm "${{ inputs.plugin_path }}/${{ env.ZIP_FILE }}"
+
+      - name: Restart pod
+        run: |
+          echo "Restarting pod ${{ inputs.grafana_pod }}..."
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            delete pod "${{ inputs.grafana_pod }}"
+
+      - name: Wait for pod to be ready
+        run: |
+          echo "Waiting for pod to be ready..."
+          kubectl --namespace "${{ inputs.k8s_namespace }}" \
+            wait --for=condition=Ready pod/"${{ inputs.grafana_pod }}" \
+            --timeout=120s
+          echo "Plugin installed successfully!"
