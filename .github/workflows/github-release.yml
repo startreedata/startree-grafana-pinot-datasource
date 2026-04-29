@@ -242,13 +242,51 @@ jobs:
           fi
           echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Build and sign plugin
-        uses: grafana/plugin-actions/build-plugin@main
+      - name: Build backend
+        run: go run cmd/release/main.go build_backend
+
+      - name: Build frontend
+        run: yarn run build
+
+      - name: Get plugin metadata
+        id: metadata
+        run: |
+          GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
+          GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
+          echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
+          echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
+          echo "archive=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip" >> $GITHUB_OUTPUT
+          echo "archive-sha1sum=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip.sha1" >> $GITHUB_OUTPUT
+
+      - name: Sign plugin
+        run: yarn run sign
+        env:
+          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+
+      - name: Package plugin
+        run: |
+          mv dist ${{ steps.metadata.outputs.plugin-id }}
+          zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+          sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
+
+      - name: Validate plugin
+        run: npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ ${{ steps.metadata.outputs.archive }}
+
+      - name: Generate artifact attestation
+        id: attestation
+        uses: actions/attest-build-provenance@v3
         with:
-          policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
-          attestation: true
-          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
-          node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
+          subject-path: ${{ steps.metadata.outputs.archive }}
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            ./${{ steps.metadata.outputs.archive }}
+            ./${{ steps.metadata.outputs.archive-sha1sum }}
 
       - name: Prepare next development version
         if: github.ref_name == 'main'
