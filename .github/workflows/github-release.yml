@@ -229,8 +229,17 @@ jobs:
         run: |
           git config --global user.email "ci@startree.ai"
           git config --global user.name "CI"
-          version=$(npm version ${{ inputs.version_bump }})
-          git push --follow-tags
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            version=$(npm version ${{ inputs.version_bump }})
+            git push --follow-tags
+          else
+            sanitized_branch=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+            npm version --no-git-tag-version ${{ inputs.version_bump }}
+            base_version=$(node -p "require('./package.json').version")
+            version="v${base_version}-${sanitized_branch}"
+            git tag -a "$version" -m "$version"
+            git push origin "$version"
+          fi
           echo "version=$version" >> $GITHUB_OUTPUT
 
       - name: Build and sign plugin
@@ -242,6 +251,7 @@ jobs:
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
 
       - name: Prepare next development version
+        if: github.ref_name == 'main'
         run: |
           git pull --rebase
           npm version --no-git-tag-version prerelease --preid pre
