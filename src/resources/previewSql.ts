@@ -78,6 +78,7 @@ export interface PreviewSqlCodeRequest {
   timeColumnAlias: string | undefined;
   metricColumnAlias: string | undefined;
   code: string | undefined;
+  queryOptions: QueryOption[] | undefined;
 }
 
 export async function previewSqlCode(datasource: DataSource, request: PreviewSqlCodeRequest): Promise<string> {

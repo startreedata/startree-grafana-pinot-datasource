@@ -3,4 +3,5 @@ export interface DimensionFilter {
   columnKey?: string;
   operator?: string;
   valueExprs?: string[];
+  subqueryExpr?: string;
 }

@@ -11,6 +11,7 @@ import { previewSqlCode, PreviewSqlCodeRequest } from '../resources/previewSql';
 import { Params as TimeSeriesBuilderParams } from './TimeSeriesBuilder';
 import { Params as LogsBuilderParams } from './LogsBuilder';
 import {columnLabelOf} from "./complexField";
+import { QueryOption } from '../dataquery/QueryOption';
 
 //language=text
 export const DefaultQuerySql = `SELECT $__timeGroup("timestamp") AS $__timeAlias()
@@ -29,6 +30,7 @@ export interface Params {
   logColumnAlias: string;
   legend: string;
   seriesLimit: number;
+  queryOptions: QueryOption[];
 }
 
 export function paramsFrom(query: PinotDataQuery): Params {
@@ -41,6 +43,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     logColumnAlias: query.logColumnAlias || '',
     legend: query.legend || '',
     seriesLimit: query.seriesLimit || 0,
+    queryOptions: query.queryOptions || [],
   };
 }
 
@@ -54,6 +57,7 @@ export function paramsFromTimeSeriesBuilder(params: TimeSeriesBuilderParams, sql
     timeColumnAlias: '',
     logColumnAlias: '',
     seriesLimit: params.seriesLimit,
+    queryOptions: params.queryOptions || [],
   };
 }
 
@@ -67,6 +71,7 @@ export function paramsFromLogsBuilder(params: LogsBuilderParams, sql: string): P
     metricColumnAlias: '',
     legend: '',
     seriesLimit: 0,
+    queryOptions: params.queryOptions || [],
   };
 }
 
@@ -149,6 +154,7 @@ function useSqlPreview(
     timeColumnAlias: interpolatedParams.timeColumnAlias,
     metricColumnAlias: interpolatedParams.metricColumnAlias,
     code: interpolatedParams.pinotQlCode,
+    queryOptions: interpolatedParams.queryOptions,
   };
 
   useEffect(() => {

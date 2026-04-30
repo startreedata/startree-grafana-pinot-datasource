@@ -2,7 +2,7 @@ import { SelectMetricColumn } from './SelectMetricColumn';
 import { AggregationFunction, SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { InputLimit, InputSeriesLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
@@ -38,6 +38,27 @@ export function PinotQlTimeSeriesBuilder(props: {
   if (TimeSeriesBuilder.applyDefaults(savedParams, resources)) {
     onChangeAndRun({ ...savedParams });
   }
+
+  const hasAutoInjectedMse = useRef(false);
+  useEffect(() => {
+    const injected = interpolatedParams.queryOptions.some(
+      (o) => o.name?.toLowerCase() === 'usemultistageengine' && o.value === 'true'
+    );
+    const saved = savedParams.queryOptions.some(
+      (o) => o.name?.toLowerCase() === 'usemultistageengine'
+    );
+    if (injected && !saved && !hasAutoInjectedMse.current) {
+      hasAutoInjectedMse.current = true;
+      onChangeAndRun({
+        ...savedParams,
+        queryOptions: [...savedParams.queryOptions, { name: 'useMultiStageEngine', value: 'true' }],
+      });
+    }
+    if (!injected) {
+      hasAutoInjectedMse.current = false;
+    }
+  }, [JSON.stringify(interpolatedParams.queryOptions)]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <SelectTable

@@ -1,6 +1,10 @@
 package dataquery
 
-import "github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+import (
+	"fmt"
+
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+)
 
 func OrderByExprs(orderByClauses []OrderByClause) []pinot.SqlExpr {
 	orderByExprs := make([]pinot.SqlExpr, 0, len(orderByClauses))
@@ -17,6 +21,18 @@ func OrderByExprs(orderByClauses []OrderByClause) []pinot.SqlExpr {
 func FilterExprsFrom(filters []DimensionFilter) []pinot.SqlExpr {
 	exprs := make([]pinot.SqlExpr, 0, len(filters))
 	for _, filter := range filters {
+		if filter.SubqueryExpr != "" {
+			columnExpr := pinot.ComplexFieldExpr(filter.ColumnName, filter.ColumnKey)
+			op := "in"
+			if pinot.FilterOperator(filter.Operator) == pinot.FilterOpNotIn ||
+				pinot.FilterOperator(filter.Operator) == pinot.FilterOpNotEquals {
+				op = "not in"
+			}
+			expr := pinot.SqlExpr(fmt.Sprintf(`(%s %s (%s))`, columnExpr, op, filter.SubqueryExpr))
+			exprs = append(exprs, expr)
+			continue
+		}
+
 		expr := pinot.ColumnFilterExpr(pinot.ColumnFilter{
 			ColumnName: filter.ColumnName,
 			ColumnKey:  filter.ColumnKey,

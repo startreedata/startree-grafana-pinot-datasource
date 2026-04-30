@@ -87,7 +87,7 @@ func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
-// RenderSql returns the SQL query string with all query options appended.
+// RenderSql returns the SQL query string with all query options prepended.
 func (query SqlQuery) RenderSql() string {
 	sql := strings.TrimSpace(query.Sql)
 	if len(query.QueryOptions) == 0 {
@@ -95,15 +95,10 @@ func (query SqlQuery) RenderSql() string {
 	}
 
 	var builder strings.Builder
-	builder.WriteString(sql)
-	if strings.HasSuffix(sql, ";") {
-		builder.WriteString("\n")
-	} else {
-		builder.WriteString(";\n")
-	}
 	for _, o := range query.QueryOptions {
-		builder.WriteString(fmt.Sprintf("\nSET %s=%s;", o.Name, o.Value))
+		builder.WriteString(fmt.Sprintf("SET %s=%s;\n", o.Name, o.Value))
 	}
+	builder.WriteString(sql)
 	return builder.String()
 }
 

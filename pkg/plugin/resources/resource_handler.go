@@ -202,13 +202,14 @@ func PreviewLogsSql(client *pinot.Client, ctx context.Context, data PreviewLogsB
 }
 
 type PreviewSqlCodeRequest struct {
-	TimeRange         dataquery.TimeRange `json:"timeRange"`
-	IntervalSize      string              `json:"intervalSize"`
-	TableName         string              `json:"tableName"`
-	TimeColumnAlias   string              `json:"timeColumnAlias"`
-	TimeColumnFormat  string              `json:"timeColumnFormat"`
-	MetricColumnAlias string              `json:"metricColumnAlias"`
-	Code              string              `json:"code"`
+	TimeRange         dataquery.TimeRange     `json:"timeRange"`
+	IntervalSize      string                  `json:"intervalSize"`
+	TableName         string                  `json:"tableName"`
+	TimeColumnAlias   string                  `json:"timeColumnAlias"`
+	TimeColumnFormat  string                  `json:"timeColumnFormat"`
+	MetricColumnAlias string                  `json:"metricColumnAlias"`
+	Code              string                  `json:"code"`
+	QueryOptions      []dataquery.QueryOption `json:"queryOptions"`
 }
 
 func PreviewSqlCode(client *pinot.Client, ctx context.Context, data PreviewSqlCodeRequest) *Response[string] {
@@ -224,6 +225,7 @@ func PreviewSqlCode(client *pinot.Client, ctx context.Context, data PreviewSqlCo
 		TimeColumnAlias:   data.TimeColumnAlias,
 		MetricColumnAlias: data.MetricColumnAlias,
 		Code:              data.Code,
+		QueryOptions:      data.QueryOptions,
 	}
 
 	sql, err := query.RenderSqlQuery(ctx, client)

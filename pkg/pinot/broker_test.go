@@ -60,10 +60,9 @@ func TestPinotClient_RenderSql(t *testing.T) {
 	}
 
 	got := client.RenderSql(query)
-	assert.Equal(t, `select * from benchmark;
-
-SET enableNullHandling=true;
+	assert.Equal(t, `SET enableNullHandling=true;
 SET maxExecutionThreads=5;
 SET useMultistageEngine=true;
-SET timeoutMs=100;`, got)
+SET timeoutMs=100;
+select * from benchmark`, got)
 }
