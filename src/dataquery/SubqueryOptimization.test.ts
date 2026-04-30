@@ -361,36 +361,171 @@ describe('interpolateVariables — Builder mode subquery optimization', () => {
     expect(query.filters?.[0].valueExprs).toBeUndefined();
   });
 
-  test('filter with template variable below threshold uses normal expansion', () => {
-    const allOptions = generateValues(500, 'player');
+  test('filter with template variable below threshold — multi-value — expands as quoted literals with IN', () => {
+    // This is the "category has 6 values" scenario from the bug report.
+    // When a query variable has multiple selected values but fewer than 1000,
+    // the filter should expand to proper SQL literals with operator changed to IN.
+    // Without this, templateSrv.replace("$category") returns Grafana's raw format
+    // {cache,api,null,web,db,queue} which is invalid SQL.
+    const categories = ['cache', 'api', 'null', 'web', 'db', 'queue'];
     const variable = makeQueryVariable({
-      name: 'player',
-      pinotQlCode: 'SELECT DISTINCT playerName FROM baseballStats',
-      options: allOptions,
-      selected: allOptions.slice(0, 100),
+      name: 'category',
+      pinotQlCode: 'SELECT DISTINCT category FROM highCardinality',
+      options: categories,
+      selected: categories, // all 6 selected — below 1000 threshold
     });
 
     setTemplateSrv({
       containsTemplate: () => true,
       getVariables: () => [variable] as unknown as TypedVariableModel[],
       updateTimeRange: () => {},
-      replace: (target?: string) => target === '${player}' ? "'player0','player1'" : target || '',
+      replace: (target?: string) => target || '',
     });
 
     const query = interpolateVariables({
       refId: 'A',
       filters: [
         {
-          columnName: 'playerName',
+          columnName: 'category',
           operator: '=',
-          valueExprs: ['${player}'],
+          valueExprs: ['$category'],
         },
       ],
     });
 
+    // Should expand to quoted literals and switch to IN operator
+    expect(query.filters?.[0].subqueryExpr).toBeUndefined();
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].valueExprs).toEqual(
+      ["'cache'", "'api'", "'null'", "'web'", "'db'", "'queue'"]
+    );
+  });
+
+  test('filter with template variable below threshold — single value — uses normal replace path', () => {
+    // When only 1 value is selected, let templateSrv.replace handle it normally
+    const categories = ['cache', 'api', 'null', 'web', 'db', 'queue'];
+    const variable = makeQueryVariable({
+      name: 'category',
+      pinotQlCode: 'SELECT DISTINCT category FROM highCardinality',
+      options: categories,
+      selected: 'cache', // single value
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target === '$category' ? "'cache'" : target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'category',
+          operator: '=',
+          valueExprs: ['$category'],
+        },
+      ],
+    });
+
+    // Single value — operator and path unchanged
     expect(query.filters?.[0].subqueryExpr).toBeUndefined();
     expect(query.filters?.[0].operator).toBe('=');
-    expect(query.filters?.[0].valueExprs).toEqual(["'player0','player1'"]);
+    expect(query.filters?.[0].valueExprs).toEqual(["'cache'"]);
+  });
+
+  test('multiple filters — high-cardinality gets subquery, low-cardinality gets quoted literals', () => {
+    // This is exactly the screenshot scenario: entity (1501 values) + category (6 values)
+    const entityOptions = generateValues(1501, 'entity');
+    const categories = ['cache', 'api', 'null', 'web', 'db', 'queue'];
+
+    const entityVar = makeQueryVariable({
+      name: 'entity',
+      pinotQlCode: 'SELECT DISTINCT entity FROM highCardinality limit 4000',
+      options: entityOptions,
+      selected: entityOptions, // all 1501 — above threshold
+    });
+    const categoryVar = makeQueryVariable({
+      name: 'category',
+      pinotQlCode: 'SELECT DISTINCT category FROM highCardinality',
+      options: categories,
+      selected: categories, // all 6 — below threshold
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [entityVar, categoryVar] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'entity',
+          operator: '=',
+          valueExprs: ['$entity'],
+        },
+        {
+          columnName: 'category',
+          operator: '=',
+          valueExprs: ['$category'],
+        },
+      ],
+    });
+
+    // entity filter: subquery path
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBe(
+      'SELECT DISTINCT entity FROM highCardinality limit 4000'
+    );
+    expect(query.filters?.[0].valueExprs).toBeUndefined();
+
+    // category filter: literal expansion with IN
+    expect(query.filters?.[1].operator).toBe('in');
+    expect(query.filters?.[1].subqueryExpr).toBeUndefined();
+    expect(query.filters?.[1].valueExprs).toEqual(
+      ["'cache'", "'api'", "'null'", "'web'", "'db'", "'queue'"]
+    );
+
+    // useMultiStageEngine injected because subquery fired for entity
+    expect(query.queryOptions).toEqual(
+      expect.arrayContaining([{ name: 'useMultiStageEngine', value: 'true' }])
+    );
+  });
+
+  test('filter with != operator and multi-value below threshold gets NOT IN with literals', () => {
+    const categories = ['cache', 'api', 'web'];
+    const variable = makeQueryVariable({
+      name: 'category',
+      pinotQlCode: 'SELECT DISTINCT category FROM highCardinality',
+      options: categories,
+      selected: categories,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'category',
+          operator: '!=',
+          valueExprs: ['$category'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('not in');
+    expect(query.filters?.[0].subqueryExpr).toBeUndefined();
+    expect(query.filters?.[0].valueExprs).toEqual(["'cache'", "'api'", "'web'"]);
   });
 
   test('filter with != operator gets mapped to not in', () => {
