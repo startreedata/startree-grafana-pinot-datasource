@@ -39,23 +39,28 @@ export function PinotQlTimeSeriesBuilder(props: {
     onChangeAndRun({ ...savedParams });
   }
 
-  const hasAutoInjectedMse = useRef(false);
+  const queryHasAutoInjectedMultiStageEngineQueryOption = useRef(false);
   useEffect(() => {
-    const injected = interpolatedParams.queryOptions.some(
-      (o) => o.name?.toLowerCase() === 'usemultistageengine' && o.value === 'true'
+    const isMultiStageEngineQueryOptionInjected = interpolatedParams.queryOptions.some(
+      (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine' && queryOption.value === 'true'
     );
-    const saved = savedParams.queryOptions.some(
-      (o) => o.name?.toLowerCase() === 'usemultistageengine'
+    const hasUserAddedMultiStageQueryEngineOption = savedParams.queryOptions.some(
+      (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
     );
-    if (injected && !saved && !hasAutoInjectedMse.current) {
-      hasAutoInjectedMse.current = true;
+    if (isMultiStageEngineQueryOptionInjected && !hasUserAddedMultiStageQueryEngineOption && !queryHasAutoInjectedMultiStageEngineQueryOption.current) {
+      queryHasAutoInjectedMultiStageEngineQueryOption.current = true;
       onChangeAndRun({
         ...savedParams,
         queryOptions: [...savedParams.queryOptions, { name: 'useMultiStageEngine', value: 'true' }],
       });
-    }
-    if (!injected) {
-      hasAutoInjectedMse.current = false;
+    } else if (!isMultiStageEngineQueryOptionInjected && queryHasAutoInjectedMultiStageEngineQueryOption.current) {
+      queryHasAutoInjectedMultiStageEngineQueryOption.current = false;
+      onChangeAndRun({
+        ...savedParams,
+        queryOptions: savedParams.queryOptions.filter((queryOption) => queryOption.name?.toLowerCase() !== 'usemultistageengine'),
+      });
+    } else if (!isMultiStageEngineQueryOptionInjected) {
+      queryHasAutoInjectedMultiStageEngineQueryOption.current = false;
     }
   }, [JSON.stringify(interpolatedParams.queryOptions)]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -213,8 +213,7 @@ func TestTimeSeriesBuilderQuery_RenderSqlWithMacros(t *testing.T) {
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
 
-		want := `SET timeoutMs=1;
-SELECT
+		want := `SELECT
     "dim",
     $__timeGroup("ts", '1:SECONDS') AS $__timeAlias(),
     SUM("my_metric") AS $__metricAlias()
@@ -227,7 +226,9 @@ GROUP BY
     $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;`
+LIMIT 100000;
+
+SET timeoutMs=1;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)
@@ -257,8 +258,7 @@ LIMIT 100000;`
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
 
-		want := `SET timeoutMs=1;
-SELECT
+		want := `SELECT
     "dim",
     $__timeGroup("my_time_column", '1:SECONDS') AS $__timeAlias(),
     COUNT("*") AS $__metricAlias()
@@ -271,7 +271,9 @@ GROUP BY
     $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;`
+LIMIT 100000;
+
+SET timeoutMs=1;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)
@@ -300,8 +302,7 @@ LIMIT 100000;`
 			QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 		}
 
-		want := `SET timeoutMs=1;
-SELECT
+		want := `SELECT
     "my_metric" AS $__metricAlias(),
     "my_time_column" AS $__timeAlias()
 FROM
@@ -310,7 +311,9 @@ WHERE
     "my_metric" IS NOT NULL
     AND $__timeFilter("my_time_column")
 ORDER BY $__timeAlias() DESC
-LIMIT 1000;`
+LIMIT 1000;
+
+SET timeoutMs=1;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)

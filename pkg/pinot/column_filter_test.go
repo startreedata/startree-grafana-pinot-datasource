@@ -20,8 +20,8 @@ func TestColumnFilterExpr(t *testing.T) {
 		{FilterOpLessThan, `("dim"['key'] < 'val1' OR "dim"['key'] < 'val2')`},
 		{FilterOpGreaterThanOrEqual, `("dim"['key'] >= 'val1' OR "dim"['key'] >= 'val2')`},
 		{FilterOpLessThanOrEqual, `("dim"['key'] <= 'val1' OR "dim"['key'] <= 'val2')`},
-		{FilterOpIn, `("dim"['key'] in 'val1' OR "dim"['key'] in 'val2')`},
-		{FilterOpNotIn, `("dim"['key'] not in 'val1' OR "dim"['key'] not in 'val2')`},
+		{FilterOpIn, `("dim"['key'] in ('val1', 'val2'))`},
+		{FilterOpNotIn, `("dim"['key'] not in ('val1', 'val2'))`},
 	}
 	for _, args := range testArgs {
 		t.Run(string(args.operator), func(t *testing.T) {
@@ -33,4 +33,21 @@ func TestColumnFilterExpr(t *testing.T) {
 			}))
 		})
 	}
+
+	t.Run("in — single value produces tuple", func(t *testing.T) {
+		assert.Equal(t, SqlExpr(`("dim"['key'] in ('val1'))`), ColumnFilterExpr(ColumnFilter{
+			ColumnName: "dim",
+			ColumnKey:  "key",
+			Operator:   FilterOpIn,
+			ValueExprs: []string{`'val1'`},
+		}))
+	})
+	t.Run("not in — single value produces tuple", func(t *testing.T) {
+		assert.Equal(t, SqlExpr(`("dim"['key'] not in ('val1'))`), ColumnFilterExpr(ColumnFilter{
+			ColumnName: "dim",
+			ColumnKey:  "key",
+			Operator:   FilterOpNotIn,
+			ValueExprs: []string{`'val1'`},
+		}))
+	})
 }

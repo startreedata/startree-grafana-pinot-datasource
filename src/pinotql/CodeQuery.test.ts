@@ -12,7 +12,6 @@ const newEmptyParams = (): CodeQuery.Params => {
     logColumnAlias: '',
     legend: '',
     seriesLimit: 0,
-    queryOptions: [],
   };
 };
 
@@ -27,7 +26,6 @@ describe('paramsFrom', () => {
       tableName: '',
       timeColumnAlias: '',
       seriesLimit: 0,
-      queryOptions: [],
     });
   });
 
@@ -43,7 +41,6 @@ describe('paramsFrom', () => {
         tableName: 'test_table',
         timeColumnAlias: 'test_time_column_alias',
         seriesLimit: 101,
-        queryOptions: [{ name: 'timeoutMs', value: '100' }],
       })
     ).toEqual<CodeQuery.Params>({
       displayType: 'LOGS',
@@ -54,7 +51,6 @@ describe('paramsFrom', () => {
       tableName: 'test_table',
       timeColumnAlias: 'test_time_column_alias',
       seriesLimit: 101,
-      queryOptions: [{ name: 'timeoutMs', value: '100' }],
     });
   });
 });
@@ -86,7 +82,6 @@ describe('paramsFromTimeSeriesBuilder', () => {
     tableName: 'test_table',
     timeColumnAlias: '',
     seriesLimit: 1,
-    queryOptions: [],
   });
 });
 
@@ -117,7 +112,6 @@ describe('paramsFromLogsBuilder', () => {
     legend: '',
     timeColumnAlias: '',
     seriesLimit: 0,
-    queryOptions: [],
   });
 });
 
@@ -140,7 +134,6 @@ GROUP BY $__timeGroup("timestamp")
 ORDER BY $__timeAlias() DESC
 LIMIT 100000`,
       seriesLimit: 0,
-      queryOptions: [],
     });
   });
 
@@ -154,7 +147,6 @@ LIMIT 100000`,
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
       seriesLimit: 101,
-      queryOptions: [],
     };
     expect(CodeQuery.applyDefaults(params)).toEqual(false);
     expect(params).toEqual<CodeQuery.Params>({
@@ -166,7 +158,6 @@ LIMIT 100000`,
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
       seriesLimit: 101,
-      queryOptions: [],
     });
   });
 });
@@ -198,7 +189,6 @@ describe('dataQueryOf', () => {
       logColumnAlias: 'test_log_column_alias',
       legend: '{{ dim }}',
       seriesLimit: 101,
-      queryOptions: [],
     };
 
     expect(CodeQuery.dataQueryOf({ refId: 'test_id' }, params)).toEqual<PinotDataQuery>({

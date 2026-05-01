@@ -8,6 +8,7 @@ import { PinotVariableQuery } from './PinotVariableQuery';
 import { ComplexField } from './ComplexField';
 import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
+import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -80,55 +81,7 @@ function getSelectedValues(variable: QueryVariableModel): string[] {
   return [];
 }
 
-function escapeSqlString(value: string): string {
-  return value.replace(/'/g, "''");
-}
-
-function extractSubqueryColumn(subquery: string): string | undefined {
-  const match = subquery.match(/SELECT\s+(?:DISTINCT\s+)?["`]?(\w+)["`]?\s+FROM/i);
-  return match?.[1];
-}
-
-function computeSubqueryReplacement(
-  allOptions: string[],
-  selectedValues: string[],
-  subquery: string
-): string | null {
-  const selectedCount = selectedValues.length;
-  const totalCount = allOptions.length;
-
-  if (selectedCount <= IN_CLAUSE_THRESHOLD) {
-    return null;
-  }
-
-  if (selectedCount >= totalCount) {
-    return subquery;
-  }
-
-  const selectedSet = new Set(selectedValues);
-  const excludedValues = allOptions.filter((v) => !selectedSet.has(v));
-
-  if (excludedValues.length > IN_CLAUSE_THRESHOLD) {
-    return subquery;
-  }
-
-  const column = extractSubqueryColumn(subquery);
-  if (!column) {
-    return subquery;
-  }
-
-  const excludedLiterals = excludedValues.map((v) => `'${escapeSqlString(v)}'`).join(', ');
-  const notInClause = `"${column}" NOT IN (${excludedLiterals})`;
-  const hasWhere = /\bWHERE\b/i.test(subquery);
-
-  if (hasWhere) {
-    return `${subquery} AND ${notInClause}`;
-  } else {
-    return `${subquery} WHERE ${notInClause}`;
-  }
-}
-
-export function replaceVariablesWithSubquery(sql: string, variables: TypedVariableModel[]): string {
+export function replaceAllVariableExpressionsWithSubqueries(sql: string, variables: TypedVariableModel[]): string {
   const queryVariables = variables.filter(isQueryVariable);
   if (queryVariables.length === 0) {
     return sql;
@@ -147,7 +100,7 @@ export function replaceVariablesWithSubquery(sql: string, variables: TypedVariab
       continue;
     }
 
-    const replacement = computeSubqueryReplacement(allOptions, selectedValues, subquery);
+    const replacement = buildFilterSubqueryReplacement(allOptions, selectedValues, subquery, IN_CLAUSE_THRESHOLD);
     if (!replacement) {
       continue;
     }
@@ -169,11 +122,17 @@ export function replaceVariablesWithSubquery(sql: string, variables: TypedVariab
   return result;
 }
 
+function appendSetMultiStageEngine(sql: string): string {
+  const trimmed = sql.trimEnd();
+  const separator = trimmed.endsWith(';') ? '\n' : ';\n';
+  return `${trimmed}${separator}\nSET useMultiStageEngine=true;`;
+}
+
 function computeBuilderFilterSubquery(
   valueExprs: string[] | undefined,
   variables: TypedVariableModel[],
   operator: string | undefined
-): { operator: string; subqueryExpr: string } | null {
+): { operator: string; subqueryExpr?: string; valueExprs?: string[] } | null {
   if (!valueExprs || valueExprs.length === 0) {
     return null;
   }
@@ -197,17 +156,23 @@ function computeBuilderFilterSubquery(
 
     const allOptions = getAllOptions(variable);
     const selectedValues = getSelectedValues(variable);
-    if (selectedValues.length <= IN_CLAUSE_THRESHOLD) {
-      continue;
+
+    const filterSubqueryReplacement = buildFilterSubqueryReplacement(allOptions, selectedValues, subquery, IN_CLAUSE_THRESHOLD);
+    if (filterSubqueryReplacement) {
+      const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
+      return { operator: newOperator, subqueryExpr: filterSubqueryReplacement };
     }
 
-    const subqueryExpr = computeSubqueryReplacement(allOptions, selectedValues, subquery);
-    if (!subqueryExpr) {
-      continue;
+    // Below threshold — expand as properly quoted SQL literals rather than letting
+    // templateSrv.replace() produce Grafana's unquoted or {val1,val2,...} format which is not valid SQL.
+    // For multiple values remap operator to in/not in; for a single value keep the original operator.
+    if (selectedValues.length > 1) {
+      const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
+      return { operator: newOperator, valueExprs: selectedValues.map((v) => `'${escapeSqlString(v)}'`) };
     }
-
-    const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
-    return { operator: newOperator, subqueryExpr };
+    if (selectedValues.length === 1) {
+      return { operator: operator ?? '=', valueExprs: [`'${escapeSqlString(selectedValues[0])}'`] };
+    }
   }
 
   return null;
@@ -224,51 +189,71 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
   const replace = (target: string) => templateSrv.replace(target, scopedVars);
   const replaceIfExists = (target?: string | null) => (target ? replace(target) : undefined);
 
-  let subqueryUsed = false;
+  // --- Builder mode: interpolate filters and inject useMultiStageEngine into queryOptions ---
+  function interpolateVariablesInBuilderMode() {
+    let subqueryWasInjected = false;
 
-  const filters = query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => {
-    const subquery = computeBuilderFilterSubquery(valueExprs, variables, operator);
-    if (subquery) {
-      subqueryUsed = true;
+    const filters = query.filters?.map(({ columnName, columnKey, operator, valueExprs }) => {
+      const filterSubqueryReplacement = computeBuilderFilterSubquery(valueExprs, variables, operator);
+      if (filterSubqueryReplacement) {
+        if (filterSubqueryReplacement.subqueryExpr) {
+          subqueryWasInjected = true;
+        }
+        return {
+          columnName: replaceIfExists(columnName),
+          columnKey: replaceIfExists(columnKey),
+          operator: filterSubqueryReplacement.operator,
+          ...(filterSubqueryReplacement.subqueryExpr
+            ? { subqueryExpr: filterSubqueryReplacement.subqueryExpr }
+            : { valueExprs: filterSubqueryReplacement.valueExprs }),
+        };
+      }
       return {
         columnName: replaceIfExists(columnName),
         columnKey: replaceIfExists(columnKey),
-        operator: subquery.operator,
-        subqueryExpr: subquery.subqueryExpr,
+        operator,
+        valueExprs: valueExprs?.map((expr) => replace(expr)),
       };
-    }
-    return {
-      columnName: replaceIfExists(columnName),
-      columnKey: replaceIfExists(columnKey),
-      operator,
-      valueExprs: valueExprs?.map((expr) => replace(expr)),
-    };
-  });
+    });
 
-  let pinotQlCode: string | undefined;
-  if (query.pinotQlCode) {
-    const afterSubquery = replaceVariablesWithSubquery(query.pinotQlCode, variables);
-    if (afterSubquery !== query.pinotQlCode) {
-      subqueryUsed = true;
+    let queryOptions = query.queryOptions?.map(({ name, value }) => ({
+      name: replaceIfExists(name),
+      value: replaceIfExists(value),
+    }));
+
+    if (subqueryWasInjected) {
+      // Check if user has already configured useMultiStageEngine — don't override their explicit setting.
+      const hasUseMultiStageEngineConfigured = queryOptions?.some(
+        (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
+      );
+      if (!hasUseMultiStageEngineConfigured) {
+        queryOptions = [...(queryOptions ?? []), { name: 'useMultiStageEngine', value: 'true' }];
+      }
     }
-    pinotQlCode = replaceIfExists(afterSubquery);
-  } else {
-    pinotQlCode = replaceIfExists(query.pinotQlCode);
+
+    return { filters, queryOptions };
   }
 
-  let queryOptions = query.queryOptions?.map(({ name, value }) => ({
-    name: replaceIfExists(name),
-    value: replaceIfExists(value),
-  }));
+  // --- Code mode: interpolate pinotQlCode and append SET if subquery was injected ---
+  function interpolateVariablesInCodeMode() {
+    let pinotQlCodeAfterSubqueryReplacement = query.pinotQlCode
+      ? replaceAllVariableExpressionsWithSubqueries(query.pinotQlCode, variables)
+      : undefined;
 
-  if (subqueryUsed) {
-    const hasMultistage = queryOptions?.some(
-      (o) => o.name?.toLowerCase() === 'usemultistageengine'
-    );
-    if (!hasMultistage) {
-      queryOptions = [...(queryOptions ?? []), { name: 'useMultiStageEngine', value: 'true' }];
+    if (pinotQlCodeAfterSubqueryReplacement !== undefined &&
+        pinotQlCodeAfterSubqueryReplacement !== query.pinotQlCode) {
+      // Subquery replaced a variable — MSE is required for subquery execution.
+      // Append SET so it's visible in SQL Preview and sent to Pinot.
+      pinotQlCodeAfterSubqueryReplacement = appendSetMultiStageEngine(pinotQlCodeAfterSubqueryReplacement);
+    } else if (pinotQlCodeAfterSubqueryReplacement === undefined) {
+      pinotQlCodeAfterSubqueryReplacement = query.pinotQlCode;
     }
+
+    return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement) };
   }
+
+  const { filters, queryOptions } = interpolateVariablesInBuilderMode();
+  const { pinotQlCode } = interpolateVariablesInCodeMode();
 
   return {
     ...query,

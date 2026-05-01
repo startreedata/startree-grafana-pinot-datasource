@@ -35,6 +35,17 @@ func ColumnFilterExpr(filter ColumnFilter) SqlExpr {
 	}
 
 	columnExpr := ComplexFieldExpr(filter.ColumnName, filter.ColumnKey)
+
+	// in/not in always produce a single tuple expression regardless of value count.
+	if filter.Operator == FilterOpIn || filter.Operator == FilterOpNotIn {
+		tuple := strings.Join(filter.ValueExprs, ", ")
+		if filter.Operator == FilterOpIn {
+			return SqlExpr(fmt.Sprintf(`(%s in (%s))`, columnExpr, tuple))
+		}
+		return SqlExpr(fmt.Sprintf(`(%s not in (%s))`, columnExpr, tuple))
+	}
+
+	// All other operators: apply per value, join with OR.
 	format := func(valueExpr string) string {
 		switch filter.Operator {
 		case FilterOpEquals:
@@ -57,10 +68,6 @@ func ColumnFilterExpr(filter ColumnFilter) SqlExpr {
 			return fmt.Sprintf(`%s >= %s`, columnExpr, valueExpr)
 		case FilterOpLessThanOrEqual:
 			return fmt.Sprintf(`%s <= %s`, columnExpr, valueExpr)
-		case FilterOpIn:
-			return fmt.Sprintf(`%s in %s`, columnExpr, valueExpr)
-		case FilterOpNotIn:
-			return fmt.Sprintf(`%s not in %s`, columnExpr, valueExpr)
 		default:
 			return ""
 		}
@@ -72,7 +79,7 @@ func ColumnFilterExpr(filter ColumnFilter) SqlExpr {
 		if filterExpr == "" {
 			continue
 		}
-		exprs = append(exprs, format(expr))
+		exprs = append(exprs, filterExpr)
 	}
 	if len(exprs) == 0 {
 		return ""

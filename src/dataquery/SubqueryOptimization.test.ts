@@ -1,4 +1,4 @@
-import { replaceVariablesWithSubquery, interpolateVariables } from './PinotDataQuery';
+import { replaceAllVariableExpressionsWithSubqueries, interpolateVariables } from './PinotDataQuery';
 import { setTemplateSrv, TemplateSrv } from '@grafana/runtime';
 import { TypedVariableModel, QueryVariableModel, VariableOption } from '@grafana/data';
 import { VariableType } from '../components/VariableQueryEditor/SelectVariableType';
@@ -43,7 +43,7 @@ function generateValues(count: number, prefix = 'val'): string[] {
   return Array.from({ length: count }, (_, i) => `${prefix}${i}`);
 }
 
-describe('replaceVariablesWithSubquery', () => {
+describe('replaceAllVariableExpressionsWithSubqueries', () => {
   describe('threshold behavior', () => {
     const subquery = 'SELECT DISTINCT playerName FROM baseballStats';
     const allOptions = generateValues(2000, 'player');
@@ -58,7 +58,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(sql);
     });
 
@@ -72,7 +72,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(sql);
     });
 
@@ -86,7 +86,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toContain('SELECT DISTINCT playerName FROM baseballStats');
       expect(result).not.toContain('${player');
     });
@@ -105,7 +105,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(`SELECT * FROM baseballStats WHERE playerName IN (${subquery})`);
     });
 
@@ -118,7 +118,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(`SELECT * FROM baseballStats WHERE playerName IN (${subquery})`);
     });
 
@@ -133,7 +133,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(
         `SELECT * FROM baseballStats WHERE playerName IN (${subquery} WHERE "playerName" NOT IN ('player0', 'player1', 'player2'))`
       );
@@ -151,7 +151,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(`SELECT * FROM baseballStats WHERE playerName IN (${subquery})`);
     });
 
@@ -167,7 +167,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(
         `SELECT * FROM baseballStats WHERE playerName IN (${subqueryWithWhere} AND "playerName" NOT IN ('player5'))`
       );
@@ -188,32 +188,32 @@ describe('replaceVariablesWithSubquery', () => {
     }
 
     test('matches ${var:singlequote} format', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN (${myVar:singlequote})", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN (${myVar:singlequote})", [makeVar('myVar')]);
       expect(result).toBe(`WHERE x IN (${subquery})`);
     });
 
     test('matches ${var:csv} format', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN (${myVar:csv})", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN (${myVar:csv})", [makeVar('myVar')]);
       expect(result).toBe(`WHERE x IN (${subquery})`);
     });
 
     test('matches ${var:pipe} format', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN (${myVar:pipe})", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN (${myVar:pipe})", [makeVar('myVar')]);
       expect(result).toBe(`WHERE x IN (${subquery})`);
     });
 
     test('matches ${var} format', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN (${myVar})", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN (${myVar})", [makeVar('myVar')]);
       expect(result).toBe(`WHERE x IN (${subquery})`);
     });
 
     test('matches $var format', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN ($myVar)", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN ($myVar)", [makeVar('myVar')]);
       expect(result).toBe(`WHERE x IN (${subquery})`);
     });
 
     test('does not match $var when followed by word char', () => {
-      const result = replaceVariablesWithSubquery("WHERE x IN ($myVarExtra)", [makeVar('myVar')]);
+      const result = replaceAllVariableExpressionsWithSubqueries("WHERE x IN ($myVarExtra)", [makeVar('myVar')]);
       expect(result).toBe("WHERE x IN ($myVarExtra)");
     });
   });
@@ -232,7 +232,7 @@ describe('replaceVariablesWithSubquery', () => {
       } as unknown as TypedVariableModel;
 
       const sql = "WHERE x IN (${interval})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(sql);
     });
 
@@ -247,7 +247,7 @@ describe('replaceVariablesWithSubquery', () => {
       (variable.query as any).variableQuery.pinotQlCode = undefined;
 
       const sql = "WHERE x IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(sql);
     });
 
@@ -260,7 +260,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "WHERE x IN (${player})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(sql);
     });
 
@@ -277,7 +277,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "WHERE col IN (${x})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(`WHERE col IN (${weirdSubquery})`);
     });
 
@@ -298,7 +298,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "WHERE a IN (${varA}) AND b IN (${varB})";
-      const result = replaceVariablesWithSubquery(sql, [varA, varB]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [varA, varB]);
       expect(result).toBe(
         "WHERE a IN (SELECT DISTINCT colA FROM tblA) AND b IN (SELECT DISTINCT colB FROM tblB)"
       );
@@ -316,7 +316,7 @@ describe('replaceVariablesWithSubquery', () => {
       });
 
       const sql = "WHERE name IN (${x})";
-      const result = replaceVariablesWithSubquery(sql, [variable]);
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toContain("'O''Brien'");
     });
   });
@@ -587,7 +587,7 @@ describe('interpolateVariables — Code mode subquery optimization', () => {
     });
 
     expect(query.pinotQlCode).toBe(
-      "SELECT * FROM baseballStats WHERE playerName IN (SELECT DISTINCT playerName FROM baseballStats)"
+      "SELECT * FROM baseballStats WHERE playerName IN (SELECT DISTINCT playerName FROM baseballStats);\n\nSET useMultiStageEngine=true;"
     );
   });
 
