@@ -41,8 +41,9 @@ func ColumnFilterExpr(filter ColumnFilter) SqlExpr {
 		tuple := strings.Join(filter.ValueExprs, ", ")
 		if filter.Operator == FilterOpIn {
 			return SqlExpr(fmt.Sprintf(`(%s in (%s))`, columnExpr, tuple))
+		} else if filter.Operator == FilterOpNotIn {
+			return SqlExpr(fmt.Sprintf(`(%s not in (%s))`, columnExpr, tuple))
 		}
-		return SqlExpr(fmt.Sprintf(`(%s not in (%s))`, columnExpr, tuple))
 	}
 
 	// All other operators: apply per value, join with OR.

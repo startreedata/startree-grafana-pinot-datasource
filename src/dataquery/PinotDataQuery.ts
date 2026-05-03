@@ -3,12 +3,13 @@ import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
-import { ScopedVars, TypedVariableModel, QueryVariableModel } from '@grafana/data';
+import { ScopedVars, TypedVariableModel } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
 import { ComplexField } from './ComplexField';
 import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
 import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
+import { isQueryVariable, getVariableSubquery, getAllOptions, getSelectedValues } from './variableQuery.util';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -50,36 +51,6 @@ export interface PinotDataQuery extends DataQuery {
 }
 
 export const IN_CLAUSE_THRESHOLD = 1000;
-
-function isQueryVariable(v: TypedVariableModel): v is QueryVariableModel {
-  return v.type === 'query';
-}
-
-function getVariableSubquery(variable: QueryVariableModel): string | undefined {
-  const varQuery = variable.query as PinotDataQuery | undefined;
-  return varQuery?.variableQuery?.pinotQlCode;
-}
-
-function getAllOptions(variable: QueryVariableModel): string[] {
-  return (variable.options ?? [])
-    .map((opt) => (typeof opt.value === 'string' ? opt.value : ''))
-    .filter((v) => v !== '' && v !== '$__all');
-}
-
-function getSelectedValues(variable: QueryVariableModel): string[] {
-  const current = variable.current;
-  if (!current || !('value' in current)) {
-    return [];
-  }
-  const value = current.value;
-  if (typeof value === 'string') {
-    return value === '$__all' ? getAllOptions(variable) : [value];
-  }
-  if (Array.isArray(value)) {
-    return value.includes('$__all') ? getAllOptions(variable) : value.filter((v) => v !== '$__all');
-  }
-  return [];
-}
 
 export function replaceAllVariableExpressionsWithSubqueries(sql: string, variables: TypedVariableModel[]): string {
   const queryVariables = variables.filter(isQueryVariable);
@@ -123,6 +94,10 @@ export function replaceAllVariableExpressionsWithSubqueries(sql: string, variabl
 }
 
 function appendSetMultiStageEngine(sql: string): string {
+  // Skip if user has already set useMultiStageEngine — respect their explicit value (true or false).
+  if (/SET\s+useMultiStageEngine\s*=/i.test(sql)) {
+    return sql;
+  }
   const trimmed = sql.trimEnd();
   const separator = trimmed.endsWith(';') ? '\n' : ';\n';
   return `${trimmed}${separator}\nSET useMultiStageEngine=true;`;

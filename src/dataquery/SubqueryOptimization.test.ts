@@ -135,7 +135,7 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
       const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(
-        `SELECT * FROM baseballStats WHERE playerName IN (${subquery} WHERE "playerName" NOT IN ('player0', 'player1', 'player2'))`
+        `SELECT * FROM baseballStats WHERE playerName IN (SELECT "playerName" FROM (${subquery}) WHERE "playerName" NOT IN ('player0', 'player1', 'player2'))`
       );
     });
 
@@ -155,7 +155,7 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       expect(result).toBe(`SELECT * FROM baseballStats WHERE playerName IN (${subquery})`);
     });
 
-    test('subquery with existing WHERE clause — appends AND', () => {
+    test('subquery with existing WHERE clause — wraps in derived table', () => {
       const subqueryWithWhere = 'SELECT DISTINCT playerName FROM baseballStats WHERE league = \'MLB\'';
       const excluded = ['player5'];
       const selected = allOptions.filter((v) => !excluded.includes(v));
@@ -169,7 +169,7 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player})";
       const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toBe(
-        `SELECT * FROM baseballStats WHERE playerName IN (${subqueryWithWhere} AND "playerName" NOT IN ('player5'))`
+        `SELECT * FROM baseballStats WHERE playerName IN (SELECT "playerName" FROM (${subqueryWithWhere}) WHERE "playerName" NOT IN ('player5'))`
       );
     });
   });

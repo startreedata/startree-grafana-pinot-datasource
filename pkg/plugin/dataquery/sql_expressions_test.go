@@ -2,9 +2,8 @@ package dataquery
 
 import (
 	"encoding/json"
-	"testing"
-
 	"strings"
+	"testing"
 
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
@@ -78,8 +77,8 @@ func TestFilterExprsFrom(t *testing.T) {
 		`("ArrTime" > -2147483648)`,
 		`("Cancelled" = 0)`,
 		`("Carrier" like 'DL')`,
-		`("Carrier" in 'DL')`,
-		`("Carrier" not in 'DL')`,
+		`("Carrier" in ('DL'))`,
+		`("Carrier" not in ('DL'))`,
 	}, got)
 }
 

@@ -50,11 +50,9 @@ export function buildFilterSubqueryReplacement(
 
   const excludedLiterals = excludedValues.map((v) => `'${escapeSqlString(v)}'`).join(', ');
   const notInClause = `"${column}" NOT IN (${excludedLiterals})`;
-  const hasWhere = /\bWHERE\b/i.test(subquery);
 
-  if (hasWhere) {
-    return `${subquery} AND ${notInClause}`;
-  } else {
-    return `${subquery} WHERE ${notInClause}`;
-  }
+  // Wrap the original subquery in a derived table so the NOT IN filter is applied at the outer level.
+  // This is safe regardless of trailing clauses (LIMIT, ORDER BY, GROUP BY, HAVING) in the inner subquery —
+  // appending WHERE/AND directly would produce invalid SQL like `... LIMIT 4000 WHERE ...`.
+  return `SELECT "${column}" FROM (${subquery}) WHERE ${notInClause}`;
 }

@@ -39,30 +39,45 @@ export function PinotQlTimeSeriesBuilder(props: {
     onChangeAndRun({ ...savedParams });
   }
 
+  // Auto-surface useMultiStageEngine=true in Query Options when a filter variable was replaced with
+  // a subquery (>1000 values). Subqueries require MSE in Pinot, and surfacing the option in the UI
+  // makes it explicit to the user that MSE was enabled. The ref tracks whether *we* added the option,
+  // so we know whether to remove it later when the subquery disappears.
   const queryHasAutoInjectedMultiStageEngineQueryOption = useRef(false);
+  const hasInterpolatedSubqueryFilter = interpolatedParams.filters.some((filter) => Boolean(filter.subqueryExpr));
   useEffect(() => {
-    const isMultiStageEngineQueryOptionInjected = interpolatedParams.queryOptions.some(
-      (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine' && queryOption.value === 'true'
-    );
     const hasUserAddedMultiStageQueryEngineOption = savedParams.queryOptions.some(
       (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
     );
-    if (isMultiStageEngineQueryOptionInjected && !hasUserAddedMultiStageQueryEngineOption && !queryHasAutoInjectedMultiStageEngineQueryOption.current) {
+    if (
+      hasInterpolatedSubqueryFilter &&
+      !hasUserAddedMultiStageQueryEngineOption &&
+      !queryHasAutoInjectedMultiStageEngineQueryOption.current
+    ) {
+      // Branch 1 — auto-add: a subquery filter is present, the user hasn't set MSE explicitly,
+      // and we haven't already auto-added it. Add useMultiStageEngine=true and mark the ref.
       queryHasAutoInjectedMultiStageEngineQueryOption.current = true;
       onChangeAndRun({
         ...savedParams,
         queryOptions: [...savedParams.queryOptions, { name: 'useMultiStageEngine', value: 'true' }],
       });
-    } else if (!isMultiStageEngineQueryOptionInjected && queryHasAutoInjectedMultiStageEngineQueryOption.current) {
+    } else if (!hasInterpolatedSubqueryFilter && queryHasAutoInjectedMultiStageEngineQueryOption.current) {
+      // Branch 2 — auto-remove: subquery is gone (variable selection dropped below threshold or
+      // filter removed) and we previously auto-added the option. Strip it back out and clear the ref.
+      // We only touch the option we added; we never touch one the user set themselves.
       queryHasAutoInjectedMultiStageEngineQueryOption.current = false;
       onChangeAndRun({
         ...savedParams,
-        queryOptions: savedParams.queryOptions.filter((queryOption) => queryOption.name?.toLowerCase() !== 'usemultistageengine'),
+        queryOptions: savedParams.queryOptions.filter(
+          (queryOption) => queryOption.name?.toLowerCase() !== 'usemultistageengine'
+        ),
       });
-    } else if (!isMultiStageEngineQueryOptionInjected) {
+    } else if (!hasInterpolatedSubqueryFilter) {
+      // Branch 3 — reset ref: no subquery filter present and the option (if any) was the user's own.
+      // Reset the ref to false so a future auto-add can fire cleanly when a subquery reappears.
       queryHasAutoInjectedMultiStageEngineQueryOption.current = false;
     }
-  }, [JSON.stringify(interpolatedParams.queryOptions)]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(interpolatedParams.filters)]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

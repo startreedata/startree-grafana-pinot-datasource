@@ -18,16 +18,6 @@ func OrderByExprs(orderByClauses []OrderByClause) []pinot.SqlExpr {
 	return orderByExprs[:]
 }
 
-// subqueryOp maps a filter operator to its IN/NOT IN subquery counterpart.
-func subqueryOp(op pinot.FilterOperator) string {
-	switch op {
-	case pinot.FilterOpNotIn, pinot.FilterOpNotEquals:
-		return "not in"
-	default:
-		return "in"
-	}
-}
-
 func FilterExprsFrom(filters []DimensionFilter) []pinot.SqlExpr {
 	exprs := make([]pinot.SqlExpr, 0, len(filters))
 	for _, filter := range filters {
@@ -37,7 +27,7 @@ func FilterExprsFrom(filters []DimensionFilter) []pinot.SqlExpr {
 			// → ("entity" in (SELECT DISTINCT entity FROM t))
 			// Negating operators (!=, not in) produce NOT IN instead.
 			columnExpr := pinot.ComplexFieldExpr(filter.ColumnName, filter.ColumnKey)
-			op := subqueryOp(pinot.FilterOperator(filter.Operator))
+			op := pinot.GetInOrNotInFromOperator(pinot.FilterOperator(filter.Operator))
 			exprs = append(exprs, pinot.SqlExpr(fmt.Sprintf(`(%s %s (%s))`, columnExpr, op, filter.SubqueryExpr)))
 			continue
 		}

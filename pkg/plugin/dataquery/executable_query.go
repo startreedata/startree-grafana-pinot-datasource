@@ -97,7 +97,6 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			DisplayType:       query.DisplayType,
 			Legend:            query.Legend,
 			SeriesLimit:       query.SeriesLimit,
-			QueryOptions:      query.QueryOptions,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
