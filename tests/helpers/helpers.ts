@@ -98,7 +98,9 @@ async function setTimeWindow(page: Page) {
     .filter({ hasText: 'Type to search (country, city' })
     .nth(1)
     .click();
-  await page.getByText('Coordinated Universal TimeUTC').click();
+  // Two elements match this text (the dropdown list item and the closed-state container);
+  // .first() picks the visible option in the dropdown to satisfy Playwright's strict mode.
+  await page.getByText('Coordinated Universal TimeUTC').first().click();
   await page.getByLabel('Time Range from field').click();
   await page.getByLabel('Time Range from field').fill('2023-01-01');
   await page.getByLabel('Time Range to field').click();
@@ -222,6 +224,81 @@ export async function checkQueryOptionEditor(page: Page) {
 
   await page.getByTestId('delete-query-option-btn').click();
   await expect(page.getByTestId('select-query-option-name')).not.toBeVisible();
+}
+
+/**
+ * Adds a Pinot Query template variable to the current dashboard.
+ *
+ * Opens dashboard settings → Variables → New variable, sets Type=Query, picks
+ * the datasource, switches to the "Sql Query" tab, pastes the SQL into the
+ * Monaco editor, optionally toggles Multi-value / Include All, submits, and
+ * closes the settings dialog.
+ *
+ * Caller must have already navigated to a dashboard.
+ */
+export async function addPinotQueryVariable(
+  page: Page,
+  datasourceName: string,
+  opts: { name: string; sql: string; multi?: boolean; includeAll?: boolean }
+) {
+  // After a previous variable was created via this helper we may still be on the
+  // Variables list with the settings dialog open (Submit + Go Back returns here).
+  // Only open dashboard settings + click the Variables link if we're not already
+  // showing the variables list — otherwise we'd toggle the dialog off and lose
+  // access to the Variables link inside it.
+  const onVariablesList = await page.getByRole('button', { name: 'Variable editor New variable' }).isVisible().catch(() => false);
+  if (!onVariablesList) {
+    // Use the sidebar's "Dashboard settings" link rather than the toolbar cog button —
+    // on a fresh `/dashboard/new` page, Grafana's Add Panel modal occludes the toolbar.
+    await page.getByLabel('Dashboard settings').click();
+    await page.getByRole('link', { name: 'Variables' }).click();
+  }
+
+  if (await page.getByTestId('data-testid Call to action button Add variable').isVisible().catch(() => false)) {
+    await page.getByTestId('data-testid Call to action button Add variable').click();
+  } else {
+    await page.getByRole('button', { name: 'Variable editor New variable' }).click();
+  }
+
+  // Type=Query is the default for new variables, so we don't need to set it.
+  // Set name.
+  await page.getByTestId('data-testid Variable editor Form Name field').fill(opts.name);
+
+  // Pick the datasource — this triggers a /tables fetch.
+  const tablesResponse = page.waitForResponse('/**/resources/tables');
+  await page.getByLabel('Data source picker select').click();
+  await page.getByText(datasourceName).click();
+  await tablesResponse;
+
+  // Switch to "Sql Query" tab. The four type-tabs ('Tables', 'Columns', 'Distinct Values', 'Sql Query')
+  // appear after datasource selection. Use exact: true so we don't match other "Sql Query"-containing text.
+  await expect(page.getByText('Sql Query', { exact: true })).toBeVisible();
+  await page.getByText('Sql Query', { exact: true }).click();
+  const dataQueryResponse = page.waitForResponse('/api/ds/query');
+  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
+  await codebox.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.type(opts.sql);
+  await dataQueryResponse;
+
+  // Wait for "Preview of values" to populate (no longer "None") — without this guard,
+  // submitting before the variable's options arrive results in an empty options list, and
+  // any later "All" selection on the dashboard top bar yields nothing.
+  await expect(page.getByText('None', { exact: true })).not.toBeVisible({ timeout: 10000 });
+
+  // Toggle Multi-value if requested (default off in Grafana). Clicking the parent div
+  // containing the "Multi-value" label is more reliable than the hidden <input type=checkbox>.
+  if (opts.multi) {
+    await page.locator('div').filter({ hasText: /^Multi-value$/ }).nth(2).click();
+  }
+  // Toggle Include All option if requested.
+  if (opts.includeAll) {
+    await page.locator('div').filter({ hasText: /^Include All option$/ }).nth(2).click();
+  }
+
+  await page.getByRole('button', { name: 'Variable editor Submit button' }).click();
+  await page.getByRole('dialog', { name: 'Dashboard settings' }).getByLabel('Go Back').click();
 }
 
 export async function addDashboardConstant(page: Page, name: string, value: string) {

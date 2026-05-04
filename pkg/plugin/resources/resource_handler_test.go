@@ -3,14 +3,13 @@ package resources
 import (
 	"bytes"
 	"encoding/json"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPreviewSqlBuilder(t *testing.T) {

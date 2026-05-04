@@ -107,6 +107,11 @@ func CreateTestTables() {
 		schemaFile: "data/nullValues_schema.json",
 		configFile: "data/nullValues_offline_table_config.json",
 		dataFile:   "data/nullValues_data.json",
+	}, {
+		tableName:  "highCardinality",
+		schemaFile: "data/highCardinality_schema.json",
+		configFile: "data/highCardinality_offline_table_config.json",
+		dataFile:   "data/highCardinality_data.json",
 	}}
 
 	// Store jobs globally for validation on subsequent calls

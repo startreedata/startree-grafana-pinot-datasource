@@ -1,0 +1,27 @@
+{
+  "schemaName": "highCardinality",
+  "dimensionFieldSpecs": [
+    {
+      "name": "entity",
+      "dataType": "STRING"
+    },
+    {
+      "name": "category",
+      "dataType": "STRING"
+    }
+  ],
+  "metricFieldSpecs": [
+    {
+      "name": "value",
+      "dataType": "DOUBLE"
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "ts",
+      "dataType": "TIMESTAMP",
+      "format": "1:MILLISECONDS:EPOCH",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}
