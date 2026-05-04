@@ -187,15 +187,17 @@ async function addPanelWithVariableFilter(
   opts: { table: string; timeColumn: string; filterColumn: string; operator: string; filterValue: string }
 ) {
   await page.getByLabel('Add new panel', { exact: true }).click();
+  // Arm the /tables wait BEFORE selecting the datasource — Grafana fires the request once
+  // during datasource selection, so setting up the wait afterwards races and times out in CI.
+  const tablesResponse = page.waitForResponse('/**/resources/tables');
   await selectDatasource(page, datasourceName);
+  await tablesResponse;
 
   await page.getByTestId('select-query-type').getByText('PinotQL').click();
   await page.getByTestId('select-editor-mode').getByText('Builder').click();
 
-  const tablesResponse = page.waitForResponse('/**/resources/tables');
   await page.getByTestId('select-table-dropdown').click();
   await page.getByLabel('Select options menu').getByText(opts.table, { exact: true }).click();
-  await tablesResponse;
 
   await page.getByTestId('select-time-column-dropdown').click();
   await page.getByLabel('Select options menu').getByText(opts.timeColumn, { exact: true }).click();
