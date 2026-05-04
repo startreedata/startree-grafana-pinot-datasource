@@ -622,4 +622,82 @@ describe('interpolateVariables — Code mode subquery optimization', () => {
     // then templateSrv.replace handles the normal expansion
     expect(query.pinotQlCode).toContain('player');
   });
+
+  test('pinotQlCode with existing SET useMultiStageEngine=true is not duplicated', () => {
+    const allOptions = generateValues(2000, 'player');
+    const variable = makeQueryVariable({
+      name: 'player',
+      pinotQlCode: 'SELECT DISTINCT playerName FROM baseballStats',
+      options: allOptions,
+      selected: allOptions,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      pinotQlCode:
+        "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote});\nSET useMultiStageEngine=true;",
+    });
+
+    const matches = query.pinotQlCode?.match(/SET\s+useMultiStageEngine/gi) ?? [];
+    expect(matches.length).toBe(1);
+  });
+
+  test('pinotQlCode with explicit SET useMultiStageEngine=false is preserved (not overridden)', () => {
+    const allOptions = generateValues(2000, 'player');
+    const variable = makeQueryVariable({
+      name: 'player',
+      pinotQlCode: 'SELECT DISTINCT playerName FROM baseballStats',
+      options: allOptions,
+      selected: allOptions,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      pinotQlCode:
+        "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote});\nSET useMultiStageEngine=false;",
+    });
+
+    expect(query.pinotQlCode).toContain('SET useMultiStageEngine=false;');
+    expect(query.pinotQlCode).not.toContain('SET useMultiStageEngine=true;');
+  });
+
+  test('SET useMultiStageEngine match is case-insensitive', () => {
+    const allOptions = generateValues(2000, 'player');
+    const variable = makeQueryVariable({
+      name: 'player',
+      pinotQlCode: 'SELECT DISTINCT playerName FROM baseballStats',
+      options: allOptions,
+      selected: allOptions,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      pinotQlCode:
+        "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote});\nset usemultistageengine = true;",
+    });
+
+    const matches = query.pinotQlCode?.match(/SET\s+useMultiStageEngine/gi) ?? [];
+    expect(matches.length).toBe(1);
+  });
 });
