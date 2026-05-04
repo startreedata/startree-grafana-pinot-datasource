@@ -8,13 +8,24 @@ export function extractColumnNameFromSubquery(subquery: string): string | undefi
 }
 
 /**
- * Determines which form of subquery to use as a filter replacement:
- *  - Below threshold (≤1000 selected): returns null — the variable reference is left
- *    as-is and the template service later expands it to quoted literals.
- *  - All values selected: returns the raw subquery unchanged (no extra WHERE filtering needed).
- *  - Most values selected, excluded set ≤1000: returns subquery + NOT IN (excluded values) —
- *    avoids a huge IN clause by filtering out the small excluded set instead.
- *  - Excluded set too large to enumerate: falls back to the raw subquery.
+ * Decides whether to replace a variable's IN-clause expansion with a subquery.
+ *
+ * @param allOptions     The full set of distinct values returned by the variable's backing query.
+ * @param selectedValues The subset of values currently selected in the variable dropdown.
+ * @param subquery       The variable's backing SQL (already trimmed of trailing `;`).
+ * @param threshold      Maximum number of values the IN clause should ever literal-expand to.
+ *
+ * @returns
+ *   - `null` if the optimization should be skipped (caller should expand as literal IN clause):
+ *     * `selectedCount <= threshold` — the IN clause is small enough to expand directly.
+ *     * Excluded set fits the threshold but the subquery's column can't be parsed (we'd silently
+ *       broaden the filter to all values and drop the user's exclusions, which is incorrect).
+ *   - The raw subquery if all values are selected (no extra filtering needed).
+ *   - The raw subquery as a last-resort fallback when the excluded set itself exceeds the
+ *     threshold — this DOES broaden the filter (matches all values, ignoring user's exclusions),
+ *     but is preferable to a multi-MB IN clause that hangs the broker. See deferred work in PR #184.
+ *   - A wrapped subquery `SELECT col FROM (subquery) WHERE col NOT IN (excluded...)` when the
+ *     excluded set fits the threshold and the column name was extracted successfully.
  */
 export function buildFilterSubqueryReplacement(
   allOptions: string[],
@@ -37,15 +48,19 @@ export function buildFilterSubqueryReplacement(
   const excludedValues = allOptions.filter((v) => !selectedSet.has(v));
 
   if (excludedValues.length > threshold) {
+    // Both the selected and excluded sets exceed the threshold — neither IN nor NOT IN can be
+    // expressed in a small enough literal list. Return the raw subquery (matches all values,
+    // dropping the user's exclusions) rather than emit a multi-MB IN clause that breaks the broker.
     return subquery;
   }
 
-  // If the subquery pattern is too complex to parse (e.g. multi-column SELECT,
-  // subquery expressions, or aliased columns), we can't build a NOT IN clause safely,
-  // so return the original subquery unchanged.
+  // If the subquery pattern is too complex to parse (e.g. multi-column SELECT, JSON_EXTRACT_SCALAR,
+  // aliased columns), we can't build a safe NOT IN wrap. Returning the raw subquery here would
+  // silently match ALL values and drop the user's exclusions — incorrect — so return null instead
+  // and let the caller fall back to the literal-expansion path.
   const column = extractColumnNameFromSubquery(subquery);
   if (!column) {
-    return subquery;
+    return null;
   }
 
   const excludedLiterals = excludedValues.map((v) => `'${escapeSqlString(v)}'`).join(', ');

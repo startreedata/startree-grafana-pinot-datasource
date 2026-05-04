@@ -173,4 +173,29 @@ func TestFilterExprsFrom_SubqueryExpr(t *testing.T) {
 			`("playerName" in (SELECT DISTINCT playerName FROM baseballStats))`,
 		}, got)
 	})
+
+	t.Run("subqueryExpr with empty column or operator is skipped", func(t *testing.T) {
+		// User is mid-edit: the filter has subqueryExpr (auto-injected by interpolateVariables)
+		// but ColumnName/Operator aren't populated yet. Without this guard we'd render
+		// `("" in (subquery))` and break SQL preview / resource requests.
+		filters := []DimensionFilter{
+			{
+				Operator:     "in",
+				SubqueryExpr: "SELECT DISTINCT entity FROM t",
+			},
+			{
+				ColumnName:   "entity",
+				SubqueryExpr: "SELECT DISTINCT entity FROM t",
+			},
+			{
+				ColumnName:   "valid",
+				Operator:     "in",
+				SubqueryExpr: "SELECT DISTINCT entity FROM t",
+			},
+		}
+		got := FilterExprsFrom(filters)
+		assert.EqualValues(t, []pinot.SqlExpr{
+			`("valid" in (SELECT DISTINCT entity FROM t))`,
+		}, got)
+	})
 }

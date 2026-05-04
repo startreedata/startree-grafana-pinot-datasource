@@ -52,6 +52,17 @@ export interface PinotDataQuery extends DataQuery {
 
 export const IN_CLAUSE_THRESHOLD = 1000;
 
+/**
+ * Replaces variable references inside `IN (...)` or `NOT IN (...)` filter positions with the
+ * variable's backing subquery, but only when the variable's selection exceeds the threshold
+ * (otherwise null is returned and the variable is left for `templateSrv.replace()` to handle).
+ *
+ * Replacement is intentionally restricted to IN/NOT IN contexts because the subquery is only
+ * syntactically valid in those positions. Replacing in `WHERE col = ${var}` would produce
+ * invalid SQL like `WHERE col = SELECT ...`.
+ *
+ * Supported variable formats: `${var:singlequote}`, `${var:csv}`, `${var:pipe}`, `${var}`, `$var`.
+ */
 export function replaceAllVariableExpressionsWithSubqueries(sql: string, variables: TypedVariableModel[]): string {
   const queryVariables = variables.filter(isQueryVariable);
   if (queryVariables.length === 0) {
@@ -77,16 +88,19 @@ export function replaceAllVariableExpressionsWithSubqueries(sql: string, variabl
     }
 
     const name = variable.name;
-    const patterns = [
-      new RegExp(`\\$\\{${name}:singlequote\\}`, 'g'),
-      new RegExp(`\\$\\{${name}:csv\\}`, 'g'),
-      new RegExp(`\\$\\{${name}:pipe\\}`, 'g'),
-      new RegExp(`\\$\\{${name}\\}`, 'g'),
-      new RegExp(`\\$${name}(?![\\w])`, 'g'),
+    // Each pattern captures the leading `IN (` (or `NOT IN (`) plus whitespace as $1, the variable
+    // reference itself, and the trailing `)` plus whitespace as $2 — so we substitute the subquery
+    // in place of the variable reference while leaving the surrounding IN(...) syntax untouched.
+    const wrappedPatterns = [
+      new RegExp(`(\\b(?:NOT\\s+)?IN\\s*\\(\\s*)\\$\\{${name}:singlequote\\}(\\s*\\))`, 'gi'),
+      new RegExp(`(\\b(?:NOT\\s+)?IN\\s*\\(\\s*)\\$\\{${name}:csv\\}(\\s*\\))`, 'gi'),
+      new RegExp(`(\\b(?:NOT\\s+)?IN\\s*\\(\\s*)\\$\\{${name}:pipe\\}(\\s*\\))`, 'gi'),
+      new RegExp(`(\\b(?:NOT\\s+)?IN\\s*\\(\\s*)\\$\\{${name}\\}(\\s*\\))`, 'gi'),
+      new RegExp(`(\\b(?:NOT\\s+)?IN\\s*\\(\\s*)\\$${name}(?![\\w])(\\s*\\))`, 'gi'),
     ];
 
-    for (const pattern of patterns) {
-      result = result.replace(pattern, replacement);
+    for (const pattern of wrappedPatterns) {
+      result = result.replace(pattern, `$1${replacement}$2`);
     }
   }
 
@@ -94,15 +108,36 @@ export function replaceAllVariableExpressionsWithSubqueries(sql: string, variabl
 }
 
 function appendSetMultiStageEngine(sql: string): string {
-  // Skip if user has already set useMultiStageEngine — respect their explicit value (true or false).
-  if (/SET\s+useMultiStageEngine\s*=/i.test(sql)) {
+  // Skip if user has already set useMultistageEngine — respect their explicit value (true or false).
+  // Match is case-insensitive so we honor either useMultiStageEngine or useMultistageEngine spellings.
+  if (/SET\s+useMultistageEngine\s*=/i.test(sql)) {
     return sql;
   }
   const trimmed = sql.trimEnd();
   const separator = trimmed.endsWith(';') ? '\n' : ';\n';
-  return `${trimmed}${separator}\nSET useMultiStageEngine=true;`;
+  return `${trimmed}${separator}\nSET useMultistageEngine=true;`;
 }
 
+/**
+ * Computes the SQL filter replacement for a Builder-mode filter row that references a Pinot
+ * query variable, returning the right output for the current selection size.
+ *
+ * @param valueExprs The filter row's existing value expressions (typically `["${var}"]`).
+ *                   Currently the loop returns on the first variable match — mixed filters
+ *                   like `["'manual'", "$var"]` aren't supported (deferred).
+ * @param variables  The dashboard's template variables from `getTemplateSrv()`.
+ * @param operator   The filter operator from the row (`=`, `!=`, `in`, `not in`, etc.).
+ *
+ * @returns
+ *   - `null` if the filter doesn't reference a Pinot query variable, or the variable has no
+ *     selection — caller falls back to standard `templateSrv.replace()` interpolation.
+ *   - `{ operator, subqueryExpr }` when the variable's selection exceeds the threshold:
+ *     the filter renders as `(col in (subquery))` or `(col not in (subquery))` on the backend.
+ *     For multi-value selections the operator is remapped (`=`/`in` → `in`, `!=`/`not in` → `not in`).
+ *   - `{ operator, valueExprs }` when the selection is below threshold: the values are returned
+ *     as quoted SQL literals, ready for `ColumnFilterExpr` to render `(col in ('a', 'b'))`.
+ *     Single-value selections preserve the original operator (so `=` stays `=`, not `in`).
+ */
 function computeBuilderFilterSubquery(
   valueExprs: string[] | undefined,
   variables: TypedVariableModel[],
@@ -197,12 +232,12 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
     }));
 
     if (subqueryWasInjected) {
-      // Check if user has already configured useMultiStageEngine — don't override their explicit setting.
+      // Check if user has already configured useMultistageEngine — don't override their explicit setting.
       const hasUseMultiStageEngineConfigured = queryOptions?.some(
         (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
       );
       if (!hasUseMultiStageEngineConfigured) {
-        queryOptions = [...(queryOptions ?? []), { name: 'useMultiStageEngine', value: 'true' }];
+        queryOptions = [...(queryOptions ?? []), { name: 'useMultistageEngine', value: 'true' }];
       }
     }
 

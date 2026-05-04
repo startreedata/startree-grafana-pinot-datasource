@@ -26,6 +26,11 @@ func FilterExprsFrom(filters []DimensionFilter) []pinot.SqlExpr {
 			// e.g. { columnName: "entity", operator: "in", subqueryExpr: "SELECT DISTINCT entity FROM t" }
 			// → ("entity" in (SELECT DISTINCT entity FROM t))
 			// Negating operators (!=, not in) produce NOT IN instead.
+			// Skip the row if the user is mid-edit and column/operator aren't populated yet — otherwise
+			// we'd render `("" in (subquery))` and break SQL preview / resource requests.
+			if filter.ColumnName == "" || filter.Operator == "" {
+				continue
+			}
 			columnExpr := pinot.ComplexFieldExpr(filter.ColumnName, filter.ColumnKey)
 			op := pinot.GetInOrNotInFromOperator(pinot.FilterOperator(filter.Operator))
 			exprs = append(exprs, pinot.SqlExpr(fmt.Sprintf(`(%s %s (%s))`, columnExpr, op, filter.SubqueryExpr)))

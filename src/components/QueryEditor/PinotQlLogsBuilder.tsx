@@ -12,6 +12,7 @@ import { SelectJsonExtractors } from './SelectJsonExtractors';
 import { SelectMetadataColumns } from './SelectMetadataColumns';
 import { SelectRegexpExtractors } from './SelectRegexpExtractors';
 import { LogsBuilder } from '../../pinotql';
+import { useAutoSurfaceMultiStageEngine } from './useAutoSurfaceMultiStageEngine';
 
 export function PinotQlLogsBuilder(props: {
   savedParams: LogsBuilder.Params;
@@ -36,6 +37,8 @@ export function PinotQlLogsBuilder(props: {
       onChangeAndRun({ ...savedParams });
     }
   });
+
+  useAutoSurfaceMultiStageEngine(savedParams, interpolatedParams, onChangeAndRun);
 
   return (
     <>

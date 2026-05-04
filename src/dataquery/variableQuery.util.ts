@@ -5,9 +5,15 @@ export function isQueryVariable(v: TypedVariableModel): v is QueryVariableModel 
   return v.type === 'query';
 }
 
+/**
+ * Returns the variable's backing Pinot SQL with trailing whitespace and a single
+ * trailing `;` stripped. The trailing semicolon is fine when the SQL runs as a
+ * standalone statement, but breaks when the SQL is injected as a subquery
+ * (e.g. `IN (SELECT ... LIMIT 4000;)`), so we normalize it here.
+ */
 export function getVariableSubquery(variable: QueryVariableModel): string | undefined {
   const varQuery = variable.query as PinotDataQuery | undefined;
-  return varQuery?.variableQuery?.pinotQlCode;
+  return varQuery?.variableQuery?.pinotQlCode?.trim().replace(/;\s*$/, '');
 }
 
 export function getAllOptions(variable: QueryVariableModel): string[] {

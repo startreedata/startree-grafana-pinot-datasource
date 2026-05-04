@@ -264,7 +264,11 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       expect(result).toBe(sql);
     });
 
-    test('unparseable subquery column — falls back to pure subquery', () => {
+    test('unparseable subquery column with excluded values — skips optimization (returns null)', () => {
+      // Some-but-not-all selected (~50% excluded) where the subquery's first column can't be parsed
+      // (e.g. `SELECT *` or aliased columns). Returning the raw subquery here would silently match
+      // ALL values and drop the user's exclusions, so we now skip the optimization entirely and
+      // leave the variable reference for templateSrv.replace() to handle as a literal IN clause.
       const weirdSubquery = 'SELECT * FROM tbl';
       const allOptions = generateValues(2000);
       const excluded = ['val0'];
@@ -274,6 +278,23 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
         pinotQlCode: weirdSubquery,
         options: allOptions,
         selected,
+      });
+
+      const sql = "WHERE col IN (${x})";
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
+      expect(result).toBe("WHERE col IN (${x})");
+    });
+
+    test('unparseable subquery column with all selected — returns raw subquery', () => {
+      // When every value is selected, no NOT IN filter is needed, so the column-parse failure
+      // doesn't matter — we just inject the raw subquery.
+      const weirdSubquery = 'SELECT * FROM tbl';
+      const allOptions = generateValues(2000);
+      const variable = makeQueryVariable({
+        name: 'x',
+        pinotQlCode: weirdSubquery,
+        options: allOptions,
+        selected: allOptions,
       });
 
       const sql = "WHERE col IN (${x})";
@@ -318,6 +339,59 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       const sql = "WHERE name IN (${x})";
       const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
       expect(result).toContain("'O''Brien'");
+    });
+
+    test('variable backing SQL with trailing semicolon — semicolon stripped before injection', () => {
+      // Variables created via the SQL Query tab often end with `;`. If we inject the SQL as a
+      // subquery without stripping the `;`, Pinot rejects `IN (SELECT ... LIMIT N;)` as a syntax
+      // error. Verify getVariableSubquery strips the trailing `;` (and surrounding whitespace).
+      const subquery = 'SELECT DISTINCT entity FROM highCardinality LIMIT 4000';
+      const allOptions = generateValues(2000, 'entity');
+      const variable = makeQueryVariable({
+        name: 'entity',
+        pinotQlCode: `${subquery};  \n`,
+        options: allOptions,
+        selected: allOptions,
+      });
+
+      const sql = "WHERE entity IN (${entity})";
+      const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
+      expect(result).toBe(`WHERE entity IN (${subquery})`);
+      expect(result).not.toContain(';)');
+    });
+
+    test('variable reference outside IN(...) context is NOT replaced (code-mode contextual safety)', () => {
+      // Pre-fix, every occurrence of ${var} got rewritten to the subquery, so
+      // `WHERE col = ${var}` became `WHERE col = SELECT ...` which is invalid SQL. The fix
+      // restricts the replacement to references inside `IN (...)` / `NOT IN (...)` only.
+      const subquery = 'SELECT DISTINCT entity FROM highCardinality';
+      const allOptions = generateValues(2000, 'entity');
+      const variable = makeQueryVariable({
+        name: 'entity',
+        pinotQlCode: subquery,
+        options: allOptions,
+        selected: allOptions,
+      });
+
+      // Equality position — must NOT be rewritten.
+      const equalitySql = "WHERE entity = ${entity}";
+      expect(replaceAllVariableExpressionsWithSubqueries(equalitySql, [variable])).toBe(equalitySql);
+
+      // SELECT projection — must NOT be rewritten.
+      const selectSql = "SELECT ${entity} AS first_entity FROM tbl LIMIT 1";
+      expect(replaceAllVariableExpressionsWithSubqueries(selectSql, [variable])).toBe(selectSql);
+
+      // IN (...) — must be rewritten.
+      const inSql = "WHERE entity IN (${entity})";
+      expect(replaceAllVariableExpressionsWithSubqueries(inSql, [variable])).toBe(
+        `WHERE entity IN (${subquery})`
+      );
+
+      // NOT IN (...) — must also be rewritten.
+      const notInSql = "WHERE entity NOT IN (${entity})";
+      expect(replaceAllVariableExpressionsWithSubqueries(notInSql, [variable])).toBe(
+        `WHERE entity NOT IN (${subquery})`
+      );
     });
   });
 });
@@ -490,9 +564,9 @@ describe('interpolateVariables — Builder mode subquery optimization', () => {
       ["'cache'", "'api'", "'null'", "'web'", "'db'", "'queue'"]
     );
 
-    // useMultiStageEngine injected because subquery fired for entity
+    // useMultistageEngine injected because subquery fired for entity (canonical Pinot option name)
     expect(query.queryOptions).toEqual(
-      expect.arrayContaining([{ name: 'useMultiStageEngine', value: 'true' }])
+      expect.arrayContaining([{ name: 'useMultistageEngine', value: 'true' }])
     );
   });
 
@@ -587,7 +661,7 @@ describe('interpolateVariables — Code mode subquery optimization', () => {
     });
 
     expect(query.pinotQlCode).toBe(
-      "SELECT * FROM baseballStats WHERE playerName IN (SELECT DISTINCT playerName FROM baseballStats);\n\nSET useMultiStageEngine=true;"
+      "SELECT * FROM baseballStats WHERE playerName IN (SELECT DISTINCT playerName FROM baseballStats);\n\nSET useMultistageEngine=true;"
     );
   });
 
