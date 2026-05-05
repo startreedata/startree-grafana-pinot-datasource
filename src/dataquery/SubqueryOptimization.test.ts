@@ -632,6 +632,228 @@ describe('interpolateVariables — Builder mode subquery optimization', () => {
     expect(query.filters?.[0].operator).toBe('not in');
     expect(query.filters?.[0].subqueryExpr).toBeDefined();
   });
+
+  // ---- Mixed and multi-variable filter rows ---------------------------------
+
+  test('mixed literal + above-threshold variable — combined via UNION ALL', () => {
+    const subquery = 'SELECT DISTINCT entity FROM highCardinality LIMIT 4000';
+    const allOptions = generateValues(2000, 'entity');
+    const variable = makeQueryVariable({
+      name: 'entity',
+      pinotQlCode: subquery,
+      options: allOptions,
+      selected: allOptions,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'entity',
+          operator: '=',
+          valueExprs: ["'entity_0000'", '$entity'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBe(
+      `SELECT * FROM (${subquery}) UNION ALL SELECT 'entity_0000'`
+    );
+    expect(query.filters?.[0].valueExprs).toBeUndefined();
+  });
+
+  test('mixed literal + below-threshold variable — combined into single IN literal list', () => {
+    const categories = ['cache', 'api', 'web'];
+    const variable = makeQueryVariable({
+      name: 'category',
+      pinotQlCode: 'SELECT DISTINCT category FROM highCardinality',
+      options: categories,
+      selected: categories,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'category',
+          operator: '=',
+          valueExprs: ["'manual'", '$category'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBeUndefined();
+    expect(query.filters?.[0].valueExprs).toEqual(["'manual'", "'cache'", "'api'", "'web'"]);
+  });
+
+  test('two above-threshold variables — combined via UNION ALL of subqueries', () => {
+    const subqueryA = 'SELECT DISTINCT a FROM tblA';
+    const subqueryB = 'SELECT DISTINCT b FROM tblB';
+    const allA = generateValues(2000, 'a');
+    const allB = generateValues(2000, 'b');
+    const varA = makeQueryVariable({ name: 'varA', pinotQlCode: subqueryA, options: allA, selected: allA });
+    const varB = makeQueryVariable({ name: 'varB', pinotQlCode: subqueryB, options: allB, selected: allB });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [varA, varB] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'col',
+          operator: '=',
+          valueExprs: ['$varA', '$varB'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBe(
+      `SELECT * FROM (${subqueryA}) UNION ALL SELECT * FROM (${subqueryB})`
+    );
+    expect(query.filters?.[0].valueExprs).toBeUndefined();
+  });
+
+  test('two below-threshold variables — combined into single IN literal list', () => {
+    const colors = ['red', 'blue'];
+    const sizes = ['small', 'large'];
+    const colorVar = makeQueryVariable({ name: 'color', pinotQlCode: 'SELECT DISTINCT color FROM tbl', options: colors, selected: colors });
+    const sizeVar = makeQueryVariable({ name: 'size', pinotQlCode: 'SELECT DISTINCT size FROM tbl', options: sizes, selected: sizes });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [colorVar, sizeVar] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'attr',
+          operator: '=',
+          valueExprs: ['$color', '$size'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBeUndefined();
+    expect(query.filters?.[0].valueExprs).toEqual(["'red'", "'blue'", "'small'", "'large'"]);
+  });
+
+  test('mixed: one above-threshold + one below-threshold variable — UNION ALL with literal SELECT rows', () => {
+    const bigSubquery = 'SELECT DISTINCT entity FROM highCardinality';
+    const big = generateValues(2000, 'entity');
+    const smallOpts = ['cache', 'api'];
+    const bigVar = makeQueryVariable({ name: 'bigVar', pinotQlCode: bigSubquery, options: big, selected: big });
+    const smallVar = makeQueryVariable({ name: 'smallVar', pinotQlCode: 'SELECT DISTINCT category FROM tbl', options: smallOpts, selected: smallOpts });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [bigVar, smallVar] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'col',
+          operator: '=',
+          valueExprs: ['$bigVar', '$smallVar'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].subqueryExpr).toBe(
+      `SELECT * FROM (${bigSubquery}) UNION ALL SELECT 'cache' UNION ALL SELECT 'api'`
+    );
+    expect(query.filters?.[0].valueExprs).toBeUndefined();
+  });
+
+  test('mixed literal + above-threshold variable with != operator — maps to NOT IN', () => {
+    const subquery = 'SELECT DISTINCT entity FROM highCardinality LIMIT 4000';
+    const allOptions = generateValues(2000, 'entity');
+    const variable = makeQueryVariable({
+      name: 'entity',
+      pinotQlCode: subquery,
+      options: allOptions,
+      selected: allOptions,
+    });
+
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable] as unknown as TypedVariableModel[],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'entity',
+          operator: '!=',
+          valueExprs: ["'entity_0000'", '$entity'],
+        },
+      ],
+    });
+
+    expect(query.filters?.[0].operator).toBe('not in');
+    expect(query.filters?.[0].subqueryExpr).toBe(
+      `SELECT * FROM (${subquery}) UNION ALL SELECT 'entity_0000'`
+    );
+  });
+
+  test('only literals (no Pinot variables) — returns null so existing path handles it', () => {
+    setTemplateSrv({
+      containsTemplate: () => false,
+      getVariables: () => [],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target || '',
+    });
+
+    const query = interpolateVariables({
+      refId: 'A',
+      filters: [
+        {
+          columnName: 'status',
+          operator: 'in',
+          valueExprs: ["'a'", "'b'"],
+        },
+      ],
+    });
+
+    // Operator and valueExprs left as the user wrote them — no remapping or substitution.
+    expect(query.filters?.[0].operator).toBe('in');
+    expect(query.filters?.[0].valueExprs).toEqual(["'a'", "'b'"]);
+    expect(query.filters?.[0].subqueryExpr).toBeUndefined();
+  });
 });
 
 describe('interpolateVariables — Code mode subquery optimization', () => {

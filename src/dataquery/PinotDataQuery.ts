@@ -119,24 +119,27 @@ function appendSetMultiStageEngine(sql: string): string {
 }
 
 /**
- * Computes the SQL filter replacement for a Builder-mode filter row that references a Pinot
- * query variable, returning the right output for the current selection size.
+ * Computes the SQL filter replacement for a Builder-mode filter row, aggregating ALL entries
+ * in `valueExprs` (any mix of plain literals + Pinot query variable references) into a single
+ * filter that includes everything the user picked.
  *
- * @param valueExprs The filter row's existing value expressions (typically `["${var}"]`).
- *                   Currently the loop returns on the first variable match — mixed filters
- *                   like `["'manual'", "$var"]` aren't supported (deferred).
+ * @param valueExprs The filter row's existing value expressions, e.g. `["'lit'"]`,
+ *                   `["${var}"]`, or mixed like `["'lit'", "$varA", "$varB"]`.
  * @param variables  The dashboard's template variables from `getTemplateSrv()`.
  * @param operator   The filter operator from the row (`=`, `!=`, `in`, `not in`, etc.).
  *
  * @returns
- *   - `null` if the filter doesn't reference a Pinot query variable, or the variable has no
- *     selection — caller falls back to standard `templateSrv.replace()` interpolation.
- *   - `{ operator, subqueryExpr }` when the variable's selection exceeds the threshold:
- *     the filter renders as `(col in (subquery))` or `(col not in (subquery))` on the backend.
- *     For multi-value selections the operator is remapped (`=`/`in` → `in`, `!=`/`not in` → `not in`).
- *   - `{ operator, valueExprs }` when the selection is below threshold: the values are returned
- *     as quoted SQL literals, ready for `ColumnFilterExpr` to render `(col in ('a', 'b'))`.
- *     Single-value selections preserve the original operator (so `=` stays `=`, not `in`).
+ *   - `null` if no Pinot query variable was found and no expansion happened — caller falls
+ *     back to the standard `templateSrv.replace()` per-value interpolation.
+ *   - `{ operator, subqueryExpr }` when at least one Pinot query variable's selection exceeds
+ *     the threshold. All entries are combined via `UNION ALL` — each subquery wrapped as
+ *     `SELECT * FROM (subquery)` and each literal wrapped as `SELECT 'literal'` — and the
+ *     filter renders as `(col in (UNION_ALL_RESULT))` on the backend. Operator is remapped
+ *     to `in` / `not in`.
+ *   - `{ operator, valueExprs }` when all variables (if any) are below threshold. The output
+ *     `valueExprs` is the union of plain literals and the variables' expanded literals.
+ *     Single-value results preserve the original operator (so `=` stays `=`); multi-value
+ *     results remap to `in` / `not in`.
  */
 function computeBuilderFilterSubquery(
   valueExprs: string[] | undefined,
@@ -147,42 +150,82 @@ function computeBuilderFilterSubquery(
     return null;
   }
 
+  // Plain literals from the input (or unhandled variables we leave for the fallback path).
+  const literalExprs: string[] = [];
+  // Quoted literal expansions from below-threshold Pinot query variables.
+  const expandedLiterals: string[] = [];
+  // Subquery strings from above-threshold Pinot query variables.
+  const subqueryParts: string[] = [];
+  let anyPinotVariableHandled = false;
+
   for (const expr of valueExprs) {
     const varMatch = expr.match(/\$\{?(\w+)/);
     if (!varMatch) {
+      literalExprs.push(expr);
       continue;
     }
-
-    const varName = varMatch[1];
-    const variable = variables.find((v) => v.name === varName);
+    const variable = variables.find((v) => v.name === varMatch[1]);
     if (!variable || !isQueryVariable(variable)) {
+      literalExprs.push(expr);
       continue;
     }
-
     const subquery = getVariableSubquery(variable);
     if (!subquery) {
+      literalExprs.push(expr);
       continue;
     }
-
     const allOptions = getAllOptions(variable);
     const selectedValues = getSelectedValues(variable);
 
     const filterSubqueryReplacement = buildFilterSubqueryReplacement(allOptions, selectedValues, subquery, IN_CLAUSE_THRESHOLD);
     if (filterSubqueryReplacement) {
-      const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
-      return { operator: newOperator, subqueryExpr: filterSubqueryReplacement };
+      subqueryParts.push(filterSubqueryReplacement);
+      anyPinotVariableHandled = true;
+      continue;
     }
+    if (selectedValues.length >= 1) {
+      // Below threshold — expand the variable's selected values as properly quoted SQL literals.
+      expandedLiterals.push(...selectedValues.map((v) => `'${escapeSqlString(v)}'`));
+      anyPinotVariableHandled = true;
+      continue;
+    }
+    // Pinot query variable but no current selection — leave for templateSrv.replace fallback.
+    literalExprs.push(expr);
+  }
 
-    // Below threshold — expand as properly quoted SQL literals rather than letting
-    // templateSrv.replace() produce Grafana's unquoted or {val1,val2,...} format which is not valid SQL.
-    // For multiple values remap operator to in/not in; for a single value keep the original operator.
-    if (selectedValues.length > 1) {
-      const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
-      return { operator: newOperator, valueExprs: selectedValues.map((v) => `'${escapeSqlString(v)}'`) };
+  // If nothing required Pinot-specific handling, return null so the caller's existing
+  // per-value templateSrv.replace() path runs.
+  if (!anyPinotVariableHandled) {
+    return null;
+  }
+
+  const allLiterals = [...literalExprs, ...expandedLiterals];
+
+  // Subquery path:
+  //  - Single subquery and no literals: pass it through as-is (the common single-variable case).
+  //  - Multiple subqueries OR mixed with literals: combine via UNION ALL. Each subquery is wrapped
+  //    as `SELECT * FROM (sq)` to handle trailing LIMIT/ORDER BY safely; each literal becomes
+  //    `SELECT 'lit'`. Result is plugged into `col IN (UNION_ALL)`.
+  if (subqueryParts.length > 0) {
+    const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
+    if (subqueryParts.length === 1 && allLiterals.length === 0) {
+      return { operator: newOperator, subqueryExpr: subqueryParts[0] };
     }
-    if (selectedValues.length === 1) {
-      return { operator: operator ?? '=', valueExprs: [`'${escapeSqlString(selectedValues[0])}'`] };
-    }
+    const unionParts = [
+      ...subqueryParts.map((sq) => `SELECT * FROM (${sq})`),
+      ...allLiterals.map((lit) => `SELECT ${lit}`),
+    ];
+    return { operator: newOperator, subqueryExpr: unionParts.join(' UNION ALL ') };
+  }
+
+  // No subquery needed — return the merged literal list. Single value preserves the
+  // original operator so a `=` filter doesn't get remapped to `in` unnecessarily.
+  if (allLiterals.length === 1) {
+    return { operator: operator ?? '=', valueExprs: allLiterals };
+  }
+  if (allLiterals.length > 1) {
+    const newOperator = operator === '!=' || operator === 'not in' ? 'not in' : 'in';
+    return { operator: newOperator, valueExprs: allLiterals };
   }
 
   return null;
