@@ -143,6 +143,38 @@ test.describe('Subquery optimization for template variables', () => {
     await assertPanelRendersWithoutError(page);
   });
 
+  /**
+   * Scenario 5: Single variable, ALL selected, >1000 distinct values, with `!=` operator.
+   * Expected: filter expands to NOT IN subquery (operator remapped from `!=` to `not in`),
+   * useMultistageEngine=true is auto-injected.
+   */
+  test('5. Single var, ALL >1000, != operator → NOT IN subquery + MSE auto-injected', async ({ page, datasource }) => {
+    await openNewDashboard(page);
+
+    await addPinotQueryVariable(page, datasource.name, {
+      name: 'entity',
+      sql: 'SELECT DISTINCT entity FROM highCardinality LIMIT 4000',
+      multi: true,
+      includeAll: true,
+    });
+
+    await selectAllInVariable(page, 'entity');
+    await addPanelWithVariableFilter(page, datasource.name, {
+      table: 'highCardinality',
+      timeColumn: 'ts',
+      filterColumn: 'entity',
+      operator: '!=',
+      filterValue: '$entity',
+    });
+
+    await expect(page.getByTestId('sql-preview')).toContainText(
+      `("entity" not in (SELECT DISTINCT entity FROM highCardinality LIMIT 4000))`
+    );
+    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+
+    await assertPanelRendersWithoutError(page);
+  });
+
   // Two-variable scenarios (both-ALL, ALL+partial) are covered at the unit-test layer in
   // src/dataquery/SubqueryOptimization.test.ts — see "multiple filters — high-cardinality
   // gets subquery, low-cardinality gets quoted literals" — and at the backend integration

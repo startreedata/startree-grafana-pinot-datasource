@@ -239,7 +239,7 @@ export async function checkQueryOptionEditor(page: Page) {
 export async function addPinotQueryVariable(
   page: Page,
   datasourceName: string,
-  opts: { name: string; sql: string; multi?: boolean; includeAll?: boolean }
+  opts: { name: string; sql: string; multi?: boolean; includeAll?: boolean; table?: string }
 ) {
   // After a previous variable was created via this helper we may still be on the
   // Variables list with the settings dialog open (Submit + Go Back returns here).
@@ -272,8 +272,17 @@ export async function addPinotQueryVariable(
 
   // Switch to "Sql Query" tab. The four type-tabs ('Tables', 'Columns', 'Distinct Values', 'Sql Query')
   // appear after datasource selection. Use exact: true so we don't match other "Sql Query"-containing text.
+  // The table dropdown is only rendered after switching off the default 'Tables' type, so it must
+  // be picked AFTER the tab switch.
   await expect(page.getByText('Sql Query', { exact: true })).toBeVisible();
   await page.getByText('Sql Query', { exact: true }).click();
+
+  // Optionally pick the table the variable's SQL targets — required when the SQL uses
+  // `$__table()` macro (otherwise it expands to nothing and the variable returns empty).
+  if (opts.table) {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByLabel('Select options menu').getByText(opts.table, { exact: true }).click();
+  }
   const dataQueryResponse = page.waitForResponse('/api/ds/query');
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
@@ -299,6 +308,42 @@ export async function addPinotQueryVariable(
 
   await page.getByRole('button', { name: 'Variable editor Submit button' }).click();
   await page.getByRole('dialog', { name: 'Dashboard settings' }).getByLabel('Go Back').click();
+}
+
+/**
+ * Adds a panel with PinotQL **Code editor** (raw SQL) instead of the structured Builder UI.
+ * Picks the datasource, sets editor mode to Code, picks the table (used for `$__table()` macro
+ * expansion), then clears the Monaco editor and types the user-supplied SQL into it.
+ *
+ * Caller must have already navigated to a dashboard.
+ */
+export async function addPanelInCodeMode(
+  page: Page,
+  datasourceName: string,
+  opts: { table: string; code: string }
+) {
+  await page.getByLabel('Add new panel', { exact: true }).click();
+  // Arm the /tables wait BEFORE selecting the datasource — Grafana fires the request once
+  // during datasource selection, so setting up the wait afterwards races and times out in CI.
+  const tablesResponse = page.waitForResponse('/**/resources/tables');
+  await selectDatasource(page, datasourceName);
+  await tablesResponse;
+
+  await page.getByTestId('select-query-type').getByText('PinotQL').click();
+  await page.getByTestId('select-editor-mode').getByText('Code').click();
+
+  await page.getByTestId('select-table-dropdown').click();
+  await page.getByLabel('Select options menu').getByText(opts.table, { exact: true }).click();
+
+  // Replace any starter content in the Monaco editor with the user-supplied SQL.
+  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
+  await codebox.click();
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('Delete');
+  await page.keyboard.type(opts.code);
+
+  // Force-click run-query (panel-options sidebar can have a loading overlay).
+  await page.getByTestId('run-query-btn').click({ force: true });
 }
 
 export async function addDashboardConstant(page: Page, name: string, value: string) {
