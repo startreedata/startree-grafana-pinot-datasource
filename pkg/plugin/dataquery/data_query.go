@@ -116,10 +116,11 @@ type TimeRange struct {
 }
 
 type DimensionFilter struct {
-	ColumnName string   `json:"columnName"`
-	ColumnKey  string   `json:"columnKey,omitempty"`
-	ValueExprs []string `json:"valueExprs"`
-	Operator   string   `json:"operator"`
+	ColumnName   string   `json:"columnName"`
+	ColumnKey    string   `json:"columnKey,omitempty"`
+	ValueExprs   []string `json:"valueExprs"`
+	Operator     string   `json:"operator"`
+	SubqueryExpr string   `json:"subqueryExpr,omitempty"`
 }
 
 type ComplexField struct {

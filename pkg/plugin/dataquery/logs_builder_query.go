@@ -70,13 +70,27 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		return pinot.SqlQuery{}, err
 	}
 
+	// Expand Grafana plugin macros inside any filter's SubqueryExpr. Logs builder doesn't fetch
+	// table configs (cost-saving; configs are only needed for $__timeGroup/$__granularityMillis,
+	// which are unrealistic in a variable's backing SQL). $__table(), $__timeFilter("col"),
+	// $__from, $__to, $__timeFilterMillis all still expand correctly without configs.
+	expandedFilters, err := ExpandSubqueryMacros(ctx, query.DimensionFilters, MacroEngine{
+		TableName:   query.TableName,
+		TableSchema: tableSchema,
+		TimeRange:   query.TimeRange,
+		TimeAlias:   BuilderTimeColumn,
+	})
+	if err != nil {
+		return pinot.SqlQuery{}, err
+	}
+
 	sql, err := pinot.RenderLogSql(pinot.LogSqlParams{
 		TableNameExpr:        pinot.ObjectExpr(query.TableName),
 		TimeColumn:           query.TimeColumn,
 		LogColumnExpr:        pinot.ComplexFieldExpr(query.LogColumn.Name, query.LogColumn.Key),
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
-		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
+		DimensionFilterExprs: FilterExprsFrom(expandedFilters),
 		Limit:                query.resolveLimit(),
 		TimeFilterExpr: pinot.TimeFilterExpr(pinot.TimeFilter{
 			Column: query.TimeColumn,

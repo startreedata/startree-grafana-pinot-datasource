@@ -80,6 +80,22 @@ func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *
 		return pinot.SqlQuery{}, pinot.DateTimeFormat{}, err
 	}
 
+	// Expand Grafana plugin macros (e.g. $__table(), $__timeFilter("ts"), $__from, $__to) inside
+	// any filter's SubqueryExpr — without this, a variable's backing SQL containing those macros
+	// would land in Pinot unexpanded and fail to parse.
+	expandedFilters, err := ExpandSubqueryMacros(ctx, query.DimensionFilters, MacroEngine{
+		TableName:    query.TableName,
+		TableSchema:  schema,
+		TableConfigs: tableConfigs,
+		TimeRange:    query.TimeRange,
+		IntervalSize: query.IntervalSize,
+		TimeAlias:    BuilderTimeColumn,
+		MetricAlias:  BuilderMetricColumn,
+	})
+	if err != nil {
+		return pinot.SqlQuery{}, pinot.DateTimeFormat{}, err
+	}
+
 	var outputTimeFormat pinot.DateTimeFormat
 	var sql string
 	if query.AggregationFunction == AggregationFunctionNone {
@@ -90,7 +106,7 @@ func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *
 			MetricColumnExpr:      query.metricExpr(),
 			TimeColumnAliasExpr:   pinot.ObjectExpr(BuilderTimeColumn),
 			MetricColumnAliasExpr: pinot.ObjectExpr(BuilderMetricColumn),
-			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
+			DimensionFilterExprs:  FilterExprsFrom(expandedFilters),
 			Limit:                 query.resolveLimit(),
 			TimeFilterExpr: pinot.TimeFilterExpr(pinot.TimeFilter{
 				Column: query.TimeColumn,
@@ -112,7 +128,7 @@ func (query TimeSeriesBuilderQuery) RenderSqlQuery(ctx context.Context, client *
 			MetricColumnAliasExpr: pinot.ObjectExpr(BuilderMetricColumn),
 			AggregationFunction:   query.AggregationFunction,
 			GroupByColumnExprs:    query.groupByExprs(),
-			DimensionFilterExprs:  FilterExprsFrom(query.DimensionFilters),
+			DimensionFilterExprs:  FilterExprsFrom(expandedFilters),
 			Limit:                 query.resolveLimit(),
 			OrderByExprs:          OrderByExprs(query.OrderByClauses),
 			TimeFilterExpr: pinot.TimeFilterBucketAlignedExpr(pinot.TimeFilter{

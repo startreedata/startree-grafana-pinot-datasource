@@ -53,6 +53,33 @@ SET timeoutMs=1;`
 	assert.Equal(t, want, got["result"])
 }
 
+// TestPreviewSqlBuilder_SubqueryExpr verifies that a filter with subqueryExpr (instead of
+// valueExprs) is correctly deserialized from the JSON wire format and rendered into
+// `("col" in (subquery))` SQL by the preview handler.
+func TestPreviewSqlBuilder_SubqueryExpr(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	var got map[string]interface{}
+	doPostRequest(t, server.URL+"/preview/sql/builder", `{
+        "aggregationFunction": "MAX",
+        "intervalSize": "30m",
+        "metricColumn": {"name":"value"},
+        "tableName": "benchmark",
+        "timeColumn": "ts",
+        "timeRange": {"to": "2014-02-01T18:44:26.214Z", "from": "2013-12-29T14:50:28.931Z"},
+        "limit": -1,
+        "filters": [{
+            "columnName": "fabric",
+            "operator": "in",
+            "subqueryExpr": "SELECT DISTINCT fabric FROM benchmark"
+        }],
+        "expandMacros": true
+    }`, &got)
+
+	assert.Contains(t, got["result"], `("fabric" in (SELECT DISTINCT fabric FROM benchmark))`)
+}
+
 func TestDistinctValues(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()

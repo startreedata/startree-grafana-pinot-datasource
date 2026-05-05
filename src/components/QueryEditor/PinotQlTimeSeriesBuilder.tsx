@@ -3,6 +3,7 @@ import { AggregationFunction, SelectAggregation } from './SelectAggregation';
 import { SelectGroupBy } from './SelectGroupBy';
 import { SqlPreview } from './SqlPreview';
 import React from 'react';
+import { useAutoSurfaceMultiStageEngine } from './useAutoSurfaceMultiStageEngine';
 import { InputLimit, InputSeriesLimit } from './InputLimit';
 import { SelectFilters } from './SelectFilters';
 import { SelectTimeColumn } from './SelectTimeColumn';
@@ -38,6 +39,9 @@ export function PinotQlTimeSeriesBuilder(props: {
   if (TimeSeriesBuilder.applyDefaults(savedParams, resources)) {
     onChangeAndRun({ ...savedParams });
   }
+
+  useAutoSurfaceMultiStageEngine(savedParams, interpolatedParams, onChangeAndRun);
+
   return (
     <>
       <SelectTable
