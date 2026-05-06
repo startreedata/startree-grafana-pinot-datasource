@@ -69,9 +69,9 @@ jobs:
             repo.startreedata.io/startree-docker-registry/startree-grafana:${{ steps.version.outputs.version }}
             repo.startreedata.io/startree-docker-registry/startree-grafana:latest
 
-      - name: Set prerelease version
-        run: |
-          npm version --no-git-tag-version prerelease --preid pre
-          git add package.json
-          git commit -m'prepare for next version'
-          git push
+      # Intentionally no post-release "prepare for next version" step.
+      # plugin.json uses a %VERSION% placeholder resolved from package.json at build time,
+      # so any package.json bump on main between releases would make main report a version
+      # for which no plugin.json/built artifact exists, which the Grafana plugin validator
+      # flags as a version mismatch. Keeping main pinned to the last released version means
+      # the next release's `npm version <bump>` step (line 52) is the single source of truth.
