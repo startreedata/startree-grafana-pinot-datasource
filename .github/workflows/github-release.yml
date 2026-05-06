@@ -294,11 +294,10 @@ jobs:
             ./${{ steps.metadata.outputs.archive }}
             ./${{ steps.metadata.outputs.archive-sha1sum }}
 
-      - name: Prepare next development version
-        if: github.ref_name == 'main'
-        run: |
-          git pull --rebase
-          npm version --no-git-tag-version prerelease --preid pre
-          git add package.json
-          git commit -m 'Prepare for next development version'
-          git push
+      # Intentionally no post-release "prepare for next development version" step.
+      # plugin.json's version is resolved from package.json at webpack build time via the
+      # %VERSION% placeholder, so a prerelease bump on main between releases creates a
+      # version on main for which no plugin.json or built artifact exists. The Grafana
+      # plugin marketplace validator flags this as a packagecode-version-mismatch.
+      # Keeping main pinned to the last released version makes the next release's
+      # `npm version <bump>` step (above) the single source of truth for version changes.
