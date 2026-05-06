@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"net/http"
 	"net/http/httputil"
@@ -18,8 +19,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-import _ "embed"
 
 //go:embed data/*
 var TestDataFS embed.FS
@@ -141,13 +140,13 @@ func CreateTestTables() {
 					continue // Table is healthy, skip
 				}
 				// Table needs recreation
-				fmt.Printf("Table %s has %d/%d GOOD segments, will recreate...\n", job.tableName, goodSegments, len(segments))
+				log.Printf("Table %s has %d/%d GOOD segments, will recreate...", job.tableName, goodSegments, len(segments))
 				tablesToRecreate = append(tablesToRecreate, job)
 			}
 			// else: Table exists and doesn't need data, skip
 		} else {
 			// Table doesn't exist, needs to be created
-			fmt.Printf("Table %s doesn't exist, will create...\n", job.tableName)
+			log.Printf("Table %s doesn't exist, will create...", job.tableName)
 			tablesToRecreate = append(tablesToRecreate, job)
 		}
 	}
@@ -161,13 +160,13 @@ func CreateTestTables() {
 	setupTable := func(job CreateTableJob) {
 		// Delete if exists
 		if tableExists(job.tableName) {
-			fmt.Printf("Deleting table %s...\n", job.tableName)
+			log.Printf("Deleting table %s...", job.tableName)
 			deleteTable(job.tableName)
 			deleteTableSchema(job.tableName)
 			waitForTableDeletion(job.tableName, Timeout)
 		}
 
-		fmt.Printf("Creating table %s...\n", job.tableName)
+		log.Printf("Creating table %s...", job.tableName)
 		somethingChanged.Store(true)
 		deleteTableSchema(job.tableName)
 		createTableSchema(job.schemaFile)
@@ -202,7 +201,7 @@ func CreateTestTables() {
 	}
 
 	if somethingChanged.Load() {
-		fmt.Println("Pinot setup complete.")
+		log.Println("Pinot setup complete.")
 	}
 }
 
@@ -311,7 +310,7 @@ func resetSegments(tableName string) {
 func deleteSegmentFromFilesystem(segmentName string) {
 	cmd := exec.Command("docker", "compose", "exec", "pinot",
 		"find", "/tmp", "-name", segmentName, "-exec", "rm", "-rf", "{}", "+")
-	fmt.Println("Executing: ", cmd.String())
+	log.Println("Executing: ", cmd.String())
 	err := cmd.Run()
 	requireNoError(err)
 }
@@ -366,7 +365,7 @@ func WaitForPinot(timeout time.Duration) {
 	if isReady() {
 		return
 	}
-	fmt.Println("Waiting for Pinot...")
+	log.Println("Waiting for Pinot...")
 	for {
 		select {
 		case <-timeoutTicker.C:
