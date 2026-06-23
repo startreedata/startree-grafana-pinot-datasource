@@ -12,8 +12,10 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"net/http"
+	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -667,9 +669,24 @@ func captureMetrics[TOut any](startTime time.Time, req *http.Request, resp *Resp
 	requestDuration.With(labels).Observe(time.Since(startTime).Seconds())
 }
 
+var grafanaIntervalRe = regexp.MustCompile(`^(\d+)([dwMy])$`)
+
+// parseIntervalSize parses the interval string Grafana sends with preview requests
+// (e.g. "30s", "2d", "1w", "1M", "1y"). Grafana formats intervals with day, week,
+// month, and year units that Go's time.ParseDuration rejects, so translate those
+// explicitly; everything else (ms, s, m, h, ...) parses natively. Falls back to 0 on
+// unparseable input, which lets granularity resolution use the time column's minimum.
 func parseIntervalSize(intervalSize string) time.Duration {
-	if intervalSize == "1d" {
-		return time.Second * 24 * 3600
+	units := map[string]time.Duration{
+		"d": 24 * time.Hour,
+		"w": 7 * 24 * time.Hour,
+		"M": 30 * 24 * time.Hour,
+		"y": 365 * 24 * time.Hour,
+	}
+	if m := grafanaIntervalRe.FindStringSubmatch(strings.TrimSpace(intervalSize)); m != nil {
+		if n, err := strconv.ParseInt(m[1], 10, 64); err == nil {
+			return time.Duration(n) * units[m[2]]
+		}
 	}
 	interval, _ := time.ParseDuration(intervalSize)
 	return interval
