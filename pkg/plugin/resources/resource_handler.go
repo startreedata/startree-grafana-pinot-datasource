@@ -669,18 +669,16 @@ func captureMetrics[TOut any](startTime time.Time, req *http.Request, resp *Resp
 	requestDuration.With(labels).Observe(time.Since(startTime).Seconds())
 }
 
-var grafanaIntervalRe = regexp.MustCompile(`^(\d+)([dwMy])$`)
+var grafanaIntervalRe = regexp.MustCompile(`^(\d+)([dy])$`)
 
 // parseIntervalSize parses the interval string Grafana sends with preview requests
-// (e.g. "30s", "2d", "1w", "1M", "1y"). Grafana formats intervals with day, week,
-// month, and year units that Go's time.ParseDuration rejects, so translate those
-// explicitly; everything else (ms, s, m, h, ...) parses natively. Falls back to 0 on
-// unparseable input, which lets granularity resolution use the time column's minimum.
+// (e.g. "30s", "2d", "30d", "1y"). Grafana's secondsToHms formats intervals with day
+// and year units that Go's time.ParseDuration rejects, so translate those explicitly;
+// everything else (ms, s, m, h) parses natively. Falls back to 0 on unparseable input,
+// which lets granularity resolution use the time column's minimum.
 func parseIntervalSize(intervalSize string) time.Duration {
 	units := map[string]time.Duration{
 		"d": 24 * time.Hour,
-		"w": 7 * 24 * time.Hour,
-		"M": 30 * 24 * time.Hour,
 		"y": 365 * 24 * time.Hour,
 	}
 	if m := grafanaIntervalRe.FindStringSubmatch(strings.TrimSpace(intervalSize)); m != nil {

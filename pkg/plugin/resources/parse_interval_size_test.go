@@ -17,14 +17,11 @@ func TestParseIntervalSize(t *testing.T) {
 		{"5m", 5 * time.Minute},
 		{"2h", 2 * time.Hour},
 		{"500ms", 500 * time.Millisecond},
-		// Grafana day/week/month/year units that time.ParseDuration rejects.
+		// Grafana day/year units (from secondsToHms) that time.ParseDuration rejects.
 		{"1d", 24 * time.Hour},
 		{"2d", 2 * 24 * time.Hour},
 		{"7d", 7 * 24 * time.Hour},
-		{"1w", 7 * 24 * time.Hour},
-		{"3w", 3 * 7 * 24 * time.Hour},
-		{"1M", 30 * 24 * time.Hour},
-		{"6M", 6 * 30 * 24 * time.Hour},
+		{"30d", 30 * 24 * time.Hour},
 		{"1y", 365 * 24 * time.Hour},
 		// Unparseable input falls back to 0.
 		{"", 0},
