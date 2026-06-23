@@ -42,6 +42,7 @@ func NewResourceHandler(client *pinot.Client) http.Handler {
 	router.HandleFunc("/databases", adaptHandler(client, ListDatabases))
 	router.HandleFunc("/isPromQlSupported", adaptHandler(client, IsPromQlSupported))
 	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(client, PreviewSqlBuilder))
+	router.HandleFunc("/preview/table/sql", adaptHandlerWithBody(client, PreviewTableSql))
 	router.HandleFunc("/preview/logs/sql", adaptHandlerWithBody(client, PreviewLogsSql))
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(client, PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(client, PreviewSqlDistinctValues))
@@ -146,6 +147,53 @@ func PreviewSqlBuilder(client *pinot.Client, ctx context.Context, data PreviewSq
 	sqlQuery, _, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderTimeSeriesSql() failed.")
+		return newOkResponse("")
+	}
+	return newOkResponse(client.RenderSql(sqlQuery))
+}
+
+type PreviewTableSqlRequest struct {
+	TimeRange        dataquery.TimeRange         `json:"timeRange"`
+	TableName        string                      `json:"tableName"`
+	TimeColumn       string                      `json:"timeColumn"`
+	Dimensions       []dataquery.ComplexField    `json:"dimensions"`
+	Aggregations     []dataquery.Aggregation     `json:"aggregations"`
+	DimensionFilters []dataquery.DimensionFilter `json:"filters"`
+	OrderByClauses   []dataquery.OrderByClause   `json:"orderBy"`
+	QueryOptions     []dataquery.QueryOption     `json:"queryOptions"`
+	Limit            int64                       `json:"limit"`
+	ExpandMacros     bool                        `json:"expandMacros"`
+}
+
+func PreviewTableSql(client *pinot.Client, ctx context.Context, data PreviewTableSqlRequest) *Response[string] {
+	if data.TableName == "" {
+		return newOkResponse("")
+	}
+
+	query := dataquery.TableBuilderQuery{
+		TimeRange:        data.TimeRange,
+		TableName:        data.TableName,
+		TimeColumn:       data.TimeColumn,
+		Dimensions:       data.Dimensions,
+		Aggregations:     data.Aggregations,
+		DimensionFilters: data.DimensionFilters,
+		OrderByClauses:   data.OrderByClauses,
+		QueryOptions:     data.QueryOptions,
+		Limit:            data.Limit,
+	}
+
+	if !data.ExpandMacros {
+		sql, err := query.RenderSqlWithMacros()
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("RenderSqlWithMacros() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
+	}
+
+	sqlQuery, err := query.RenderSqlQuery(ctx, client)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("RenderSqlQuery() failed.")
 		return newOkResponse("")
 	}
 	return newOkResponse(client.RenderSql(sqlQuery))

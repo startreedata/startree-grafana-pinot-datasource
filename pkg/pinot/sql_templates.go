@@ -84,6 +84,46 @@ func RenderTimeSeriesSql(params TimeSeriesSqlParams) (string, error) {
 	return render(timeSeriesSqlTemplate, params)
 }
 
+var tableSqlTemplate = template.Must(template.New("table-sql").Parse(`
+SELECT{{ range $i, $e := .SelectExprs }}{{ if $i }},{{ end }}
+    {{ $e }}
+{{- end }}
+FROM
+    {{.TableNameExpr}}
+WHERE
+    {{.TimeFilterExpr}}{{ range .DimensionFilterExprs }}
+    AND {{ . }}
+{{- end }}
+{{- if .GroupByExprs }}
+GROUP BY{{ range $i, $e := .GroupByExprs }}{{ if $i }},{{ end }}
+    {{ $e }}
+{{- end }}
+{{- end }}
+{{- if .OrderByExprs }}
+ORDER BY{{ range $i, $e := .OrderByExprs }}{{ if $i }},{{ end }}
+    {{ $e }}
+{{- end }}
+{{- end }}
+LIMIT {{.Limit}};
+`))
+
+// TableSqlParams renders a general-purpose aggregation/table query. SelectExprs are the fully
+// rendered (alias included) projection columns; GroupByExprs is non-empty only when the query
+// both groups (dimensions) and aggregates.
+type TableSqlParams struct {
+	TableNameExpr        SqlExpr
+	SelectExprs          []SqlExpr
+	GroupByExprs         []SqlExpr
+	TimeFilterExpr       SqlExpr
+	DimensionFilterExprs []SqlExpr
+	OrderByExprs         []SqlExpr
+	Limit                int64
+}
+
+func RenderTableSql(params TableSqlParams) (string, error) {
+	return render(tableSqlTemplate, params)
+}
+
 var singleMetricSqlTemplate = template.Must(template.New("single-metric-sql").Parse(`
 SELECT
     {{.MetricColumnExpr}} AS {{.MetricColumnAliasExpr}},

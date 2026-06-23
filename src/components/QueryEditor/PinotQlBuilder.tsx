@@ -4,15 +4,16 @@ import { interpolateVariables } from '../../dataquery/PinotDataQuery';
 import { PinotQlTimeSeriesBuilder } from './PinotQlTimeSeriesBuilder';
 import { DisplayType } from '../../dataquery/DisplayType';
 import { PinotQlLogsBuilder } from './PinotQlLogsBuilder';
+import { PinotQlTableBuilder } from './PinotQlTableBuilder';
 import { SelectDisplayType } from './SelectDisplayType';
-import { LogsBuilder, TimeSeriesBuilder } from '../../pinotql';
+import { LogsBuilder, TableBuilder, TimeSeriesBuilder } from '../../pinotql';
 
 export function PinotQlBuilder(props: PinotQueryEditorProps) {
   return (
     <>
       <SelectDisplayType
         value={props.query.displayType || DisplayType.TIMESERIES}
-        displayTypes={[DisplayType.TIMESERIES, DisplayType.LOGS]}
+        displayTypes={[DisplayType.TIMESERIES, DisplayType.TABLE, DisplayType.LOGS]}
         onChange={(displayType) => {
           props.onChange({ ...props.query, displayType });
           props.onRunQuery();
@@ -20,6 +21,22 @@ export function PinotQlBuilder(props: PinotQueryEditorProps) {
       />
       {(() => {
         switch (props.query.displayType) {
+          case DisplayType.TABLE:
+            return (
+              <PinotQlTableBuilder
+                datasource={props.datasource}
+                timeRange={{
+                  to: props.range?.to,
+                  from: props.range?.from,
+                }}
+                savedParams={TableBuilder.paramsFrom(props.query)}
+                interpolatedParams={TableBuilder.paramsFrom(
+                  interpolateVariables(props.query, props.data?.request?.scopedVars)
+                )}
+                onChange={(params) => props.onChange(TableBuilder.dataQueryOf(props.query, params))}
+                onRunQuery={props.onRunQuery}
+              />
+            );
           case DisplayType.LOGS:
             return (
               <PinotQlLogsBuilder

@@ -6,6 +6,7 @@ import { getTemplateSrv } from '@grafana/runtime';
 import { ScopedVars, TypedVariableModel } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
 import { ComplexField } from './ComplexField';
+import { Aggregation } from './Aggregation';
 import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
 import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
@@ -29,6 +30,7 @@ export interface PinotDataQuery extends DataQuery {
   legend?: string;
   metricColumnV2?: ComplexField;
   groupByColumnsV2?: ComplexField[];
+  aggregations?: Aggregation[];
   logColumn?: ComplexField;
   metadataColumns?: ComplexField[];
   jsonExtractors?: JsonExtractor[];
@@ -329,6 +331,13 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
     groupByColumnsV2: query.groupByColumnsV2?.map(({ name, key }) => ({
       name: replaceIfExists(name),
       key: replaceIfExists(key),
+    })),
+    aggregations: query.aggregations?.map(({ function: fn, column }) => ({
+      function: replaceIfExists(fn),
+      column: mapIfExists(column, ({ name, key }) => ({
+        name: replaceIfExists(name),
+        key: replaceIfExists(key),
+      })),
     })),
     orderBy: query.orderBy?.map(({ columnName, columnKey, direction }) => ({
       columnName: replaceIfExists(columnName),

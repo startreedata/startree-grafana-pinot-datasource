@@ -51,6 +51,31 @@ func TestExecutableQueryFrom(t *testing.T) {
 			}
 		})
 
+		t.Run("displayType="+string(DisplayTypeTable), func(t *testing.T) {
+			got := ExecutableQueryFrom(DataQuery{
+				TimeRange:        timeRange,
+				QueryType:        QueryTypePinotQl,
+				EditorMode:       EditorModeBuilder,
+				DisplayType:      DisplayTypeTable,
+				TableName:        "benchmark",
+				TimeColumn:       "ts",
+				GroupByColumns:   []string{"fabric"},
+				GroupByColumnsV2: []ComplexField{{Name: "attrs", Key: "city"}},
+				Aggregations:     []Aggregation{{Function: "SUM", Column: ComplexField{Name: "value"}}},
+				Limit:            10,
+			})
+			if assert.IsType(t, TableBuilderQuery{}, got) {
+				assert.Equal(t, TableBuilderQuery{
+					TimeRange:    timeRange,
+					TableName:    "benchmark",
+					TimeColumn:   "ts",
+					Dimensions:   []ComplexField{{Name: "fabric"}, {Name: "attrs", Key: "city"}},
+					Aggregations: []Aggregation{{Function: "SUM", Column: ComplexField{Name: "value"}}},
+					Limit:        10,
+				}, got.(TableBuilderQuery))
+			}
+		})
+
 		t.Run("editorMode="+string(EditorModeCode), func(t *testing.T) {
 			got := ExecutableQueryFrom(DataQuery{
 				TimeRange:    timeRange,

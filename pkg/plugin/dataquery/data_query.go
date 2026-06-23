@@ -86,6 +86,7 @@ type DataQuery struct {
 	Legend              string            `json:"legend"`
 	MetricColumnV2      ComplexField      `json:"metricColumnV2"`
 	GroupByColumnsV2    []ComplexField    `json:"groupByColumnsV2"`
+	Aggregations        []Aggregation     `json:"aggregations"`
 	MetadataColumns     []ComplexField    `json:"metadataColumns"`
 	LogColumn           ComplexField      `json:"logColumn"`
 	JsonExtractors      []JsonExtractor   `json:"jsonExtractors"`
@@ -126,6 +127,11 @@ type DimensionFilter struct {
 type ComplexField struct {
 	Name string `json:"name"`
 	Key  string `json:"key,omitempty"`
+}
+
+type Aggregation struct {
+	Function string       `json:"function"`
+	Column   ComplexField `json:"column"`
 }
 
 type OrderByClause struct {
