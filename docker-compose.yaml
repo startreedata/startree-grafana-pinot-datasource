@@ -1,7 +1,8 @@
 services:
   pinot:
     container_name: 'pinot'
-    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:2.12.27'
+    # Bump PINOT_VERSION to upgrade the local/CI Pinot. Override via env to test another tag.
+    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:${PINOT_VERSION:-2.164.28}'
     ports:
       - '9000:9000/tcp' # Controller
       - '8000:8000/tcp' # Broker
