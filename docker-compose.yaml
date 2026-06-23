@@ -2,7 +2,9 @@ services:
   pinot:
     container_name: 'pinot'
     # Bump PINOT_VERSION to upgrade the local/CI Pinot. Override via env to test another tag.
-    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:${PINOT_VERSION:-2.164.28}'
+    # Note: 2.164.28+ PromQL quickstart boots Kafka via docker-in-docker (needs a docker binary
+    # in the container) and won't start in CI as-is — upgrading past 2.12.27 needs Kafka wiring.
+    image: 'repo.startreedata.io/startree-docker-registry/startree-pinot:${PINOT_VERSION:-2.12.27}'
     ports:
       - '9000:9000/tcp' # Controller
       - '8000:8000/tcp' # Broker
