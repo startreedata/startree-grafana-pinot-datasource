@@ -16,8 +16,10 @@ export default defineConfig<PluginOptions>({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Run parallel on CI too. Tests use unique random datasource names so they're
+     isolated; the one race-prone file (ConfigEditor) self-declares mode:'serial'.
+     ponytail: 4 = ubuntu-latest core count; lower if remote Pinot gets overloaded. */
+  workers: process.env.CI ? 4 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
