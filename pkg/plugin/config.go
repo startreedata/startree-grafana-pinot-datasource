@@ -28,6 +28,16 @@ type Config struct {
 	// MaxRowLimit caps result size for queries without an explicit LIMIT. Zero disables it.
 	MaxRowLimit int `json:"maxRowLimit"`
 
+	// Transport security (non-secret). These mirror the standard keys the
+	// Grafana SDK reads. The actual *http.Client (TLS, headers, proxy) is built
+	// from settings.HTTPClientOptions in NewInstance, so these fields are parsed
+	// only for validation/visibility, not consumed by PinotClientOf.
+	// ponytail: enforcement lives in HTTPClientOptions; don't duplicate it here.
+	TLSSkipVerify     bool   `json:"tlsSkipVerify"`
+	TLSAuth           bool   `json:"tlsAuth"`
+	TLSAuthWithCACert bool   `json:"tlsAuthWithCACert"`
+	TLSServerName     string `json:"serverName"`
+
 	// Secrets
 	TokenSecret string `json:"-"`
 }

@@ -22,3 +22,28 @@ func TestConfig_ReadFrom(t *testing.T) {
 		TokenType:     "Bearer",
 	}, got)
 }
+
+func TestConfig_ReadFrom_TLS(t *testing.T) {
+	settings := backend.DataSourceInstanceSettings{
+		JSONData: json.RawMessage(`{
+			"brokerUrl":"https://broker:8000",
+			"controllerUrl":"https://controller:9000",
+			"tlsSkipVerify":true,
+			"tlsAuth":true,
+			"tlsAuthWithCACert":true,
+			"serverName":"pinot.example.com"
+		}`),
+		DecryptedSecureJSONData: map[string]string{},
+	}
+
+	var got Config
+	assert.NoError(t, got.ReadFrom(settings))
+	assert.Equal(t, Config{
+		ControllerUrl:     "https://controller:9000",
+		BrokerUrl:         "https://broker:8000",
+		TLSSkipVerify:     true,
+		TLSAuth:           true,
+		TLSAuthWithCACert: true,
+		TLSServerName:     "pinot.example.com",
+	}, got)
+}
