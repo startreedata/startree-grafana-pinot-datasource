@@ -107,9 +107,6 @@ jobs:
     name: Test E2E
     runs-on: ubuntu-latest
     needs: [ build_plugin ]
-    # Disabled: the remote Pinot cluster is gone. Re-enable (remove `if: false`)
-    # once a stable cluster is available again.
-    if: false
     steps:
       - uses: actions/checkout@v5
 
@@ -126,17 +123,6 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
-      # Fail fast (before the expensive Grafana + browser steps) if the remote
-      # Pinot cluster can't do a full create/load/query/delete round-trip in time.
-      - name: Pinot cluster health check
-        run: node tests/healthcheck.mjs
-        env:
-          HEALTHCHECK_TIMEOUT_SECONDS: '120'
-          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
-          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
-          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
-          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
-
       - name: Download plugin
         uses: actions/download-artifact@v7
         with:
@@ -144,8 +130,37 @@ jobs:
 
       - run: tar xf dist.tar
 
-      - name: Start Grafana
-        run: docker compose up grafana --wait
+      - name: Pull Pinot image
+        # The startree-pinot image is large; pull it in a dedicated, bounded step so a slow
+        # download is easy to spot and can't creep toward GitHub's 6h job ceiling.
+        timeout-minutes: 20
+        run: docker compose pull pinot
+
+      - name: Start Pinot and Grafana
+        run: docker compose up pinot grafana --detach --quiet-pull
+
+      - name: Wait for Pinot components and quickstart data
+        timeout-minutes: 12
+        run: |
+          # The quickstart runs all Pinot components inside the single `pinot` container.
+          # Poll each endpoint until ready; fail fast if the container dies instead of
+          # polling for the full timeout.
+          wait_for() {
+            local name="$1" cmd="$2"
+            for i in $(seq 1 120); do
+              if eval "$cmd" >/dev/null 2>&1; then echo "ready: $name"; return 0; fi
+              if [ "$(docker inspect -f '{{.State.Running}}' pinot 2>/dev/null)" != "true" ]; then
+                echo "pinot container is not running"; docker compose logs pinot; exit 1
+              fi
+              echo "waiting for $name ($i)"; sleep 5
+            done
+            echo "timed out waiting for $name"; docker compose logs pinot; exit 1
+          }
+          wait_for "controller" "curl -sf http://localhost:9000/health"
+          wait_for "broker"     "curl -sf http://localhost:8000/health"
+          wait_for "grafana"    "curl -sf http://localhost:3000/api/health"
+          # Quickstart loads tables asynchronously; complex_website is the table the E2E tests query.
+          wait_for "quickstart tables" "curl -sf http://localhost:9000/tables | grep -q complex_website"
 
       - name: Install Playwright Browsers
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
@@ -154,10 +169,12 @@ jobs:
         timeout-minutes: 12
         run: yarn playwright test --reporter github
         env:
-          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
-          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
-          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
-          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
+          # Grafana resolves these URLs from inside the compose network (service name `pinot`).
+          # Local StarTree quickstart is unauthenticated, so database/token are empty.
+          PINOT_CONNECTION_CONTROLLER_URL: http://pinot:9000
+          PINOT_CONNECTION_BROKER_URL: http://pinot:8000
+          PINOT_CONNECTION_DATABASE: ''
+          PINOT_CONNECTION_AUTH_TOKEN: ''
 
       - name: Upload Playwright artifacts
         uses: actions/upload-artifact@v6
@@ -185,4 +202,16 @@ jobs:
         with:
           name: grafana-logs
           path: grafana.log
+          retention-days: 30
+
+      - name: Collect Pinot logs
+        if: ${{ failure() }}
+        run: docker compose logs pinot > pinot.log
+
+      - name: Upload Pinot logs
+        uses: actions/upload-artifact@v6
+        if: ${{ failure() }}
+        with:
+          name: pinot-logs-e2e
+          path: pinot.log
           retention-days: 30
