@@ -107,6 +107,10 @@ jobs:
     name: Test E2E
     runs-on: ubuntu-latest
     needs: [ build_plugin ]
+    # Backstop: a healthy E2E job finishes in ~9 min. Cap it so a hung dependency can never
+    # run up to GitHub's 6h default. Playwright's globalTimeout (15m) trips first and still
+    # uploads report/log artifacts; this is the coarse outer bound.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -130,8 +134,20 @@ jobs:
 
       - run: tar xf dist.tar
 
-      - name: Start Grafana
-        run: docker compose up grafana --wait
+      - name: Start Pinot and Grafana
+        run: docker compose up pinot grafana --wait
+
+      - name: Wait for Pinot quickstart data
+        # The StarTree quickstart loads tables asynchronously after the container is up.
+        # Wait for complex_website (the table the E2E tests query) before running them.
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9000/tables | grep -q complex_website; then
+              echo "Pinot quickstart ready"; exit 0
+            fi
+            echo "Waiting for Pinot quickstart tables... ($i)"; sleep 5
+          done
+          echo "Timed out waiting for Pinot quickstart"; docker compose logs pinot; exit 1
 
       - name: Install Playwright Browsers
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
@@ -139,10 +155,12 @@ jobs:
       - name: Run Playwright tests
         run: yarn playwright test --reporter github
         env:
-          PINOT_CONNECTION_CONTROLLER_URL: ${{ secrets.E2E_PINOT_CONNECTION_CONTROLLER_URL }}
-          PINOT_CONNECTION_BROKER_URL: ${{ secrets.E2E_PINOT_CONNECTION_BROKER_URL }}
-          PINOT_CONNECTION_DATABASE: ${{ secrets.E2E_PINOT_CONNECTION_DATABASE }}
-          PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
+          # Grafana resolves these URLs from inside the compose network (service name `pinot`).
+          # Local StarTree quickstart is unauthenticated, so database/token are empty.
+          PINOT_CONNECTION_CONTROLLER_URL: http://pinot:9000
+          PINOT_CONNECTION_BROKER_URL: http://pinot:8000
+          PINOT_CONNECTION_DATABASE: ''
+          PINOT_CONNECTION_AUTH_TOKEN: ''
 
       - name: Upload Playwright artifacts
         uses: actions/upload-artifact@v4
@@ -170,4 +188,16 @@ jobs:
         with:
           name: grafana-logs
           path: grafana.log
+          retention-days: 30
+
+      - name: Collect Pinot logs
+        if: ${{ failure() }}
+        run: docker compose logs pinot > pinot.log
+
+      - name: Upload Pinot logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: pinot-logs-e2e
+          path: pinot.log
           retention-days: 30

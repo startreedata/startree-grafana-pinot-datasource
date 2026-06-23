@@ -18,6 +18,10 @@ export default defineConfig<PluginOptions>({
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
+  // ponytail: hard cap on the whole run. A healthy CI run is ~9 min; if the Pinot env behind
+  // the connection secrets is unreachable, every test burns its 30s timeout x3 retries and the
+  // suite would otherwise creep toward GitHub's 6h job ceiling. Fail fast instead.
+  globalTimeout: process.env.CI ? 15 * 60 * 1000 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
