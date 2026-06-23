@@ -19,14 +19,14 @@ jobs:
     name: Test Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Read .nvmrc
         id: node_version
         run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
           cache: 'yarn'
@@ -41,10 +41,10 @@ jobs:
     name: Test Backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Log in to Docker registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: repo.startreedata.io/startree-docker-registry
           username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
@@ -58,7 +58,7 @@ jobs:
         run: echo "GO_VERSION=$(grep '^go ' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
 
@@ -73,7 +73,7 @@ jobs:
         run: docker compose logs pinot > pinot.log
 
       - name: Upload Pinot logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: pinot-logs
@@ -84,7 +84,7 @@ jobs:
     name: Build Plugin
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Read .nvmrc
         id: node_version
@@ -95,13 +95,13 @@ jobs:
         run: echo "GO_VERSION=$(grep '^go ' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
           cache: 'yarn'
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
 
@@ -112,7 +112,7 @@ jobs:
       - run: tar cf dist.tar dist
 
       - name: Upload plugin
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: dist.tar
           path: dist.tar
@@ -123,10 +123,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_plugin]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Log in to Docker registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: repo.startreedata.io/startree-docker-registry
           username: ${{ secrets.MVN_ARTIFACTORY_USERNAME }}
@@ -137,13 +137,13 @@ jobs:
         run: echo "NODE_VERSION=$(cat .nvmrc)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
           cache: 'yarn'
 
       - name: Download plugin
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: dist.tar
 
@@ -164,7 +164,7 @@ jobs:
           PINOT_CONNECTION_AUTH_TOKEN: ${{ secrets.E2E_PINOT_CONNECTION_AUTH_TOKEN }}
 
       - name: Upload Playwright artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
@@ -172,7 +172,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Test Results (videos, traces, screenshots)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-test-results
@@ -184,7 +184,7 @@ jobs:
         run: docker compose logs grafana > grafana.log
 
       - name: Upload Grafana logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ failure() }}
         with:
           name: grafana-logs
@@ -200,7 +200,7 @@ jobs:
       contents: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
@@ -214,13 +214,13 @@ jobs:
         run: echo "GO_VERSION=$(grep '^go ' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ steps.node_version.outputs.NODE_VERSION }}
           cache: 'yarn'
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.go_version.outputs.GO_VERSION }}
 
