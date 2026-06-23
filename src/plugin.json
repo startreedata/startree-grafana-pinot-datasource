@@ -73,6 +73,18 @@
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
+  "includes": [
+    {
+      "type": "dashboard",
+      "name": "Nginx Logs",
+      "path": "dashboards/nginx-logs.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Infrastructure Metrics",
+      "path": "dashboards/infra-metrics.json"
+    }
+  ],
   "dependencies": {
     "grafanaDependency": ">=9.1.1",
     "plugins": []
