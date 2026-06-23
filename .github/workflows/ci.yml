@@ -107,6 +107,9 @@ jobs:
     name: Test E2E
     runs-on: ubuntu-latest
     needs: [ build_plugin ]
+    # Disabled: the remote Pinot cluster is gone. Re-enable (remove `if: false`)
+    # once a stable cluster is available again.
+    if: false
     steps:
       - uses: actions/checkout@v5
 
