@@ -8,6 +8,8 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   tokenType?: string;
   queryOptions: QueryOption[];
   oauthPassThru?: boolean;
+  queryTimeoutSeconds?: number;
+  maxRowLimit?: number;
 }
 
 export interface PinotSecureConfig {

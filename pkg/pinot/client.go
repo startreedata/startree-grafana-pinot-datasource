@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 const (
@@ -29,6 +30,10 @@ type ClientProperties struct {
 	DatabaseName  string
 	Authorization string
 	QueryOptions  []QueryOption
+	// QueryTimeout bounds a single broker SQL query. Zero means no client-imposed timeout.
+	QueryTimeout time.Duration
+	// MaxRowLimit appends a LIMIT to queries with no explicit limit. Zero disables the guardrail.
+	MaxRowLimit int
 }
 
 type QueryOption struct {

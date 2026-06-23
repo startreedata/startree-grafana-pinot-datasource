@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 )
@@ -114,11 +115,32 @@ func (query SqlQuery) cacheKey() string {
 // RenderSql renders the actual SQL query string sent to Pinot.
 // The rendered query includes all query options provided in the client properties and query.
 func (p *Client) RenderSql(query SqlQuery) string {
+	query.Sql = applyRowLimit(query.Sql, p.properties.MaxRowLimit)
 	query.QueryOptions = slices.Concat(query.QueryOptions, p.properties.QueryOptions)
 	return query.RenderSql()
 }
 
+var limitClauseRe = regexp.MustCompile(`(?i)\blimit\s+\d`)
+
+// applyRowLimit appends a LIMIT clause to cap result size when the max-row guardrail is
+// configured and the query has no explicit LIMIT. Protects the broker from unbounded scans.
+// ponytail: regex LIMIT detection — a string literal/identifier like 'limit 1' would
+// false-positive and skip the cap. Upgrade to a real SQL parser only if that ever bites.
+func applyRowLimit(sql string, maxRowLimit int) string {
+	if maxRowLimit <= 0 || limitClauseRe.MatchString(sql) {
+		return sql
+	}
+	trimmed := strings.TrimRight(strings.TrimSpace(sql), "; \t\r\n")
+	return fmt.Sprintf("%s LIMIT %d", trimmed, maxRowLimit)
+}
+
 func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
+	if p.properties.QueryTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, p.properties.QueryTimeout)
+		defer cancel()
+	}
+
 	request := struct {
 		Sql   string `json:"sql"`
 		Trace bool   `json:"trace,omitempty"`
