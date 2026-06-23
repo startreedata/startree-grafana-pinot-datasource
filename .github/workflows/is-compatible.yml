@@ -1,6 +1,11 @@
 name: Latest Grafana API compatibility check
 on: [ pull_request ]
 
+# Cancel in-progress runs when the same PR is updated.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   compatibilitycheck:
     runs-on: ubuntu-latest
