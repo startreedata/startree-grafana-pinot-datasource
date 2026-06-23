@@ -3,6 +3,7 @@ import {
   DataSourceGetTagKeysOptions,
   DataSourceGetTagValuesOptions,
   DataSourceInstanceSettings,
+  DateTime,
   MetricFindValue,
   ScopedVars,
 } from '@grafana/data';
@@ -47,7 +48,7 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
   }
 
   async getTagKeys(options?: DataSourceGetTagKeysOptions<PinotDataQuery>): Promise<MetricFindValue[]> {
-    const context = this.resolveAdHocContext(options?.queries);
+    const context = this.resolveAdHocContext(readAdHocRequest(options).queries);
     if (!context) {
       return [];
     }
@@ -61,11 +62,12 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     if (!context) {
       return [];
     }
+    const { timeRange } = readAdHocRequest(options);
     const values = await queryDistinctValuesForFilters(this, {
       tableName: context.tableName,
       columnName: options.key,
       timeColumn: context.timeColumn,
-      timeRange: options.timeRange ? { from: options.timeRange.from, to: options.timeRange.to } : undefined,
+      timeRange: timeRange ? { from: timeRange.from, to: timeRange.to } : undefined,
     });
     return values.map((value) => ({ text: unquoteSqlLiteral(value) }));
   }
@@ -77,6 +79,19 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     }
     return this.adHocContext;
   }
+}
+
+// `queries` (getTagKeys) and `timeRange` (getTagValues) are best-effort context that some Grafana
+// versions drop. Reading them through this local type instead of the @grafana/data option types
+// keeps them out of the plugin-compatibility (levitate) check — when absent, tag keys/values just
+// degrade to empty rather than breaking.
+interface AdHocRequest {
+  queries?: PinotDataQuery[];
+  timeRange?: { from: DateTime; to: DateTime };
+}
+
+function readAdHocRequest(options?: AdHocRequest): AdHocRequest {
+  return options ?? {};
 }
 
 // queryDistinctValuesForFilters returns quoted SQL value expressions (e.g. `'NewYork'`); the ad-hoc
