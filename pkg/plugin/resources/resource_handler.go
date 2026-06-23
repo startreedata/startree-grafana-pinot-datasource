@@ -12,7 +12,6 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"net/http"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -669,11 +668,9 @@ func captureMetrics[TOut any](startTime time.Time, req *http.Request, resp *Resp
 	requestDuration.With(labels).Observe(time.Since(startTime).Seconds())
 }
 
-var grafanaIntervalRe = regexp.MustCompile(`^(\d+)([dy])$`)
-
-var grafanaIntervalUnits = map[string]time.Duration{
-	"d": 24 * time.Hour,
-	"y": 365 * 24 * time.Hour,
+var grafanaIntervalUnits = map[byte]time.Duration{
+	'd': 24 * time.Hour,
+	'y': 365 * 24 * time.Hour,
 }
 
 // parseIntervalSize parses the interval string Grafana sends with preview requests
@@ -682,9 +679,12 @@ var grafanaIntervalUnits = map[string]time.Duration{
 // everything else (ms, s, m, h) parses natively. Falls back to 0 on unparseable input,
 // which lets granularity resolution use the time column's minimum.
 func parseIntervalSize(intervalSize string) time.Duration {
-	if m := grafanaIntervalRe.FindStringSubmatch(strings.TrimSpace(intervalSize)); m != nil {
-		if n, err := strconv.ParseInt(m[1], 10, 64); err == nil {
-			return time.Duration(n) * grafanaIntervalUnits[m[2]]
+	s := strings.TrimSpace(intervalSize)
+	if len(s) > 1 {
+		if unit, ok := grafanaIntervalUnits[s[len(s)-1]]; ok {
+			if n, err := strconv.ParseInt(s[:len(s)-1], 10, 64); err == nil {
+				return time.Duration(n) * unit
+			}
 		}
 	}
 	interval, _ := time.ParseDuration(intervalSize)
