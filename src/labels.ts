@@ -111,6 +111,7 @@ export default {
       sqlEditor: {
         tooltip: 'Sql Editor',
         label: 'Pinot Query',
+        format: 'Format query',
       },
       sqlPreview: {
         tooltip: 'Preview of the generated sql sent to Pinot.',

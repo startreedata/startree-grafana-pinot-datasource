@@ -84,6 +84,8 @@ export function PinotQlCode(props: {
       <SqlEditor
         current={savedParams.pinotQlCode}
         onChange={(pinotQlCode) => onChange({ ...savedParams, pinotQlCode })}
+        datasource={datasource}
+        tableName={savedParams.tableName}
       />
       <SqlPreview sql={resources.sqlPreview} />
       {savedParams.displayType === DisplayType.TIMESERIES && (
