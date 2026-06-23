@@ -30,7 +30,7 @@ jobs:
       - name: Install Go environment
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache-dependency-path: 'go.sum'
 
       - name: Setup Pinot
@@ -76,7 +76,7 @@ jobs:
       - name: Install Go environment
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache-dependency-path: 'go.sum'
 
       - name: Install Node.js environment

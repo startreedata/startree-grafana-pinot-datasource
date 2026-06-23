@@ -28,7 +28,7 @@ jobs:
       - name: Setup Go environment
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
       - name: Sign release
         run: go run cmd/release/main.go resign ${{ inputs.root_urls }}
         env:
