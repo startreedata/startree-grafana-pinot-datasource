@@ -90,6 +90,67 @@ func TestExpandMacros(t *testing.T) {
 	}
 }
 
+func TestExpandAdHocFilter(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name    string
+		filters []pinot.AdHocFilter
+		expr    string
+		want    string
+	}{
+		{
+			name:    "no filters expands to no-op",
+			filters: nil,
+			expr:    `WHERE $__adHocFilter`,
+			want:    `WHERE  TRUE`,
+		},
+		{
+			name:    "single filter",
+			filters: []pinot.AdHocFilter{{Key: "city", Operator: "=", Value: "NY"}},
+			expr:    `$__adHocFilter`,
+			want:    `"city" = 'NY'`,
+		},
+		{
+			name: "multiple filters are AND-joined",
+			filters: []pinot.AdHocFilter{
+				{Key: "city", Operator: "=", Value: "NY"},
+				{Key: "age", Operator: ">", Value: "30"},
+			},
+			expr: `$__adHocFilter`,
+			want: `"city" = 'NY' AND "age" > '30'`,
+		},
+		{
+			name: "every supported operator",
+			filters: []pinot.AdHocFilter{
+				{Key: "a", Operator: "=", Value: "1"},
+				{Key: "b", Operator: "!=", Value: "2"},
+				{Key: "c", Operator: "<", Value: "3"},
+				{Key: "d", Operator: ">", Value: "4"},
+				{Key: "e", Operator: "=~", Value: "x.*"},
+				{Key: "f", Operator: "!~", Value: "y.*"},
+			},
+			expr: `$__adHocFilter`,
+			want: `"a" = '1' AND "b" != '2' AND "c" < '3' AND "d" > '4' AND REGEXP_LIKE("e", 'x.*') AND NOT REGEXP_LIKE("f", 'y.*')`,
+		},
+		{
+			name:    "value is escaped against injection",
+			filters: []pinot.AdHocFilter{{Key: "city", Operator: "=", Value: "x' OR '1'='1"}},
+			expr:    `$__adHocFilter`,
+			want:    `"city" = 'x'' OR ''1''=''1'`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			engine := MacroEngine{AdHocFilters: tt.filters}
+			got, err := engine.ExpandMacros(ctx, tt.expr)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestMacroExprFor(t *testing.T) {
 	ctx := context.Background()
 

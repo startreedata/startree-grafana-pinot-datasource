@@ -22,6 +22,7 @@ type PinotQlCodeQuery struct {
 	DisplayType       DisplayType
 	Legend            string
 	SeriesLimit       int
+	AdHocFilters      []pinot.AdHocFilter
 }
 
 func (query PinotQlCodeQuery) Validate() error {
@@ -77,6 +78,7 @@ func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		TableName:    query.TableName,
 		TableSchema:  tableSchema,
 		TableConfigs: tableConfigs,
+		AdHocFilters: query.AdHocFilters,
 		TimeRange:    query.TimeRange,
 		IntervalSize: query.IntervalSize,
 		TimeAlias:    query.resolveTimeColumnAlias(),
