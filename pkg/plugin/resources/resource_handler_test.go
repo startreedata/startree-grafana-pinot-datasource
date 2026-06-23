@@ -140,6 +140,57 @@ LIMIT 1000000`
 	assert.Equal(t, want, got["result"])
 }
 
+// TestCodeSqlPreviewGranularityTracksTimeRange drives the real /preview/sql/code endpoint
+// (through parseIntervalSize -> auto-granularity resolution -> rendered SQL) across interval
+// sizes spanning the 1-day boundary. It is the end-to-end guard for the bug where day/year
+// interval strings ("2d", "7d", ...) failed to parse and collapsed the granularity to the
+// time column's minimum (1:MILLISECONDS) instead of tracking the time range.
+func TestCodeSqlPreviewGranularityTracksTimeRange(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	code := `SELECT $__timeGroup("ts") AS $__timeAlias() FROM $__table() WHERE $__timeFilter("ts") GROUP BY $__timeGroup("ts")`
+
+	// benchmark has a millisecond-epoch time column and no derived granularities, so auto
+	// granularity is exactly GranularityOf(interval).
+	testCases := []struct {
+		intervalSize    string
+		wantGranularity string
+	}{
+		{"30m", "30:MINUTES"},
+		{"1h", "1:HOURS"},
+		{"1d", "24:HOURS"},  // worked before the fix (the one special-cased value)
+		{"2d", "48:HOURS"},  // regressed before the fix -> 1:MILLISECONDS
+		{"7d", "168:HOURS"}, // regressed before the fix -> 1:MILLISECONDS
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.intervalSize, func(t *testing.T) {
+			var data bytes.Buffer
+			require.NoError(t, json.NewEncoder(&data).Encode(map[string]interface{}{
+				"intervalSize":      tt.intervalSize,
+				"metricColumnAlias": "metric",
+				"tableName":         "benchmark",
+				"timeColumnAlias":   "time",
+				"timeRange": map[string]interface{}{
+					"to":   "2014-02-01T18:44:26.214Z",
+					"from": "2013-12-29T14:50:28.931Z",
+				},
+				"code": code,
+			}))
+
+			var got map[string]interface{}
+			doPostRequest(t, server.URL+"/preview/sql/code", data.String(), &got)
+
+			result, _ := got["result"].(string)
+			assert.Contains(t, result, "'"+tt.wantGranularity+"'",
+				"interval %s should render granularity %s; got:\n%s", tt.intervalSize, tt.wantGranularity, result)
+			assert.NotContains(t, result, "'1:MILLISECONDS')",
+				"granularity collapsed to the time column minimum for interval %s", tt.intervalSize)
+		})
+	}
+}
+
 func TestPreviewLogSql(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()
