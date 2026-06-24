@@ -18,8 +18,9 @@ export default defineConfig<PluginOptions>({
   retries: process.env.CI ? 2 : 0,
   /* Parallelize on CI: Pinot now runs locally in the job (dedicated, not a shared remote
    * cluster), so multiple workers no longer overload it. 1 worker couldn't finish the suite
-   * within the step timeout. */
-  workers: process.env.CI ? 4 : undefined,
+   * within the step timeout; 2 keeps it well under the cap while avoiding the click/typing
+   * races that 4 parallel browser sessions provoke against the single local Grafana. */
+  workers: process.env.CI ? 2 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */

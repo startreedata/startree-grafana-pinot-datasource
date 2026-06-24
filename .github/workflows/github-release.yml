@@ -157,7 +157,7 @@ jobs:
       - name: Pull Pinot image
         # The startree-pinot image is large; pull it in a dedicated, bounded step so a slow
         # download is easy to spot and can't creep toward GitHub's 6h job ceiling.
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: docker compose pull pinot
 
       - name: Start Pinot and Grafana
@@ -209,7 +209,7 @@ jobs:
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: yarn playwright test --reporter github
         env:
           # Grafana resolves these URLs from inside the compose network (service name `pinot`).
