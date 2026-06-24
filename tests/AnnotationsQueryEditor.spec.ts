@@ -44,5 +44,7 @@ ORDER BY "time" DESC
 LIMIT 100000;`
   );
 
-  await expect(page.getByText('336 events (from 3 fields)')).toBeVisible();
+  // The fixture data is randomly generated, so don't assert the exact event count —
+  // just that the annotation query returned events from the 3 selected fields.
+  await expect(page.getByText(/\d+ events \(from 3 fields\)/)).toBeVisible();
 });

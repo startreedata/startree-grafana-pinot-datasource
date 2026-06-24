@@ -31,7 +31,7 @@ for c in g:
     if c.get("column") == "browser":
         pat["values"] = ["chrome", "edge", "firefox", "ie", "safari"]
     if c.get("column") == "country":
-        pat["values"] = ["US", "CN", "IN"]
+        pat["values"] = ["US", "CN", "IN", "KR"]
 json.dump(g, open("gen.json", "w"))
 PY
 

@@ -14,6 +14,9 @@ export default defineConfig<PluginOptions>({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
+  /* The heaviest specs (many dashboard-variable interactions) can exceed Playwright's 30s
+   * default under CI load; give them headroom. */
+  timeout: process.env.CI ? 60_000 : 30_000,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Parallelize on CI: Pinot now runs locally in the job (dedicated, not a shared remote
