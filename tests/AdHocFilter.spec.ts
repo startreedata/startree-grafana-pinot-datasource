@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { addPanelInCodeMode, queryEditorTest as test } from '@helpers/helpers';
+import { addPanelInCodeMode, queryEditorTest as test, setPanelTimeWindow } from '@helpers/helpers';
 
 /**
  * Ad-hoc filter ($__adHocFilter macro) e2e test.
@@ -19,8 +19,6 @@ test.describe('Ad-hoc filter macro', () => {
   test('$__adHocFilter with no filters expands to TRUE and renders data', async ({ page, datasource }) => {
     await page.goto('http://localhost:3000/dashboard/new?orgId=1');
 
-    const dataQueryResponse = page.waitForResponse('/api/ds/query');
-
     await addPanelInCodeMode(page, datasource.name, {
       table: 'complex_website',
       code:
@@ -39,8 +37,9 @@ test.describe('Ad-hoc filter macro', () => {
     await expect(page.getByTestId('sql-preview')).toContainText('TRUE');
     await expect(page.getByTestId('sql-preview')).not.toContainText('$__adHocFilter');
 
-    // The expanded query must be valid SQL that returns data.
-    await dataQueryResponse;
-    await expect(page.getByText('No data')).not.toBeVisible();
+    // Move the panel time window onto the fixture data (it predates the default "now"-relative
+    // range) and re-run, then confirm the expanded query is valid SQL that returns data.
+    await setPanelTimeWindow(page);
+    await expect(page.getByText('No data')).not.toBeVisible({ timeout: 15000 });
   });
 });

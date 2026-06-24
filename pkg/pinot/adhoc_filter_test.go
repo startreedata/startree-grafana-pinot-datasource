@@ -20,6 +20,7 @@ func TestAdHocFilterExpr(t *testing.T) {
 		{name: "regex not match", filter: AdHocFilter{Key: "city", Operator: "!~", Value: "^N.*"}, want: `NOT REGEXP_LIKE("city", '^N.*')`},
 		{name: "escapes single quotes", filter: AdHocFilter{Key: "city", Operator: "=", Value: "O'Brien"}, want: `"city" = 'O''Brien'`},
 		{name: "escapes injection attempt", filter: AdHocFilter{Key: "city", Operator: "=", Value: "x' OR '1'='1"}, want: `"city" = 'x'' OR ''1''=''1'`},
+		{name: "escapes double quotes in key", filter: AdHocFilter{Key: `c" OR "1"="1`, Operator: "=", Value: "NY"}, want: `"c"" OR ""1""=""1" = 'NY'`},
 		{name: "empty key", filter: AdHocFilter{Key: "", Operator: "=", Value: "NY"}, want: ""},
 		{name: "empty operator", filter: AdHocFilter{Key: "city", Operator: "", Value: "NY"}, want: ""},
 		{name: "unsupported operator", filter: AdHocFilter{Key: "city", Operator: "like", Value: "NY"}, want: ""},

@@ -13,9 +13,10 @@ type AdHocFilter struct {
 	Value    string `json:"value"`
 }
 
-// AdHocFilterExpr renders a single Grafana ad-hoc filter as a boolean SQL expression. The column
-// is quoted as an identifier and the value is escaped to prevent SQL injection. It returns "" for
-// an incomplete filter or an unsupported operator so the caller can skip it.
+// AdHocFilterExpr renders a single Grafana ad-hoc filter as a boolean SQL expression. Both the
+// column identifier and the value are escaped to prevent SQL injection, since the key and value are
+// request-controlled. It returns "" for an incomplete filter or an unsupported operator so the
+// caller can skip it.
 //
 // Grafana sends values as strings, so they're always rendered as quoted string literals. Numeric
 // `<` / `>` comparisons therefore rely on Pinot's implicit cast of the literal to the column type.
@@ -26,7 +27,7 @@ func AdHocFilterExpr(filter AdHocFilter) SqlExpr {
 		return ""
 	}
 
-	columnExpr := ObjectExpr(filter.Key)
+	columnExpr := ObjectExpr(escapeIdentifier(filter.Key))
 	valueExpr := StringLiteralExpr(escapeStringLiteral(filter.Value))
 
 	switch filter.Operator {
@@ -51,4 +52,10 @@ func AdHocFilterExpr(filter AdHocFilter) SqlExpr {
 // embedded single quotes. StringLiteralExpr only wraps in quotes, so escaping happens here.
 func escapeStringLiteral(value string) string {
 	return strings.ReplaceAll(value, `'`, `''`)
+}
+
+// escapeIdentifier escapes a name for use inside a double-quoted SQL identifier by doubling embedded
+// double quotes. ObjectExpr only wraps in quotes, so escaping happens here.
+func escapeIdentifier(name string) string {
+	return strings.ReplaceAll(name, `"`, `""`)
 }
