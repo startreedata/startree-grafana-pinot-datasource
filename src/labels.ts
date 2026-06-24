@@ -75,6 +75,10 @@ export default {
         tooltip: 'Select the aggregation function.',
         label: 'Aggregation',
       },
+      aggregations: {
+        tooltip: 'Add one or more aggregations. Each is a function applied to a column (COUNT needs no column).',
+        label: 'Aggregations',
+      },
       filters: {
         tooltip: 'Add query filters.',
         label: 'Filters',

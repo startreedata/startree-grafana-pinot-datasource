@@ -80,6 +80,58 @@ func TestPreviewSqlBuilder_SubqueryExpr(t *testing.T) {
 	assert.Contains(t, got["result"], `("fabric" in (SELECT DISTINCT fabric FROM benchmark))`)
 }
 
+func TestPreviewTableSql(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	want := `SELECT
+    "fabric",
+    SUM("value") AS "SUM(value)",
+    COUNT(*) AS "COUNT(*)"
+FROM
+    "benchmark"
+WHERE
+    "ts" >= 1704067200000 AND "ts" < 1704153600000
+GROUP BY
+    "fabric"
+ORDER BY
+    "SUM(value)" DESC
+LIMIT 100000;
+
+SET timeoutMs=1;`
+
+	var got map[string]interface{}
+	doPostRequest(t, server.URL+"/preview/table/sql", `{
+  "tableName": "benchmark",
+  "timeColumn": "ts",
+  "timeRange": {"to": "2024-01-02T00:00:00Z", "from": "2024-01-01T00:00:00Z"},
+  "dimensions": [{"name": "fabric"}],
+  "aggregations": [{"function": "SUM", "column": {"name": "value"}}, {"function": "COUNT"}],
+  "orderBy": [{"columnName": "SUM(value)", "direction": "DESC"}],
+  "queryOptions": [{"name": "timeoutMs", "value": "1"}],
+  "limit": -1,
+  "expandMacros": true
+}`, &got)
+
+	assert.Equal(t, want, got["result"])
+}
+
+func TestPreviewTableSql_IncompleteReturnsEmpty(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	// No dimensions or aggregations -> invalid query -> empty preview (never invalid `SELECT\nFROM`).
+	var got map[string]interface{}
+	doPostRequest(t, server.URL+"/preview/table/sql", `{
+  "tableName": "benchmark",
+  "timeColumn": "ts",
+  "timeRange": {"to": "2024-01-02T00:00:00Z", "from": "2024-01-01T00:00:00Z"},
+  "expandMacros": true
+}`, &got)
+
+	assert.Empty(t, got["result"])
+}
+
 func TestDistinctValues(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()

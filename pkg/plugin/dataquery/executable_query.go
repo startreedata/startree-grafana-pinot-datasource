@@ -114,6 +114,19 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			Limit:            query.Limit,
 		}
 
+	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeTable:
+		return TableBuilderQuery{
+			TimeRange:        query.TimeRange,
+			TableName:        query.TableName,
+			TimeColumn:       query.TimeColumn,
+			Dimensions:       groupByColumnsFrom(query),
+			Aggregations:     query.Aggregations,
+			DimensionFilters: query.DimensionFilters,
+			OrderByClauses:   query.OrderByClauses,
+			QueryOptions:     query.QueryOptions,
+			Limit:            query.Limit,
+		}
+
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder:
 		var metricColumn ComplexField
 		if query.MetricColumnV2.Name != "" {
@@ -122,11 +135,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			metricColumn = ComplexField{Name: query.MetricColumn}
 		}
 
-		groupByColumns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
-		for _, col := range query.GroupByColumns {
-			groupByColumns = append(groupByColumns, ComplexField{Name: col})
-		}
-		groupByColumns = append(groupByColumns, query.GroupByColumnsV2...)
+		groupByColumns := groupByColumnsFrom(query)
 
 		return TimeSeriesBuilderQuery{
 			TimeRange:           query.TimeRange,
@@ -148,6 +157,15 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 	default:
 		return new(NoOpQuery)
 	}
+}
+
+// groupByColumnsFrom merges the legacy string GROUP BY columns with the ComplexField (v2) form.
+func groupByColumnsFrom(query DataQuery) []ComplexField {
+	columns := make([]ComplexField, 0, len(query.GroupByColumns)+len(query.GroupByColumnsV2))
+	for _, col := range query.GroupByColumns {
+		columns = append(columns, ComplexField{Name: col})
+	}
+	return append(columns, query.GroupByColumnsV2...)
 }
 
 var _ ExecutableQuery = NoOpQuery{}

@@ -6,6 +6,7 @@ import { PinotResourceResponse } from './PinotResourceResponse';
 import { QueryDistinctValuesRequest } from './distinctValues';
 import { DateTime } from '@grafana/data';
 import { ComplexField } from '../dataquery/ComplexField';
+import { Aggregation } from '../dataquery/Aggregation';
 import { JsonExtractor } from '../dataquery/JsonExtractor';
 import { RegexpExtractor } from '../dataquery/RegexpExtractor';
 
@@ -39,6 +40,30 @@ export async function previewSqlBuilder(datasource: DataSource, request: Preview
   ) {
     return datasource
       .postResource<PreviewSqlResponse>('preview/sql/builder', request)
+      .then((resp) => resp.result || '')
+      .catch(() => '');
+  } else {
+    return '';
+  }
+}
+
+export interface PreviewTableSqlRequest {
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  tableName: string | undefined;
+  timeColumn: string | undefined;
+  dimensions: ComplexField[] | undefined;
+  aggregations: Aggregation[] | undefined;
+  filters: DimensionFilter[] | undefined;
+  orderBy: OrderByClause[] | undefined;
+  queryOptions: QueryOption[] | undefined;
+  limit: number | undefined;
+  expandMacros: boolean;
+}
+
+export async function previewTableSql(datasource: DataSource, request: PreviewTableSqlRequest): Promise<string> {
+  if (request.tableName && request.timeColumn && request.timeRange.to && request.timeRange.from) {
+    return datasource
+      .postResource<PreviewSqlResponse>('preview/table/sql', request)
       .then((resp) => resp.result || '')
       .catch(() => '');
   } else {
