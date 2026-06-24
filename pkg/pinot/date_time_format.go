@@ -10,7 +10,7 @@ import (
 // Ref: https://docs.pinot.apache.org/configuration-reference/schema#new-datetime-formats
 
 type DateTimeFormat struct {
-	Size   uint
+	Size   int64
 	Unit   TimeUnit
 	Format TimeFormat
 }
@@ -61,19 +61,19 @@ func (x DateTimeFormat) MinimumGranularity() Granularity {
 func (x DateTimeFormat) ParseLong(v int64) time.Time {
 	switch x.Unit {
 	case TimeUnitDays:
-		return time.Unix(86400*v*int64(x.Size), 0).UTC()
+		return time.Unix(86400*v*x.Size, 0).UTC()
 	case TimeUnitHours:
-		return time.Unix(3600*v*int64(x.Size), 0).UTC()
+		return time.Unix(3600*v*x.Size, 0).UTC()
 	case TimeUnitMinutes:
-		return time.Unix(60*v*int64(x.Size), 0).UTC()
+		return time.Unix(60*v*x.Size, 0).UTC()
 	case TimeUnitSeconds:
-		return time.Unix(v*int64(x.Size), 0).UTC()
+		return time.Unix(v*x.Size, 0).UTC()
 	case TimeUnitMilliseconds:
-		return time.UnixMilli(v * int64(x.Size)).UTC()
+		return time.UnixMilli(v * x.Size).UTC()
 	case TimeUnitMicroseconds:
-		return time.UnixMicro(v * int64(x.Size)).UTC()
+		return time.UnixMicro(v * x.Size).UTC()
 	default:
-		return time.Unix(0, v*int64(x.Size)).UTC()
+		return time.Unix(0, v*x.Size).UTC()
 	}
 }
 
@@ -112,12 +112,12 @@ func parseV0_12DateTimeFormat(format string) (DateTimeFormat, error) {
 		}, nil
 	}
 
-	size, err := strconv.ParseUint(fields[2], 10, 64)
+	size, err := strconv.ParseInt(fields[2], 10, 64)
 	if err != nil {
 		return DateTimeFormat{}, fmt.Errorf("failed to parse date time format `%s`: %w", format, err)
 	}
 
-	return DateTimeFormat{Format: TimeFormatEpoch, Size: uint(size), Unit: unit}, nil
+	return DateTimeFormat{Format: TimeFormatEpoch, Size: size, Unit: unit}, nil
 }
 
 func parseLegacyDateTimeFormat(format string) (DateTimeFormat, error) {
@@ -130,7 +130,7 @@ func parseLegacyDateTimeFormat(format string) (DateTimeFormat, error) {
 		return DateTimeFormat{}, fmt.Errorf("failed to parse date time format `%s`: %w", format, err)
 	}
 
-	size, err := strconv.ParseUint(fields[0], 10, 64)
+	size, err := strconv.ParseInt(fields[0], 10, 64)
 	if err != nil {
 		return DateTimeFormat{}, fmt.Errorf("failed to parse date time format `%s`: %w", format, err)
 	}
@@ -140,7 +140,7 @@ func parseLegacyDateTimeFormat(format string) (DateTimeFormat, error) {
 		return DateTimeFormat{}, fmt.Errorf("failed to parse date time format `%s`: %w", format, err)
 	}
 
-	return DateTimeFormat{Format: TimeFormatEpoch, Size: uint(size), Unit: unit}, nil
+	return DateTimeFormat{Format: TimeFormatEpoch, Size: size, Unit: unit}, nil
 }
 
 type TimeFormat string

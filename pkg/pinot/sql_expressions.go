@@ -95,19 +95,19 @@ func TimeFilterExpr(filter TimeFilter) SqlExpr {
 func TimeExpr(ts time.Time, format DateTimeFormat) SqlExpr {
 	switch format.Unit {
 	case TimeUnitNanoseconds:
-		return SqlExpr(fmt.Sprintf("%d", ts.UnixNano()/int64(format.Size)))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixNano()/format.Size))
 	case TimeUnitMicroseconds:
-		return SqlExpr(fmt.Sprintf("%d", ts.UnixMicro()/int64(format.Size)))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixMicro()/format.Size))
 	case TimeUnitMilliseconds:
-		return SqlExpr(fmt.Sprintf("%d", ts.UnixMilli()/int64(format.Size)))
+		return SqlExpr(fmt.Sprintf("%d", ts.UnixMilli()/format.Size))
 	case TimeUnitSeconds:
-		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)))
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/format.Size))
 	case TimeUnitMinutes:
-		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/60))
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/format.Size/60))
 	case TimeUnitHours:
-		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/3600))
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/format.Size/3600))
 	case TimeUnitDays:
-		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/int64(format.Size)/86400))
+		return SqlExpr(fmt.Sprintf("%d", ts.Unix()/format.Size/86400))
 	default:
 		return ""
 	}

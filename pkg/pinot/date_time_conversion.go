@@ -44,7 +44,7 @@ func ParseDateTimeConversionExpr(expr string) (DateTimeConversion, error) {
 			return DateTimeConversion{}, errors.New("invalid time group expression")
 		}
 
-		size, err := strconv.ParseUint(fromSize, 10, 64)
+		size, err := strconv.ParseInt(fromSize, 10, 64)
 		if err != nil {
 			return DateTimeConversion{}, err
 		}
@@ -53,7 +53,7 @@ func ParseDateTimeConversionExpr(expr string) (DateTimeConversion, error) {
 			TimeColumn:   columnName,
 			InputFormat:  DateTimeFormatMillisecondsEpoch(),
 			OutputFormat: DateTimeFormatMillisecondsEpoch(),
-			Granularity:  Granularity{Unit: fromUnit, Size: uint(size)},
+			Granularity:  Granularity{Unit: fromUnit, Size: size},
 		}, nil
 	}
 	return DateTimeConversion{}, errors.New("invalid time group expression")
