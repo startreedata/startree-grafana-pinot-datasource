@@ -9,7 +9,7 @@ import (
 
 type Granularity struct {
 	Unit TimeUnit
-	Size uint
+	Size int64
 }
 
 func GranularityMilliseconds() Granularity { return Granularity{Unit: TimeUnitMilliseconds, Size: 1} }
@@ -18,7 +18,7 @@ func GranularityMinutes() Granularity      { return Granularity{Unit: TimeUnitMi
 func GranularityHours() Granularity        { return Granularity{Unit: TimeUnitHours, Size: 1} }
 func GranularityDays() Granularity         { return Granularity{Unit: TimeUnitDays, Size: 1} }
 
-func NewPinotGranularity(unit TimeUnit, size uint) (Granularity, error) {
+func NewPinotGranularity(unit TimeUnit, size int64) (Granularity, error) {
 	if size == 0 {
 		return Granularity{}, fmt.Errorf("size must be > 0")
 	}
@@ -29,22 +29,22 @@ func NewPinotGranularity(unit TimeUnit, size uint) (Granularity, error) {
 func GranularityOf(duration time.Duration) Granularity {
 	switch {
 	case duration.Hours() >= 1:
-		return Granularity{Unit: TimeUnitHours, Size: uint(duration.Hours())}
+		return Granularity{Unit: TimeUnitHours, Size: int64(duration.Hours())}
 	case duration.Minutes() >= 1:
-		return Granularity{Unit: TimeUnitMinutes, Size: uint(duration.Minutes())}
+		return Granularity{Unit: TimeUnitMinutes, Size: int64(duration.Minutes())}
 	case duration.Seconds() >= 1:
-		return Granularity{Unit: TimeUnitSeconds, Size: uint(duration.Seconds())}
+		return Granularity{Unit: TimeUnitSeconds, Size: int64(duration.Seconds())}
 	case duration.Milliseconds() >= 1:
-		return Granularity{Unit: TimeUnitMilliseconds, Size: uint(duration.Milliseconds())}
+		return Granularity{Unit: TimeUnitMilliseconds, Size: duration.Milliseconds()}
 	case duration.Microseconds() >= 1:
-		return Granularity{Unit: TimeUnitMicroseconds, Size: uint(duration.Microseconds())}
+		return Granularity{Unit: TimeUnitMicroseconds, Size: duration.Microseconds()}
 	default:
-		return Granularity{Unit: TimeUnitNanoseconds, Size: uint(duration.Nanoseconds())}
+		return Granularity{Unit: TimeUnitNanoseconds, Size: duration.Nanoseconds()}
 	}
 }
 
 func ParseGranularityExpr(granularity string) (Granularity, error) {
-	var size uint64
+	var size int64
 	var unit TimeUnit
 	var err error
 
@@ -57,7 +57,7 @@ func ParseGranularityExpr(granularity string) (Granularity, error) {
 			return Granularity{}, fmt.Errorf("failed to parse granularity `%s`: %w", granularity, err)
 		}
 	} else {
-		size, err = strconv.ParseUint(fields[0], 10, 64)
+		size, err = strconv.ParseInt(fields[0], 10, 64)
 		if err != nil {
 			return Granularity{}, fmt.Errorf("failed to parse granularity `%s`: %w", granularity, err)
 		}
@@ -68,7 +68,7 @@ func ParseGranularityExpr(granularity string) (Granularity, error) {
 		}
 	}
 
-	return Granularity{Unit: unit, Size: uint(size)}, nil
+	return Granularity{Unit: unit, Size: size}, nil
 }
 
 func (x Granularity) String() string {

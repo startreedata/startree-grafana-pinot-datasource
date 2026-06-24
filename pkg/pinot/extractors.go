@@ -101,7 +101,7 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	case DataTypeInt:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int32, error) {
 			val, err := defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).Int64()
-			return int32(val), err
+			return int32(val), err // #nosec G115 -- Pinot DataTypeInt columns are 32-bit by definition; value always fits in int32
 		})
 	case DataTypeLong:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int64, error) {
@@ -298,19 +298,19 @@ func ExtractColumnAsTime(results *ResultTable, colIdx int, format DateTimeFormat
 	parseLong := func(v int64) time.Time {
 		switch format.Unit {
 		case TimeUnitDays:
-			return time.Unix(86400*v*int64(format.Size), 0).UTC()
+			return time.Unix(86400*v*format.Size, 0).UTC()
 		case TimeUnitHours:
-			return time.Unix(3600*v*int64(format.Size), 0).UTC()
+			return time.Unix(3600*v*format.Size, 0).UTC()
 		case TimeUnitMinutes:
-			return time.Unix(60*v*int64(format.Size), 0).UTC()
+			return time.Unix(60*v*format.Size, 0).UTC()
 		case TimeUnitSeconds:
-			return time.Unix(v*int64(format.Size), 0).UTC()
+			return time.Unix(v*format.Size, 0).UTC()
 		case TimeUnitMilliseconds:
-			return time.UnixMilli(v * int64(format.Size)).UTC()
+			return time.UnixMilli(v * format.Size).UTC()
 		case TimeUnitMicroseconds:
-			return time.UnixMicro(v * int64(format.Size)).UTC()
+			return time.UnixMicro(v * format.Size).UTC()
 		default:
-			return time.Unix(0, v*int64(format.Size)).UTC()
+			return time.Unix(0, v*format.Size).UTC()
 		}
 	}
 

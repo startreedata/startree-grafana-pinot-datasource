@@ -1,6 +1,6 @@
 module github.com/startreedata/startree-grafana-pinot-datasource
 
-go 1.25.7
+go 1.25.11
 
 require (
 	github.com/gorilla/mux v1.8.1
