@@ -139,12 +139,12 @@ jobs:
       - name: Start Pinot and Grafana
         run: docker compose up pinot grafana --detach --quiet-pull
 
-      - name: Wait for Pinot components and quickstart data
+      - name: Wait for Pinot components
         timeout-minutes: 12
         run: |
-          # The quickstart runs all Pinot components inside the single `pinot` container.
-          # Poll each endpoint until ready; fail fast if the container dies instead of
-          # polling for the full timeout.
+          # The StarTree quickstart runs the controller, broker and server inside the single
+          # `pinot` container (it doesn't start a standalone minion worker). Poll each until
+          # ready; fail fast if the container dies instead of polling for the full timeout.
           wait_for() {
             local name="$1" cmd="$2"
             for i in $(seq 1 120); do
@@ -158,9 +158,15 @@ jobs:
           }
           wait_for "controller" "curl -sf http://localhost:9000/health"
           wait_for "broker"     "curl -sf http://localhost:8000/health"
+          wait_for "server"     "curl -sf http://localhost:9000/instances | grep -q Server_"
           wait_for "grafana"    "curl -sf http://localhost:3000/api/health"
-          # Quickstart loads tables asynchronously; complex_website is the table the E2E tests query.
-          wait_for "quickstart tables" "curl -sf http://localhost:9000/tables | grep -q complex_website"
+
+      - name: Create E2E fixture tables (complex_website, simple_website)
+        # The PROMQL quickstart doesn't ship the website tables the E2E specs query, so
+        # generate + load them with pinot-tools' synthetic data generator (bundled in the
+        # image). See tests/setup-pinot-tables.sh.
+        timeout-minutes: 10
+        run: bash tests/setup-pinot-tables.sh pinot
 
       - name: Install Playwright Browsers
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
