@@ -56,7 +56,7 @@
           "queryType": "PinotQL",
           "editorMode": "Code",
           "displayType": "TIMESERIES",
-          "tableName": "infraMetrics",
+          "tableName": "$table",
           "legend": "{{metric}}",
           "pinotQlCode": "SELECT $__timeGroup(\"ts\") AS $__timeAlias(),\n       \"metric\" AS \"metric\",\n       AVG(\"value\") AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY $__timeGroup(\"ts\"), \"metric\"\nORDER BY $__timeAlias() DESC\nLIMIT 100000"
         }
@@ -74,7 +74,7 @@
       "gridPos": { "h": 9, "w": 24, "x": 0, "y": 9 },
       "id": 2,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "single" } },
-      "title": "Hourly event totals",
+      "title": "Total value over time",
       "type": "timeseries",
       "targets": [
         {
@@ -83,8 +83,8 @@
           "queryType": "PinotQL",
           "editorMode": "Code",
           "displayType": "TIMESERIES",
-          "tableName": "hourlyEvents",
-          "legend": "events",
+          "tableName": "$table",
+          "legend": "total",
           "pinotQlCode": "SELECT $__timeGroup(\"ts\") AS $__timeAlias(),\n       SUM(\"value\") AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY $__timeGroup(\"ts\")\nORDER BY $__timeAlias() DESC\nLIMIT 100000"
         }
       ]
@@ -93,7 +93,26 @@
   "refresh": "",
   "schemaVersion": 39,
   "tags": ["startree", "pinot", "example"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "table",
+        "label": "Pinot table",
+        "description": "Sample table to query. Both panels need a numeric `value` column and a `ts` time column (infraMetrics, hourlyEvents); the 'by metric name' panel additionally needs a `metric` column, which only infraMetrics has.",
+        "type": "custom",
+        "query": "infraMetrics, hourlyEvents",
+        "current": { "selected": true, "text": "infraMetrics", "value": "infraMetrics" },
+        "options": [
+          { "selected": true, "text": "infraMetrics", "value": "infraMetrics" },
+          { "selected": false, "text": "hourlyEvents", "value": "hourlyEvents" }
+        ],
+        "includeAll": false,
+        "multi": false,
+        "skipUrlSync": false,
+        "hide": 0
+      }
+    ]
+  },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "",

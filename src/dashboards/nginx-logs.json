@@ -58,7 +58,7 @@
           "queryType": "PinotQL",
           "editorMode": "Code",
           "displayType": "TIMESERIES",
-          "tableName": "nginxLogs",
+          "tableName": "$table",
           "legend": "{{method}}",
           "pinotQlCode": "SELECT $__timeGroup(\"ts\") AS $__timeAlias(),\n       \"method\" AS \"method\",\n       COUNT(*) AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY $__timeGroup(\"ts\"), \"method\"\nORDER BY $__timeAlias() DESC\nLIMIT 100000"
         }
@@ -79,7 +79,7 @@
           "queryType": "PinotQL",
           "editorMode": "Code",
           "displayType": "TABLE",
-          "tableName": "nginxLogs",
+          "tableName": "$table",
           "pinotQlCode": "SELECT \"uri\" AS \"URI\",\n       COUNT(*) AS \"Requests\",\n       SUM(\"bytesSent\") AS \"Bytes Sent\"\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY \"uri\"\nORDER BY \"Requests\" DESC\nLIMIT 20"
         }
       ]
@@ -105,7 +105,7 @@
           "queryType": "PinotQL",
           "editorMode": "Code",
           "displayType": "LOGS",
-          "tableName": "nginxLogs",
+          "tableName": "$table",
           "timeColumnAlias": "ts",
           "logColumnAlias": "message",
           "pinotQlCode": "SELECT \"ts\",\n       \"message\",\n       \"method\",\n       \"status\",\n       \"ipAddr\",\n       \"uri\"\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\n    AND \"message\" IS NOT NULL\nORDER BY \"ts\" DESC\nLIMIT 500"
@@ -116,7 +116,27 @@
   "refresh": "",
   "schemaVersion": 39,
   "tags": ["startree", "pinot", "example"],
-  "templating": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "table",
+        "label": "Pinot table",
+        "description": "Sample table to query. The panels reference columns specific to nginxLogs (message, method, status, uri, bytesSent, ts) — selecting a differently-shaped table only returns data if it has matching columns.",
+        "type": "custom",
+        "query": "nginxLogs, infraMetrics, hourlyEvents",
+        "current": { "selected": true, "text": "nginxLogs", "value": "nginxLogs" },
+        "options": [
+          { "selected": true, "text": "nginxLogs", "value": "nginxLogs" },
+          { "selected": false, "text": "infraMetrics", "value": "infraMetrics" },
+          { "selected": false, "text": "hourlyEvents", "value": "hourlyEvents" }
+        ],
+        "includeAll": false,
+        "multi": false,
+        "skipUrlSync": false,
+        "hide": 0
+      }
+    ]
+  },
   "time": { "from": "now-6h", "to": "now" },
   "timepicker": {},
   "timezone": "",

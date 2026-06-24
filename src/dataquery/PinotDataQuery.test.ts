@@ -13,6 +13,7 @@ describe('interpolateVariables', () => {
   test('emptyQuery', () => {
     expect(interpolateVariables({ refId: 'test_id' })).toEqual<PinotDataQuery>({
       refId: 'test_id',
+      tableName: undefined,
       aggregationFunction: undefined,
       filters: undefined,
       granularity: undefined,
@@ -70,6 +71,7 @@ describe('interpolateVariables', () => {
             $promQlCode: 'promQlCodeReplaced',
             $variableQueryColumn: 'variableQueryColumnReplaced',
             $variableQueryCode: 'variableQueryCodeReplaced',
+            $table: 'tableReplaced',
           })
         ).get(target || '') || 'no replacement',
     });
@@ -79,6 +81,7 @@ describe('interpolateVariables', () => {
         refId: 'test_id',
         displayType: DisplayType.TIMESERIES,
         editorMode: EditorMode.Builder,
+        tableName: '$table',
         timeColumn: '$timeColumn',
         metricColumn: '$metricColumn',
         metricColumnV2: { name: '$metricColumn', key: '$metricColumnKey' },
@@ -128,6 +131,7 @@ describe('interpolateVariables', () => {
       refId: 'test_id',
       displayType: DisplayType.TIMESERIES,
       editorMode: EditorMode.Builder,
+      tableName: 'tableReplaced',
       timeColumn: 'timeColumnReplaced',
       metricColumn: 'metricColumnReplaced',
       metricColumnV2: { name: 'metricColumnReplaced', key: 'metricColumnKeyReplaced' },

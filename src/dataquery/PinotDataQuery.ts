@@ -311,6 +311,10 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
   return {
     ...query,
 
+    // Table name (supports a dashboard variable like `$table`); must be resolved before
+    // `$__table()` expansion and the schema/config lookups on the backend.
+    tableName: replaceIfExists(query.tableName),
+
     // Sql Builder
 
     timeColumn: replaceIfExists(query.timeColumn),
