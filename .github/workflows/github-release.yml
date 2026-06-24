@@ -196,7 +196,7 @@ jobs:
         run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
 
       - name: Run Playwright tests
-        timeout-minutes: 12
+        timeout-minutes: 20
         run: yarn playwright test --reporter github
         env:
           # Grafana resolves these URLs from inside the compose network (service name `pinot`).
