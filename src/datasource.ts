@@ -59,24 +59,26 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
 
   async getTagValues(options: DataSourceGetTagValuesOptions): Promise<MetricFindValue[]> {
     const context = this.adHocContext;
-    if (!context) {
+    const { timeRange } = readAdHocRequest(options);
+    // The distinct-values backend requires a valid time column whenever a time range is sent, so
+    // only query when both are known; otherwise short-circuit instead of triggering a 500.
+    if (!context || !context.timeColumn || !timeRange) {
       return [];
     }
-    const { timeRange } = readAdHocRequest(options);
     const values = await queryDistinctValuesForFilters(this, {
       tableName: context.tableName,
       columnName: options.key,
       timeColumn: context.timeColumn,
-      timeRange: timeRange ? { from: timeRange.from, to: timeRange.to } : undefined,
+      timeRange: { from: timeRange.from, to: timeRange.to },
     });
     return values.map((value) => ({ text: unquoteSqlLiteral(value) }));
   }
 
   private resolveAdHocContext(queries?: PinotDataQuery[]): { tableName: string; timeColumn?: string } | undefined {
+    // Clear the cache when no table can be resolved so stale context doesn't leak across
+    // dashboards/panels (e.g. a request with no queries).
     const query = queries?.find((q) => q.tableName);
-    if (query?.tableName) {
-      this.adHocContext = { tableName: query.tableName, timeColumn: query.timeColumn };
-    }
+    this.adHocContext = query?.tableName ? { tableName: query.tableName, timeColumn: query.timeColumn } : undefined;
     return this.adHocContext;
   }
 }
