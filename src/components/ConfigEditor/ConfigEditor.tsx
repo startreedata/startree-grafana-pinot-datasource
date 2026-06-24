@@ -5,7 +5,7 @@ import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
 import allLabels from 'labels';
-import { InlineField, InlineSwitch, useTheme2 } from '@grafana/ui';
+import { InlineField, InlineSwitch, Input, useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { InputDatabase } from './InputDatabase';
 import { SelectQueryOptions } from './SelectQueryOptions';
@@ -98,6 +98,49 @@ export function ConfigEditor(props: ConfigEditorProps) {
           selected={jsonData.queryOptions || []}
           onChange={(queryOptions) => onConfigChange({ ...jsonData, queryOptions })}
         />
+      </div>
+      <h3>Query</h3>
+      <div className="gf-form-group">
+        <InlineField
+          data-testid="input-query-timeout"
+          label={labels.queryTimeout.label}
+          labelWidth={24}
+          tooltip={labels.queryTimeout.tooltip}
+          grow
+          interactive
+        >
+          <Input
+            type="number"
+            width={40}
+            min={0}
+            placeholder={labels.queryTimeout.placeholder}
+            value={jsonData.queryTimeoutSeconds ?? ''}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              onConfigChange({ ...jsonData, queryTimeoutSeconds: value === '' ? undefined : Number(value) });
+            }}
+          />
+        </InlineField>
+        <InlineField
+          data-testid="input-max-row-limit"
+          label={labels.maxRowLimit.label}
+          labelWidth={24}
+          tooltip={labels.maxRowLimit.tooltip}
+          grow
+          interactive
+        >
+          <Input
+            type="number"
+            width={40}
+            min={0}
+            placeholder={labels.maxRowLimit.placeholder}
+            value={jsonData.maxRowLimit ?? ''}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              onConfigChange({ ...jsonData, maxRowLimit: value === '' ? undefined : Number(value) });
+            }}
+          />
+        </InlineField>
       </div>
       <h3>Authentication</h3>
       <p className={styles.text}>

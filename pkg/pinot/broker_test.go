@@ -5,7 +5,10 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"net/http"
+	"net/http/httptest"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestPinotClient_ExecuteSqlQuery(t *testing.T) {
@@ -29,6 +32,75 @@ func TestPinotClient_ExecuteSqlQuery(t *testing.T) {
 			{"fabric_0000", "pattern_0012", "2024-10-01 00:00:00.0", json.Number("201.0248989609479")},
 		},
 	}, resp.ResultTable)
+}
+
+// blockingBrokerClient returns a client pointed at an httptest server that blocks until
+// the request context is cancelled (or the test ends). started is closed once the handler
+// is entered, so the caller knows the request is in-flight before cancelling.
+func blockingBrokerClient(t *testing.T) (*Client, chan struct{}) {
+	t.Helper()
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(started) })
+		select {
+		case <-r.Context().Done(): // client aborted (cancel or timeout)
+		case <-release: // test ending — let the handler return so Close doesn't hang
+		}
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(func() { close(release) }) // LIFO: runs before server.Close
+	client := NewPinotClient(server.Client(), ClientProperties{BrokerUrl: server.URL})
+	return client, started
+}
+
+func TestPinotClient_ExecuteSqlQuery_ContextCancelled(t *testing.T) {
+	client, started := blockingBrokerClient(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		<-started
+		cancel()
+	}()
+
+	_, err := client.ExecuteSqlQuery(ctx, NewSqlQuery("SELECT 1"))
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+func TestPinotClient_ExecuteSqlQuery_TimeoutDeadline(t *testing.T) {
+	client, _ := blockingBrokerClient(t)
+	client.properties.QueryTimeout = 50 * time.Millisecond
+
+	_, err := client.ExecuteSqlQuery(context.Background(), NewSqlQuery("SELECT 1"))
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestApplyRowLimit(t *testing.T) {
+	tests := []struct {
+		name        string
+		sql         string
+		maxRowLimit int
+		want        string
+	}{
+		{"disabled", "select * from t", 0, "select * from t"},
+		{"appends when missing", "select * from t", 1000, "select * from t LIMIT 1000"},
+		{"trims trailing semicolon", "select * from t;", 1000, "select * from t LIMIT 1000"},
+		{"keeps explicit limit", "select * from t LIMIT 5", 1000, "select * from t LIMIT 5"},
+		{"keeps explicit limit case-insensitive", "select * from t limit 5", 1000, "select * from t limit 5"},
+		{"appends after order by", "select * from t ORDER BY a", 50, "select * from t ORDER BY a LIMIT 50"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, applyRowLimit(tt.sql, tt.maxRowLimit))
+		})
+	}
+}
+
+func TestPinotClient_RenderSql_AppliesRowLimit(t *testing.T) {
+	client := NewPinotClient(http.DefaultClient, ClientProperties{MaxRowLimit: 1000})
+	got := client.RenderSql(SqlQuery{Sql: "select * from benchmark"})
+	assert.Equal(t, "select * from benchmark LIMIT 1000", got)
 }
 
 func TestNewBrokerExceptionError(t *testing.T) {

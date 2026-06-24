@@ -7,9 +7,13 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"net/http"
+	"time"
 )
 
-const TokenTypeNone = "None"
+const (
+	TokenTypeNone              = "None"
+	DefaultQueryTimeoutSeconds = 60
+)
 
 type Config struct {
 	ControllerUrl string        `json:"controllerUrl"`
@@ -19,8 +23,21 @@ type Config struct {
 	QueryOptions  []QueryOption `json:"queryOptions"`
 	OAuthPassThru bool          `json:"oauthPassThru"`
 
+	// QueryTimeoutSeconds bounds a single broker query. Empty/zero falls back to the default.
+	QueryTimeoutSeconds int `json:"queryTimeoutSeconds"`
+	// MaxRowLimit caps result size for queries without an explicit LIMIT. Zero disables it.
+	MaxRowLimit int `json:"maxRowLimit"`
+
 	// Secrets
 	TokenSecret string `json:"-"`
+}
+
+// QueryTimeout returns the configured broker query timeout, defaulting when unset.
+func (config *Config) QueryTimeout() time.Duration {
+	if config.QueryTimeoutSeconds <= 0 {
+		return DefaultQueryTimeoutSeconds * time.Second
+	}
+	return time.Duration(config.QueryTimeoutSeconds) * time.Second
 }
 
 type QueryOption struct {
@@ -60,5 +77,7 @@ func PinotClientOf(httpClient *http.Client, config Config) *pinot.Client {
 		DatabaseName:  config.DatabaseName,
 		QueryOptions:  queryOptions,
 		Authorization: authorization,
+		QueryTimeout:  config.QueryTimeout(),
+		MaxRowLimit:   config.MaxRowLimit,
 	})
 }

@@ -22,6 +22,17 @@ export default {
         placeholder: 'default',
         tooltip: 'Optionally specify the database.',
       },
+      queryTimeout: {
+        label: 'Query Timeout (s)',
+        placeholder: '60',
+        tooltip: 'Maximum seconds to wait for a Pinot broker query before aborting it. Defaults to 60.',
+      },
+      maxRowLimit: {
+        label: 'Max Row Limit',
+        placeholder: 'No limit',
+        tooltip:
+          'Caps result size by appending a LIMIT to queries that have no explicit limit, protecting the broker. Leave empty to disable.',
+      },
     },
     QueryEditor: {
       queryType: {
