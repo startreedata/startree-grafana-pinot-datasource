@@ -43,7 +43,13 @@ export function EditAggregation(props: {
           value={isCount && !aggregation.column?.name ? { label: '*', value: '*' } : columnFormData.usedOption}
           onChange={(item) => {
             const col = columnFormData.getChange(item);
-            onChange({ ...aggregation, column: { name: col?.name, key: col?.key || undefined } });
+            // The `*` shown for COUNT is a placeholder, not a real column — keep it as COUNT(*)
+            // rather than letting it become a column literally named "*".
+            if (col?.name === '*') {
+              onChange({ ...aggregation, column: {} });
+            } else {
+              onChange({ ...aggregation, column: { name: col?.name, key: col?.key || undefined } });
+            }
           }}
         />
       </div>

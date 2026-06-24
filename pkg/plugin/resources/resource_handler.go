@@ -182,6 +182,12 @@ func PreviewTableSql(client *pinot.Client, ctx context.Context, data PreviewTabl
 		Limit:            data.Limit,
 	}
 
+	// Don't render a preview for an incomplete query — without a time column or any
+	// dimension/aggregation the template would emit invalid SQL (e.g. `SELECT\nFROM ...`).
+	if err := query.Validate(); err != nil {
+		return newOkResponse("")
+	}
+
 	if !data.ExpandMacros {
 		sql, err := query.RenderSqlWithMacros()
 		if err != nil {

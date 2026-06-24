@@ -146,6 +146,25 @@ LIMIT 100000;`, got.Sql)
 		assert.Equal(t, []pinot.QueryOption{{Name: "timeoutMs", Value: "1"}}, got.QueryOptions)
 	})
 
+	t.Run("count with star column renders COUNT(*)", func(t *testing.T) {
+		query := TableBuilderQuery{
+			TimeRange:    TimeRange{To: time.Unix(1, 0), From: time.Unix(0, 0)},
+			TableName:    "benchmark",
+			TimeColumn:   "ts",
+			Aggregations: []Aggregation{{Function: "COUNT", Column: ComplexField{Name: "*"}}},
+		}
+
+		got, err := query.RenderSqlQuery(ctx, client)
+		assert.NoError(t, err)
+		assert.Equal(t, `SELECT
+    COUNT(*) AS "COUNT(*)"
+FROM
+    "benchmark"
+WHERE
+    "ts" >= 0 AND "ts" < 1000
+LIMIT 100000;`, got.Sql)
+	})
+
 	t.Run("complex field dimension and aggregation", func(t *testing.T) {
 		query := TableBuilderQuery{
 			TimeRange:  TimeRange{To: time.Unix(1, 0), From: time.Unix(0, 0)},

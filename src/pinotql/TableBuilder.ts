@@ -62,8 +62,8 @@ function dimensionsFrom(query: PinotDataQuery): ComplexField[] {
 /** Result column name of an aggregation. Must match the Go aggregationAlias so ORDER BY lines up. */
 export function aggregationLabelOf(aggregation: Aggregation): string {
   const column = columnLabelOf(aggregation.column?.name, aggregation.column?.key);
-  const arg = !column && aggregation.function === AggregationFunction.COUNT ? '*' : column;
-  return `${aggregation.function}(${arg})`;
+  const isCountStar = aggregation.function === AggregationFunction.COUNT && (!column || column === '*');
+  return `${aggregation.function}(${isCountStar ? '*' : column})`;
 }
 
 export function isValidAggregation(aggregation: Aggregation): boolean {
@@ -184,9 +184,15 @@ function useSqlPreview(
   };
 
   useEffect(() => {
+    // Skip the request and clear any stale preview when the query can't run (e.g. no table,
+    // time column, or any dimension/aggregation) — otherwise we'd render invalid SQL.
+    if (!canRunQuery(interpolatedParams)) {
+      setResult('');
+      return;
+    }
     setLoading(true);
     previewTableSql(datasource, previewRequest)
-      .then((val) => val && setResult(val))
+      .then((val) => setResult(val))
       .finally(() => setLoading(false));
   }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return { result, loading };

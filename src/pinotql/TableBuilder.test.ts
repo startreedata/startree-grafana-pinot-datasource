@@ -62,6 +62,9 @@ describe('aggregationLabelOf', () => {
       "MAX(attrs['latency'])"
     );
   });
+  test('count with a literal star column stays COUNT(*)', () => {
+    expect(TableBuilder.aggregationLabelOf({ function: 'COUNT', column: { name: '*' } })).toEqual('COUNT(*)');
+  });
 });
 
 describe('canRunQuery', () => {

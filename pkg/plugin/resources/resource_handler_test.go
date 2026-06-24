@@ -116,6 +116,22 @@ SET timeoutMs=1;`
 	assert.Equal(t, want, got["result"])
 }
 
+func TestPreviewTableSql_IncompleteReturnsEmpty(t *testing.T) {
+	server := newTestServer(t)
+	defer server.Close()
+
+	// No dimensions or aggregations -> invalid query -> empty preview (never invalid `SELECT\nFROM`).
+	var got map[string]interface{}
+	doPostRequest(t, server.URL+"/preview/table/sql", `{
+  "tableName": "benchmark",
+  "timeColumn": "ts",
+  "timeRange": {"to": "2024-01-02T00:00:00Z", "from": "2024-01-01T00:00:00Z"},
+  "expandMacros": true
+}`, &got)
+
+	assert.Empty(t, got["result"])
+}
+
 func TestDistinctValues(t *testing.T) {
 	server := newTestServer(t)
 	defer server.Close()

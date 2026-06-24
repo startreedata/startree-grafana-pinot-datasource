@@ -179,7 +179,7 @@ func (query TableBuilderQuery) resolveLimit() int64 {
 }
 
 func aggregationExpr(agg Aggregation) pinot.SqlExpr {
-	if agg.Function == AggregationFunctionCount && agg.Column.Name == "" {
+	if agg.Function == AggregationFunctionCount && isCountStar(agg.Column) {
 		return pinot.SqlExpr(fmt.Sprintf("%s(*)", agg.Function))
 	}
 	return pinot.SqlExpr(fmt.Sprintf("%s(%s)", agg.Function, pinot.ComplexFieldExpr(agg.Column.Name, agg.Column.Key)))
@@ -189,10 +189,16 @@ func aggregationExpr(agg Aggregation) pinot.SqlExpr {
 // ORDER BY options the user picks line up with the rendered SELECT alias.
 func aggregationAlias(agg Aggregation) string {
 	arg := complexFieldLabel(agg.Column.Name, agg.Column.Key)
-	if arg == "" && agg.Function == AggregationFunctionCount {
+	if agg.Function == AggregationFunctionCount && isCountStar(agg.Column) {
 		arg = "*"
 	}
 	return fmt.Sprintf("%s(%s)", agg.Function, arg)
+}
+
+// isCountStar reports whether a COUNT aggregation has no real column — either omitted or the
+// literal "*" the UI shows. Both render as COUNT(*), never COUNT("*") (a column literally named *).
+func isCountStar(column ComplexField) bool {
+	return column.Name == "" || column.Name == "*"
 }
 
 func complexFieldLabel(name string, key string) string {
