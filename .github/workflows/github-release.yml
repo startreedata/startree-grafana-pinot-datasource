@@ -210,7 +210,9 @@ jobs:
 
       - name: Run Playwright tests
         timeout-minutes: 25
-        run: yarn playwright test --reporter github
+        # github reporter -> inline annotations in the step log; html -> the
+        # playwright-report/ artifact uploaded below (useful for debugging failures).
+        run: yarn playwright test --reporter=github,html
         env:
           # Grafana resolves these URLs from inside the compose network (service name `pinot`).
           # Local StarTree quickstart is unauthenticated, so database/token are empty.
@@ -226,6 +228,7 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload Test Results (videos, traces, screenshots)
         uses: actions/upload-artifact@v6
@@ -234,6 +237,9 @@ jobs:
           name: playwright-test-results
           path: test-results/
           retention-days: 30
+          # test-results/ only exists when a test fails (retain-on-failure); a green run
+          # leaves it empty, so don't warn when there's nothing to upload.
+          if-no-files-found: ignore
 
       - name: Collect Grafana logs
         if: ${{ failure() }}
