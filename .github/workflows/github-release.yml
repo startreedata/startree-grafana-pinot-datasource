@@ -185,6 +185,19 @@ jobs:
           wait_for "server"     "curl -sf http://localhost:9000/instances | grep -q Server_"
           wait_for "grafana"    "curl -sf http://localhost:3000/api/health"
 
+      - name: Read go version from go.mod
+        id: go_version
+        run: echo "GO_VERSION=$(grep '^go ' go.mod | cut -d' ' -f2)" >> $GITHUB_OUTPUT
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.go_version.outputs.GO_VERSION }}
+
+      - name: Create E2E test tables (nginxLogs, highCardinality, partial, ...)
+        # Same fixtures the backend tests use; the E2E specs query these too.
+        run: go run cmd/testsetup/main.go
+
       - name: Create E2E fixture tables (complex_website, simple_website)
         # The PROMQL quickstart doesn't ship the website tables the E2E specs query, so
         # generate + load them with pinot-tools' synthetic data generator (bundled in the

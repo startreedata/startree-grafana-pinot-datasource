@@ -36,6 +36,23 @@ gen_and_load() {
     A=/home/pinot/bin/pinot-admin.sh
     $A GenerateData -numRecords "$n" -numFiles 1 -format csv \
       -schemaFile schema.json -schemaAnnotationFile gen.json -outDir "$work/data" -overwrite
+    # The generator anchors hoursSinceEpoch to "now" (it ignores the SEQUENCE start), but the
+    # E2E specs query a fixed window (2023-01-01 .. 2025-01-01 == hours 464592 .. 482148). Shift
+    # the column so its minimum lands on 464592 — keeps the data inside the window the tests use,
+    # independent of when CI runs. (hoursSinceEpoch is column 5 of the generated CSV; resolve by
+    # header to be safe.)
+    for csv in "$work"/data/*.csv; do
+      awk -F, "
+        NR==1 { for (i=1;i<=NF;i++) if (\$i==\"hoursSinceEpoch\") col=i; print; next }
+        { rows[NR]=\$0; if (min==\"\" || \$col<min) min=\$col }
+        END {
+          shift=min-464592
+          for (r=2;r<=NR;r++) {
+            n=split(rows[r],f,\",\"); f[col]=f[col]-shift
+            out=f[1]; for (i=2;i<=n;i++) out=out\",\"f[i]; print out
+          }
+        }" "$csv" > "$csv.tmp" && mv "$csv.tmp" "$csv"
+    done
     $A CreateSegment -tableConfigFile config.json -schemaFile schema.json \
       -format CSV -dataDir "$work/data" -outDir "$work/seg" -overwrite
     $A AddTable -tableConfigFile config.json -schemaFile schema.json -exec
