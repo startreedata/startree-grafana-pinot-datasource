@@ -21,7 +21,7 @@ export function EditAggregation(props: {
   const isCount = aggregation.function === AggregationFunction.COUNT;
   const columnFormData = formDataOf(aggregation.column || {}, columns);
   return (
-    <InputGroup data-testid="edit-aggregation">
+    <InputGroup>
       <div data-testid="aggregation-select-function">
         <Select
           placeholder="Function"

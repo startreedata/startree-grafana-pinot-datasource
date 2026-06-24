@@ -29,14 +29,15 @@ export function SelectAggregations(props: {
       <FormLabel tooltip={labels.tooltip} label={labels.label} />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {aggregations?.map((aggregation, idx) => (
-          <EditAggregation
-            key={idx}
-            aggregation={aggregation}
-            columns={columns}
-            isLoadingColumns={isLoadingColumns}
-            onChange={(val) => onChangeField(val, idx)}
-            onDelete={() => onDeleteField(idx)}
-          />
+          <div key={idx} data-testid="edit-aggregation">
+            <EditAggregation
+              aggregation={aggregation}
+              columns={columns}
+              isLoadingColumns={isLoadingColumns}
+              onChange={(val) => onChangeField(val, idx)}
+              onDelete={() => onDeleteField(idx)}
+            />
+          </div>
         ))}
         <div>
           <AccessoryButton
