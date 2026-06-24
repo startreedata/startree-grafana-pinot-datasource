@@ -9,6 +9,8 @@ import { InlineField, InlineSwitch, Input, useTheme2 } from '@grafana/ui';
 import { css } from '@emotion/css';
 import { InputDatabase } from './InputDatabase';
 import { SelectQueryOptions } from './SelectQueryOptions';
+import { InputTlsSettings } from './InputTlsSettings';
+import { InputCustomHeaders } from './InputCustomHeaders';
 
 interface ConfigEditorProps extends DataSourcePluginOptionsEditorProps<PinotConnectionConfig> {}
 
@@ -190,6 +192,16 @@ export function ConfigEditor(props: ConfigEditorProps) {
             })
           }
         />
+      </div>
+
+      <h3 data-testid="tls-heading">TLS / SSL Settings</h3>
+      <div className="gf-form-group">
+        <InputTlsSettings options={options} onOptionsChange={onOptionsChange} />
+      </div>
+
+      <h3 data-testid="custom-headers-heading">Custom HTTP Headers</h3>
+      <div className="gf-form-group">
+        <InputCustomHeaders options={options} onOptionsChange={onOptionsChange} />
       </div>
     </>
   );
