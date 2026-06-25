@@ -88,6 +88,19 @@ export function EditRegexpExtractor(props: {
           value={extractor.alias}
         />
       </div>
+      <div data-testid="regexp-extractor-input-link">
+        <Input
+          width={20}
+          onChange={(event: ChangeEvent<HTMLInputElement>) =>
+            onChange({
+              ...extractor,
+              link: event.target.value,
+            })
+          }
+          placeholder={'Data link URL (optional)'}
+          value={extractor.link}
+        />
+      </div>
       <AccessoryButton data-testid="delete-metadata-field-btn" icon="times" variant="secondary" onClick={onDelete} />
     </InputGroup>
   );

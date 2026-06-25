@@ -20,7 +20,7 @@ import {
 import { DataSourceWithBackend } from '@grafana/runtime';
 // Match the rxjs instance the SDK returns (see variables.ts) so Observable types line up across
 // the duplicate rxjs installs.
-import { lastValueFrom } from '@grafana/data/node_modules/rxjs';
+import { lastValueFrom, map, Observable } from '@grafana/data/node_modules/rxjs';
 
 import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
 import { PinotConnectionConfig } from './config/PinotConnectionConfig';
@@ -29,6 +29,7 @@ import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/Anno
 import { listColumns } from './resources/columns';
 import { queryDistinctValuesForFilters } from './resources/distinctValues';
 import {
+  attachDerivedFieldLinks,
   DEFAULT_LOG_ROW_CONTEXT_LIMIT,
   LOG_ROW_CONTEXT_REF_ID,
   logRowContextQuery,
@@ -49,6 +50,12 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
 
     this.variables = new PinotVariableSupport(this);
     this.annotations = { QueryEditor: AnnotationsQueryEditor };
+  }
+
+  query(request: DataQueryRequest<PinotDataQuery>): Observable<DataQueryResponse> {
+    // Surface extractor-derived fields with data links on the returned logs frames. No-op for
+    // frames without extractors-with-links (e.g. time series, volume).
+    return super.query(request).pipe(map((response) => attachDerivedFieldLinks(response, request.targets)));
   }
 
   applyTemplateVariables(

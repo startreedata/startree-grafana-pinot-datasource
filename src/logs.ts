@@ -1,4 +1,4 @@
-import { LogRowContextQueryDirection } from '@grafana/data';
+import { DataFrame, DataQueryResponse, Field, FieldType, LogRowContextQueryDirection } from '@grafana/data';
 import { DisplayType } from './dataquery/DisplayType';
 import { EditorMode } from './dataquery/EditorMode';
 import { QueryType } from './dataquery/QueryType';
@@ -69,4 +69,60 @@ export function logRowContextTimeWindow(
     return { fromMs: anchorMs, toMs: anchorMs + LOG_ROW_CONTEXT_WINDOW_MS };
   }
   return { fromMs: anchorMs - LOG_ROW_CONTEXT_WINDOW_MS, toMs: anchorMs };
+}
+
+interface LinkedExtractor {
+  alias: string;
+  link: string;
+}
+
+function linkedExtractors(query: PinotDataQuery): LinkedExtractor[] {
+  return [...(query.jsonExtractors ?? []), ...(query.regexpExtractors ?? [])]
+    .filter((e): e is { alias: string; link: string } => !!e.alias && !!e.link)
+    .map(({ alias, link }) => ({ alias, link }));
+}
+
+// attachDerivedFieldLinks surfaces extractor-derived values (already computed by the backend and
+// folded into each logs frame's `labels` field) as standalone fields carrying Grafana data links,
+// so they render as clickable links in the expanded log row. The extraction itself stays on the
+// backend — this only reads the values back out and attaches the link config.
+export function attachDerivedFieldLinks(response: DataQueryResponse, targets: PinotDataQuery[]): DataQueryResponse {
+  const data = (response.data ?? []).map((frame: DataFrame) => {
+    const target = targets.find((t) => t.refId === frame.refId) ?? (targets.length === 1 ? targets[0] : undefined);
+    const extractors = target ? linkedExtractors(target) : [];
+    const labelsField = frame.fields?.find((f) => f.name === 'labels');
+    if (extractors.length === 0 || !labelsField) {
+      return frame;
+    }
+
+    const labels = labelsField.values as readonly unknown[];
+    const derivedFields: Field[] = extractors.map(({ alias, link }) => ({
+      name: alias,
+      type: FieldType.string,
+      config: { links: [{ title: alias, url: link, targetBlank: true }] },
+      values: labels.map((l) => labelValue(l, alias)),
+    }));
+
+    return { ...frame, fields: [...frame.fields, ...derivedFields] };
+  });
+  return { ...response, data };
+}
+
+// The backend folds extracted columns into the `labels` field; per row this is either a parsed
+// object or its JSON string. Pull the value for `alias` back out as a string.
+function labelValue(labels: unknown, alias: string): string {
+  const obj = typeof labels === 'string' ? safeParseObject(labels) : labels;
+  if (obj && typeof obj === 'object') {
+    const value = (obj as Record<string, unknown>)[alias];
+    return value == null ? '' : String(value);
+  }
+  return '';
+}
+
+function safeParseObject(s: string): unknown {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return undefined;
+  }
 }

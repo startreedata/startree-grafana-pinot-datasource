@@ -364,7 +364,7 @@ export function interpolateVariables(
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
-    jsonExtractors: query.jsonExtractors?.map(({ source, path, resultType, alias }) => ({
+    jsonExtractors: query.jsonExtractors?.map(({ source, path, resultType, alias, link }) => ({
       source: mapIfExists(source, ({ name, key }) => ({
         name: replaceIfExists(name),
         key: replaceIfExists(key),
@@ -372,14 +372,16 @@ export function interpolateVariables(
       path,
       resultType,
       alias: replaceIfExists(alias),
+      link: replaceIfExists(link),
     })),
-    regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias }) => ({
+    regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias, link }) => ({
       source: mapIfExists(source, ({ name, key }) => ({
         name: replaceIfExists(name),
         key: replaceIfExists(key),
       })),
       pattern,
       alias: replaceIfExists(alias),
+      link: replaceIfExists(link),
       group,
     })),
     filters,
