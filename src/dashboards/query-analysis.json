@@ -1,0 +1,551 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_STARTREE_PINOT",
+      "label": "StarTree Pinot",
+      "description": "Select the StarTree Pinot datasource to bind this dashboard to.",
+      "type": "datasource",
+      "pluginId": "startree-pinot-datasource",
+      "pluginName": "StarTree Pinot"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.1.1"
+    },
+    {
+      "type": "datasource",
+      "id": "startree-pinot-datasource",
+      "name": "StarTree Pinot",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Templated query-analysis overview for the StarTree Pinot datasource. Pick any table, a time column, a metric, and a grouping dimension; the panels then show total volume, cardinality, a per-group time series, and a top-N breakdown. Works against any Pinot table without editing SQL.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "title": "Total rows in range — $table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "$table",
+          "pinotQlCode": "SELECT\n  COUNT(*) AS \"TotalRows\"\nFROM $__table()\nWHERE $__timeFilter(\"$timeColumn\")\nLIMIT 1"
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "title": "Distinct $groupColumn — $table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "$table",
+          "pinotQlCode": "SELECT\n  DISTINCTCOUNT(\"$groupColumn\") AS \"DistinctValues\"\nFROM $__table()\nWHERE $__timeFilter(\"$timeColumn\")\nLIMIT 1"
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "purple",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "title": "Avg $metricColumn — $table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "$table",
+          "pinotQlCode": "SELECT\n  AVG(\"$metricColumn\") AS \"AvgMetric\"\nFROM $__table()\nWHERE $__timeFilter(\"$timeColumn\")\nLIMIT 1"
+        }
+      ],
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 4
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "title": "Row volume over time by $groupColumn — $table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TIMESERIES",
+          "tableName": "$table",
+          "legend": "{{$groupColumn}}",
+          "pinotQlCode": "SELECT\n  $__timeGroup(\"$timeColumn\") AS $__timeAlias(),\n  \"$groupColumn\",\n  COUNT(*) AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"$timeColumn\")\nGROUP BY $__timeGroup(\"$timeColumn\"), \"$groupColumn\"\nORDER BY $__timeAlias()\nLIMIT 100000"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Rows"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "gauge",
+                  "mode": "gradient"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "id": 5,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Rows"
+          }
+        ]
+      },
+      "title": "Top $groupColumn by volume — $table",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "$table",
+          "pinotQlCode": "SELECT\n  \"$groupColumn\" AS \"$groupColumn\",\n  COUNT(*) AS \"Rows\",\n  AVG(\"$metricColumn\") AS \"AvgMetric\",\n  MAX(\"$metricColumn\") AS \"MaxMetric\"\nFROM $__table()\nWHERE $__timeFilter(\"$timeColumn\")\nGROUP BY \"$groupColumn\"\nORDER BY COUNT(*) DESC\nLIMIT 50"
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["pinot", "startree", "example", "templated"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": {
+          "type": "startree-pinot-datasource",
+          "uid": "${DS_STARTREE_PINOT}"
+        },
+        "definition": "Tables",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Table",
+        "multi": false,
+        "name": "table",
+        "options": [],
+        "query": {
+          "refId": "A",
+          "queryType": "PinotVariableQuery",
+          "variableQuery": {
+            "variableType": "TABLE_LIST",
+            "columnType": "ALL"
+          }
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "startree-pinot-datasource",
+          "uid": "${DS_STARTREE_PINOT}"
+        },
+        "definition": "Time columns of $table",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Time column",
+        "multi": false,
+        "name": "timeColumn",
+        "options": [],
+        "query": {
+          "refId": "A",
+          "queryType": "PinotVariableQuery",
+          "tableName": "$table",
+          "variableQuery": {
+            "variableType": "COLUMN_LIST",
+            "columnType": "DATETIME"
+          }
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "startree-pinot-datasource",
+          "uid": "${DS_STARTREE_PINOT}"
+        },
+        "definition": "Metric columns of $table",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Metric column",
+        "multi": false,
+        "name": "metricColumn",
+        "options": [],
+        "query": {
+          "refId": "A",
+          "queryType": "PinotVariableQuery",
+          "tableName": "$table",
+          "variableQuery": {
+            "variableType": "COLUMN_LIST",
+            "columnType": "METRIC"
+          }
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "startree-pinot-datasource",
+          "uid": "${DS_STARTREE_PINOT}"
+        },
+        "definition": "Dimension columns of $table (used for grouping / top-N)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Group by column",
+        "multi": false,
+        "name": "groupColumn",
+        "options": [],
+        "query": {
+          "refId": "A",
+          "queryType": "PinotVariableQuery",
+          "tableName": "$table",
+          "variableQuery": {
+            "variableType": "COLUMN_LIST",
+            "columnType": "DIMENSION"
+          }
+        },
+        "refresh": 1,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Pinot — Query Analysis (Templated)",
+  "uid": "startree-pinot-query-analysis",
+  "version": 1,
+  "weekStart": ""
+}
