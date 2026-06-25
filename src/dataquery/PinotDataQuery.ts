@@ -3,7 +3,7 @@ import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
 import { getTemplateSrv } from '@grafana/runtime';
-import { ScopedVars, TypedVariableModel } from '@grafana/data';
+import { AdHocVariableFilter, ScopedVars, TypedVariableModel } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
 import { ComplexField } from './ComplexField';
 import { Aggregation } from './Aggregation';
@@ -50,6 +50,9 @@ export interface PinotDataQuery extends DataQuery {
 
   // PromQl
   promQlCode?: string;
+
+  // Grafana ad-hoc filters, injected server-side by the $__adHocFilter macro.
+  adHocFilters?: AdHocVariableFilter[];
 }
 
 export const IN_CLAUSE_THRESHOLD = 1000;
@@ -233,7 +236,11 @@ function computeBuilderFilterSubquery(
   return null;
 }
 
-export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedVars): PinotDataQuery {
+export function interpolateVariables(
+  query: PinotDataQuery,
+  scopedVars?: ScopedVars,
+  adHocFilters?: AdHocVariableFilter[]
+): PinotDataQuery {
   const templateSrv = getTemplateSrv();
   const variables = templateSrv?.getVariables?.() ?? [];
 
@@ -384,5 +391,8 @@ export function interpolateVariables(query: PinotDataQuery, scopedVars?: ScopedV
       columnName: replaceIfExists(variableQuery.columnName),
       pinotQlCode: replaceIfExists(variableQuery.pinotQlCode),
     })),
+
+    // Ad-hoc filters: passed straight to the backend for the $__adHocFilter macro to expand.
+    adHocFilters,
   };
 }

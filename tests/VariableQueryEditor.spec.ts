@@ -62,8 +62,6 @@ test('Distinct Values', async ({ page }) => {
 test('Sql Code', async ({ page }) => {
   await page.getByText('Sql Query').click();
 
-  const dataQueryResponse = page.waitForResponse('/api/ds/query');
-
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
   await codebox.click();
   await page.keyboard.press('Control+a');
@@ -73,8 +71,10 @@ test('Sql Code', async ({ page }) => {
     `SELECT DISTINCT "browser" FROM "complex_website" WHERE "browser" IS NOT NULL ORDER BY "browser" ASC LIMIT 100;`
   );
 
-  await dataQueryResponse;
+  // The editor fires a query as the SQL is typed, so the preview-of-values can briefly reflect an
+  // intermediate query. Poll the final values with a generous timeout rather than racing the first
+  // /api/ds/query response.
   for (const text of ['chrome', 'edge', 'firefox', 'ie', 'safari']) {
-    await expect(page.getByText(text, { exact: true })).toBeVisible();
+    await expect(page.getByText(text, { exact: true })).toBeVisible({ timeout: 15000 });
   }
 });

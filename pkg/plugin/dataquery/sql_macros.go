@@ -22,6 +22,7 @@ const (
 	MacroGranularityMillis = "granularityMillis"
 	MacroTimeFromMillis    = "timeFromMillis"
 	MacroTimeToMillis      = "timeToMillis"
+	MacroAdHocFilter       = "adHocFilter"
 )
 
 type MacroEngine struct {
@@ -30,6 +31,7 @@ type MacroEngine struct {
 	MetricAlias  string
 	TableSchema  pinot.TableSchema
 	TableConfigs pinot.ListTableConfigsResponse
+	AdHocFilters []pinot.AdHocFilter
 	TimeRange
 	IntervalSize time.Duration
 }
@@ -55,6 +57,7 @@ func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, er
 		x.ExpandTimeFrom,
 		x.ExpandGranularityMillis,
 		x.ExpandPanelMillis,
+		x.ExpandAdHocFilter,
 	} {
 		query, err = macro(ctx, query)
 		if err != nil {
@@ -215,6 +218,30 @@ func (x MacroEngine) ExpandPanelMillis(_ context.Context, query string) (string,
 	return expandMacro(query, MacroPanelMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
 	})
+}
+
+// ExpandAdHocFilter replaces $__adHocFilter with the AND-joined boolean expression of the query's
+// Grafana ad-hoc filters. With no filters it expands to TRUE so `WHERE $__adHocFilter` is a safe
+// no-op. Identifiers are quoted and values escaped by pinot.AdHocFilterExpr.
+func (x MacroEngine) ExpandAdHocFilter(_ context.Context, query string) (string, error) {
+	return expandMacro(query, MacroAdHocFilter, func(_ []string) (string, error) {
+		return adHocFilterWhereExpr(x.AdHocFilters).String(), nil
+	})
+}
+
+func adHocFilterWhereExpr(filters []pinot.AdHocFilter) pinot.SqlExpr {
+	exprs := make([]string, 0, len(filters))
+	for _, filter := range filters {
+		expr := pinot.AdHocFilterExpr(filter)
+		if expr == "" {
+			continue
+		}
+		exprs = append(exprs, expr.String())
+	}
+	if len(exprs) == 0 {
+		return "TRUE"
+	}
+	return pinot.SqlExpr(strings.Join(exprs, " AND "))
 }
 
 func expandMacro(query string, macroName string, render func(args []string) (string, error)) (string, error) {

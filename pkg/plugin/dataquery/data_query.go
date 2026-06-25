@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"time"
 )
 
@@ -70,9 +71,10 @@ type DataQuery struct {
 	EditorMode  EditorMode  `json:"editorMode"`
 	DisplayType DisplayType `json:"displayType"`
 
-	TableName    string        `json:"tableName"`
-	QueryOptions []QueryOption `json:"queryOptions"`
-	SeriesLimit  int           `json:"seriesLimit"`
+	TableName    string              `json:"tableName"`
+	QueryOptions []QueryOption       `json:"queryOptions"`
+	SeriesLimit  int                 `json:"seriesLimit"`
+	AdHocFilters []pinot.AdHocFilter `json:"adHocFilters"`
 
 	// Sql builder query
 	TimeColumn          string            `json:"timeColumn"`

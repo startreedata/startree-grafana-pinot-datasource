@@ -174,4 +174,22 @@ describe('interpolateVariables', () => {
       seriesLimit: 200,
     });
   });
+
+  test('attachesAdHocFilters', () => {
+    setTemplateSrv({
+      containsTemplate: () => false,
+      getVariables: () => [],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target ?? '',
+    } as unknown as TemplateSrv);
+
+    const filters = [{ key: 'city', operator: '=', value: 'NY' }];
+    const result = interpolateVariables({ refId: 'A', tableName: 't' }, {}, filters);
+
+    expect(result.adHocFilters).toEqual(filters);
+  });
+
+  test('noAdHocFiltersLeavesFieldUndefined', () => {
+    expect(interpolateVariables({ refId: 'A' }).adHocFilters).toBeUndefined();
+  });
 });
