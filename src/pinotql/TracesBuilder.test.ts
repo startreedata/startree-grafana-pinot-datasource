@@ -115,6 +115,52 @@ describe('canRunQuery', () => {
   });
 });
 
+describe('otelDefaults', () => {
+  test('fills all trace roles with OTel column names', () => {
+    const params = newEmptyParams();
+    expect(TracesBuilder.otelDefaults(params)).toEqual<TracesBuilder.Params>({
+      ...newEmptyParams(),
+      traceIdColumn: { name: 'trace_id' },
+      spanIdColumn: { name: 'span_id' },
+      parentSpanIdColumn: { name: 'parent_span_id' },
+      serviceNameColumn: { name: 'service_name' },
+      spanNameColumn: { name: 'name' },
+      durationColumn: { name: 'duration_nano' },
+      durationUnit: 'ns',
+      tagsColumn: { name: 'span_attributes' },
+      statusColumn: { name: 'status_code' },
+    });
+  });
+
+  test('overwrites existing column mappings but preserves non-column fields', () => {
+    const params: TracesBuilder.Params = {
+      ...newFullParams(),
+      tableName: 'my_spans',
+      timeColumn: 'event_time',
+      traceId: 'keep-me',
+      limit: 25,
+    };
+    const got = TracesBuilder.otelDefaults(params);
+
+    // Column roles are overwritten with the OTel preset.
+    expect(got.traceIdColumn).toEqual({ name: 'trace_id' });
+    expect(got.durationColumn).toEqual({ name: 'duration_nano' });
+    expect(got.durationUnit).toEqual('ns');
+
+    // Non-column fields are untouched.
+    expect(got.tableName).toEqual('my_spans');
+    expect(got.timeColumn).toEqual('event_time');
+    expect(got.traceId).toEqual('keep-me');
+    expect(got.limit).toEqual(25);
+  });
+
+  test('does not mutate the input params', () => {
+    const params = newEmptyParams();
+    TracesBuilder.otelDefaults(params);
+    expect(params).toEqual<TracesBuilder.Params>(newEmptyParams());
+  });
+});
+
 describe('applyDefaults', () => {
   const timeColumns: Column[] = [column('ts', 'TIMESTAMP', { isTime: true })];
   const columns: Column[] = [

@@ -1,5 +1,5 @@
 import { DateTime } from '@grafana/data';
-import { RadioButtonGroup } from '@grafana/ui';
+import { Button, RadioButtonGroup } from '@grafana/ui';
 import React, { useEffect } from 'react';
 import { DataSource } from '../../datasource';
 import { SelectTable } from './SelectTable';
@@ -29,6 +29,7 @@ export function PinotQlTracesBuilder(props: {
   const { timeRange, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
   const resources = TracesBuilder.useResources(datasource, timeRange, interpolatedParams);
   const labels = allLabels.components.QueryEditor.traces;
+  const otelLabels = allLabels.components.QueryEditor.otelDefaults;
 
   const onChangeAndRun = (newParams: TracesBuilder.Params) => {
     onChange(newParams);
@@ -59,6 +60,18 @@ export function PinotQlTracesBuilder(props: {
         isLoading={resources.isColumnsLoading}
         onChange={(value) => onChangeAndRun({ ...savedParams, timeColumn: value })}
       />
+      <div className={'gf-form'}>
+        <Button
+          data-testid="apply-otel-defaults-btn"
+          size="sm"
+          variant="secondary"
+          icon="cog"
+          tooltip={otelLabels.tooltip}
+          onClick={() => onChangeAndRun(TracesBuilder.otelDefaults(savedParams))}
+        >
+          {otelLabels.label}
+        </Button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectSpanColumn
           testId="select-trace-id-column"
