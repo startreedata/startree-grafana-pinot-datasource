@@ -16,8 +16,9 @@ export function searchFilterLikeValue(typed: string): string {
 }
 
 // Grafana injects the typeahead text as scopedVars.__searchFilter (raw, no wildcard). Normalize it
-// to the LIKE pattern above before the query is interpolated and sent to the backend.
-function withSearchFilter(request: DataQueryRequest<PinotDataQuery>): DataQueryRequest<PinotDataQuery> {
+// to the LIKE pattern above before the query is interpolated and sent to the backend. Exported for
+// testing.
+export function withSearchFilter(request: DataQueryRequest<PinotDataQuery>): DataQueryRequest<PinotDataQuery> {
   const current = request.scopedVars?.__searchFilter?.value;
   const typed = typeof current === 'string' ? current : '';
   return {
