@@ -320,7 +320,7 @@ func PreviewTracesSql(client *pinot.Client, ctx context.Context, data PreviewTra
 
 	sqlQuery, _, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
-		log.WithError(err).FromContext(ctx).Error("RenderTraceSql() failed.")
+		log.WithError(err).FromContext(ctx).Error("RenderSqlQuery() failed.")
 		return newOkResponse("")
 	}
 	return newOkResponse(client.RenderSql(sqlQuery))

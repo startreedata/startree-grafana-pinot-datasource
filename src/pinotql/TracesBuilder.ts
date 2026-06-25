@@ -227,8 +227,11 @@ function useSqlPreview(
   };
 
   useEffect(() => {
+    setLoading(true);
+    // Set the result unconditionally so an empty response (incomplete query) clears any stale SQL
+    // instead of leaving the preview showing a previous valid configuration.
     previewTracesSql(datasource, previewRequest)
-      .then((val) => val && setResult(val))
+      .then((val) => setResult(val))
       .finally(() => setLoading(false));
   }, [datasource, JSON.stringify(previewRequest)]); // eslint-disable-line react-hooks/exhaustive-deps
   return { result, loading };
