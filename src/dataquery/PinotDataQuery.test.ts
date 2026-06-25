@@ -266,3 +266,44 @@ describe('applyConditionalAll', () => {
     expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe(sql);
   });
 });
+
+describe('interpolateVariables with $__conditionalAll', () => {
+  afterEach(() => {
+    setTemplateSrv(undefined as unknown as TemplateSrv);
+  });
+
+  // Wires a mock template service whose getVariables() exposes `service` and replace() substitutes
+  // `$service` -> 'checkout'. This exercises the full code-mode path: $__conditionalAll runs first,
+  // then templateSrv.replace interpolates whatever condition survived.
+  const setSrv = (current: string | string[]) => {
+    setTemplateSrv({
+      containsTemplate: () => false,
+      updateTimeRange: () => {},
+      getVariables: () =>
+        [{ name: 'service', type: 'query', current: { value: current } }] as unknown as ReturnType<
+          TemplateSrv['getVariables']
+        >,
+      replace: (target?: string) => (target ?? '').replace(/\$service/g, 'checkout'),
+    } as unknown as TemplateSrv);
+  };
+
+  test('drops the filter and still interpolates the rest when All is selected', () => {
+    setSrv('$__all');
+    const query: PinotDataQuery = {
+      refId: 'A',
+      editorMode: EditorMode.Code,
+      pinotQlCode: "SELECT * FROM t WHERE $__conditionalAll(service = '$service', $service) AND env = '$service'",
+    };
+    expect(interpolateVariables(query).pinotQlCode).toBe("SELECT * FROM t WHERE 1=1 AND env = 'checkout'");
+  });
+
+  test('keeps the filter and interpolates the variable when a value is selected', () => {
+    setSrv('checkout');
+    const query: PinotDataQuery = {
+      refId: 'A',
+      editorMode: EditorMode.Code,
+      pinotQlCode: "SELECT * FROM t WHERE $__conditionalAll(service = '$service', $service)",
+    };
+    expect(interpolateVariables(query).pinotQlCode).toBe("SELECT * FROM t WHERE service = 'checkout'");
+  });
+});
