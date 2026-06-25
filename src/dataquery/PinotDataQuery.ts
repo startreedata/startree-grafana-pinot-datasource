@@ -37,6 +37,18 @@ export interface PinotDataQuery extends DataQuery {
   regexpExtractors?: RegexpExtractor[];
   seriesLimit?: number;
 
+  // PinotQl Traces Builder. Start time / time filter reuse timeColumn above.
+  traceIdColumn?: ComplexField;
+  spanIdColumn?: ComplexField;
+  parentSpanIdColumn?: ComplexField;
+  serviceNameColumn?: ComplexField;
+  spanNameColumn?: ComplexField;
+  durationColumn?: ComplexField;
+  durationUnit?: string;
+  tagsColumn?: ComplexField;
+  statusColumn?: ComplexField;
+  traceId?: string;
+
   // PinotQl Code
   pinotQlCode?: string;
   timeColumnAlias?: string;
@@ -332,6 +344,42 @@ export function interpolateVariables(
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
+
+    // Traces builder
+    traceIdColumn: mapIfExists(query.traceIdColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    spanIdColumn: mapIfExists(query.spanIdColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    parentSpanIdColumn: mapIfExists(query.parentSpanIdColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    serviceNameColumn: mapIfExists(query.serviceNameColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    spanNameColumn: mapIfExists(query.spanNameColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    durationColumn: mapIfExists(query.durationColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    tagsColumn: mapIfExists(query.tagsColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    statusColumn: mapIfExists(query.statusColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    traceId: replaceIfExists(query.traceId),
+
     granularity: replaceIfExists(query.granularity),
     aggregationFunction: replaceIfExists(query.aggregationFunction),
     groupByColumns: query.groupByColumns?.map((columnName) => replace(columnName)),

@@ -52,15 +52,20 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 	}
 
 	pinotClient := PinotClientOf(httpClient, config)
+	dsMeta := dataquery.DataSourceMeta{
+		UID:          settings.UID,
+		Name:         settings.Name,
+		TracesToLogs: config.TracesToLogsConfig(),
+	}
 	return &Datasource{
-		QueryDataHandler:    newQueryDataHandler(pinotClient),
+		QueryDataHandler:    newQueryDataHandler(pinotClient, dsMeta),
 		CallResourceHandler: newCallResourceHandler(pinotClient),
 		CheckHealthHandler:  newCheckHealthHandler(pinotClient),
 		InstanceDisposer:    disposerFunc(func() {}),
 	}, nil
 }
 
-func newQueryDataHandler(client *pinot.Client) backend.QueryDataHandler {
+func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -69,7 +74,7 @@ func newQueryDataHandler(client *pinot.Client) backend.QueryDataHandler {
 		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
 			log.FromContext(ctx).Debug("received Pinot data query", "contents", string(query.JSON))
-			resp.Responses[query.RefID] = dataquery.ExecuteQuery(client, ctx, query)
+			resp.Responses[query.RefID] = dataquery.ExecuteQuery(client, ctx, dsMeta, query)
 		}
 		return resp, nil
 	})

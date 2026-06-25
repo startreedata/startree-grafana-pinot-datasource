@@ -190,6 +190,40 @@ func RenderLogSql(params LogSqlParams) (string, error) {
 	return render(logSqlTemplate, params)
 }
 
+var traceSqlTemplate = template.Must(template.New("trace-sql").Parse(`
+SELECT{{ range $i, $e := .SelectExprs }}{{ if $i }},{{ end }}
+    {{ $e }}
+{{- end }}
+FROM {{ .TableNameExpr }}
+WHERE {{ .TimeFilterExpr }}
+{{- if .TraceIdFilterExpr }}
+    AND {{ .TraceIdFilterExpr }}
+{{- end }}
+{{- range .DimensionFilterExprs }}
+    AND {{ . }}
+{{- end }}
+ORDER BY {{ .OrderByExpr }}
+LIMIT {{ .Limit }};
+`))
+
+// TraceSqlParams renders an OpenTelemetry span query. SelectExprs are the fully rendered
+// (alias included) span projection columns. TraceIdFilterExpr is set only in "find trace by ID"
+// mode (e.g. `"traceId" = 'abc'`); in "search" mode it is empty and only the time range and any
+// dimension filters bound the query.
+type TraceSqlParams struct {
+	TableNameExpr        SqlExpr
+	SelectExprs          []SqlExpr
+	TimeFilterExpr       SqlExpr
+	TraceIdFilterExpr    SqlExpr
+	DimensionFilterExprs []SqlExpr
+	OrderByExpr          SqlExpr
+	Limit                int64
+}
+
+func RenderTraceSql(params TraceSqlParams) (string, error) {
+	return render(traceSqlTemplate, params)
+}
+
 func render(tmpl *template.Template, params interface{}) (string, error) {
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, params); err != nil {

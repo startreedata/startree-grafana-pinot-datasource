@@ -19,6 +19,13 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   tlsAuth?: boolean;
   tlsAuthWithCACert?: boolean;
   serverName?: string;
+
+  // Trace-to-logs correlation. When all four are set, the traces builder attaches a data link from
+  // each span to a logs query against this table, keyed by the span's trace id.
+  tracesToLogsTable?: string;
+  tracesToLogsTraceIdColumn?: string;
+  tracesToLogsTimeColumn?: string;
+  tracesToLogsLogColumn?: string;
 }
 
 export interface PinotSecureConfig {

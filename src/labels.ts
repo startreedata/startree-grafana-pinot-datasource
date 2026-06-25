@@ -33,6 +33,30 @@ export default {
         tooltip:
           'Caps result size by appending a LIMIT to queries that have no explicit limit, protecting the broker. Leave empty to disable.',
       },
+      tracesToLogs: {
+        description:
+          'Link trace spans to logs. When all four fields are set, each span in a trace view gets a "Logs for this trace" link that opens a logs query against the table below, filtered by the span\'s trace ID.',
+        table: {
+          label: 'Logs Table',
+          placeholder: 'otelLogs',
+          tooltip: 'The Pinot table holding logs to correlate with traces.',
+        },
+        traceIdColumn: {
+          label: 'Trace ID Column',
+          placeholder: 'traceId',
+          tooltip: 'Column in the logs table holding the trace ID to filter by.',
+        },
+        timeColumn: {
+          label: 'Time Column',
+          placeholder: 'ts',
+          tooltip: 'Time column of the logs table.',
+        },
+        logColumn: {
+          label: 'Log Message Column',
+          placeholder: 'message',
+          tooltip: 'Log message column of the logs table.',
+        },
+      },
     },
     QueryEditor: {
       queryType: {
@@ -110,6 +134,22 @@ export default {
       logColumn: {
         tooltip: 'Select the log column. Required.',
         label: 'Log Column',
+      },
+      traces: {
+        traceIdColumn: { tooltip: 'Column holding the trace ID. Required.', label: 'Trace ID' },
+        spanIdColumn: { tooltip: 'Column holding the span ID. Required.', label: 'Span ID' },
+        parentSpanIdColumn: { tooltip: 'Column holding the parent span ID (empty for root spans).', label: 'Parent Span ID' },
+        serviceNameColumn: { tooltip: 'Column holding the service name.', label: 'Service' },
+        spanNameColumn: { tooltip: 'Column holding the span/operation name.', label: 'Operation' },
+        durationColumn: { tooltip: 'Column holding the span duration. Required.', label: 'Duration' },
+        durationUnit: { tooltip: 'Unit the duration column is stored in. Grafana renders traces in milliseconds.', label: 'Duration Unit' },
+        tagsColumn: { tooltip: 'JSON or MAP column holding span tags/attributes.', label: 'Tags' },
+        statusColumn: { tooltip: 'Column holding the span status code.', label: 'Status' },
+        traceId: {
+          tooltip: 'Find a single trace by ID. Leave empty to search traces over the time range. Supports dashboard variables.',
+          label: 'Find Trace by ID',
+          placeholder: 'trace id or ${variable}',
+        },
       },
       database: {
         tooltip: 'Select the Pinot database. Required.',

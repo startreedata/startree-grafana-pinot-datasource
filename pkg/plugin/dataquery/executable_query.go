@@ -41,7 +41,7 @@ type ExecutableQuery interface {
 	Execute(client *pinot.Client, ctx context.Context) backend.DataResponse
 }
 
-func ExecuteQuery(client *pinot.Client, ctx context.Context, backendQuery backend.DataQuery) backend.DataResponse {
+func ExecuteQuery(client *pinot.Client, ctx context.Context, meta DataSourceMeta, backendQuery backend.DataQuery) backend.DataResponse {
 	startTime := time.Now()
 
 	var query DataQuery
@@ -49,6 +49,9 @@ func ExecuteQuery(client *pinot.Client, ctx context.Context, backendQuery backen
 	if err := query.ReadFrom(backendQuery); err != nil {
 		resp = backend.ErrDataResponse(backend.StatusBadRequest, err.Error())
 	} else {
+		query.DatasourceUID = meta.UID
+		query.DatasourceName = meta.Name
+		query.TracesToLogs = meta.TracesToLogs
 		resp = ExecutableQueryFrom(query).Execute(client, ctx)
 	}
 
@@ -113,6 +116,29 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			DimensionFilters: query.DimensionFilters,
 			QueryOptions:     query.QueryOptions,
 			Limit:            query.Limit,
+		}
+
+	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeTraces:
+		return TracesBuilderQuery{
+			TimeRange:          query.TimeRange,
+			TableName:          query.TableName,
+			TimeColumn:         query.TimeColumn,
+			TraceIdColumn:      query.TraceIdColumn,
+			SpanIdColumn:       query.SpanIdColumn,
+			ParentSpanIdColumn: query.ParentSpanIdColumn,
+			ServiceNameColumn:  query.ServiceNameColumn,
+			SpanNameColumn:     query.SpanNameColumn,
+			DurationColumn:     query.DurationColumn,
+			DurationUnit:       query.DurationUnit,
+			TagsColumn:         query.TagsColumn,
+			StatusColumn:       query.StatusColumn,
+			TraceId:            query.TraceId,
+			DimensionFilters:   query.DimensionFilters,
+			QueryOptions:       query.QueryOptions,
+			Limit:              query.Limit,
+			DatasourceUID:      query.DatasourceUID,
+			DatasourceName:     query.DatasourceName,
+			TracesToLogs:       query.TracesToLogs,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeTable:

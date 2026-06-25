@@ -44,6 +44,7 @@ func NewResourceHandler(client *pinot.Client) http.Handler {
 	router.HandleFunc("/preview/sql/builder", adaptHandlerWithBody(client, PreviewSqlBuilder))
 	router.HandleFunc("/preview/table/sql", adaptHandlerWithBody(client, PreviewTableSql))
 	router.HandleFunc("/preview/logs/sql", adaptHandlerWithBody(client, PreviewLogsSql))
+	router.HandleFunc("/preview/traces/sql", adaptHandlerWithBody(client, PreviewTracesSql))
 	router.HandleFunc("/preview/sql/code", adaptHandlerWithBody(client, PreviewSqlCode))
 	router.HandleFunc("/preview/sql/distinctValues", adaptHandlerWithBody(client, PreviewSqlDistinctValues))
 	router.HandleFunc("/query/distinctValues", adaptHandlerWithBody(client, QueryDistinctValues))
@@ -251,6 +252,73 @@ func PreviewLogsSql(client *pinot.Client, ctx context.Context, data PreviewLogsB
 	sqlQuery, err := query.RenderSqlQuery(ctx, client)
 	if err != nil {
 		log.WithError(err).FromContext(ctx).Error("RenderSqlQuery() failed.")
+		return newOkResponse("")
+	}
+	return newOkResponse(client.RenderSql(sqlQuery))
+}
+
+type PreviewTracesSqlRequest struct {
+	TimeRange          dataquery.TimeRange         `json:"timeRange"`
+	TableName          string                      `json:"tableName"`
+	TimeColumn         string                      `json:"timeColumn"`
+	TraceIdColumn      dataquery.ComplexField      `json:"traceIdColumn"`
+	SpanIdColumn       dataquery.ComplexField      `json:"spanIdColumn"`
+	ParentSpanIdColumn dataquery.ComplexField      `json:"parentSpanIdColumn"`
+	ServiceNameColumn  dataquery.ComplexField      `json:"serviceNameColumn"`
+	SpanNameColumn     dataquery.ComplexField      `json:"spanNameColumn"`
+	DurationColumn     dataquery.ComplexField      `json:"durationColumn"`
+	DurationUnit       string                      `json:"durationUnit"`
+	TagsColumn         dataquery.ComplexField      `json:"tagsColumn"`
+	StatusColumn       dataquery.ComplexField      `json:"statusColumn"`
+	TraceId            string                      `json:"traceId"`
+	DimensionFilters   []dataquery.DimensionFilter `json:"filters"`
+	QueryOptions       []dataquery.QueryOption     `json:"queryOptions"`
+	Limit              int64                       `json:"limit"`
+	ExpandMacros       bool                        `json:"expandMacros"`
+}
+
+func PreviewTracesSql(client *pinot.Client, ctx context.Context, data PreviewTracesSqlRequest) *Response[string] {
+	if data.TableName == "" {
+		return newOkResponse("")
+	}
+
+	query := dataquery.TracesBuilderQuery{
+		TimeRange:          data.TimeRange,
+		TableName:          data.TableName,
+		TimeColumn:         data.TimeColumn,
+		TraceIdColumn:      data.TraceIdColumn,
+		SpanIdColumn:       data.SpanIdColumn,
+		ParentSpanIdColumn: data.ParentSpanIdColumn,
+		ServiceNameColumn:  data.ServiceNameColumn,
+		SpanNameColumn:     data.SpanNameColumn,
+		DurationColumn:     data.DurationColumn,
+		DurationUnit:       data.DurationUnit,
+		TagsColumn:         data.TagsColumn,
+		StatusColumn:       data.StatusColumn,
+		TraceId:            data.TraceId,
+		DimensionFilters:   data.DimensionFilters,
+		QueryOptions:       data.QueryOptions,
+		Limit:              data.Limit,
+	}
+
+	// Don't render a preview for an incomplete query — without the required columns the template
+	// would emit invalid SQL.
+	if err := query.Validate(); err != nil {
+		return newOkResponse("")
+	}
+
+	if !data.ExpandMacros {
+		sql, err := query.RenderSqlWithMacros()
+		if err != nil {
+			log.WithError(err).FromContext(ctx).Error("RenderSqlWithMacros() failed.")
+			return newOkResponse("")
+		}
+		return newOkResponse(sql)
+	}
+
+	sqlQuery, _, err := query.RenderSqlQuery(ctx, client)
+	if err != nil {
+		log.WithError(err).FromContext(ctx).Error("RenderTraceSql() failed.")
 		return newOkResponse("")
 	}
 	return newOkResponse(client.RenderSql(sqlQuery))

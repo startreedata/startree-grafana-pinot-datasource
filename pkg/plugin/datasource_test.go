@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ func TestDatasource(t *testing.T) {
 func TestQueryData(t *testing.T) {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	handler := newQueryDataHandler(client)
+	handler := newQueryDataHandler(client, dataquery.DataSourceMeta{})
 	resp, err := handler.QueryData(
 		context.Background(),
 		&backend.QueryDataRequest{

@@ -8,6 +8,7 @@
   "executable": "gpx_pinot",
   "alerting": true,
   "annotations": true,
+  "tracing": true,
   "info": {
     "description": "A comprehensive Grafana data source plugin for StarTree Pinot, enabling real-time analytics and visualization of your StarTree Pinot cluster data with support for time series, logs, and annotations.",
     "author": {
