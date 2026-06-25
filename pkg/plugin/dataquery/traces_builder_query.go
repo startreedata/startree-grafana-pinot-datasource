@@ -173,7 +173,9 @@ func (query TracesBuilderQuery) traceIdFilterExpr() pinot.SqlExpr {
 		ColumnName: query.TraceIdColumn.Name,
 		ColumnKey:  query.TraceIdColumn.Key,
 		Operator:   pinot.FilterOpEquals,
-		ValueExprs: []string{pinot.StringLiteralExpr(query.TraceId).String()},
+		// Escape the trace id: it is request-controlled (and may be a resolved dashboard variable),
+		// so an embedded quote must not break out of the string literal.
+		ValueExprs: []string{pinot.StringLiteralExpr(pinot.EscapeStringLiteral(query.TraceId)).String()},
 	})
 }
 

@@ -135,3 +135,12 @@ LIMIT 100000;`
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestTracesBuilderQuery_RenderSqlWithMacros_escapesTraceId(t *testing.T) {
+	query := newTracesQuery()
+	query.TraceId = "a'b" // a single quote must not break out of the string literal
+
+	got, err := query.RenderSqlWithMacros()
+	assert.NoError(t, err)
+	assert.Contains(t, got, `AND ("trace_id" = 'a''b')`)
+}

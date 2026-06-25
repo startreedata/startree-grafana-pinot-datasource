@@ -28,7 +28,7 @@ func AdHocFilterExpr(filter AdHocFilter) SqlExpr {
 	}
 
 	columnExpr := ObjectExpr(escapeIdentifier(filter.Key))
-	valueExpr := StringLiteralExpr(escapeStringLiteral(filter.Value))
+	valueExpr := StringLiteralExpr(EscapeStringLiteral(filter.Value))
 
 	switch filter.Operator {
 	case "=":
@@ -46,12 +46,6 @@ func AdHocFilterExpr(filter AdHocFilter) SqlExpr {
 	default:
 		return ""
 	}
-}
-
-// escapeStringLiteral escapes a value for use inside a single-quoted SQL string literal by doubling
-// embedded single quotes. StringLiteralExpr only wraps in quotes, so escaping happens here.
-func escapeStringLiteral(value string) string {
-	return strings.ReplaceAll(value, `'`, `''`)
 }
 
 // escapeIdentifier escapes a name for use inside a double-quoted SQL identifier by doubling embedded

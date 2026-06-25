@@ -21,6 +21,13 @@ func StringLiteralExpr(lit string) SqlExpr {
 	return SqlExpr(fmt.Sprintf(`'%s'`, lit))
 }
 
+// EscapeStringLiteral escapes a value for safe use inside a single-quoted SQL string literal by
+// doubling embedded single quotes. StringLiteralExpr only wraps in quotes, so callers embedding
+// request-controlled values must escape first to avoid breaking out of the literal.
+func EscapeStringLiteral(value string) string {
+	return strings.ReplaceAll(value, `'`, `''`)
+}
+
 func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val T) SqlExpr {
 	switch valTyped := any(val).(type) {
 	case bool:
