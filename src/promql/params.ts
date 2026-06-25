@@ -6,6 +6,7 @@ export interface Params {
   promQlCode: string;
   legend: string;
   seriesLimit: number;
+  stepSize: string;
 }
 
 export function paramsFrom(query: PinotDataQuery): Params {
@@ -14,6 +15,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     promQlCode: query.promQlCode || '',
     legend: query.legend || '',
     seriesLimit: query.seriesLimit || 0,
+    stepSize: query.promStepSize || '',
   };
 }
 
@@ -25,5 +27,6 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     promQlCode: params.promQlCode || undefined,
     legend: params.legend || undefined,
     seriesLimit: params.seriesLimit || undefined,
+    promStepSize: params.stepSize || undefined,
   };
 }

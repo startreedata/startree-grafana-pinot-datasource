@@ -10,6 +10,7 @@ import { QueryType } from '../../dataquery/QueryType';
 import { DataSource } from '../../datasource';
 import { PromQlExpressionEditor } from './PromQlExpressionEditor';
 import { InputSeriesLimit } from './InputLimit';
+import { InputStepSize } from './InputStepSize';
 import { dataQueryOf, Params, paramsFrom } from '../../promql/params';
 
 export function PromQlEditor(props: PinotQueryEditorProps) {
@@ -57,6 +58,7 @@ export function PromQlEditor(props: PinotQueryEditorProps) {
           current={params.seriesLimit}
           onChange={(seriesLimit) => onChangeAndRun({ ...params, seriesLimit })}
         />
+        <InputStepSize current={params.stepSize} onChange={(stepSize) => onChangeAndRun({ ...params, stepSize })} />
       </div>
     </>
   );

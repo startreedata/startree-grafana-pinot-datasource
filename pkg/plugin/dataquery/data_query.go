@@ -160,6 +160,9 @@ type DataQuery struct {
 
 	// PromQl code
 	PromQlCode string `json:"promQlCode"`
+	// PromStepSize optionally overrides the PromQL range-query step (Go duration, e.g. "30s").
+	// Empty means use the auto-computed IntervalSize.
+	PromStepSize string `json:"promStepSize"`
 }
 
 type TimeRange struct {
