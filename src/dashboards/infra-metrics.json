@@ -1,0 +1,241 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_STARTREE_PINOT",
+      "label": "StarTree Pinot",
+      "description": "Select the StarTree Pinot datasource to bind this dashboard to.",
+      "type": "datasource",
+      "pluginId": "startree-pinot-datasource",
+      "pluginName": "StarTree Pinot"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.1.1"
+    },
+    {
+      "type": "datasource",
+      "id": "startree-pinot-datasource",
+      "name": "StarTree Pinot",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Example dashboard for the StarTree Pinot datasource, built on the sample `infraMetrics` table. Demonstrates a multi-series time series and a summary table using PinotQL code mode with the plugin's time macros.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "title": "Metric value over time",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TIMESERIES",
+          "tableName": "infraMetrics",
+          "legend": "{{metric}}",
+          "pinotQlCode": "SELECT\n  $__timeGroup(\"ts\") AS $__timeAlias(),\n  \"metric\",\n  AVG(\"value\") AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY $__timeGroup(\"ts\"), \"metric\"\nORDER BY $__timeAlias()\nLIMIT 100000"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 9
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "MaxValue"
+          }
+        ]
+      },
+      "title": "Metric summary",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "infraMetrics",
+          "pinotQlCode": "SELECT\n  \"metric\" AS \"Metric\",\n  COUNT(*) AS \"DataPoints\",\n  MAX(\"value\") AS \"MaxValue\",\n  AVG(\"value\") AS \"AvgValue\"\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY \"metric\"\nORDER BY MAX(\"value\") DESC\nLIMIT 50"
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["pinot", "startree", "example"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-09-18T00:00:00.000Z",
+    "to": "2024-09-18T00:05:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Pinot — Infra Metrics Overview",
+  "uid": "startree-pinot-infra-metrics",
+  "version": 1,
+  "weekStart": ""
+}

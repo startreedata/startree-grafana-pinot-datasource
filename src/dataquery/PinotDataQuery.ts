@@ -325,6 +325,10 @@ export function interpolateVariables(
   return {
     ...query,
 
+    // Table name (interpolated so dashboards can bind it to a `$table` template variable; also
+    // enables chained COLUMN_LIST variables whose tableName references the selected table).
+    tableName: replaceIfExists(query.tableName),
+
     // Sql Builder
 
     timeColumn: replaceIfExists(query.timeColumn),

@@ -1,0 +1,299 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_STARTREE_PINOT",
+      "label": "StarTree Pinot",
+      "description": "Select the StarTree Pinot datasource to bind this dashboard to.",
+      "type": "datasource",
+      "pluginId": "startree-pinot-datasource",
+      "pluginName": "StarTree Pinot"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.1.1"
+    },
+    {
+      "type": "datasource",
+      "id": "startree-pinot-datasource",
+      "name": "StarTree Pinot",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Example dashboard for the StarTree Pinot datasource, built on the sample `nginxLogs` table. Demonstrates time series, table, and logs panels using PinotQL code mode with the plugin's time macros.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "requests",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "calcs": ["sum"],
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "title": "Requests over time by status code",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TIMESERIES",
+          "tableName": "nginxLogs",
+          "legend": "status {{status}}",
+          "pinotQlCode": "SELECT\n  $__timeGroup(\"ts\") AS $__timeAlias(),\n  \"status\",\n  COUNT(*) AS $__metricAlias()\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY $__timeGroup(\"ts\"), \"status\"\nORDER BY $__timeAlias()\nLIMIT 100000"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "BytesSent"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": ["sum"],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Requests"
+          }
+        ]
+      },
+      "title": "Top requested URIs",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "TABLE",
+          "tableName": "nginxLogs",
+          "pinotQlCode": "SELECT\n  \"uri\" AS \"URI\",\n  \"method\" AS \"Method\",\n  COUNT(*) AS \"Requests\",\n  SUM(\"bytesSent\") AS \"BytesSent\"\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nGROUP BY \"uri\", \"method\"\nORDER BY COUNT(*) DESC\nLIMIT 50"
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "startree-pinot-datasource",
+        "uid": "${DS_STARTREE_PINOT}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 3,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "title": "Recent access logs",
+      "targets": [
+        {
+          "datasource": {
+            "type": "startree-pinot-datasource",
+            "uid": "${DS_STARTREE_PINOT}"
+          },
+          "refId": "A",
+          "queryType": "PinotQL",
+          "editorMode": "Code",
+          "displayType": "LOGS",
+          "tableName": "nginxLogs",
+          "pinotQlCode": "SELECT\n  \"message\" AS \"__message\",\n  \"method\",\n  \"status\",\n  \"uri\",\n  \"ipAddr\",\n  \"ts\" AS \"__time\"\nFROM $__table()\nWHERE $__timeFilter(\"ts\")\nORDER BY \"ts\" DESC\nLIMIT 200"
+        }
+      ],
+      "type": "logs"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["pinot", "startree", "example"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "2024-11-06T00:00:00.000Z",
+    "to": "2024-11-06T22:00:00.000Z"
+  },
+  "timepicker": {},
+  "timezone": "utc",
+  "title": "Pinot — Table Examples",
+  "uid": "startree-pinot-table-examples",
+  "version": 1,
+  "weekStart": ""
+}
