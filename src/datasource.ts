@@ -23,6 +23,8 @@ import { DataSourceWithBackend } from '@grafana/runtime';
 import { lastValueFrom, map, Observable } from '@grafana/data/node_modules/rxjs';
 
 import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
+import { QueryType } from './dataquery/QueryType';
+import { EditorMode } from './dataquery/EditorMode';
 import { PinotConnectionConfig } from './config/PinotConnectionConfig';
 import { PinotVariableSupport } from './variables';
 import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/AnnotationsQueryEditor';
@@ -70,6 +72,35 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
       // the mapping configured.
       map((response) => attachLogsToTracesLinks(response, this.logsToTraces, { uid: this.uid, name: this.name }))
     );
+  }
+
+  // Summary shown for a query when a panel/query row is collapsed. Without this, Grafana falls back
+  // to the raw refId, which tells the user nothing about what the query does.
+  getQueryDisplayText(query: PinotDataQuery): string {
+    switch (query.queryType) {
+      case QueryType.PromQL:
+        return query.promQlCode || EMPTY_QUERY_DISPLAY_TEXT;
+      case QueryType.PinotVariableQuery:
+        return query.variableQuery?.pinotQlCode || query.variableQuery?.columnName || EMPTY_QUERY_DISPLAY_TEXT;
+      case QueryType.PinotQL:
+        switch (query.editorMode) {
+          case EditorMode.Code:
+            return query.pinotQlCode || EMPTY_QUERY_DISPLAY_TEXT;
+          case EditorMode.Builder: {
+            const filters = query.filters?.map(displayFilter).join(', ') || 'none';
+            const dimensions = query.groupByColumns?.join(', ') || 'none';
+            return (
+              `Table: ${query.tableName || 'none'}, Time: ${query.timeColumn || 'none'}, ` +
+              `Aggregation: ${query.aggregationFunction || 'none'}, Metric: ${query.metricColumn || 'none'}, ` +
+              `Dimensions: ${dimensions}, Filters: ${filters}`
+            );
+          }
+          default:
+            return EMPTY_QUERY_DISPLAY_TEXT;
+        }
+      default:
+        return EMPTY_QUERY_DISPLAY_TEXT;
+    }
   }
 
   applyTemplateVariables(
@@ -190,6 +221,15 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     this.adHocContext = query?.tableName ? { tableName: query.tableName, timeColumn: query.timeColumn } : undefined;
     return this.adHocContext;
   }
+}
+
+// Shown by getQueryDisplayText when a query has no meaningful content to summarize.
+const EMPTY_QUERY_DISPLAY_TEXT = 'Empty query';
+
+// Renders a Builder-mode filter row for the collapsed-panel summary, e.g. `country = 'US','CA'`.
+function displayFilter(filter: { columnName?: string; operator?: string; valueExprs?: string[] }): string {
+  const values = filter.valueExprs?.join(',') ?? '';
+  return `${filter.columnName ?? ''} ${filter.operator ?? ''} ${values}`.trim();
 }
 
 // `queries` (getTagKeys) and `timeRange` (getTagValues) are best-effort context that some Grafana
