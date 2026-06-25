@@ -30,10 +30,13 @@ import { listColumns } from './resources/columns';
 import { queryDistinctValuesForFilters } from './resources/distinctValues';
 import {
   attachDerivedFieldLinks,
+  attachLogsToTracesLinks,
   DEFAULT_LOG_ROW_CONTEXT_LIMIT,
   LOG_ROW_CONTEXT_REF_ID,
   logRowContextQuery,
   logRowContextTimeWindow,
+  logsToTracesConfig,
+  LogsToTracesConfig,
   logsVolumeQuery,
 } from './logs';
 
@@ -45,17 +48,28 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
   // mixes tables and needs per-key tables.
   private adHocContext?: { tableName: string; timeColumn?: string };
 
+  // Datasource-level logs-to-trace mapping, read once from settings. DataSourceApi doesn't retain
+  // instanceSettings, so capture the bits the logs path needs (the mapping + uid/name for the
+  // internal data link) here.
+  private readonly logsToTraces: LogsToTracesConfig;
+
   constructor(instanceSettings: DataSourceInstanceSettings<PinotConnectionConfig>) {
     super(instanceSettings);
 
+    this.logsToTraces = logsToTracesConfig(instanceSettings.jsonData);
     this.variables = new PinotVariableSupport(this);
     this.annotations = { QueryEditor: AnnotationsQueryEditor };
   }
 
   query(request: DataQueryRequest<PinotDataQuery>): Observable<DataQueryResponse> {
-    // Surface extractor-derived fields with data links on the returned logs frames. No-op for
-    // frames without extractors-with-links (e.g. time series, volume).
-    return super.query(request).pipe(map((response) => attachDerivedFieldLinks(response, request.targets)));
+    return super.query(request).pipe(
+      // Surface extractor-derived fields with data links on the returned logs frames. No-op for
+      // frames without extractors-with-links (e.g. time series, volume).
+      map((response) => attachDerivedFieldLinks(response, request.targets)),
+      // Add the logs-to-trace data link on each log row's trace id. No-op unless the datasource has
+      // the mapping configured.
+      map((response) => attachLogsToTracesLinks(response, this.logsToTraces, { uid: this.uid, name: this.name }))
+    );
   }
 
   applyTemplateVariables(

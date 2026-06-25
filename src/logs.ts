@@ -1,8 +1,9 @@
-import { DataFrame, DataQueryResponse, Field, FieldType, LogRowContextQueryDirection } from '@grafana/data';
+import { DataFrame, DataLink, DataQueryResponse, Field, FieldType, LogRowContextQueryDirection } from '@grafana/data';
 import { DisplayType } from './dataquery/DisplayType';
 import { EditorMode } from './dataquery/EditorMode';
 import { QueryType } from './dataquery/QueryType';
 import { PinotDataQuery } from './dataquery/PinotDataQuery';
+import { PinotConnectionConfig } from './config/PinotConnectionConfig';
 
 // Prefix for refIds of derived logs queries so they don't collide with the user's panel query.
 export const LOGS_VOLUME_REF_ID_PREFIX = 'log-volume-';
@@ -125,4 +126,84 @@ function safeParseObject(s: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+// LogsToTracesConfig is the subset of the datasource config that drives the logs-to-trace data link.
+// All three fields must be set for the link to be attached.
+export interface LogsToTracesConfig {
+  table?: string;
+  traceIdColumn?: string;
+  timeColumn?: string;
+}
+
+export function logsToTracesConfig(
+  config: Pick<PinotConnectionConfig, 'logsToTracesTable' | 'logsToTracesTraceIdColumn' | 'logsToTracesTimeColumn'>
+): LogsToTracesConfig {
+  return {
+    table: config.logsToTracesTable,
+    traceIdColumn: config.logsToTracesTraceIdColumn,
+    timeColumn: config.logsToTracesTimeColumn,
+  };
+}
+
+function isLogsToTracesConfigured(config: LogsToTracesConfig): config is Required<LogsToTracesConfig> {
+  return !!config.table && !!config.traceIdColumn && !!config.timeColumn;
+}
+
+// attachLogsToTracesLinks is the reverse of the backend trace-to-logs feature: when the datasource
+// has a logs-to-trace mapping configured, it surfaces each log row's trace id (already folded into
+// the row's `labels` because the trace-id column is wired in as a logs metadata column) as a
+// standalone field carrying an internal data link to a TRACES query for that trace id, against the
+// configured traces table. No-op when the mapping is absent or the trace-id value isn't on the row.
+export function attachLogsToTracesLinks(
+  response: DataQueryResponse,
+  config: LogsToTracesConfig,
+  datasource: { uid: string; name: string }
+): DataQueryResponse {
+  if (!isLogsToTracesConfigured(config)) {
+    return response;
+  }
+
+  const data = (response.data ?? []).map((frame: DataFrame) => {
+    const labelsField = frame.fields?.find((f) => f.name === 'labels');
+    // Only logs frames carry a `labels` field; skip everything else (time series, volume, ...).
+    if (!labelsField) {
+      return frame;
+    }
+
+    const labels = labelsField.values as readonly unknown[];
+    const traceField: Field = {
+      name: config.traceIdColumn,
+      type: FieldType.string,
+      config: { links: [logsToTracesDataLink(config, datasource)] },
+      values: labels.map((l) => labelValue(l, config.traceIdColumn)),
+    };
+
+    return { ...frame, fields: [...frame.fields, traceField] };
+  });
+  return { ...response, data };
+}
+
+// logsToTracesDataLink builds an internal data link from a log row to a PinotQL traces query against
+// the configured traces table, finding the trace by id (`${__value.raw}` resolves to the trace-id
+// field's value for the clicked row). Mirrors the backend's traceToLogsDataLink, in reverse.
+function logsToTracesDataLink(config: Required<LogsToTracesConfig>, datasource: { uid: string; name: string }): DataLink {
+  const query: PinotDataQuery = {
+    refId: '',
+    queryType: QueryType.PinotQL,
+    editorMode: EditorMode.Builder,
+    displayType: DisplayType.TRACES,
+    tableName: config.table,
+    timeColumn: config.timeColumn,
+    traceId: '${__value.raw}',
+  };
+  return {
+    title: 'View trace',
+    url: '',
+    internal: {
+      query,
+      datasourceUid: datasource.uid,
+      datasourceName: datasource.name,
+    },
+  };
 }

@@ -1,6 +1,8 @@
 import { DataQueryResponse, Field, FieldType, LogRowContextQueryDirection, toDataFrame } from '@grafana/data';
 import {
   attachDerivedFieldLinks,
+  attachLogsToTracesLinks,
+  logsToTracesConfig,
   LOG_ROW_CONTEXT_REF_ID,
   LOG_ROW_CONTEXT_WINDOW_MS,
   LOGS_VOLUME_REF_ID_PREFIX,
@@ -130,5 +132,74 @@ describe('attachDerivedFieldLinks', () => {
       jsonExtractors: [{ source: { name: 'message' }, path: '$.traceId', alias: 'traceId' }],
     };
     expect(attachDerivedFieldLinks(response, [target]).data[0].fields).toHaveLength(3);
+  });
+});
+
+describe('attachLogsToTracesLinks', () => {
+  const datasource = { uid: 'ds-uid', name: 'Pinot' };
+  const fullConfig = { logsToTracesTable: 'otelTraces', logsToTracesTraceIdColumn: 'traceId', logsToTracesTimeColumn: 'ts' };
+
+  const logsFrame = () =>
+    toDataFrame({
+      refId: 'A',
+      fields: [
+        { name: 'labels', type: FieldType.other, values: [{ traceId: 'abc' }, { traceId: 'def' }] },
+        { name: 'Line', type: FieldType.string, values: ['line1', 'line2'] },
+        { name: 'Time', type: FieldType.time, values: [1, 2] },
+      ],
+    });
+
+  test('attaches an internal trace data link reading the trace id out of labels', () => {
+    const response: DataQueryResponse = { data: [logsFrame()] };
+
+    const out = attachLogsToTracesLinks(response, logsToTracesConfig(fullConfig), datasource);
+    const traceField = out.data[0].fields.find((f: Field) => f.name === 'traceId');
+
+    expect(traceField?.values).toEqual(['abc', 'def']);
+    expect(traceField?.config.links).toHaveLength(1);
+    const link = traceField!.config.links![0];
+    expect(link.title).toBe('View trace');
+    expect(link.internal?.datasourceUid).toBe('ds-uid');
+    expect(link.internal?.datasourceName).toBe('Pinot');
+    expect(link.internal?.query).toMatchObject({
+      queryType: QueryType.PinotQL,
+      editorMode: EditorMode.Builder,
+      displayType: DisplayType.TRACES,
+      tableName: 'otelTraces',
+      timeColumn: 'ts',
+      traceId: '${__value.raw}',
+    });
+  });
+
+  test('parses string-encoded labels', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'labels', type: FieldType.string, values: ['{"traceId":"xyz"}'] }],
+    });
+
+    const out = attachLogsToTracesLinks({ data: [frame] }, logsToTracesConfig(fullConfig), datasource);
+    const traceField = out.data[0].fields.find((f: Field) => f.name === 'traceId');
+    expect(traceField?.values).toEqual(['xyz']);
+  });
+
+  test('no link when the mapping is not fully configured', () => {
+    const response: DataQueryResponse = { data: [logsFrame()] };
+
+    // Each field missing in turn leaves the frame untouched (still the original 3 fields).
+    expect(attachLogsToTracesLinks(response, logsToTracesConfig({}), datasource).data[0].fields).toHaveLength(3);
+    expect(
+      attachLogsToTracesLinks(response, logsToTracesConfig({ ...fullConfig, logsToTracesTimeColumn: undefined }), datasource)
+        .data[0].fields
+    ).toHaveLength(3);
+  });
+
+  test('leaves frames without a labels field untouched', () => {
+    const frame = toDataFrame({
+      refId: 'A',
+      fields: [{ name: 'value', type: FieldType.number, values: [1, 2] }],
+    });
+    expect(attachLogsToTracesLinks({ data: [frame] }, logsToTracesConfig(fullConfig), datasource).data[0].fields).toHaveLength(
+      1
+    );
   });
 });

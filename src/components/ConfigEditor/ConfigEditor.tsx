@@ -276,6 +276,62 @@ export function ConfigEditor(props: ConfigEditorProps) {
           />
         </InlineField>
       </div>
+
+      <h3 data-testid="logs-to-traces-heading">Logs to trace</h3>
+      <p className={styles.text}>{labels.logsToTraces.description}</p>
+      <div className="gf-form-group">
+        <InlineField
+          data-testid="input-logs-to-traces-table"
+          label={labels.logsToTraces.table.label}
+          labelWidth={24}
+          tooltip={labels.logsToTraces.table.tooltip}
+          grow
+          interactive
+        >
+          <Input
+            width={40}
+            placeholder={labels.logsToTraces.table.placeholder}
+            value={jsonData.logsToTracesTable ?? ''}
+            onChange={(event) =>
+              onConfigChange({ ...jsonData, logsToTracesTable: event.currentTarget.value || undefined })
+            }
+          />
+        </InlineField>
+        <InlineField
+          data-testid="input-logs-to-traces-trace-id-column"
+          label={labels.logsToTraces.traceIdColumn.label}
+          labelWidth={24}
+          tooltip={labels.logsToTraces.traceIdColumn.tooltip}
+          grow
+          interactive
+        >
+          <Input
+            width={40}
+            placeholder={labels.logsToTraces.traceIdColumn.placeholder}
+            value={jsonData.logsToTracesTraceIdColumn ?? ''}
+            onChange={(event) =>
+              onConfigChange({ ...jsonData, logsToTracesTraceIdColumn: event.currentTarget.value || undefined })
+            }
+          />
+        </InlineField>
+        <InlineField
+          data-testid="input-logs-to-traces-time-column"
+          label={labels.logsToTraces.timeColumn.label}
+          labelWidth={24}
+          tooltip={labels.logsToTraces.timeColumn.tooltip}
+          grow
+          interactive
+        >
+          <Input
+            width={40}
+            placeholder={labels.logsToTraces.timeColumn.placeholder}
+            value={jsonData.logsToTracesTimeColumn ?? ''}
+            onChange={(event) =>
+              onConfigChange({ ...jsonData, logsToTracesTimeColumn: event.currentTarget.value || undefined })
+            }
+          />
+        </InlineField>
+      </div>
     </>
   );
 }
