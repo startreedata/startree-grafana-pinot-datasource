@@ -73,7 +73,7 @@ func TestLogsBuilderQueryVolume(t *testing.T) {
 	}.VolumeQuery().RenderSqlWithMacros()
 
 	assert.NoError(t, err)
-	assert.Contains(t, sql, `COUNT("*")`)
+	assert.Contains(t, sql, `COUNT(*)`)
 	assert.Contains(t, sql, `$__timeGroup("ts", 'auto')`)
 	assert.Contains(t, sql, `"logLevel"`) // broken down by level
 	assert.Contains(t, sql, `"method" = 'GET'`)
@@ -88,7 +88,7 @@ func TestLogsBuilderQueryVolumeNoLevel(t *testing.T) {
 	}.VolumeQuery().RenderSqlWithMacros()
 
 	assert.NoError(t, err)
-	assert.Contains(t, sql, `COUNT("*")`)
+	assert.Contains(t, sql, `COUNT(*)`)
 	assert.Contains(t, sql, `$__timeGroup("ts", 'auto')`)
 }
 

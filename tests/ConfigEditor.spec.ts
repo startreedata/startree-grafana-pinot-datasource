@@ -62,7 +62,7 @@ test.describe('Add Pinot Datasource', async () => {
       // language=text
       `SELECT
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
-    SUM("views") AS "__metric"
+    COUNT(*) AS "__metric"
 FROM
     "complex_website"
 WHERE

@@ -160,34 +160,19 @@ describe('applyDefaults', () => {
       isMetric: false,
     },
   ];
-  const metricColumns: Column[] = [
-    {
-      name: 'met',
-      dataType: 'DOUBLE',
-      key: null,
-      isTime: false,
-      isDerived: false,
-      isMetric: true,
-    },
-    {
-      name: 'met2',
-      dataType: 'DOUBLE',
-      key: null,
-      isTime: false,
-      isDerived: false,
-      isMetric: true,
-    },
-  ];
+  // Intentionally unsorted so the test exercises the deterministic (alphabetical) default,
+  // not whatever order the backend happens to return tables in.
+  const tables = ['table2', 'table1'];
 
   test('emptyParams', () => {
     const params = newEmptyParams();
-    expect(TimeSeriesBuilder.applyDefaults(params, { timeColumns, metricColumns })).toEqual(true);
+    expect(TimeSeriesBuilder.applyDefaults(params, { tables, timeColumns })).toEqual(true);
     expect(params).toEqual<TimeSeriesBuilder.Params>({
-      tableName: '',
+      tableName: 'table1',
       timeColumn: 'ts',
-      metricColumn: { name: 'met', key: undefined },
+      metricColumn: {},
       granularity: '',
-      aggregationFunction: 'SUM',
+      aggregationFunction: 'COUNT',
       limit: 0,
       filters: [],
       orderBy: [],
@@ -213,7 +198,7 @@ describe('applyDefaults', () => {
       groupByColumns: [{ name: 'test_dim_column' }],
       seriesLimit: 101,
     };
-    expect(TimeSeriesBuilder.applyDefaults(params, { timeColumns, metricColumns })).toEqual(false);
+    expect(TimeSeriesBuilder.applyDefaults(params, { tables, timeColumns })).toEqual(false);
     expect(params).toEqual<TimeSeriesBuilder.Params>({
       tableName: 'test_table',
       timeColumn: 'test_time_column',

@@ -205,7 +205,9 @@ func (query TimeSeriesBuilderQuery) resolveOutputTimeFormat(tableSchema pinot.Ta
 
 func (query TimeSeriesBuilderQuery) metricExpr() pinot.SqlExpr {
 	if query.AggregationFunction == AggregationFunctionCount {
-		return pinot.ObjectExpr("*")
+		// Render COUNT(*) with an unquoted star. COUNT("*") would refer to a column literally
+		// named "*"; see the same convention in table_builder_query.go's aggregationExpr.
+		return pinot.SqlExpr("*")
 	} else {
 		return pinot.ComplexFieldExpr(query.MetricColumn.Name, query.MetricColumn.Key)
 	}

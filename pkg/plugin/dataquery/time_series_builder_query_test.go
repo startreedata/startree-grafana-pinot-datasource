@@ -135,7 +135,7 @@ LIMIT 1000;`)
 		assert.Equal(t, `SELECT
     "dim",
     DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:SECONDS') AS "__time",
-    COUNT("*") AS "__metric"
+    COUNT(*) AS "__metric"
 FROM
     "benchmark"
 WHERE
@@ -261,7 +261,7 @@ SET timeoutMs=1;`
 		want := `SELECT
     "dim",
     $__timeGroup("my_time_column", '1:SECONDS') AS $__timeAlias(),
-    COUNT("*") AS $__metricAlias()
+    COUNT(*) AS $__metricAlias()
 FROM
     $__table()
 WHERE

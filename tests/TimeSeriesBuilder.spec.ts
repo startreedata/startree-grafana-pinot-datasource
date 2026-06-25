@@ -28,7 +28,7 @@ test('Switch between Builder and Code editor', async ({ page, datasource }) => {
     //language=text
     `SELECT
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS') AS "__time",
-    SUM("views") AS "__metric"
+    COUNT(*) AS "__metric"
 FROM
     "complex_website"
 WHERE
@@ -45,9 +45,9 @@ LIMIT 100000;`
     //language=text
     `SELECT
      DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '1:HOURS')  AS  "__time" ,
-    SUM("views") AS  "views" 
+    COUNT(*) AS  "__metric"
 FROM
-     "complex_website" 
+     "complex_website"
 WHERE
      "hoursSinceEpoch" >= 464592 AND "hoursSinceEpoch" < 482137 
 GROUP BY
@@ -424,14 +424,13 @@ async function checkOrderByDropdown(page: Page) {
 }
 
 async function checkTimeSeriesRendersMinFields(page: Page) {
-  await page.getByTestId('select-table-dropdown').click();
-  await page.getByLabel('Select options menu').getByText('complex_website', { exact: true }).click();
-
+  // The editor auto-selects the first table and a COUNT aggregation on open,
+  // so a time series renders without any manual field selection.
   await expect(page.getByTestId('sql-preview')).toContainText(
     // language=text
     `SELECT
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
-    SUM("views") AS "__metric"
+    COUNT(*) AS "__metric"
 FROM
     "complex_website"
 WHERE
@@ -481,7 +480,7 @@ async function checkTimeSeriesRendersCountAgg(page: Page) {
     // language=text
     `SELECT
     DATETIMECONVERT("hoursSinceEpoch", '1:HOURS:EPOCH', '1:MILLISECONDS:EPOCH', '12:HOURS') AS "__time",
-    COUNT("*") AS "__metric"
+    COUNT(*) AS "__metric"
 FROM
     "complex_website"
 WHERE

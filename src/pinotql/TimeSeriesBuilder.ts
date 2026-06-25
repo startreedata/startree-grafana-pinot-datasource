@@ -92,11 +92,19 @@ export function canRunQuery(params: Params): boolean {
 export function applyDefaults(
   params: Params,
   resources: {
+    tables: string[];
     timeColumns: Column[];
-    metricColumns: Column[];
   }
 ): boolean {
   let changed = false;
+
+  // Default to the alphabetically-first table so the editor loads a time series on open
+  // instead of showing a blank panel until a table is selected. Sorting makes the default
+  // deterministic regardless of the (backend-dependent) order tables are returned in.
+  if (!params.tableName && resources.tables.length > 0) {
+    changed = true;
+    params.tableName = [...resources.tables].sort()[0];
+  }
 
   const timeColumnCandidates = resources.timeColumns.filter((t) => !t.isDerived);
   if (!params.timeColumn && timeColumnCandidates.length > 0) {
@@ -104,17 +112,10 @@ export function applyDefaults(
     params.timeColumn = timeColumnCandidates[0].name;
   }
 
-  if (!params.metricColumn?.name && resources.metricColumns.length > 0) {
-    changed = true;
-    params.metricColumn = {
-      name: resources.metricColumns[0].name,
-      key: resources.metricColumns[0].key || undefined,
-    };
-  }
-
+  // Default to COUNT so the query runs without requiring a metric column (COUNT(*)).
   if (!params.aggregationFunction) {
     changed = true;
-    params.aggregationFunction = AggregationFunction.SUM;
+    params.aggregationFunction = AggregationFunction.COUNT;
   }
 
   return changed;
