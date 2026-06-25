@@ -35,8 +35,32 @@ const (
 	DisplayTypeTable       DisplayType = "TABLE"
 	DisplayTypeTimeSeries  DisplayType = "TIMESERIES"
 	DisplayTypeLogs        DisplayType = "LOGS"
+	DisplayTypeTraces      DisplayType = "TRACES"
 	DisplayTypeAnnotations DisplayType = "ANNOTATIONS"
 )
+
+// TracesToLogsConfig is the datasource-level mapping that turns trace spans into a logs query.
+// When fully populated, the traces builder attaches an internal data link from each span to a
+// PinotQL logs query against Table, filtered by TraceIdColumn = the span's trace id.
+type TracesToLogsConfig struct {
+	Table         string `json:"tracesToLogsTable"`
+	TraceIdColumn string `json:"tracesToLogsTraceIdColumn"`
+	TimeColumn    string `json:"tracesToLogsTimeColumn"`
+	LogColumn     string `json:"tracesToLogsLogColumn"`
+}
+
+func (c TracesToLogsConfig) IsConfigured() bool {
+	return c.Table != "" && c.TraceIdColumn != "" && c.TimeColumn != "" && c.LogColumn != ""
+}
+
+// DataSourceMeta carries datasource-level context that individual queries need but which does not
+// arrive in the per-query JSON: the datasource identity (for internal data links) and the
+// trace-to-logs mapping read from datasource settings.
+type DataSourceMeta struct {
+	UID          string
+	Name         string
+	TracesToLogs TracesToLogsConfig
+}
 
 type VariableQueryType string
 
@@ -65,6 +89,11 @@ type DataQuery struct {
 	TimeRange     TimeRange     `json:"-"`
 	MaxDataPoints int64         `json:"-"`
 	IntervalSize  time.Duration `json:"-"`
+
+	// Datasource-level context, injected from settings (not part of the query JSON).
+	DatasourceUID  string             `json:"-"`
+	DatasourceName string             `json:"-"`
+	TracesToLogs   TracesToLogsConfig `json:"-"`
 
 	Hide        bool        `json:"hide"`
 	QueryType   QueryType   `json:"queryType"`
@@ -100,6 +129,19 @@ type DataQuery struct {
 	// LogContextDirection ("BACKWARD"/"FORWARD") is set by getLogRowContext to fetch the rows
 	// immediately before/after an anchor row. BACKWARD flips the logs query to newest-first.
 	LogContextDirection string `json:"logContextDirection"`
+
+	// Traces builder query. The start time / time filter reuse TimeColumn above. TraceId, when set,
+	// selects "find trace by ID" mode; otherwise the builder runs in "search" mode.
+	TraceIdColumn      ComplexField `json:"traceIdColumn"`
+	SpanIdColumn       ComplexField `json:"spanIdColumn"`
+	ParentSpanIdColumn ComplexField `json:"parentSpanIdColumn"`
+	ServiceNameColumn  ComplexField `json:"serviceNameColumn"`
+	SpanNameColumn     ComplexField `json:"spanNameColumn"`
+	DurationColumn     ComplexField `json:"durationColumn"`
+	DurationUnit       string       `json:"durationUnit"`
+	TagsColumn         ComplexField `json:"tagsColumn"`
+	StatusColumn       ComplexField `json:"statusColumn"`
+	TraceId            string       `json:"traceId"`
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`

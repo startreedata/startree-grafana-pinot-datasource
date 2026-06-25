@@ -145,7 +145,7 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	case DataTypeMap:
 		// ref: https://github.com/apache/pinot/pull/13906
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (map[string]any, error) {
-			return results.Rows[rowIdx][colIdx].(map[string]any), nil
+			return defaultIfNil[map[string]any](results.Rows[rowIdx][colIdx], nil), nil
 		})
 	default:
 		return nil, &ExtractorError{

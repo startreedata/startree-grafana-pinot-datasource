@@ -8,6 +8,7 @@ const DisplayTypeOptions = [
   { label: 'Time Series', value: DisplayType.TIMESERIES },
   { label: 'Table', value: DisplayType.TABLE },
   { label: 'Logs', value: DisplayType.LOGS },
+  { label: 'Traces', value: DisplayType.TRACES },
 ];
 
 export function SelectDisplayType(props: { value: string; displayTypes?: string[]; onChange: (val: string) => void }) {

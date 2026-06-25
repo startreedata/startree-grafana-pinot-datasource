@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"net/http"
 	"time"
 )
@@ -38,8 +39,26 @@ type Config struct {
 	TLSAuthWithCACert bool   `json:"tlsAuthWithCACert"`
 	TLSServerName     string `json:"serverName"`
 
+	// Trace-to-logs correlation: when fully set, the traces builder attaches a data link from each
+	// span to a logs query against this table, keyed by the span's trace id.
+	TracesToLogsTable         string `json:"tracesToLogsTable"`
+	TracesToLogsTraceIdColumn string `json:"tracesToLogsTraceIdColumn"`
+	TracesToLogsTimeColumn    string `json:"tracesToLogsTimeColumn"`
+	TracesToLogsLogColumn     string `json:"tracesToLogsLogColumn"`
+
 	// Secrets
 	TokenSecret string `json:"-"`
+}
+
+// TracesToLogsConfig projects the datasource's trace-to-logs settings into the dataquery package's
+// mapping type used when building span data links.
+func (config *Config) TracesToLogsConfig() dataquery.TracesToLogsConfig {
+	return dataquery.TracesToLogsConfig{
+		Table:         config.TracesToLogsTable,
+		TraceIdColumn: config.TracesToLogsTraceIdColumn,
+		TimeColumn:    config.TracesToLogsTimeColumn,
+		LogColumn:     config.TracesToLogsLogColumn,
+	}
 }
 
 // QueryTimeout returns the configured broker query timeout, defaulting when unset.

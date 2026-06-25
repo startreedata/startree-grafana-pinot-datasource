@@ -97,6 +97,37 @@ export async function previewLogsSql(datasource: DataSource, request: PreviewLog
   }
 }
 
+export interface PreviewTracesSqlRequest {
+  timeRange: { to: DateTime | undefined; from: DateTime | undefined };
+  tableName: string | undefined;
+  timeColumn: string | undefined;
+  traceIdColumn: ComplexField | undefined;
+  spanIdColumn: ComplexField | undefined;
+  parentSpanIdColumn: ComplexField | undefined;
+  serviceNameColumn: ComplexField | undefined;
+  spanNameColumn: ComplexField | undefined;
+  durationColumn: ComplexField | undefined;
+  durationUnit: string | undefined;
+  tagsColumn: ComplexField | undefined;
+  statusColumn: ComplexField | undefined;
+  traceId: string | undefined;
+  filters: DimensionFilter[] | undefined;
+  queryOptions: QueryOption[] | undefined;
+  limit: number | undefined;
+  expandMacros: boolean | undefined;
+}
+
+export async function previewTracesSql(datasource: DataSource, request: PreviewTracesSqlRequest): Promise<string> {
+  if (request.tableName && request.timeColumn && request.timeRange.to && request.timeRange.from) {
+    return datasource
+      .postResource<PreviewSqlResponse>('preview/traces/sql', request)
+      .then((resp) => resp.result || '')
+      .catch(() => '');
+  } else {
+    return '';
+  }
+}
+
 export interface PreviewSqlCodeRequest {
   timeRange: { to: DateTime | undefined; from: DateTime | undefined };
   intervalSize: string | undefined;
