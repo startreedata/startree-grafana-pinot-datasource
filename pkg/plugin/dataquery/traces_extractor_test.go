@@ -175,6 +175,36 @@ func TestBuildTracesDataFrame_errorStatusWithoutTagsColumn(t *testing.T) {
 	assert.JSONEq(t, `[]`, string(tags.At(1).(json.RawMessage)))
 }
 
+// TestBuildTracesDataFrame_errorStatusUpsertsExistingTags verifies the status fold-in is an upsert:
+// when the source tags already carry `error` / `otel.status_code`, those entries are replaced (not
+// duplicated) so the status-derived values are authoritative.
+func TestBuildTracesDataFrame_errorStatusUpsertsExistingTags(t *testing.T) {
+	results := &pinot.ResultTable{
+		DataSchema: pinot.DataSchema{
+			ColumnNames: []string{
+				TraceFieldTraceID, TraceFieldSpanID, TraceFieldStartTime, TraceFieldDuration,
+				TraceFieldStatusCode, TraceFieldTags,
+			},
+			ColumnDataTypes: []string{"STRING", "STRING", "LONG", "LONG", "STRING", "JSON"},
+		},
+		Rows: [][]interface{}{
+			{"t1", "s1", num("1700000000000"), num("1"), "STATUS_CODE_ERROR",
+				`{"error":"false","http.method":"GET","otel.status_code":"STATUS_CODE_UNSET"}`},
+		},
+	}
+
+	got, err := BuildTracesDataFrame(results, pinot.DateTimeFormatMillisecondsEpoch(), 1, nil)
+	require.NoError(t, err)
+
+	tags := fieldByName(t, got, TraceFieldTags)
+	require.Equal(t, 1, tags.Len())
+	// The stale error/otel.status_code entries are dropped; http.method is kept; the authoritative
+	// values are appended exactly once.
+	assert.JSONEq(t,
+		`[{"key":"http.method","value":"GET"},{"key":"error","value":true},{"key":"otel.status_code","value":"STATUS_CODE_ERROR"}]`,
+		string(tags.At(0).(json.RawMessage)))
+}
+
 func fieldByName(t *testing.T, frame *data.Frame, name string) *data.Field {
 	t.Helper()
 	for _, f := range frame.Fields {

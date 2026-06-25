@@ -224,7 +224,10 @@ func buildSpanTags(results *pinot.ResultTable, rowCount int) ([]json.RawMessage,
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs,
+		// Upsert: drop any existing error / otel.status_code entries the source tags already carry
+		// (OTel pipelines often emit error=false or a status tag) so the status-derived values are
+		// authoritative and we never produce ambiguous duplicate keys.
+		pairs = append(withoutKeys(pairs, "error", "otel.status_code"),
 			traceKeyValue{Key: "error", Value: true},
 			traceKeyValue{Key: "otel.status_code", Value: statusCodes[i]},
 		)
@@ -235,6 +238,22 @@ func buildSpanTags(results *pinot.ResultTable, rowCount int) ([]json.RawMessage,
 		tags[i] = encoded
 	}
 	return tags, nil
+}
+
+// withoutKeys returns the pairs with any entry whose key is in keys removed, preserving order.
+func withoutKeys(pairs []traceKeyValue, keys ...string) []traceKeyValue {
+	remove := make(map[string]struct{}, len(keys))
+	for _, k := range keys {
+		remove[k] = struct{}{}
+	}
+	out := make([]traceKeyValue, 0, len(pairs))
+	for _, p := range pairs {
+		if _, drop := remove[p.Key]; drop {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
 }
 
 func decodeTagPairs(raw json.RawMessage) ([]traceKeyValue, error) {
