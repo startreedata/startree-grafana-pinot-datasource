@@ -135,6 +135,10 @@ export default {
         tooltip: 'Select the log column. Required.',
         label: 'Log Column',
       },
+      levelColumn: {
+        tooltip: 'Optional column whose value (e.g. INFO, WARN, ERROR) colors each log line by level.',
+        label: 'Level Column',
+      },
       traces: {
         traceIdColumn: { tooltip: 'Column holding the trace ID. Required.', label: 'Trace ID' },
         spanIdColumn: { tooltip: 'Column holding the span ID. Required.', label: 'Span ID' },

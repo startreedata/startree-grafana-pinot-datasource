@@ -22,6 +22,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          # Admin-capable token (PAT or GitHub App) so the version-bump commit can be
+          # pushed to protected main. The default GITHUB_TOKEN is neither admin nor in
+          # main's push allowlist, so its push is rejected (GH006 / required checks).
+          # enforce_admins=false on main means an admin token bypasses protection.
+          token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Setup Node.js environment
         uses: actions/setup-node@v5
@@ -60,7 +66,7 @@ jobs:
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
 
       - name: Publish startree-grafana image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: startree-cloud/Dockerfile
           context: .

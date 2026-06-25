@@ -32,10 +32,15 @@ export interface PinotDataQuery extends DataQuery {
   groupByColumnsV2?: ComplexField[];
   aggregations?: Aggregation[];
   logColumn?: ComplexField;
+  levelColumn?: ComplexField;
   metadataColumns?: ComplexField[];
   jsonExtractors?: JsonExtractor[];
   regexpExtractors?: RegexpExtractor[];
   seriesLimit?: number;
+  // Set by the logs-volume supplementary query to route the logs builder to its count(*) VolumeQuery.
+  logsVolume?: boolean;
+  // Set by getLogRowContext ("BACKWARD"/"FORWARD") to fetch rows around an anchor log row.
+  logContextDirection?: string;
 
   // PinotQl Traces Builder. Start time / time filter reuse timeColumn above.
   traceIdColumn?: ComplexField;
@@ -344,6 +349,10 @@ export function interpolateVariables(
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
+    levelColumn: mapIfExists(query.levelColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
 
     // Traces builder
     traceIdColumn: mapIfExists(query.traceIdColumn, ({ name, key }) => ({
@@ -403,7 +412,7 @@ export function interpolateVariables(
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),
-    jsonExtractors: query.jsonExtractors?.map(({ source, path, resultType, alias }) => ({
+    jsonExtractors: query.jsonExtractors?.map(({ source, path, resultType, alias, link }) => ({
       source: mapIfExists(source, ({ name, key }) => ({
         name: replaceIfExists(name),
         key: replaceIfExists(key),
@@ -411,14 +420,16 @@ export function interpolateVariables(
       path,
       resultType,
       alias: replaceIfExists(alias),
+      link: replaceIfExists(link),
     })),
-    regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias }) => ({
+    regexpExtractors: query.regexpExtractors?.map(({ source, pattern, group, alias, link }) => ({
       source: mapIfExists(source, ({ name, key }) => ({
         name: replaceIfExists(name),
         key: replaceIfExists(key),
       })),
       pattern,
       alias: replaceIfExists(alias),
+      link: replaceIfExists(link),
       group,
     })),
     filters,

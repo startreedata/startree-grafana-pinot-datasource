@@ -35,6 +35,8 @@ const (
 	BuilderTimeColumn   = "__time"
 	BuilderMetricColumn = "__metric"
 	BuilderLogColumn    = "__message"
+	// LogLevelColumnAlias is the field/label name Grafana's logs panel inspects to color rows by level.
+	LogLevelColumnAlias = "level"
 )
 
 type ExecutableQuery interface {
@@ -104,19 +106,26 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
-		return LogsBuilderQuery{
+		logsQuery := LogsBuilderQuery{
 			TimeRange:        query.TimeRange,
+			IntervalSize:     query.IntervalSize,
 			TableName:        query.TableName,
 			TimeColumn:       query.TimeColumn,
 			LogColumn:        query.LogColumn,
 			LogColumnAlias:   query.LogColumnAlias,
+			LevelColumn:      query.LevelColumn,
 			MetadataColumns:  query.MetadataColumns,
 			JsonExtractors:   query.JsonExtractors,
 			RegexpExtractors: query.RegexpExtractors,
 			DimensionFilters: query.DimensionFilters,
 			QueryOptions:     query.QueryOptions,
 			Limit:            query.Limit,
+			SortDirection:    logContextSortDirection(query.LogContextDirection),
 		}
+		if query.LogsVolume {
+			return logsQuery.VolumeQuery()
+		}
+		return logsQuery
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeTraces:
 		return TracesBuilderQuery{
@@ -184,6 +193,16 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 	default:
 		return new(NoOpQuery)
 	}
+}
+
+// logContextSortDirection maps a log-row-context direction to the logs query sort order: BACKWARD
+// fetches the rows just before the anchor, so it sorts newest-first (DESC); everything else
+// (FORWARD or unset, the normal logs query) keeps the default oldest-first ASC.
+func logContextSortDirection(direction string) string {
+	if direction == "BACKWARD" {
+		return "DESC"
+	}
+	return "ASC"
 }
 
 // groupByColumnsFrom merges the legacy string GROUP BY columns with the ComplexField (v2) form.

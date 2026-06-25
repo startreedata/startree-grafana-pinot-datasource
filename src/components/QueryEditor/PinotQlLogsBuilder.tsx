@@ -8,6 +8,7 @@ import { InputLimit } from './InputLimit';
 import { SqlPreview } from './SqlPreview';
 import React, { useEffect } from 'react';
 import { SelectLogMessageColumn } from './SelectLogMessageColumn';
+import { SelectLevelColumn } from './SelectLevelColumn';
 import { SelectJsonExtractors } from './SelectJsonExtractors';
 import { SelectMetadataColumns } from './SelectMetadataColumns';
 import { SelectRegexpExtractors } from './SelectRegexpExtractors';
@@ -60,6 +61,12 @@ export function PinotQlLogsBuilder(props: {
           columns={resources.logMessageColumns}
           isLoading={resources.isColumnsLoading}
           onChange={(logColumn) => onChangeAndRun({ ...savedParams, logColumn })}
+        />
+        <SelectLevelColumn
+          selected={savedParams.levelColumn}
+          columns={resources.filterColumns}
+          isLoading={resources.isColumnsLoading}
+          onChange={(levelColumn) => onChangeAndRun({ ...savedParams, levelColumn })}
         />
         <SelectMetadataColumns
           selected={savedParams.metadataColumns}

@@ -5,15 +5,18 @@ import { CodeQuery } from '../../pinotql';
 import { interpolateVariables } from '../../dataquery/PinotDataQuery';
 import { DisplayType } from '../../dataquery/DisplayType';
 
+// Selecting a "timeEnd" column alongside "time" makes Grafana render a region annotation
+// (start -> end). Drop the "timeEnd" line for point annotations.
 const DefaultAnnotationsQuery =
   //language=text
   `SELECT
-  $__timeGroup("timestamp") AS "time",
+  $__timeGroup("start_time") AS "time",
+  $__timeGroup("end_time") AS "timeEnd",
   'My annotation' as "title",
   'My annotation text' as "text"
 FROM $__table()
-WHERE $__timeFilter("timestamp")
-GROUP BY "time"
+WHERE $__timeFilter("start_time")
+GROUP BY "time", "timeEnd"
 LIMIT 100000`;
 
 export function AnnotationsQueryEditor(props: PinotQueryEditorProps) {

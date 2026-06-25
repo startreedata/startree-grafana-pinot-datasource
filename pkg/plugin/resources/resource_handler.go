@@ -212,6 +212,7 @@ type PreviewLogsBuilderSqlRequest struct {
 	TimeColumn       string                      `json:"timeColumn"`
 	LogColumn        dataquery.ComplexField      `json:"logColumn"`
 	LogColumnAlias   string                      `json:"logColumnAlias"`
+	LevelColumn      dataquery.ComplexField      `json:"levelColumn"`
 	MetadataColumns  []dataquery.ComplexField    `json:"metadataColumns"`
 	JsonExtractors   []dataquery.JsonExtractor   `json:"jsonExtractors"`
 	RegexpExtractors []dataquery.RegexpExtractor `json:"regexpExtractors"`
@@ -232,6 +233,7 @@ func PreviewLogsSql(client *pinot.Client, ctx context.Context, data PreviewLogsB
 		TimeColumn:       data.TimeColumn,
 		LogColumn:        data.LogColumn,
 		LogColumnAlias:   data.LogColumnAlias,
+		LevelColumn:      data.LevelColumn,
 		MetadataColumns:  data.MetadataColumns,
 		JsonExtractors:   data.JsonExtractors,
 		RegexpExtractors: data.RegexpExtractors,

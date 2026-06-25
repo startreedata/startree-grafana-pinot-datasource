@@ -120,8 +120,15 @@ type DataQuery struct {
 	Aggregations        []Aggregation     `json:"aggregations"`
 	MetadataColumns     []ComplexField    `json:"metadataColumns"`
 	LogColumn           ComplexField      `json:"logColumn"`
+	LevelColumn         ComplexField      `json:"levelColumn"`
 	JsonExtractors      []JsonExtractor   `json:"jsonExtractors"`
 	RegexpExtractors    []RegexpExtractor `json:"regexpExtractors"`
+	// LogsVolume signals the logs-volume supplementary query: route the logs builder to its
+	// derived count(*)-over-time VolumeQuery instead of fetching log lines.
+	LogsVolume bool `json:"logsVolume"`
+	// LogContextDirection ("BACKWARD"/"FORWARD") is set by getLogRowContext to fetch the rows
+	// immediately before/after an anchor row. BACKWARD flips the logs query to newest-first.
+	LogContextDirection string `json:"logContextDirection"`
 
 	// Traces builder query. The start time / time filter reuse TimeColumn above. TraceId, when set,
 	// selects "find trace by ID" mode; otherwise the builder runs in "search" mode.
