@@ -91,6 +91,11 @@
       "type": "dashboard",
       "name": "Pinot — Infra Metrics Overview",
       "path": "dashboards/infra-metrics.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Pinot — Query Analysis (Templated)",
+      "path": "dashboards/query-analysis.json"
     }
   ],
   "dependencies": {
