@@ -10,6 +10,7 @@ const newEmptyParams = (): LogsBuilder.Params => ({
   tableName: '',
   timeColumn: '',
   logColumn: {},
+  levelColumn: {},
   limit: 0,
   filters: [],
   queryOptions: [],
@@ -18,12 +19,41 @@ const newEmptyParams = (): LogsBuilder.Params => ({
   regexpExtractors: [],
 });
 
+const newPopulatedParams = (): LogsBuilder.Params => ({
+  tableName: 'test_table_name',
+  timeColumn: 'test_time_column',
+  logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
+  levelColumn: { name: 'test_level_column' },
+  limit: 100,
+  filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
+  queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
+  metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
+  regexpExtractors: [
+    {
+      source: { name: 'regex_column', key: 'regex_column_key' },
+      pattern: '(.*)',
+      group: 1,
+      alias: 'regex_extracted',
+    },
+  ],
+
+  jsonExtractors: [
+    {
+      source: { name: 'regex_column', key: 'regex_column_key' },
+      path: '$.key',
+      resultType: 'STRING',
+      alias: 'json_extracted',
+    },
+  ],
+});
+
 describe('paramsFrom', () => {
   const query: PinotDataQuery = {
     refId: 'test_id',
     tableName: 'test_table_name',
     timeColumn: 'test_time_column',
     logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
+    levelColumn: { name: 'test_level_column' },
     limit: 100,
     filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
     queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
@@ -48,76 +78,16 @@ describe('paramsFrom', () => {
   };
 
   test('query is fully populated', () => {
-    expect(LogsBuilder.paramsFrom(query)).toEqual<LogsBuilder.Params>({
-      tableName: 'test_table_name',
-      timeColumn: 'test_time_column',
-      logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
-      limit: 100,
-      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-      metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
-      regexpExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          pattern: '(.*)',
-          group: 1,
-          alias: 'regex_extracted',
-        },
-      ],
-
-      jsonExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          path: '$.key',
-          resultType: 'STRING',
-          alias: 'json_extracted',
-        },
-      ],
-    });
+    expect(LogsBuilder.paramsFrom(query)).toEqual<LogsBuilder.Params>(newPopulatedParams());
   });
 
   test('query is empty', () => {
-    expect(LogsBuilder.paramsFrom({ refId: 'test_id' })).toEqual<LogsBuilder.Params>({
-      tableName: '',
-      timeColumn: '',
-      logColumn: {},
-      limit: 0,
-      filters: [],
-      queryOptions: [],
-      metadataColumns: [],
-      jsonExtractors: [],
-      regexpExtractors: [],
-    });
+    expect(LogsBuilder.paramsFrom({ refId: 'test_id' })).toEqual<LogsBuilder.Params>(newEmptyParams());
   });
 });
 
 describe('canRunQuery', () => {
-  const params: LogsBuilder.Params = {
-    tableName: 'test_table_name',
-    timeColumn: 'test_time_column',
-    logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
-    limit: 100,
-    filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-    queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-    metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
-    regexpExtractors: [
-      {
-        source: { name: 'regex_column', key: 'regex_column_key' },
-        pattern: '(.*)',
-        group: 1,
-        alias: 'regex_extracted',
-      },
-    ],
-
-    jsonExtractors: [
-      {
-        source: { name: 'regex_column', key: 'regex_column_key' },
-        path: '$.key',
-        resultType: 'STRING',
-        alias: 'json_extracted',
-      },
-    ],
-  };
+  const params = newPopulatedParams();
 
   test('params are empty', () => {
     expect(LogsBuilder.canRunQuery(newEmptyParams())).toEqual(false);
@@ -182,72 +152,16 @@ describe('applyDefaults', () => {
     const params = newEmptyParams();
     expect(LogsBuilder.applyDefaults(params, { timeColumns, logMessageColumns })).toEqual(true);
     expect(params).toEqual<LogsBuilder.Params>({
-      tableName: '',
+      ...newEmptyParams(),
       timeColumn: 'ts',
       logColumn: { name: 'message1', key: undefined },
-      limit: 0,
-      filters: [],
-      queryOptions: [],
-      metadataColumns: [],
-      jsonExtractors: [],
-      regexpExtractors: [],
     });
   });
 
   test('populatedParams', () => {
-    const params: LogsBuilder.Params = {
-      tableName: 'test_table_name',
-      timeColumn: 'test_time_column',
-      logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
-      limit: 100,
-      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-      metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
-      regexpExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          pattern: '(.*)',
-          group: 1,
-          alias: 'regex_extracted',
-        },
-      ],
-
-      jsonExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          path: '$.key',
-          resultType: 'STRING',
-          alias: 'json_extracted',
-        },
-      ],
-    };
+    const params = newPopulatedParams();
     expect(LogsBuilder.applyDefaults(params, { timeColumns, logMessageColumns })).toEqual(false);
-    expect(params).toEqual<LogsBuilder.Params>({
-      tableName: 'test_table_name',
-      timeColumn: 'test_time_column',
-      logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
-      limit: 100,
-      filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-      queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-      metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
-      regexpExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          pattern: '(.*)',
-          group: 1,
-          alias: 'regex_extracted',
-        },
-      ],
-
-      jsonExtractors: [
-        {
-          source: { name: 'regex_column', key: 'regex_column_key' },
-          path: '$.key',
-          resultType: 'STRING',
-          alias: 'json_extracted',
-        },
-      ],
-    });
+    expect(params).toEqual<LogsBuilder.Params>(newPopulatedParams());
   });
 });
 
@@ -263,6 +177,7 @@ describe('dataQueryOf', () => {
       tableName: undefined,
       timeColumn: undefined,
       logColumn: undefined,
+      levelColumn: undefined,
       limit: undefined,
       filters: undefined,
       queryOptions: undefined,
@@ -273,34 +188,7 @@ describe('dataQueryOf', () => {
   });
 
   test('params are fully populated', () => {
-    expect(
-      LogsBuilder.dataQueryOf(query, {
-        tableName: 'test_table_name',
-        timeColumn: 'test_time_column',
-        logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
-        limit: 100,
-        filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
-        queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],
-        metadataColumns: [{ name: 'metadata_column', key: 'metadata_column_key' }],
-        regexpExtractors: [
-          {
-            source: { name: 'regex_column', key: 'regex_column_key' },
-            pattern: '(.*)',
-            group: 1,
-            alias: 'regex_extracted',
-          },
-        ],
-
-        jsonExtractors: [
-          {
-            source: { name: 'regex_column', key: 'regex_column_key' },
-            path: '$.key',
-            resultType: 'STRING',
-            alias: 'json_extracted',
-          },
-        ],
-      })
-    ).toEqual<PinotDataQuery>({
+    expect(LogsBuilder.dataQueryOf(query, newPopulatedParams())).toEqual<PinotDataQuery>({
       refId: 'test_id',
       queryType: QueryType.PinotQL,
       editorMode: EditorMode.Builder,
@@ -308,6 +196,7 @@ describe('dataQueryOf', () => {
       tableName: 'test_table_name',
       timeColumn: 'test_time_column',
       logColumn: { name: 'test_log_column', key: 'test_metric_column_key' },
+      levelColumn: { name: 'test_level_column' },
       limit: 100,
       filters: [{ columnName: 'test_filter_column', operator: '=', valueExprs: ['test_value'] }],
       queryOptions: [{ name: 'test_query_option', value: 'test_option_value' }],

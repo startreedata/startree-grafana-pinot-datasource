@@ -5,22 +5,48 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"time"
 )
 
 var _ ExecutableQuery = LogsBuilderQuery{}
 
 type LogsBuilderQuery struct {
 	TimeRange        TimeRange
+	IntervalSize     time.Duration
 	TableName        string
 	TimeColumn       string
 	LogColumn        ComplexField
 	LogColumnAlias   string
+	LevelColumn      ComplexField
 	MetadataColumns  []ComplexField
 	JsonExtractors   []JsonExtractor
 	RegexpExtractors []RegexpExtractor
 	DimensionFilters []DimensionFilter
 	QueryOptions     []QueryOption
 	Limit            int64
+	// SortDirection is "DESC" for the backward leg of log-row context (fetch the rows immediately
+	// before an anchor); empty/anything else renders the default oldest-first "ASC".
+	SortDirection string
+}
+
+// VolumeQuery derives the logs-volume histogram from the logs query: a time-bucketed count(*)
+// over the same table, time column, and filters, broken down by level when a level column is set.
+// It reuses the time-series builder so the bucketed-count SQL ($__timeGroup, etc.) isn't duplicated.
+func (query LogsBuilderQuery) VolumeQuery() TimeSeriesBuilderQuery {
+	var groupBy []ComplexField
+	if query.LevelColumn.Name != "" {
+		groupBy = []ComplexField{query.LevelColumn}
+	}
+	return TimeSeriesBuilderQuery{
+		TimeRange:           query.TimeRange,
+		IntervalSize:        query.IntervalSize,
+		TableName:           query.TableName,
+		TimeColumn:          query.TimeColumn,
+		AggregationFunction: AggregationFunctionCount,
+		GroupByColumns:      groupBy,
+		DimensionFilters:    query.DimensionFilters,
+		QueryOptions:        query.QueryOptions,
+	}
 }
 
 func (query LogsBuilderQuery) Validate() error {
@@ -91,6 +117,7 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
 		DimensionFilterExprs: FilterExprsFrom(expandedFilters),
+		SortDirection:        query.resolveSortDirection(),
 		Limit:                query.resolveLimit(),
 		TimeFilterExpr: pinot.TimeFilterExpr(pinot.TimeFilter{
 			Column: query.TimeColumn,
@@ -115,6 +142,7 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 		MetadataColumns:      query.logsMetadataColumns(),
 		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinot.ObjectExpr(query.TimeColumn).String()),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
+		SortDirection:        query.resolveSortDirection(),
 		Limit:                query.resolveLimit(),
 	})
 	if err != nil {
@@ -126,6 +154,15 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 
 func (query LogsBuilderQuery) logsMetadataColumns() []pinot.ExprWithAlias {
 	var metadataColumns []pinot.ExprWithAlias
+
+	// Aliased to LogLevelColumnAlias ("level") so Grafana's logs panel reads it from the row
+	// labels and colors each log line by its level.
+	if query.LevelColumn.Name != "" {
+		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
+			Expr:  pinot.ComplexFieldExpr(query.LevelColumn.Name, query.LevelColumn.Key),
+			Alias: LogLevelColumnAlias,
+		})
+	}
 
 	for _, column := range query.MetadataColumns {
 		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
@@ -175,4 +212,11 @@ func (query LogsBuilderQuery) resolveLimit() int64 {
 	} else {
 		return query.Limit
 	}
+}
+
+func (query LogsBuilderQuery) resolveSortDirection() string {
+	if query.SortDirection == "DESC" {
+		return "DESC"
+	}
+	return "ASC"
 }

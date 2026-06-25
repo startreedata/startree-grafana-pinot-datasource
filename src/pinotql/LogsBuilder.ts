@@ -24,6 +24,7 @@ export interface Params {
   filters: DimensionFilter[];
   queryOptions: QueryOption[];
   logColumn: ComplexField;
+  levelColumn: ComplexField;
   metadataColumns: ComplexField[];
   jsonExtractors: JsonExtractor[];
   regexpExtractors: RegexpExtractor[];
@@ -48,6 +49,7 @@ export function paramsFrom(query: PinotDataQuery): Params {
     tableName: query.tableName || '',
     timeColumn: query.timeColumn || '',
     logColumn: query.logColumn || {},
+    levelColumn: query.levelColumn || {},
     metadataColumns: query.metadataColumns || [],
     regexpExtractors: query.regexpExtractors || [],
     jsonExtractors: query.jsonExtractors || [],
@@ -102,6 +104,7 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     tableName: params.tableName || undefined,
     timeColumn: params.timeColumn || undefined,
     logColumn: params.logColumn.name ? params.logColumn : undefined,
+    levelColumn: params.levelColumn.name ? params.levelColumn : undefined,
     metadataColumns: isEmpty(params.metadataColumns) ? undefined : params.metadataColumns,
     regexpExtractors: isEmpty(params.regexpExtractors) ? undefined : params.regexpExtractors,
     jsonExtractors: isEmpty(params.jsonExtractors) ? undefined : params.jsonExtractors,
@@ -177,6 +180,7 @@ function useSqlPreview(
     limit: interpolatedParams.limit,
     queryOptions: interpolatedParams.queryOptions,
     logColumn: interpolatedParams.logColumn,
+    levelColumn: interpolatedParams.levelColumn,
     metadataColumns: interpolatedParams.metadataColumns,
     jsonExtractors: interpolatedParams.jsonExtractors,
     regexpExtractors: interpolatedParams.regexpExtractors,

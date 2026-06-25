@@ -76,6 +76,7 @@ export interface PreviewLogsSqlRequest {
   tableName: string | undefined;
   timeColumn: string | undefined;
   logColumn: ComplexField | undefined;
+  levelColumn: ComplexField | undefined;
   metadataColumns: ComplexField[] | undefined;
   jsonExtractors: JsonExtractor[] | undefined;
   regexpExtractors: RegexpExtractor[] | undefined;

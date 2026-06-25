@@ -111,6 +111,10 @@ export default {
         tooltip: 'Select the log column. Required.',
         label: 'Log Column',
       },
+      levelColumn: {
+        tooltip: 'Optional column whose value (e.g. INFO, WARN, ERROR) colors each log line by level.',
+        label: 'Level Column',
+      },
       database: {
         tooltip: 'Select the Pinot database. Required.',
         label: 'Database',
