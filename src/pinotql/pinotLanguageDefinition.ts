@@ -8,7 +8,7 @@ import {
   grafanaStandardSQLLanguage,
   grafanaStandardSQLLanguageConf,
 } from '@grafana/experimental';
-import { PINOT_FUNCTIONS, PINOT_MACROS, formatPinotSql, lintPinotSql, macroInsertText } from './pinotLanguage';
+import { PINOT_FUNCTIONS, PINOT_MACROS, CLIENT_MACROS, formatPinotSql, lintPinotSql, macroInsertText } from './pinotLanguage';
 
 // Base id for our Monaco language. The SQLEditor registers a per-instance id of `pinotql-<uuid>`,
 // which lets us scope the linter to our editors only.
@@ -69,7 +69,7 @@ export function buildPinotLanguageDefinition(resolvers: PinotResolvers): Languag
           id: 'pinotMacros',
           applyTo: MACRO_POSITIONS,
           suggestionsResolver: async () =>
-            PINOT_MACROS.map((macro) => ({
+            [...PINOT_MACROS, ...CLIENT_MACROS].map((macro) => ({
               label: macro.text,
               insertText: macroInsertText(macro),
               insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,

@@ -22,6 +22,24 @@ export function getAllOptions(variable: QueryVariableModel): string[] {
     .filter((v) => v !== '' && v !== '$__all');
 }
 
+/**
+ * True when the variable currently has its "All" option selected (or has no concrete
+ * selection). Grafana represents an all-values pick with the special `$__all` token — as a
+ * scalar, or inside a multi-value array — or with an empty value. Works for any variable type
+ * that carries options (query, custom, etc.), so it is typed against TypedVariableModel.
+ */
+export function isAllSelected(variable: TypedVariableModel): boolean {
+  const current = 'current' in variable ? variable.current : undefined;
+  const value = current && 'value' in current ? current.value : undefined;
+  if (typeof value === 'string') {
+    return value === '' || value === '$__all';
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0 || value.includes('$__all');
+  }
+  return false;
+}
+
 export function getSelectedValues(variable: QueryVariableModel): string[] {
   const current = variable.current;
   if (!current || !('value' in current)) {

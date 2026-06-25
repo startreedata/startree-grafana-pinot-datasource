@@ -73,6 +73,9 @@ func TestExpandMacros(t *testing.T) {
 		{expr: `$__granularityMillis`, want: `3600000`},
 		{expr: `$__granularityMillis('1:MINUTES')`, want: `60000`},
 		{expr: `$__panelMillis`, want: `90000000`},
+		{expr: `$__fromTime`, want: `1`},
+		{expr: `$__toTime`, want: `90001`},
+		{expr: `$__interval_s`, want: `3600`},
 		{expr: `not a macro`, want: `not a macro`},
 	}
 
