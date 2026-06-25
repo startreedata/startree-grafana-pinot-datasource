@@ -26,6 +26,15 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   tracesToLogsTraceIdColumn?: string;
   tracesToLogsTimeColumn?: string;
   tracesToLogsLogColumn?: string;
+
+  // Logs-to-trace correlation (the reverse of the above). When all three are set, the logs path
+  // attaches a data link from each log row's trace id to a traces query against this table, keyed
+  // by that trace id. The trace id is read back out of the row's `labels` (where the configured
+  // trace-id metadata column lands), so traceIdColumn must also be wired in as a logs metadata
+  // column for the value to be present.
+  logsToTracesTable?: string;
+  logsToTracesTraceIdColumn?: string;
+  logsToTracesTimeColumn?: string;
 }
 
 export interface PinotSecureConfig {

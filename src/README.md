@@ -12,6 +12,18 @@ Authentication tokens supported. StarTree customers
 can [visit this link](https://docs.startree.ai/corecapabilities/security/manage-api-tokens#generating-an-api-token) to generate
 a new Pinot token for their cluster.
 
+### Trace correlation
+
+The datasource settings include two optional correlation sections:
+
+- **Trace to logs** — when the table, trace ID, time, and log message columns are set, each span in a
+  trace view gets a "Logs for this trace" link that opens a logs query against the configured logs
+  table, filtered by the span's trace ID.
+- **Logs to trace** — the reverse direction. When the traces table, trace ID column, and time column
+  are set, each log row's trace ID gets a "View trace" link that opens a traces query against the
+  configured traces table for that trace ID. The trace ID column must also be added as a metadata
+  column on the logs query so its value is present on the row.
+
 ## Query
 
 ### Builder

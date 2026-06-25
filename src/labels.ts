@@ -57,6 +57,25 @@ export default {
           tooltip: 'Log message column of the logs table.',
         },
       },
+      logsToTraces: {
+        description:
+          'Link log rows to traces (the reverse of trace to logs). When all three fields are set, each log row\'s trace ID gets a "View trace" link that opens a traces query against the table below for that trace. The trace ID column must also be added as a metadata column on the logs query so its value is present on the row.',
+        table: {
+          label: 'Traces Table',
+          placeholder: 'otelTraces',
+          tooltip: 'The Pinot table holding spans to correlate with logs.',
+        },
+        traceIdColumn: {
+          label: 'Trace ID Column',
+          placeholder: 'traceId',
+          tooltip: 'Column in the logs result holding the trace ID to link from (must be a logs metadata column).',
+        },
+        timeColumn: {
+          label: 'Time Column',
+          placeholder: 'ts',
+          tooltip: 'Time column of the traces table.',
+        },
+      },
     },
     QueryEditor: {
       queryType: {
