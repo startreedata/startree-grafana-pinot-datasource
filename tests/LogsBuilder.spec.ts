@@ -58,6 +58,39 @@ test.describe('Create Panel with Logs Builder', async () => {
     });
   });
 
+  test('Choose level column', async ({ page }) => {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByLabel('Select options menu').getByText('nginxLogs', { exact: true }).click();
+
+    await checkDropdown(page, page.getByTestId('select-level-column'), {
+      want: ['message', 'referrer', 'method', 'uri', 'ipAddr'],
+      setValue: 'method',
+    });
+  });
+
+  test('Level column maps to the level field in SQL', async ({ page }) => {
+    await page.getByTestId('select-table-dropdown').click();
+    await page.getByLabel('Select options menu').getByText('nginxLogs', { exact: true }).click();
+
+    await page.getByTestId('select-time-column-dropdown').click();
+    await page.getByLabel('Select options menu').getByText('ts', { exact: true }).click();
+
+    await page.getByTestId('select-log-column').click();
+    await page.getByLabel('Select options menu').getByText('message', { exact: true }).click();
+
+    await page.getByTestId('select-level-column').click();
+    await page.getByLabel('Select options menu').getByText('method', { exact: true }).click();
+
+    await expect(page.getByTestId('sql-preview')).toContainText(
+      //language=text
+      `SELECT
+    "message" AS '__message',
+    "method" AS 'level',
+    "ts"
+FROM "nginxLogs"`
+    );
+  });
+
   test('Edit json extractor', async ({ page }) => {
     await page.getByTestId('select-table-dropdown').click();
     await page.getByLabel('Select options menu').getByText('nginxLogs', { exact: true }).click();

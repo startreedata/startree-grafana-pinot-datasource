@@ -35,6 +35,8 @@ const (
 	BuilderTimeColumn   = "__time"
 	BuilderMetricColumn = "__metric"
 	BuilderLogColumn    = "__message"
+	// LogLevelColumnAlias is the field/label name Grafana's logs panel inspects to color rows by level.
+	LogLevelColumnAlias = "level"
 )
 
 type ExecutableQuery interface {
@@ -107,6 +109,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			TimeColumn:       query.TimeColumn,
 			LogColumn:        query.LogColumn,
 			LogColumnAlias:   query.LogColumnAlias,
+			LevelColumn:      query.LevelColumn,
 			MetadataColumns:  query.MetadataColumns,
 			JsonExtractors:   query.JsonExtractors,
 			RegexpExtractors: query.RegexpExtractors,

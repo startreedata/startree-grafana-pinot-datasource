@@ -91,6 +91,7 @@ type DataQuery struct {
 	Aggregations        []Aggregation     `json:"aggregations"`
 	MetadataColumns     []ComplexField    `json:"metadataColumns"`
 	LogColumn           ComplexField      `json:"logColumn"`
+	LevelColumn         ComplexField      `json:"levelColumn"`
 	JsonExtractors      []JsonExtractor   `json:"jsonExtractors"`
 	RegexpExtractors    []RegexpExtractor `json:"regexpExtractors"`
 

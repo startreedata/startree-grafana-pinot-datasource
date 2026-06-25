@@ -47,3 +47,16 @@ func TestExecuteLogsBuilderQuery(t *testing.T) {
 
 	assert.Equal(t, wantFrame, got.Frames[0])
 }
+
+func TestLogsBuilderQueryLevelColumn(t *testing.T) {
+	// LevelColumn must render as a column aliased "level" so Grafana colors log rows by level.
+	sql, err := LogsBuilderQuery{
+		TableName:   "nginxLogs",
+		TimeColumn:  "ts",
+		LogColumn:   ComplexField{Name: "message"},
+		LevelColumn: ComplexField{Name: "logLevel"},
+	}.RenderSqlWithMacros()
+
+	assert.NoError(t, err)
+	assert.Contains(t, sql, `"logLevel" AS 'level'`)
+}

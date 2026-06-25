@@ -32,6 +32,7 @@ export interface PinotDataQuery extends DataQuery {
   groupByColumnsV2?: ComplexField[];
   aggregations?: Aggregation[];
   logColumn?: ComplexField;
+  levelColumn?: ComplexField;
   metadataColumns?: ComplexField[];
   jsonExtractors?: JsonExtractor[];
   regexpExtractors?: RegexpExtractor[];
@@ -329,6 +330,10 @@ export function interpolateVariables(
       key: replaceIfExists(key),
     })),
     logColumn: mapIfExists(query.logColumn, ({ name, key }) => ({
+      name: replaceIfExists(name),
+      key: replaceIfExists(key),
+    })),
+    levelColumn: mapIfExists(query.levelColumn, ({ name, key }) => ({
       name: replaceIfExists(name),
       key: replaceIfExists(key),
     })),

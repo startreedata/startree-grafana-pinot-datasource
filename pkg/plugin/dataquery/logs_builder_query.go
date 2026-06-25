@@ -15,6 +15,7 @@ type LogsBuilderQuery struct {
 	TimeColumn       string
 	LogColumn        ComplexField
 	LogColumnAlias   string
+	LevelColumn      ComplexField
 	MetadataColumns  []ComplexField
 	JsonExtractors   []JsonExtractor
 	RegexpExtractors []RegexpExtractor
@@ -126,6 +127,15 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 
 func (query LogsBuilderQuery) logsMetadataColumns() []pinot.ExprWithAlias {
 	var metadataColumns []pinot.ExprWithAlias
+
+	// Aliased to LogLevelColumnAlias ("level") so Grafana's logs panel reads it from the row
+	// labels and colors each log line by its level.
+	if query.LevelColumn.Name != "" {
+		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{
+			Expr:  pinot.ComplexFieldExpr(query.LevelColumn.Name, query.LevelColumn.Key),
+			Alias: LogLevelColumnAlias,
+		})
+	}
 
 	for _, column := range query.MetadataColumns {
 		metadataColumns = append(metadataColumns, pinot.ExprWithAlias{

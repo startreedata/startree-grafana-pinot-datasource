@@ -93,6 +93,7 @@ describe('paramsFromLogsBuilder', () => {
         logColumn: { name: 'test_log', key: 'test_log_key' },
 
         // These fields are not used in the function.
+        levelColumn: {},
         filters: [],
         jsonExtractors: [],
         limit: 0,
