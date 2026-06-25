@@ -69,6 +69,10 @@ describe('lintPinotSql', () => {
   it('ignores macro-like text inside string literals', () => {
     expect(lintPinotSql("SELECT a FROM t WHERE note = '$__notamacro'")).toEqual([]);
   });
+
+  it('accepts client-side macros like $__conditionalAll', () => {
+    expect(lintPinotSql('SELECT a FROM t WHERE $__conditionalAll(a = 1, $v)')).toEqual([]);
+  });
 });
 
 describe('PINOT_MACROS', () => {
@@ -76,7 +80,10 @@ describe('PINOT_MACROS', () => {
     const names = PINOT_MACROS.map((m) => m.text).sort();
     expect(names).toEqual(
       [
+        '$__adHocFilter',
+        '$__fromTime',
         '$__granularityMillis',
+        '$__interval_s',
         '$__metricAlias',
         '$__panelMillis',
         '$__table',
@@ -88,6 +95,7 @@ describe('PINOT_MACROS', () => {
         '$__timeGroup',
         '$__timeTo',
         '$__timeToMillis',
+        '$__toTime',
       ].sort()
     );
   });

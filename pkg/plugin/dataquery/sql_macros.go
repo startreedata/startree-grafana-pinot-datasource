@@ -23,6 +23,9 @@ const (
 	MacroTimeFromMillis    = "timeFromMillis"
 	MacroTimeToMillis      = "timeToMillis"
 	MacroAdHocFilter       = "adHocFilter"
+	MacroFromTime          = "fromTime"
+	MacroToTime            = "toTime"
+	MacroIntervalSeconds   = "interval_s"
 )
 
 type MacroEngine struct {
@@ -57,6 +60,9 @@ func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, er
 		x.ExpandTimeFrom,
 		x.ExpandGranularityMillis,
 		x.ExpandPanelMillis,
+		x.ExpandIntervalSeconds,
+		x.ExpandFromTime,
+		x.ExpandToTime,
 		x.ExpandAdHocFilter,
 	} {
 		query, err = macro(ctx, query)
@@ -217,6 +223,30 @@ func (x MacroEngine) ExpandGranularityMillis(_ context.Context, query string) (s
 func (x MacroEngine) ExpandPanelMillis(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroPanelMillis, func(_ []string) (string, error) {
 		return fmt.Sprintf("%d", x.To.UnixMilli()-x.From.UnixMilli()), nil
+	})
+}
+
+// ExpandIntervalSeconds replaces $__interval_s with the time-bucket granularity in whole seconds —
+// the seconds counterpart of $__granularityMillis. Sub-second intervals truncate to 0.
+func (x MacroEngine) ExpandIntervalSeconds(_ context.Context, query string) (string, error) {
+	return expandMacro(query, MacroIntervalSeconds, func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", int64(x.IntervalSize.Seconds())), nil
+	})
+}
+
+// ExpandFromTime replaces $__fromTime with the start of the selected time range in epoch seconds —
+// the seconds counterpart of $__timeFromMillis.
+func (x MacroEngine) ExpandFromTime(_ context.Context, query string) (string, error) {
+	return expandMacro(query, MacroFromTime, func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", x.From.Unix()), nil
+	})
+}
+
+// ExpandToTime replaces $__toTime with the end of the selected time range in epoch seconds —
+// the seconds counterpart of $__timeToMillis.
+func (x MacroEngine) ExpandToTime(_ context.Context, query string) (string, error) {
+	return expandMacro(query, MacroToTime, func(_ []string) (string, error) {
+		return fmt.Sprintf("%d", x.To.Unix()), nil
 	})
 }
 

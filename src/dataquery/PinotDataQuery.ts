@@ -10,7 +10,7 @@ import { Aggregation } from './Aggregation';
 import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
 import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
-import { isQueryVariable, getVariableSubquery, getAllOptions, getSelectedValues } from './variableQuery.util';
+import { isQueryVariable, getVariableSubquery, getAllOptions, getSelectedValues, isAllSelected } from './variableQuery.util';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -127,6 +127,117 @@ export function replaceAllVariableExpressionsWithSubqueries(sql: string, variabl
   }
 
   return result;
+}
+
+const CONDITIONAL_ALL_MACRO = '$__conditionalAll';
+
+/**
+ * Expands `$__conditionalAll(<condition>, $var)` macros in raw PinotQL. When the referenced
+ * template variable has its "All" option selected (or is unset), the whole macro collapses to
+ * `1=1`, effectively dropping the condition; otherwise it expands to `<condition>` (whose own
+ * `$var` references are interpolated later by templateSrv.replace).
+ *
+ * The condition argument is arbitrary SQL and may contain commas and nested parentheses, so the
+ * macro boundary is found by scanning for the matching close paren (respecting single-quoted
+ * string literals), and the two arguments are split on top-level commas. Anything that isn't a
+ * clean two-argument invocation is left untouched.
+ */
+export function applyConditionalAll(sql: string, variables: TypedVariableModel[]): string {
+  let result = sql;
+  let searchFrom = 0;
+  for (;;) {
+    const start = result.indexOf(`${CONDITIONAL_ALL_MACRO}(`, searchFrom);
+    if (start === -1) {
+      break;
+    }
+    const open = start + CONDITIONAL_ALL_MACRO.length; // index of '('
+    const close = matchingParen(result, open);
+    if (close === -1) {
+      break; // unbalanced parens — give up rather than mangle the query
+    }
+    const args = splitTopLevelArgs(result.slice(open + 1, close));
+    if (args.length !== 2) {
+      searchFrom = close + 1; // malformed invocation — skip it and keep scanning
+      continue;
+    }
+    const condition = args[0].trim();
+    const varName = variableNameOf(args[1].trim());
+    const variable = varName ? variables.find((v) => v.name === varName) : undefined;
+    const replacement = variable && isAllSelected(variable) ? '1=1' : condition;
+    result = result.slice(0, start) + replacement + result.slice(close + 1);
+    searchFrom = start + replacement.length;
+  }
+  return result;
+}
+
+// Index of the ')' matching the '(' at openIndex, or -1 if unbalanced. Parens inside single-quoted
+// string literals are ignored ('' is an escaped quote).
+function matchingParen(s: string, openIndex: number): number {
+  let depth = 0;
+  let inString = false;
+  for (let i = openIndex; i < s.length; i++) {
+    const ch = s[i];
+    if (inString) {
+      if (ch === "'") {
+        if (s[i + 1] === "'") {
+          i++;
+        } else {
+          inString = false;
+        }
+      }
+      continue;
+    }
+    if (ch === "'") {
+      inString = true;
+    } else if (ch === '(') {
+      depth++;
+    } else if (ch === ')') {
+      depth--;
+      if (depth === 0) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
+
+// Splits on commas at paren depth 0, ignoring commas inside nested parens or string literals.
+function splitTopLevelArgs(inner: string): string[] {
+  const args: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let last = 0;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (inString) {
+      if (ch === "'") {
+        if (inner[i + 1] === "'") {
+          i++;
+        } else {
+          inString = false;
+        }
+      }
+      continue;
+    }
+    if (ch === "'") {
+      inString = true;
+    } else if (ch === '(') {
+      depth++;
+    } else if (ch === ')') {
+      depth--;
+    } else if (ch === ',' && depth === 0) {
+      args.push(inner.slice(last, i));
+      last = i + 1;
+    }
+  }
+  args.push(inner.slice(last));
+  return args;
+}
+
+// Extracts the variable name from a `$var` or `${var}` reference; '' if it isn't a plain reference.
+function variableNameOf(ref: string): string {
+  const match = ref.match(/^\$\{?(\w+)\}?$/);
+  return match ? match[1] : '';
 }
 
 function appendSetMultiStageEngine(sql: string): string {
@@ -315,17 +426,23 @@ export function interpolateVariables(
 
   // --- Code mode: interpolate pinotQlCode and append SET if subquery was injected ---
   function interpolateVariablesInCodeMode() {
-    let pinotQlCodeAfterSubqueryReplacement = query.pinotQlCode
-      ? replaceAllVariableExpressionsWithSubqueries(query.pinotQlCode, variables)
+    // Expand $__conditionalAll first so a dropped/kept condition flows through subquery replacement
+    // and templateSrv.replace like any other SQL.
+    const sqlWithConditionals = query.pinotQlCode
+      ? applyConditionalAll(query.pinotQlCode, variables)
+      : undefined;
+
+    let pinotQlCodeAfterSubqueryReplacement = sqlWithConditionals
+      ? replaceAllVariableExpressionsWithSubqueries(sqlWithConditionals, variables)
       : undefined;
 
     if (pinotQlCodeAfterSubqueryReplacement !== undefined &&
-        pinotQlCodeAfterSubqueryReplacement !== query.pinotQlCode) {
+        pinotQlCodeAfterSubqueryReplacement !== sqlWithConditionals) {
       // Subquery replaced a variable — MSE is required for subquery execution.
       // Append SET so it's visible in SQL Preview and sent to Pinot.
       pinotQlCodeAfterSubqueryReplacement = appendSetMultiStageEngine(pinotQlCodeAfterSubqueryReplacement);
     } else if (pinotQlCodeAfterSubqueryReplacement === undefined) {
-      pinotQlCodeAfterSubqueryReplacement = query.pinotQlCode;
+      pinotQlCodeAfterSubqueryReplacement = sqlWithConditionals;
     }
 
     return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement) };

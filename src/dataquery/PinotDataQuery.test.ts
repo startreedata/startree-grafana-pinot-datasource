@@ -1,5 +1,6 @@
-import { interpolateVariables, PinotDataQuery } from './PinotDataQuery';
+import { applyConditionalAll, interpolateVariables, PinotDataQuery } from './PinotDataQuery';
 import { setTemplateSrv, TemplateSrv } from '@grafana/runtime';
+import { TypedVariableModel } from '@grafana/data';
 import { VariableType } from '../components/VariableQueryEditor/SelectVariableType';
 import { DisplayType } from './DisplayType';
 import { EditorMode } from './EditorMode';
@@ -203,5 +204,65 @@ describe('interpolateVariables', () => {
     } as unknown as TemplateSrv);
 
     expect(interpolateVariables({ refId: 'A', tableName: '$table' }).tableName).toBe('realTable');
+  });
+});
+
+describe('applyConditionalAll', () => {
+  const variable = (name: string, value: string | string[]): TypedVariableModel =>
+    ({ name, current: { value } } as unknown as TypedVariableModel);
+
+  test('drops the condition to 1=1 when "All" is selected (scalar)', () => {
+    const sql = "WHERE $__conditionalAll(service = '$service', $service)";
+    expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe('WHERE 1=1');
+  });
+
+  test('drops the condition when "All" is selected in a multi-value array', () => {
+    const sql = 'WHERE $__conditionalAll(x = 1, $service)';
+    expect(applyConditionalAll(sql, [variable('service', ['$__all'])])).toBe('WHERE 1=1');
+  });
+
+  test('drops the condition when the variable has no selection', () => {
+    const sql = 'WHERE $__conditionalAll(x = 1, $service)';
+    expect(applyConditionalAll(sql, [variable('service', '')])).toBe('WHERE 1=1');
+    expect(applyConditionalAll(sql, [variable('service', [])])).toBe('WHERE 1=1');
+  });
+
+  test('keeps the condition when a concrete value is selected', () => {
+    const sql = "WHERE $__conditionalAll(service = '$service', $service)";
+    expect(applyConditionalAll(sql, [variable('service', 'checkout')])).toBe("WHERE service = '$service'");
+  });
+
+  test('keeps the condition when the variable is not found', () => {
+    const sql = 'WHERE $__conditionalAll(x = 1, $missing)';
+    expect(applyConditionalAll(sql, [])).toBe('WHERE x = 1');
+  });
+
+  test('handles conditions containing commas and nested parens', () => {
+    const sql = "WHERE $__conditionalAll(service IN ('a', 'b') AND f(x, y) > 0, $service)";
+    expect(applyConditionalAll(sql, [variable('service', 'a')])).toBe(
+      "WHERE service IN ('a', 'b') AND f(x, y) > 0"
+    );
+    expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe('WHERE 1=1');
+  });
+
+  test('expands multiple macros independently', () => {
+    const sql = '$__conditionalAll(a = 1, $a) AND $__conditionalAll(b = 2, $b)';
+    const vars = [variable('a', '$__all'), variable('b', 'x')];
+    expect(applyConditionalAll(sql, vars)).toBe('1=1 AND b = 2');
+  });
+
+  test('accepts the ${var} reference form', () => {
+    const sql = 'WHERE $__conditionalAll(x = 1, ${service})';
+    expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe('WHERE 1=1');
+  });
+
+  test('leaves malformed (non two-argument) invocations untouched', () => {
+    const sql = 'WHERE $__conditionalAll(x = 1)';
+    expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe(sql);
+  });
+
+  test('returns the query unchanged when no macro is present', () => {
+    const sql = 'SELECT * FROM t WHERE x = 1';
+    expect(applyConditionalAll(sql, [variable('service', '$__all')])).toBe(sql);
   });
 });
