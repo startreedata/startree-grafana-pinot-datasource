@@ -94,6 +94,9 @@ type DataQuery struct {
 	LevelColumn         ComplexField      `json:"levelColumn"`
 	JsonExtractors      []JsonExtractor   `json:"jsonExtractors"`
 	RegexpExtractors    []RegexpExtractor `json:"regexpExtractors"`
+	// LogsVolume signals the logs-volume supplementary query: route the logs builder to its
+	// derived count(*)-over-time VolumeQuery instead of fetching log lines.
+	LogsVolume bool `json:"logsVolume"`
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`

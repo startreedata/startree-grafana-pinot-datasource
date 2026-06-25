@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"time"
 )
 
 var _ ExecutableQuery = LogsBuilderQuery{}
 
 type LogsBuilderQuery struct {
 	TimeRange        TimeRange
+	IntervalSize     time.Duration
 	TableName        string
 	TimeColumn       string
 	LogColumn        ComplexField
@@ -22,6 +24,26 @@ type LogsBuilderQuery struct {
 	DimensionFilters []DimensionFilter
 	QueryOptions     []QueryOption
 	Limit            int64
+}
+
+// VolumeQuery derives the logs-volume histogram from the logs query: a time-bucketed count(*)
+// over the same table, time column, and filters, broken down by level when a level column is set.
+// It reuses the time-series builder so the bucketed-count SQL ($__timeGroup, etc.) isn't duplicated.
+func (query LogsBuilderQuery) VolumeQuery() TimeSeriesBuilderQuery {
+	var groupBy []ComplexField
+	if query.LevelColumn.Name != "" {
+		groupBy = []ComplexField{query.LevelColumn}
+	}
+	return TimeSeriesBuilderQuery{
+		TimeRange:           query.TimeRange,
+		IntervalSize:        query.IntervalSize,
+		TableName:           query.TableName,
+		TimeColumn:          query.TimeColumn,
+		AggregationFunction: AggregationFunctionCount,
+		GroupByColumns:      groupBy,
+		DimensionFilters:    query.DimensionFilters,
+		QueryOptions:        query.QueryOptions,
+	}
 }
 
 func (query LogsBuilderQuery) Validate() error {

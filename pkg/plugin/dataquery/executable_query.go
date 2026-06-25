@@ -103,8 +103,9 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
-		return LogsBuilderQuery{
+		logsQuery := LogsBuilderQuery{
 			TimeRange:        query.TimeRange,
+			IntervalSize:     query.IntervalSize,
 			TableName:        query.TableName,
 			TimeColumn:       query.TimeColumn,
 			LogColumn:        query.LogColumn,
@@ -117,6 +118,10 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			QueryOptions:     query.QueryOptions,
 			Limit:            query.Limit,
 		}
+		if query.LogsVolume {
+			return logsQuery.VolumeQuery()
+		}
+		return logsQuery
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeTable:
 		return TableBuilderQuery{

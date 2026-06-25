@@ -37,6 +37,8 @@ export interface PinotDataQuery extends DataQuery {
   jsonExtractors?: JsonExtractor[];
   regexpExtractors?: RegexpExtractor[];
   seriesLimit?: number;
+  // Set by the logs-volume supplementary query to route the logs builder to its count(*) VolumeQuery.
+  logsVolume?: boolean;
 
   // PinotQl Code
   pinotQlCode?: string;

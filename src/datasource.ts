@@ -1,11 +1,14 @@
 import {
   AdHocVariableFilter,
+  DataQueryRequest,
   DataSourceGetTagKeysOptions,
   DataSourceGetTagValuesOptions,
   DataSourceInstanceSettings,
   DateTime,
   MetricFindValue,
   ScopedVars,
+  SupplementaryQueryOptions,
+  SupplementaryQueryType,
 } from '@grafana/data';
 import { DataSourceWithBackend } from '@grafana/runtime';
 
@@ -15,6 +18,7 @@ import { PinotVariableSupport } from './variables';
 import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/AnnotationsQueryEditor';
 import { listColumns } from './resources/columns';
 import { queryDistinctValuesForFilters } from './resources/distinctValues';
+import { logsVolumeQuery } from './logs';
 
 export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConnectionConfig> {
   // Table context for ad-hoc filters. Pinot columns are per-table but Grafana's getTagValues
@@ -72,6 +76,35 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
       timeRange: { from: timeRange.from, to: timeRange.to },
     });
     return values.map((value) => ({ text: unquoteSqlLiteral(value) }));
+  }
+
+  // --- Logs volume histogram (Explore supplementary query) ---
+
+  getSupportedSupplementaryQueryTypes(): SupplementaryQueryType[] {
+    return [SupplementaryQueryType.LogsVolume];
+  }
+
+  getSupplementaryQuery(options: SupplementaryQueryOptions, query: PinotDataQuery): PinotDataQuery | undefined {
+    if (options.type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    return logsVolumeQuery(query);
+  }
+
+  getSupplementaryRequest(
+    type: SupplementaryQueryType,
+    request: DataQueryRequest<PinotDataQuery>
+  ): DataQueryRequest<PinotDataQuery> | undefined {
+    if (type !== SupplementaryQueryType.LogsVolume) {
+      return undefined;
+    }
+    const targets = request.targets
+      .map((query) => this.getSupplementaryQuery({ type }, query))
+      .filter((query): query is PinotDataQuery => query !== undefined);
+    if (targets.length === 0) {
+      return undefined;
+    }
+    return { ...request, requestId: `${request.requestId}_log_volume`, targets };
   }
 
   private resolveAdHocContext(queries?: PinotDataQuery[]): { tableName: string; timeColumn?: string } | undefined {

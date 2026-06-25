@@ -60,3 +60,34 @@ func TestLogsBuilderQueryLevelColumn(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, sql, `"logLevel" AS 'level'`)
 }
+
+func TestLogsBuilderQueryVolume(t *testing.T) {
+	// The logs-volume supplementary query is a bucketed count(*) over the same table/filters,
+	// broken down by the level column when one is set.
+	sql, err := LogsBuilderQuery{
+		TableName:        "nginxLogs",
+		TimeColumn:       "ts",
+		LogColumn:        ComplexField{Name: "message"},
+		LevelColumn:      ComplexField{Name: "logLevel"},
+		DimensionFilters: []DimensionFilter{{ColumnName: "method", Operator: "=", ValueExprs: []string{"'GET'"}}},
+	}.VolumeQuery().RenderSqlWithMacros()
+
+	assert.NoError(t, err)
+	assert.Contains(t, sql, `COUNT("*")`)
+	assert.Contains(t, sql, `$__timeGroup("ts", 'auto')`)
+	assert.Contains(t, sql, `"logLevel"`) // broken down by level
+	assert.Contains(t, sql, `"method" = 'GET'`)
+}
+
+func TestLogsBuilderQueryVolumeNoLevel(t *testing.T) {
+	// Without a level column the volume is a single count(*) series (no GROUP BY dimension).
+	sql, err := LogsBuilderQuery{
+		TableName:  "nginxLogs",
+		TimeColumn: "ts",
+		LogColumn:  ComplexField{Name: "message"},
+	}.VolumeQuery().RenderSqlWithMacros()
+
+	assert.NoError(t, err)
+	assert.Contains(t, sql, `COUNT("*")`)
+	assert.Contains(t, sql, `$__timeGroup("ts", 'auto')`)
+}
