@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"sort"
+	"strings"
 )
 
 // Fixed result-column aliases the trace SQL projects into, and that BuildTracesDataFrame reads back
@@ -97,8 +98,10 @@ func BuildTracesDataFrame(results *pinot.ResultTable, startTimeFormat pinot.Date
 		data.NewField(TraceFieldDuration, nil, durationMillis),
 	}
 
-	// Optional span columns: present only when the user mapped them in the builder.
-	for _, name := range []string{TraceFieldParentSpanID, TraceFieldServiceName, TraceFieldOperationName, TraceFieldStatusCode} {
+	// Optional span columns: present only when the user mapped them in the builder. Status is handled
+	// in buildSpanTags (folded into tags) rather than emitted here, because Grafana derives a span's
+	// error state from an `error` tag, not from a standalone status field.
+	for _, name := range []string{TraceFieldParentSpanID, TraceFieldServiceName, TraceFieldOperationName} {
 		if values, ok, err := optionalStringField(results, name); err != nil {
 			return nil, err
 		} else if ok {
@@ -106,11 +109,11 @@ func BuildTracesDataFrame(results *pinot.ResultTable, startTimeFormat pinot.Date
 		}
 	}
 
-	if tagsIdx, err := pinot.GetColumnIdx(results, TraceFieldTags); err == nil {
-		tags, err := extractSpanTags(results, tagsIdx)
-		if err != nil {
-			return nil, fmt.Errorf("could not extract tags column: %w", err)
-		}
+	tags, err := buildSpanTags(results, rowCount)
+	if err != nil {
+		return nil, err
+	}
+	if tags != nil {
 		fields = append(fields, data.NewField(TraceFieldTags, nil, tags))
 	}
 
@@ -182,6 +185,79 @@ func extractSpanTags(results *pinot.ResultTable, colIdx int) ([]json.RawMessage,
 		out[i] = encoded
 	}
 	return out, nil
+}
+
+// buildSpanTags assembles each span's {key,value} tag array from the optional tags column, then
+// folds in the optional Status column. Grafana's trace view flags a span as errored from an `error`
+// tag (and surfaces `otel.status_code`), not from a standalone status field — so a mapped Status
+// column is only meaningful if its error spans contribute those tags here. Returns nil when there is
+// neither a tags column nor any error status (so no tags field is emitted).
+func buildSpanTags(results *pinot.ResultTable, rowCount int) ([]json.RawMessage, error) {
+	var tags []json.RawMessage
+	if tagsIdx, idxErr := pinot.GetColumnIdx(results, TraceFieldTags); idxErr == nil {
+		var err error
+		if tags, err = extractSpanTags(results, tagsIdx); err != nil {
+			return nil, fmt.Errorf("could not extract tags column: %w", err)
+		}
+	}
+
+	statusCodes, hasStatus, err := optionalStringField(results, TraceFieldStatusCode)
+	if err != nil {
+		return nil, err
+	}
+	if !hasStatus {
+		return tags, nil
+	}
+
+	for i := 0; i < rowCount && i < len(statusCodes); i++ {
+		if !isErrorStatus(statusCodes[i]) {
+			continue
+		}
+		// Materialize a tags slice lazily so non-error-only results with no tags column emit nothing.
+		if tags == nil {
+			tags = make([]json.RawMessage, rowCount)
+			for j := range tags {
+				tags[j] = json.RawMessage("[]")
+			}
+		}
+		pairs, err := decodeTagPairs(tags[i])
+		if err != nil {
+			return nil, err
+		}
+		pairs = append(pairs,
+			traceKeyValue{Key: "error", Value: true},
+			traceKeyValue{Key: "otel.status_code", Value: statusCodes[i]},
+		)
+		encoded, err := json.Marshal(pairs)
+		if err != nil {
+			return nil, err
+		}
+		tags[i] = encoded
+	}
+	return tags, nil
+}
+
+func decodeTagPairs(raw json.RawMessage) ([]traceKeyValue, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var pairs []traceKeyValue
+	if err := json.Unmarshal(raw, &pairs); err != nil {
+		return nil, err
+	}
+	return pairs, nil
+}
+
+// isErrorStatus reports whether a Status column value denotes an error span. It accepts the OTel
+// status enum in string form (ERROR / STATUS_CODE_ERROR) and the numeric code 2, case-insensitively.
+// ponytail: extend the match set if a pipeline encodes span status differently.
+func isErrorStatus(s string) bool {
+	switch strings.ToUpper(strings.TrimSpace(s)) {
+	case "ERROR", "STATUS_CODE_ERROR", "2":
+		return true
+	default:
+		return false
+	}
 }
 
 // traceToLogsDataLink builds an internal data link from a span to a PinotQL logs query against the
