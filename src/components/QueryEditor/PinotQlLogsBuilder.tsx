@@ -1,4 +1,5 @@
 import { DateTime } from '@grafana/data';
+import { Button } from '@grafana/ui';
 import { DataSource } from '../../datasource';
 import { SelectTable } from './SelectTable';
 import { SelectTimeColumn } from './SelectTimeColumn';
@@ -13,6 +14,7 @@ import { SelectJsonExtractors } from './SelectJsonExtractors';
 import { SelectMetadataColumns } from './SelectMetadataColumns';
 import { SelectRegexpExtractors } from './SelectRegexpExtractors';
 import { LogsBuilder } from '../../pinotql';
+import allLabels from '../../labels';
 import { useAutoSurfaceMultiStageEngine } from './useAutoSurfaceMultiStageEngine';
 
 export function PinotQlLogsBuilder(props: {
@@ -25,6 +27,7 @@ export function PinotQlLogsBuilder(props: {
 }) {
   const { timeRange, datasource, savedParams, interpolatedParams, onChange, onRunQuery } = props;
   const resources = LogsBuilder.useResources(datasource, timeRange, interpolatedParams);
+  const otelLabels = allLabels.components.QueryEditor.otelDefaults;
 
   const onChangeAndRun = (newParams: LogsBuilder.Params) => {
     onChange(newParams);
@@ -55,6 +58,18 @@ export function PinotQlLogsBuilder(props: {
         isLoading={resources.isColumnsLoading}
         onChange={(value) => onChangeAndRun({ ...savedParams, timeColumn: value })}
       />
+      <div className={'gf-form'}>
+        <Button
+          data-testid="apply-otel-defaults-btn"
+          size="sm"
+          variant="secondary"
+          icon="cog"
+          tooltip={otelLabels.tooltip}
+          onClick={() => onChangeAndRun(LogsBuilder.otelDefaults(savedParams))}
+        >
+          {otelLabels.label}
+        </Button>
+      </div>
       <div style={{ display: 'flex', flexDirection: 'row' }}>
         <SelectLogMessageColumn
           selected={savedParams.logColumn}

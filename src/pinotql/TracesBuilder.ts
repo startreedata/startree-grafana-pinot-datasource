@@ -96,6 +96,33 @@ export function canRunQuery(params: Params): boolean {
   }
 }
 
+// One-click preset that fills every trace role with the column name an OpenTelemetry-collector→Pinot
+// table uses by default, so the user can point at an OTel span table and run without hand-picking each
+// field. Unlike applyDefaults (which only fills unset roles from the live column list), this overwrites
+// the column mappings unconditionally with the OTel semantic-convention names.
+// ponytail: these names follow the OTel collector's Pinot exporter span schema; tune if your collector
+// pipeline renames columns (e.g. flattens resource attributes differently).
+export function otelDefaults(params: Params): Params {
+  return {
+    ...params,
+    // ponytail: span trace/span identifiers per OTel span schema.
+    traceIdColumn: { name: 'trace_id' },
+    spanIdColumn: { name: 'span_id' },
+    parentSpanIdColumn: { name: 'parent_span_id' },
+    // ponytail: resource attribute service.name is typically flattened to a `service_name` column.
+    serviceNameColumn: { name: 'service_name' },
+    // ponytail: OTel calls the span's operation simply `name`.
+    spanNameColumn: { name: 'name' },
+    // ponytail: OTel records span duration in nanoseconds (duration_nano); pair with the 'ns' unit.
+    durationColumn: { name: 'duration_nano' },
+    durationUnit: 'ns',
+    // ponytail: span attributes map/JSON column.
+    tagsColumn: { name: 'span_attributes' },
+    // ponytail: span status code column.
+    statusColumn: { name: 'status_code' },
+  };
+}
+
 export function applyDefaults(
   params: Params,
   resources: {

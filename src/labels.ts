@@ -139,6 +139,11 @@ export default {
         tooltip: 'Optional column whose value (e.g. INFO, WARN, ERROR) colors each log line by level.',
         label: 'Level Column',
       },
+      otelDefaults: {
+        label: 'Apply OpenTelemetry defaults',
+        tooltip:
+          'Fill the column mappings with the OpenTelemetry collector→Pinot default column names. Overwrites any existing selections.',
+      },
       traces: {
         traceIdColumn: { tooltip: 'Column holding the trace ID. Required.', label: 'Trace ID' },
         spanIdColumn: { tooltip: 'Column holding the span ID. Required.', label: 'Span ID' },

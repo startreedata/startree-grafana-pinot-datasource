@@ -110,6 +110,54 @@ describe('canRunQuery', () => {
   });
 });
 
+describe('otelDefaults', () => {
+  test('fills log roles with OTel column names', () => {
+    const params = newEmptyParams();
+    expect(LogsBuilder.otelDefaults(params)).toEqual<LogsBuilder.Params>({
+      ...newEmptyParams(),
+      logColumn: { name: 'body' },
+      levelColumn: { name: 'severity_text' },
+      metadataColumns: [
+        { name: 'service_name' },
+        { name: 'trace_id' },
+        { name: 'span_id' },
+        { name: 'log_attributes' },
+      ],
+    });
+  });
+
+  test('overwrites existing column mappings but preserves non-column fields', () => {
+    const params: LogsBuilder.Params = {
+      ...newPopulatedParams(),
+      tableName: 'my_logs',
+      timeColumn: 'event_time',
+      limit: 25,
+    };
+    const got = LogsBuilder.otelDefaults(params);
+
+    // Column roles are overwritten with the OTel preset.
+    expect(got.logColumn).toEqual({ name: 'body' });
+    expect(got.levelColumn).toEqual({ name: 'severity_text' });
+    expect(got.metadataColumns).toEqual([
+      { name: 'service_name' },
+      { name: 'trace_id' },
+      { name: 'span_id' },
+      { name: 'log_attributes' },
+    ]);
+
+    // Non-column fields are untouched.
+    expect(got.tableName).toEqual('my_logs');
+    expect(got.timeColumn).toEqual('event_time');
+    expect(got.limit).toEqual(25);
+  });
+
+  test('does not mutate the input params', () => {
+    const params = newEmptyParams();
+    LogsBuilder.otelDefaults(params);
+    expect(params).toEqual<LogsBuilder.Params>(newEmptyParams());
+  });
+});
+
 describe('applyDefaults', () => {
   const timeColumns: Column[] = [
     {

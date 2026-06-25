@@ -70,6 +70,29 @@ export function canRunQuery(params: Params): boolean {
   }
 }
 
+// One-click preset that fills the log roles with the column names an OpenTelemetry-collector→Pinot
+// logs table uses by default, so the user can point at an OTel log-record table and run without
+// hand-picking each field. Overwrites the column mappings unconditionally with the OTel
+// semantic-convention names.
+// ponytail: these names follow the OTel collector's Pinot exporter log-record schema; tune if your
+// collector pipeline renames columns.
+export function otelDefaults(params: Params): Params {
+  return {
+    ...params,
+    // ponytail: OTel calls the log message field `body`.
+    logColumn: { name: 'body' },
+    // ponytail: OTel severity_text holds the human-readable level (INFO, WARN, ERROR, ...).
+    levelColumn: { name: 'severity_text' },
+    // ponytail: common OTel log-record resource/attribute columns worth surfacing as metadata.
+    metadataColumns: [
+      { name: 'service_name' },
+      { name: 'trace_id' },
+      { name: 'span_id' },
+      { name: 'log_attributes' },
+    ],
+  };
+}
+
 export function applyDefaults(
   params: Params,
   resources: {
