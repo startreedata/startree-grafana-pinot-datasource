@@ -115,6 +115,8 @@ test.describe('Create Panel with Traces Builder', async () => {
     await page.getByLabel('Select options menu').getByText('bytesSent', { exact: true }).click();
 
     await page.getByTestId('input-trace-id').getByRole('textbox').fill('abc123');
+    // InputTextField commits on blur, so blur to push the trace id into the query before asserting.
+    await page.getByTestId('input-trace-id').getByRole('textbox').blur();
 
     const preview = page.getByTestId('sql-preview');
     await expect(preview).toContainText(`AND ("message" = 'abc123')`);
