@@ -170,8 +170,8 @@ WHERE {{ .LogColumnExpr }} IS NOT NULL
     AND {{ . }}
     {{- end }}
 ORDER BY
-    "{{ .TimeColumn }}" ASC,
-    {{ if .LogColumnAlias }}"{{ .LogColumnAlias }}"{{ else }}{{ .LogColumnExpr }}{{ end }} ASC
+    "{{ .TimeColumn }}" {{ if .SortDirection }}{{ .SortDirection }}{{ else }}ASC{{ end }},
+    {{ if .LogColumnAlias }}"{{ .LogColumnAlias }}"{{ else }}{{ .LogColumnExpr }}{{ end }} {{ if .SortDirection }}{{ .SortDirection }}{{ else }}ASC{{ end }}
 LIMIT {{ .Limit }};
 `))
 
@@ -183,7 +183,10 @@ type LogSqlParams struct {
 	MetadataColumns      []ExprWithAlias
 	TimeFilterExpr       SqlExpr
 	DimensionFilterExprs []SqlExpr
-	Limit                int64
+	// SortDirection is "ASC" (oldest-first, the default) or "DESC" (newest-first, used to fetch
+	// the rows immediately before an anchor row for log-row context).
+	SortDirection string
+	Limit         int64
 }
 
 func RenderLogSql(params LogSqlParams) (string, error) {

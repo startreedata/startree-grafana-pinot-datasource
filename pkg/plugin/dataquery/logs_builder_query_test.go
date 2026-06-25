@@ -91,3 +91,18 @@ func TestLogsBuilderQueryVolumeNoLevel(t *testing.T) {
 	assert.Contains(t, sql, `COUNT("*")`)
 	assert.Contains(t, sql, `$__timeGroup("ts", 'auto')`)
 }
+
+func TestLogsBuilderQuerySortDirection(t *testing.T) {
+	// The backward leg of log-row context fetches the rows immediately before the anchor, so the
+	// logs query must sort newest-first.
+	sql, err := LogsBuilderQuery{
+		TableName:     "nginxLogs",
+		TimeColumn:    "ts",
+		LogColumn:     ComplexField{Name: "message"},
+		SortDirection: "DESC",
+	}.RenderSqlWithMacros()
+
+	assert.NoError(t, err)
+	assert.Contains(t, sql, `"ts" DESC`)
+	assert.Contains(t, sql, `"__message" DESC`)
+}

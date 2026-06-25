@@ -24,6 +24,9 @@ type LogsBuilderQuery struct {
 	DimensionFilters []DimensionFilter
 	QueryOptions     []QueryOption
 	Limit            int64
+	// SortDirection is "DESC" for the backward leg of log-row context (fetch the rows immediately
+	// before an anchor); empty/anything else renders the default oldest-first "ASC".
+	SortDirection string
 }
 
 // VolumeQuery derives the logs-volume histogram from the logs query: a time-bucketed count(*)
@@ -114,6 +117,7 @@ func (query LogsBuilderQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		LogColumnAlias:       BuilderLogColumn,
 		MetadataColumns:      query.logsMetadataColumns(),
 		DimensionFilterExprs: FilterExprsFrom(expandedFilters),
+		SortDirection:        query.resolveSortDirection(),
 		Limit:                query.resolveLimit(),
 		TimeFilterExpr: pinot.TimeFilterExpr(pinot.TimeFilter{
 			Column: query.TimeColumn,
@@ -138,6 +142,7 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 		MetadataColumns:      query.logsMetadataColumns(),
 		TimeFilterExpr:       MacroExprFor(MacroTimeFilter, pinot.ObjectExpr(query.TimeColumn).String()),
 		DimensionFilterExprs: FilterExprsFrom(query.DimensionFilters),
+		SortDirection:        query.resolveSortDirection(),
 		Limit:                query.resolveLimit(),
 	})
 	if err != nil {
@@ -207,4 +212,11 @@ func (query LogsBuilderQuery) resolveLimit() int64 {
 	} else {
 		return query.Limit
 	}
+}
+
+func (query LogsBuilderQuery) resolveSortDirection() string {
+	if query.SortDirection == "DESC" {
+		return "DESC"
+	}
+	return "ASC"
 }

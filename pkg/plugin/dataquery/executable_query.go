@@ -117,6 +117,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			DimensionFilters: query.DimensionFilters,
 			QueryOptions:     query.QueryOptions,
 			Limit:            query.Limit,
+			SortDirection:    logContextSortDirection(query.LogContextDirection),
 		}
 		if query.LogsVolume {
 			return logsQuery.VolumeQuery()
@@ -166,6 +167,16 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 	default:
 		return new(NoOpQuery)
 	}
+}
+
+// logContextSortDirection maps a log-row-context direction to the logs query sort order: BACKWARD
+// fetches the rows just before the anchor, so it sorts newest-first (DESC); everything else
+// (FORWARD or unset, the normal logs query) keeps the default oldest-first ASC.
+func logContextSortDirection(direction string) string {
+	if direction == "BACKWARD" {
+		return "DESC"
+	}
+	return "ASC"
 }
 
 // groupByColumnsFrom merges the legacy string GROUP BY columns with the ComplexField (v2) form.

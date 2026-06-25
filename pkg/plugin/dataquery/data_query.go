@@ -97,6 +97,9 @@ type DataQuery struct {
 	// LogsVolume signals the logs-volume supplementary query: route the logs builder to its
 	// derived count(*)-over-time VolumeQuery instead of fetching log lines.
 	LogsVolume bool `json:"logsVolume"`
+	// LogContextDirection ("BACKWARD"/"FORWARD") is set by getLogRowContext to fetch the rows
+	// immediately before/after an anchor row. BACKWARD flips the logs query to newest-first.
+	LogContextDirection string `json:"logContextDirection"`
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`

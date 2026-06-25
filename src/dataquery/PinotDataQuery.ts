@@ -39,6 +39,8 @@ export interface PinotDataQuery extends DataQuery {
   seriesLimit?: number;
   // Set by the logs-volume supplementary query to route the logs builder to its count(*) VolumeQuery.
   logsVolume?: boolean;
+  // Set by getLogRowContext ("BACKWARD"/"FORWARD") to fetch rows around an anchor log row.
+  logContextDirection?: string;
 
   // PinotQl Code
   pinotQlCode?: string;

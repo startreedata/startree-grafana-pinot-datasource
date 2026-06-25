@@ -1,4 +1,12 @@
-import { logsVolumeQuery, LOGS_VOLUME_REF_ID_PREFIX } from './logs';
+import { LogRowContextQueryDirection } from '@grafana/data';
+import {
+  LOG_ROW_CONTEXT_REF_ID,
+  LOG_ROW_CONTEXT_WINDOW_MS,
+  LOGS_VOLUME_REF_ID_PREFIX,
+  logRowContextQuery,
+  logRowContextTimeWindow,
+  logsVolumeQuery,
+} from './logs';
 import { PinotDataQuery } from './dataquery/PinotDataQuery';
 import { QueryType } from './dataquery/QueryType';
 import { EditorMode } from './dataquery/EditorMode';
@@ -36,5 +44,35 @@ describe('logsVolumeQuery', () => {
 
   test('returns undefined for hidden queries', () => {
     expect(logsVolumeQuery({ ...logsQuery, hide: true })).toBeUndefined();
+  });
+});
+
+describe('logRowContextQuery', () => {
+  test('keeps table/log/time/filters, sets context direction and limit', () => {
+    expect(logRowContextQuery(logsQuery, LogRowContextQueryDirection.Backward, 7)).toEqual<PinotDataQuery>({
+      ...logsQuery,
+      refId: LOG_ROW_CONTEXT_REF_ID,
+      logContextDirection: LogRowContextQueryDirection.Backward,
+      logsVolume: undefined,
+      limit: 7,
+    });
+  });
+});
+
+describe('logRowContextTimeWindow', () => {
+  const anchorMs = 1_700_000_000_000;
+
+  test('backward looks before the anchor', () => {
+    expect(logRowContextTimeWindow(anchorMs, LogRowContextQueryDirection.Backward)).toEqual({
+      fromMs: anchorMs - LOG_ROW_CONTEXT_WINDOW_MS,
+      toMs: anchorMs,
+    });
+  });
+
+  test('forward looks after the anchor', () => {
+    expect(logRowContextTimeWindow(anchorMs, LogRowContextQueryDirection.Forward)).toEqual({
+      fromMs: anchorMs,
+      toMs: anchorMs + LOG_ROW_CONTEXT_WINDOW_MS,
+    });
   });
 });
