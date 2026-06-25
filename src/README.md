@@ -36,6 +36,42 @@ time
 column alias, time column format, and metric column alias. The `$__timeGroup()` macro converts the time column
 into `1:MILLISECONDS:EPOCH` format.
 
+#### Annotations mode
+
+When the datasource is used as an [annotation](https://grafana.com/docs/grafana/latest/dashboards/build-dashboards/annotate-visualizations/)
+query, Grafana maps the result columns to annotation events by name:
+
+| Column    | Annotation field                                                                 |
+|:----------|:---------------------------------------------------------------------------------|
+| `time`    | Start time of the annotation (epoch milliseconds — use `$__timeGroup()`).        |
+| `timeEnd` | End time. When present, the annotation is rendered as a **region** (start → end). |
+| `title`   | Annotation title.                                                                |
+| `text`    | Annotation description.                                                          |
+| `tags`    | Annotation tags.                                                                 |
+
+Selecting only a `time` column produces point annotations:
+
+```sql
+SELECT
+  $__timeGroup("event_time") AS "time",
+  'My annotation' AS "title",
+  'My annotation text' AS "text"
+FROM $__table()
+WHERE $__timeFilter("event_time")
+```
+
+Adding a `timeEnd` column turns each event into a region spanning the start and end times:
+
+```sql
+SELECT
+  $__timeGroup("start_time") AS "time",
+  $__timeGroup("end_time") AS "timeEnd",
+  'My annotation' AS "title",
+  'My annotation text' AS "text"
+FROM $__table()
+WHERE $__timeFilter("start_time")
+```
+
 ### Macros
 
 To simplify syntax and to allow for dynamic parts, like date range filters, the query can contain the following macros:

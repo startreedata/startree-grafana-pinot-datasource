@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
@@ -158,6 +159,70 @@ LIMIT 100000;`, testCase.TimeColumn, testCase.TargetColumn, testCase.TimeColumn,
 		})
 		t.Run("pinot unreachable", func(t *testing.T) {
 			runSqlQueryPinotUnreachable(t, newDriver)
+		})
+
+		// Grafana maps result columns to annotation events by name and renders a region
+		// (start -> end) when the frame exposes both a `time` and a `timeEnd` field. The table
+		// extractor passes any aliased column straight through, so selecting a `timeEnd` column
+		// yields a region annotation. Start and end share a bucket here to keep the fixture
+		// deterministic; what matters is that `timeEnd` is carried through as an epoch-millis field.
+		t.Run("region", func(t *testing.T) {
+			client := test_helpers.SetupPinotAndCreateClient(t)
+
+			query := PinotQlCodeQuery{
+				TableName:         "benchmark",
+				TimeColumnAlias:   "time",
+				MetricColumnAlias: "value",
+				DisplayType:       DisplayTypeAnnotations,
+				IntervalSize:      1 * time.Minute,
+				TimeRange: TimeRange{
+					From: time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+					To:   time.Date(2024, 10, 1, 0, 5, 0, 0, time.UTC),
+				},
+				Code: `SELECT
+    $__timeGroup("ts") AS $__timeAlias(),
+    $__timeGroup("ts") AS "timeEnd",
+    SUM("value") AS $__metricAlias()
+FROM
+    $__table()
+WHERE
+    $__timeFilter("ts")
+GROUP BY
+    $__timeGroup("ts")
+ORDER BY
+    $__timeAlias() DESC
+LIMIT 100000;`,
+			}
+
+			got := query.Execute(client, context.Background())
+			assert.Equal(t, backend.StatusOK, got.Status, "DataResponse.Status")
+			require.NoError(t, got.Error, "DataResponse.Error")
+
+			starts := []time.Time{
+				time.Date(2024, 10, 1, 0, 4, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 3, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 2, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 1, 0, 0, time.UTC),
+				time.Date(2024, 10, 1, 0, 0, 0, 0, time.UTC),
+			}
+			ends := make([]int64, len(starts))
+			for i := range starts {
+				ends[i] = starts[i].UnixMilli()
+			}
+
+			wantFrame := data.NewFrame("response",
+				data.NewField("time", nil, starts),
+				data.NewField("timeEnd", nil, ends),
+				data.NewField("value", nil, []float64{
+					4.995000894259197e+07,
+					4.9950041761314005e+07,
+					4.9949916961369045e+07,
+					4.994997804782016e+07,
+					4.995001567005852e+07,
+				}),
+			)
+			assert.Equal(t, data.Frames{wantFrame}, got.Frames, "DataResponse.Frames")
+			assert.Empty(t, got.ErrorSource, "DataResponse.ErrorSource")
 		})
 	})
 
