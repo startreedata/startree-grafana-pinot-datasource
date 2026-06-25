@@ -39,6 +39,22 @@ const MACRO_POSITIONS: StatementPosition[] = [
   StatementPosition.AfterOrderByKeywords,
 ];
 
+// Statement positions where column names are offered. These mirror the standard provider's own
+// `SuggestionKind.Columns` placements (SELECT list, WHERE, GROUP BY, ORDER BY) so columns appear
+// exactly where a column reference is valid.
+const COLUMN_POSITIONS: StatementPosition[] = [
+  StatementPosition.AfterSelectKeyword,
+  StatementPosition.AfterSelectArguments,
+  StatementPosition.AfterSelectFuncFirstArgument,
+  StatementPosition.SelectAlias,
+  StatementPosition.WhereKeyword,
+  StatementPosition.AfterWhereValue,
+  StatementPosition.AfterWhereFunctionArgument,
+  StatementPosition.AfterGroupByKeywords,
+  StatementPosition.AfterGroupByFunctionArgument,
+  StatementPosition.AfterOrderByKeywords,
+];
+
 // Monaco instances we've already wired the linter into (one per page in practice).
 const validatedMonacos = new WeakSet<object>();
 
@@ -61,9 +77,12 @@ export function buildPinotLanguageDefinition(resolvers: PinotResolvers): Languag
         resolve: async (): Promise<TableDefinition[]> =>
           (await resolvers.resolveTables()).map((name) => ({ name, completion: name })),
       },
-      columns: {
-        resolve: (): Promise<ColumnDefinition[]> => resolvers.resolveColumns(),
-      },
+      // Columns are offered via a custom suggestion kind (below) rather than the standard provider's
+      // `columns.resolve` hook. That hook only fires when Grafana can parse a literal table name out
+      // of the FROM clause, but the canonical Pinot query reads `FROM $__table()` — a macro, not an
+      // identifier — so the hook never resolves columns for it. The dropdown-selected table (fed in
+      // via resolveColumns) is the real source of truth, so we drive column suggestions from it
+      // directly and scope them to the same statement positions the standard provider uses.
       customSuggestionKinds: () => [
         {
           id: 'pinotMacros',
@@ -77,6 +96,19 @@ export function buildPinotLanguageDefinition(resolvers: PinotResolvers): Languag
               sortText: 'a', // surface macros near the top of the list
               detail: 'Pinot macro',
               documentation: macro.description,
+            })),
+        },
+        {
+          id: 'pinotColumns',
+          applyTo: COLUMN_POSITIONS,
+          suggestionsResolver: async () =>
+            (await resolvers.resolveColumns()).map((column) => ({
+              label: column.name,
+              insertText: column.completion ?? column.name,
+              kind: monaco.languages.CompletionItemKind.Field,
+              sortText: 'b', // below macros, but above generic functions/keywords
+              detail: column.type ?? 'Pinot column',
+              documentation: column.description,
             })),
         },
       ],
