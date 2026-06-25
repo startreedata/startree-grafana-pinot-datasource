@@ -192,4 +192,16 @@ describe('interpolateVariables', () => {
   test('noAdHocFiltersLeavesFieldUndefined', () => {
     expect(interpolateVariables({ refId: 'A' }).adHocFilters).toBeUndefined();
   });
+
+  test('interpolatesTableName', () => {
+    // Enables binding a panel's table to a `$table` template variable (and chained column variables).
+    setTemplateSrv({
+      containsTemplate: () => false,
+      getVariables: () => [],
+      updateTimeRange: () => {},
+      replace: (target?: string) => (target === '$table' ? 'realTable' : target ?? ''),
+    } as unknown as TemplateSrv);
+
+    expect(interpolateVariables({ refId: 'A', tableName: '$table' }).tableName).toBe('realTable');
+  });
 });

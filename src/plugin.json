@@ -73,6 +73,23 @@
     "version": "%VERSION%",
     "updated": "%TODAY%"
   },
+  "includes": [
+    {
+      "type": "dashboard",
+      "name": "Pinot — Explore Any Table (Templated)",
+      "path": "dashboards/explore-table.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Pinot — Table Examples",
+      "path": "dashboards/table-examples.json"
+    },
+    {
+      "type": "dashboard",
+      "name": "Pinot — Infra Metrics Overview",
+      "path": "dashboards/infra-metrics.json"
+    }
+  ],
   "dependencies": {
     "grafanaDependency": ">=9.1.1",
     "plugins": []
