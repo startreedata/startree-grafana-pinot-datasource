@@ -67,6 +67,9 @@ export interface PinotDataQuery extends DataQuery {
 
   // PromQl
   promQlCode?: string;
+  // Optional step-size override for PromQL range queries (Go duration, e.g. "30s", "2h45m").
+  // When unset, the backend falls back to Grafana's auto-computed interval.
+  promStepSize?: string;
 
   // Grafana ad-hoc filters, injected server-side by the $__adHocFilter macro.
   adHocFilters?: AdHocVariableFilter[];
@@ -563,6 +566,7 @@ export function interpolateVariables(
     // PromQl Editor
 
     promQlCode: replaceIfExists(query.promQlCode),
+    promStepSize: replaceIfExists(query.promStepSize),
 
     // Variable Query editor
 

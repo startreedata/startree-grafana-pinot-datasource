@@ -9,6 +9,7 @@ describe('paramsFrom', () => {
       promQlCode: '',
       legend: '',
       seriesLimit: 0,
+      stepSize: '',
     });
   });
 
@@ -20,12 +21,14 @@ describe('paramsFrom', () => {
         promQlCode: 'sum(rate(http_requests[15m])) by(path)',
         legend: '{{path}}',
         seriesLimit: 101,
+        promStepSize: '30s',
       })
     ).toEqual<Params>({
       tableName: 'test_table',
       promQlCode: 'sum(rate(http_requests[15m])) by(path)',
       legend: '{{path}}',
       seriesLimit: 101,
+      stepSize: '30s',
     });
   });
 });
@@ -39,6 +42,7 @@ describe('dataQueryWithParams', () => {
         promQlCode: '',
         legend: '',
         seriesLimit: 0,
+        stepSize: '',
       })
     ).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -47,6 +51,7 @@ describe('dataQueryWithParams', () => {
       promQlCode: undefined,
       legend: undefined,
       seriesLimit: undefined,
+      promStepSize: undefined,
     });
   });
 
@@ -57,6 +62,7 @@ describe('dataQueryWithParams', () => {
         promQlCode: 'sum(rate(http_requests[15m])) by(path)',
         legend: '{{path}}',
         seriesLimit: 101,
+        stepSize: '30s',
       })
     ).toEqual<PinotDataQuery>({
       refId: 'test_id',
@@ -65,6 +71,29 @@ describe('dataQueryWithParams', () => {
       promQlCode: 'sum(rate(http_requests[15m])) by(path)',
       legend: '{{path}}',
       seriesLimit: 101,
+      promStepSize: '30s',
     });
+  });
+
+  test('stepSize is trimmed and blank values are dropped', () => {
+    expect(
+      dataQueryOf(query, {
+        tableName: '',
+        promQlCode: '',
+        legend: '',
+        seriesLimit: 0,
+        stepSize: '  30s  ',
+      }).promStepSize
+    ).toEqual('30s');
+
+    expect(
+      dataQueryOf(query, {
+        tableName: '',
+        promQlCode: '',
+        legend: '',
+        seriesLimit: 0,
+        stepSize: '   ',
+      }).promStepSize
+    ).toBeUndefined();
   });
 });
