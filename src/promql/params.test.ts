@@ -74,4 +74,26 @@ describe('dataQueryWithParams', () => {
       promStepSize: '30s',
     });
   });
+
+  test('stepSize is trimmed and blank values are dropped', () => {
+    expect(
+      dataQueryOf(query, {
+        tableName: '',
+        promQlCode: '',
+        legend: '',
+        seriesLimit: 0,
+        stepSize: '  30s  ',
+      }).promStepSize
+    ).toEqual('30s');
+
+    expect(
+      dataQueryOf(query, {
+        tableName: '',
+        promQlCode: '',
+        legend: '',
+        seriesLimit: 0,
+        stepSize: '   ',
+      }).promStepSize
+    ).toBeUndefined();
+  });
 });

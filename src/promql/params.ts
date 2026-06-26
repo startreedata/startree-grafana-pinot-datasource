@@ -27,6 +27,6 @@ export function dataQueryOf(query: PinotDataQuery, params: Params): PinotDataQue
     promQlCode: params.promQlCode || undefined,
     legend: params.legend || undefined,
     seriesLimit: params.seriesLimit || undefined,
-    promStepSize: params.stepSize || undefined,
+    promStepSize: params.stepSize?.trim() || undefined,
   };
 }

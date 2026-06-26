@@ -93,7 +93,7 @@ export default {
       stepSize: {
         label: 'Step Size',
         tooltip:
-          'Query resolution step for the PromQL range query, e.g. "30s" or "2h45m". Valid units are "s", "m", "h". Defaults to the panel\'s auto interval.',
+          'Query resolution step for the PromQL range query, e.g. "30s" or "2h45m". Valid units are "ns", "us" (or "µs"), "ms", "s", "m", "h". Defaults to the panel\'s auto interval.',
       },
       metricAlias: {
         tooltip: 'The name of the metric column in the query result. Required for time series display.',
