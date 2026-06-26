@@ -172,7 +172,11 @@ export default {
         durationColumn: { tooltip: 'Column holding the span duration. Required.', label: 'Duration' },
         durationUnit: { tooltip: 'Unit the duration column is stored in. Grafana renders traces in milliseconds.', label: 'Duration Unit' },
         tagsColumn: { tooltip: 'JSON or MAP column holding span tags/attributes.', label: 'Tags' },
-        statusColumn: { tooltip: 'Column holding the span status code.', label: 'Status' },
+        statusColumn: {
+          tooltip:
+            'Column holding the span status code. Error spans (OTel ERROR / STATUS_CODE_ERROR / code 2) are flagged as errored in the trace view.',
+          label: 'Status',
+        },
         traceId: {
           tooltip: 'Find a single trace by ID. Leave empty to search traces over the time range. Supports dashboard variables.',
           label: 'Find Trace by ID',
