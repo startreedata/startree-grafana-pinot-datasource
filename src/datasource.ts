@@ -23,6 +23,10 @@ import { DataSourceWithBackend } from '@grafana/runtime';
 import { lastValueFrom, map, Observable } from '@grafana/data/node_modules/rxjs';
 
 import { interpolateVariables, PinotDataQuery } from './dataquery/PinotDataQuery';
+import { DimensionFilter } from './dataquery/DimensionFilter';
+import { columnLabelOf } from './pinotql/complexField';
+import { QueryType } from './dataquery/QueryType';
+import { EditorMode } from './dataquery/EditorMode';
 import { PinotConnectionConfig } from './config/PinotConnectionConfig';
 import { PinotVariableSupport } from './variables';
 import { AnnotationsQueryEditor } from './components/AnnotationsQueryEditor/AnnotationsQueryEditor';
@@ -70,6 +74,34 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
       // the mapping configured.
       map((response) => attachLogsToTracesLinks(response, this.logsToTraces, { uid: this.uid, name: this.name }))
     );
+  }
+
+  // Summary shown for a query when a panel/query row is collapsed. Without this, Grafana falls back
+  // to the raw refId, which tells the user nothing about what the query does.
+  getQueryDisplayText(query: PinotDataQuery): string {
+    switch (query.queryType) {
+      case QueryType.PromQL:
+        return query.promQlCode || EMPTY_QUERY_DISPLAY_TEXT;
+      case QueryType.PinotVariableQuery:
+        return query.variableQuery?.pinotQlCode || query.variableQuery?.columnName || EMPTY_QUERY_DISPLAY_TEXT;
+      case QueryType.PinotQL:
+        switch (query.editorMode) {
+          case EditorMode.Code:
+            return query.pinotQlCode || EMPTY_QUERY_DISPLAY_TEXT;
+          case EditorMode.Builder: {
+            const filters = query.filters?.map(displayFilter).join(', ') || 'none';
+            return (
+              `Table: ${query.tableName || 'none'}, Time: ${query.timeColumn || 'none'}, ` +
+              `Aggregation: ${displayAggregations(query) || 'none'}, ` +
+              `Dimensions: ${displayDimensions(query) || 'none'}, Filters: ${filters}`
+            );
+          }
+          default:
+            return EMPTY_QUERY_DISPLAY_TEXT;
+        }
+      default:
+        return EMPTY_QUERY_DISPLAY_TEXT;
+    }
   }
 
   applyTemplateVariables(
@@ -190,6 +222,46 @@ export class DataSource extends DataSourceWithBackend<PinotDataQuery, PinotConne
     this.adHocContext = query?.tableName ? { tableName: query.tableName, timeColumn: query.timeColumn } : undefined;
     return this.adHocContext;
   }
+}
+
+// Shown by getQueryDisplayText when a query has no meaningful content to summarize.
+const EMPTY_QUERY_DISPLAY_TEXT = 'Empty query';
+
+// Renders a Builder-mode filter row for the collapsed-panel summary, e.g. `country = 'US','CA'`, or
+// `country IN (subquery)` when a template variable expanded past the IN-clause threshold. Includes
+// the complex-field key when present so `meta['region']` doesn't collapse to a bare `meta`.
+function displayFilter(filter: DimensionFilter): string {
+  const column = columnLabelOf(filter.columnName, filter.columnKey);
+  const rhs = filter.subqueryExpr ?? filter.valueExprs?.join(',') ?? '';
+  return `${column} ${filter.operator ?? ''} ${rhs}`.trim();
+}
+
+// Summarizes the Builder aggregations for the collapsed panel. Handles both builder shapes: the
+// table builder's `aggregations[]` (e.g. `SUM(value), COUNT(*)`) and the time-series builder's
+// single `aggregationFunction` + metric column (newer `metricColumnV2`, falling back to the legacy
+// `metricColumn`).
+function displayAggregations(query: PinotDataQuery): string {
+  if (query.aggregations?.length) {
+    return query.aggregations
+      .map((agg) => `${agg.function ?? ''}(${columnLabelOf(agg.column?.name, agg.column?.key) || '*'})`)
+      .join(', ');
+  }
+  if (query.aggregationFunction) {
+    const metric = columnLabelOf(query.metricColumnV2?.name, query.metricColumnV2?.key) || query.metricColumn;
+    return metric ? `${query.aggregationFunction}(${metric})` : query.aggregationFunction;
+  }
+  return '';
+}
+
+// Merges legacy string dimensions (`groupByColumns`) with the newer complex-field dimensions
+// (`groupByColumnsV2`) that current builders write.
+function displayDimensions(query: PinotDataQuery): string {
+  return [
+    ...(query.groupByColumns ?? []),
+    ...(query.groupByColumnsV2 ?? []).map((col) => columnLabelOf(col.name, col.key)),
+  ]
+    .filter(Boolean)
+    .join(', ');
 }
 
 // `queries` (getTagKeys) and `timeRange` (getTagValues) are best-effort context that some Grafana
