@@ -23,18 +23,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # build-mode: none avoids autobuild — this repo tracks bleeding-edge Go,
-        # which the hosted CodeQL autobuilder can't reliably compile. CodeQL still
-        # extracts source without building.
-        language: [ actions, go, javascript-typescript ]
+        include:
+          # Go must be built for extraction; autobuild compiles the backend (same as
+          # CI's Build Plugin). The setup-go step below pins the repo's toolchain.
+          - language: go
+            build-mode: autobuild
+          - language: actions
+            build-mode: none
+          - language: javascript-typescript
+            build-mode: none
     steps:
       - uses: actions/checkout@v5
+
+      - name: Install Go environment
+        if: matrix.language == 'go'
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: 'go.mod'
+          cache-dependency-path: 'go.sum'
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
