@@ -12,6 +12,8 @@ on:
 
 run-name: Publish release for ${{ inputs.release_name }} triggered by @${{ github.actor }}
 
+permissions: read-all
+
 jobs:
   build:
     name: Create Customer Release

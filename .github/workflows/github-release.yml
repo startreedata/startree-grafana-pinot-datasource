@@ -18,6 +18,10 @@ on:
 
 run-name: Release (${{ inputs.version_bump }}) from ${{ github.ref_name }} by @${{ github.actor }}
 
+# Default least privilege for all jobs; the release job below grants the extra
+# write scopes it needs (id-token / contents / attestations).
+permissions: read-all
+
 jobs:
   test_frontend:
     name: Test Frontend
