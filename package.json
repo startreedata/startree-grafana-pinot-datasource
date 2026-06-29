@@ -110,6 +110,8 @@
     "@babel/core": "^7.29.6",
     "qs": "^6.15.2",
     "prismjs": "^1.30.0",
-    "picomatch": "^2.3.2"
+    "picomatch": "^2.3.2",
+    "uuid": "^11.1.1",
+    "@opentelemetry/core": "^2.8.0"
   }
 }

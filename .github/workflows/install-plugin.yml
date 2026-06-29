@@ -31,6 +31,8 @@ run-name: Install plugin to ${{ inputs.grafana_pod }} in ${{ inputs.k8s_namespac
 env:
   PLUGIN_NAME: startree-pinot-datasource
 
+permissions: read-all
+
 jobs:
   install:
     name: Install Plugin
