@@ -1,4 +1,4 @@
-import { queryEditorTest as test, setDashboardTimeWindow } from '@helpers/helpers';
+import { queryEditorTest as test, setCodeEditorContent, setDashboardTimeWindow } from '@helpers/helpers';
 import { expect } from '@playwright/test';
 
 test('Annotations Query Editor', async ({ page, datasource }) => {
@@ -18,11 +18,8 @@ test('Annotations Query Editor', async ({ page, datasource }) => {
   await page.getByTestId('select-table-dropdown').locator('div').filter({ hasText: 'Choose' }).nth(1).click();
   await page.getByText('complex_website', { exact: true }).click();
 
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+x');
-  await page.keyboard.type(
+  await setCodeEditorContent(
+    page,
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS "time", SUM("views") AS "views", "country"
 FROM $__table()

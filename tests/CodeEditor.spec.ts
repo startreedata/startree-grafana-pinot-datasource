@@ -6,6 +6,7 @@ import {
   checkTextForm,
   queryEditorTest as test,
   selectDatasource,
+  setCodeEditorContent,
   setExploreTimeWindow,
   setPanelTimeWindow,
 } from '@helpers/helpers';
@@ -172,11 +173,8 @@ test.describe('Create Panel with Code Editor', async () => {
 
       await page.getByTestId('input-log-alias').getByRole('textbox').fill('message');
 
-      const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-      await codebox.click();
-      await page.keyboard.press('Control+a');
-      await page.keyboard.press('Control+x');
-      await page.keyboard.type(
+      await setCodeEditorContent(
+        page,
         // language=text
         `SELECT "ts" as $__timeAlias(), "message", "method", "bytesSent"
 FROM $__table()
@@ -210,11 +208,8 @@ LIMIT 100000;`
 
     await addDashboardConstant(page, 'granularity', '12:HOURS');
 
-    const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-    await codebox.click();
-    await page.keyboard.press('Control+a');
-    await page.keyboard.press('Control+x');
-    await page.keyboard.type(
+    await setCodeEditorContent(
+      page,
       // language=text
       `SELECT $__timeGroup("hoursSinceEpoch", '$granularity') AS $__timeAlias(), SUM("views") AS $__metricAlias()
 FROM $__table()
@@ -239,10 +234,8 @@ LIMIT 100000;`
 
 async function checkSqlEditor(page: Page) {
   const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+x');
-  await page.keyboard.type(
+  await setCodeEditorContent(
+    page,
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()
 FROM $__table()
@@ -268,11 +261,8 @@ async function checkTimeSeriesRenders(page: Page) {
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
   await page.getByTestId('input-series-limit').getByRole('textbox').fill('2');
 
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+x');
-  await page.keyboard.type(
+  await setCodeEditorContent(
+    page,
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias(), "browser"
 FROM $__table()
@@ -305,11 +295,8 @@ async function checkTableRenders(page: Page) {
   await page.getByTestId('select-table-dropdown').click();
   await page.getByText('complex_website', { exact: true }).click();
 
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+x');
-  await page.keyboard.type(
+  await setCodeEditorContent(
+    page,
     // language=text
     `SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS "views", "country"
 FROM $__table()

@@ -148,6 +148,68 @@ export async function checkTextForm(textbox: Locator) {
   await expect(textbox).toHaveValue('');
 }
 
+/**
+ * Replaces the contents of the mounted Monaco SQL editor.
+ *
+ * Synthetic keyboard input can make Monaco emit multiple model updates. Because Grafana's SQL editor
+ * is controlled by React, each update can re-render the editor and race the remaining input. Updating
+ * the mounted model once avoids that race. The exact-value checks keep partial SQL from leaking into
+ * later test steps, and blurring propagates code-mode changes to the parent query.
+ */
+export async function setCodeEditorContent(page: Page, content: string) {
+  const editorContainer = page.getByTestId('sql-editor-content');
+  const codebox = editorContainer.getByRole('code');
+  const textbox = codebox.getByRole('textbox', { name: /Editor content/ });
+  await expect(codebox).toBeVisible();
+  await codebox.click();
+
+  const modelValue = await codebox.evaluate(async (editorRoot, value) => {
+    type MonacoModel = {
+      uri: { toString: () => string };
+      getValue: () => string;
+      setValue: (newValue: string) => void;
+    };
+    type Monaco = {
+      editor: { getModels: () => readonly MonacoModel[] };
+    };
+    type AmdRequire = (
+      modules: string[],
+      resolve: (monaco: Monaco) => void,
+      reject: (error: unknown) => void
+    ) => void;
+
+    const monacoWindow = window as Window & { monaco?: Monaco; require?: AmdRequire };
+    const monaco =
+      monacoWindow.monaco ??
+      (await new Promise<Monaco>((resolve, reject) => {
+        if (!monacoWindow.require) {
+          reject(new Error('Monaco AMD loader is not available'));
+          return;
+        }
+        monacoWindow.require(['vs/editor/editor.main'], resolve, reject);
+      }));
+
+    // Monaco records the mounted model URI on the editor root. Resolve that URI against the model
+    // registry because Grafana's bundled Monaco predates editor.getEditors(). The registry can
+    // retain models from unmounted editors, so selecting by this DOM URI is important.
+    const modelUri = editorRoot.getAttribute('data-uri');
+    if (modelUri === null) {
+      throw new Error('Mounted Monaco editor is missing its model URI');
+    }
+    const models = monaco.editor.getModels().filter((model) => model.uri.toString() === modelUri);
+    if (models.length !== 1) {
+      throw new Error(`Expected one mounted Monaco model, found ${models.length}`);
+    }
+    models[0].setValue(value);
+    return models[0].getValue();
+  }, content);
+
+  expect(modelValue).toBe(content);
+  await expect(textbox).toHaveValue(content);
+  await textbox.blur();
+  await expect(textbox).toHaveValue(content);
+}
+
 export async function checkRunQueryButton(page: Page) {
   const dataQueryResponse = page.waitForResponse('/api/ds/query');
   await page.getByTestId('run-query-btn').click();
@@ -284,11 +346,7 @@ export async function addPinotQueryVariable(
     await page.getByLabel('Select options menu').getByText(opts.table, { exact: true }).click();
   }
   const dataQueryResponse = page.waitForResponse('/api/ds/query');
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await page.keyboard.type(opts.sql);
+  await setCodeEditorContent(page, opts.sql);
   await dataQueryResponse;
 
   // Wait for "Preview of values" to populate (no longer "None") — without this guard,
@@ -336,11 +394,7 @@ export async function addPanelInCodeMode(
   await page.getByLabel('Select options menu').getByText(opts.table, { exact: true }).click();
 
   // Replace any starter content in the Monaco editor with the user-supplied SQL.
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('ControlOrMeta+a');
-  await page.keyboard.press('Delete');
-  await page.keyboard.type(opts.code);
+  await setCodeEditorContent(page, opts.code);
 
   // Force-click run-query (panel-options sidebar can have a loading overlay).
   await page.getByTestId('run-query-btn').click({ force: true });
