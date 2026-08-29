@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test';
-import { queryEditorTest as test } from '@helpers/helpers';
+import { queryEditorTest as test, setCodeEditorContent } from '@helpers/helpers';
 
 test.beforeEach(async ({ page, datasource }) => {
   await page.goto('http://localhost:3000/dashboard/new?orgId=1');
@@ -62,11 +62,8 @@ test('Distinct Values', async ({ page }) => {
 test('Sql Code', async ({ page }) => {
   await page.getByText('Sql Query').click();
 
-  const codebox = page.getByTestId('sql-editor-content').getByRole('code');
-  await codebox.click();
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+x');
-  await page.keyboard.type(
+  await setCodeEditorContent(
+    page,
     // language=text
     `SELECT DISTINCT "browser" FROM "complex_website" WHERE "browser" IS NOT NULL ORDER BY "browser" ASC LIMIT 100;`
   );
