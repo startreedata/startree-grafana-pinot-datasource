@@ -11,6 +11,11 @@ The Pinot Data Source Plugin for Grafana enables you to visualize and query data
 - 📈 **Variables & Annotations** - Full support for Grafana variables and annotations
 - ⚡ **Performance** - Optimized for large-scale data queries
 
+## Array columns
+
+`STRING_ARRAY` columns retain their values as JSON arrays in table results.
+Empty arrays and null cells remain distinct. Other array types remain unsupported.
+
 ## System Requirements
 
 - **Grafana:** Version 9.1.1 or higher
