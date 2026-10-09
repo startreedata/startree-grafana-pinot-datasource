@@ -30,17 +30,18 @@ func defaultIfNil[T any](v interface{}, defaultVal T) T {
 // https://docs.pinot.apache.org/configuration-reference/schema
 
 const (
-	DataTypeInt        = "INT"
-	DataTypeLong       = "LONG"
-	DataTypeFloat      = "FLOAT"
-	DataTypeDouble     = "DOUBLE"
-	DataTypeBoolean    = "BOOLEAN"
-	DataTypeTimestamp  = "TIMESTAMP"
-	DataTypeString     = "STRING"
-	DataTypeJson       = "JSON"
-	DataTypeBytes      = "BYTES"
-	DataTypeBigDecimal = "BIG_DECIMAL"
-	DataTypeMap        = "MAP"
+	DataTypeInt         = "INT"
+	DataTypeLong        = "LONG"
+	DataTypeFloat       = "FLOAT"
+	DataTypeDouble      = "DOUBLE"
+	DataTypeBoolean     = "BOOLEAN"
+	DataTypeTimestamp   = "TIMESTAMP"
+	DataTypeString      = "STRING"
+	DataTypeStringArray = "STRING_ARRAY"
+	DataTypeJson        = "JSON"
+	DataTypeBytes       = "BYTES"
+	DataTypeBigDecimal  = "BIG_DECIMAL"
+	DataTypeMap         = "MAP"
 )
 
 type ExtractorError struct {
@@ -125,6 +126,23 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	case DataTypeString:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			return defaultIfNil[string](results.Rows[rowIdx][colIdx], ""), nil
+		})
+	case DataTypeStringArray:
+		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
+			value := results.Rows[rowIdx][colIdx]
+			if value == nil {
+				return json.RawMessage("null"), nil
+			}
+			values, ok := value.([]any)
+			if !ok {
+				return nil, fmt.Errorf("expected string array, got %T", value)
+			}
+			for idx, element := range values {
+				if _, ok := element.(string); !ok {
+					return nil, fmt.Errorf("expected string at array index %d, got %T", idx, element)
+				}
+			}
+			return json.Marshal(values)
 		})
 	case DataTypeBytes:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) ([]byte, error) {
@@ -241,6 +259,10 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) ([]string, error) 
 		for i := range rawVals {
 			vals[i] = fmt.Sprintf("%v", rawVals[i])
 		}
+	case []json.RawMessage:
+		for i := range rawVals {
+			vals[i] = string(rawVals[i])
+		}
 	case [][]byte:
 		for i := range rawVals {
 			vals[i] = string(rawVals[i])
@@ -259,6 +281,8 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) ([]string, error) 
 func ExtractColumnAsExprs(results *ResultTable, colIdx int) ([]string, error) {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
+	case DataTypeStringArray:
+		return nil, errors.New("STRING_ARRAY SQL expressions are not supported")
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
 		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {
