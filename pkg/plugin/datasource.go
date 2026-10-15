@@ -44,8 +44,6 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		opts.ForwardHTTPHeaders = true
 	}
 
-	log.FromContext(ctx).Info("HTTP client options", "opts", fmt.Sprintf("%+v", opts))
-
 	httpClient, err := httpclient.New(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
@@ -104,10 +102,15 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		}
 
 		// Test connection to broker
-		if _, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
+		if resp, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
 				Message: err.Error(),
+			}, nil
+		} else if resp.HasExceptions() {
+			return &backend.CheckHealthResult{
+				Status:  backend.HealthStatusError,
+				Message: pinot.NewBrokerExceptionError(resp.Exceptions).Error(),
 			}, nil
 		}
 

@@ -173,7 +173,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
       </p>
       <div className="gf-form-group">
         <InputPinotToken
-          isConfigured={!!secureJsonFields?.apiKey}
+          isConfigured={!!secureJsonFields?.authToken}
           tokenType={jsonData.tokenType}
           tokenValue={secureJsonData.authToken}
           onChangeToken={(authToken) => onSecureConfigChange({ ...secureJsonData, authToken })}
@@ -187,7 +187,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
               },
               secureJsonData: {
                 ...secureJsonData,
-                authToken: undefined,
+                authToken: '',
               },
             })
           }

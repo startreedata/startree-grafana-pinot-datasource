@@ -15,6 +15,7 @@ export interface HeaderRow {
   name: string;
   value: string;
   configured: boolean;
+  storedIndex?: number;
 }
 
 const NAME_PREFIX = 'httpHeaderName';
@@ -30,6 +31,7 @@ export function readHeaderRows(options: Props['options']): HeaderRow[] {
       name: String(jsonData[`${NAME_PREFIX}${i}`] ?? ''),
       value: secureJsonData[`${VALUE_PREFIX}${i}`] ?? '',
       configured: Boolean(secureJsonFields[`${VALUE_PREFIX}${i}`]),
+      storedIndex: i,
     });
   }
   return rows;
@@ -48,24 +50,28 @@ export function withHeaderRows(options: Props['options'], rows: HeaderRow[]): Pr
   }
   for (const k of Object.keys(secureJsonData)) {
     if (k.startsWith(VALUE_PREFIX)) {
-      delete secureJsonData[k];
+      secureJsonData[k] = '';
     }
   }
   for (const k of Object.keys(secureJsonFields)) {
     if (k.startsWith(VALUE_PREFIX)) {
-      delete secureJsonFields[k];
+      // Grafana preserves omitted secure values, so send an empty value to clear
+      // removed or shifted secrets in its encrypted storage as well as the UI flag.
+      secureJsonFields[k] = false;
+      secureJsonData[k] = '';
     }
   }
 
   rows.forEach((row, idx) => {
     const i = idx + 1;
     jsonData[`${NAME_PREFIX}${i}`] = row.name;
-    if (row.configured) {
-      // Value is already stored server-side; reference it by index.
-      // ponytail: removing a saved header above others reindexes these flags but
-      // not the server secrets — same limitation as @grafana/ui's own component.
+    if (row.configured && row.storedIndex === i) {
+      // A saved value can only be retained at its original index. If the row moved,
+      // require re-entry because the encrypted value is unavailable to the editor.
       secureJsonFields[`${VALUE_PREFIX}${i}`] = true;
-    } else if (row.value) {
+      delete secureJsonData[`${VALUE_PREFIX}${i}`];
+    } else {
+      secureJsonFields[`${VALUE_PREFIX}${i}`] = false;
       secureJsonData[`${VALUE_PREFIX}${i}`] = row.value;
     }
   });
