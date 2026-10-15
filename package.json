@@ -112,6 +112,8 @@
     "prismjs": "^1.30.0",
     "picomatch": "^2.3.2",
     "uuid": "^11.1.1",
-    "@opentelemetry/core": "^2.8.0"
+    "@opentelemetry/core": "^2.8.0",
+    "**/@typescript-eslint/typescript-estree/minimatch": "^9.0.7",
+    "moment": "^2.31.0"
   }
 }
