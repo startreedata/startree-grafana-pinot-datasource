@@ -197,6 +197,9 @@ func (x *ReleaseManager) ResignRelease(rootUrls []string) {
 	fmt.Println("Preparing release", customerRelease)
 	fmt.Println("Valid for urls:", strings.Join(rootUrls, " "))
 
+	if !x.fileExistsInRepo(internalRelease) {
+		handleError(fmt.Errorf("internal release %s does not exist; select a published artifact with RELEASE_VERSION", internalRelease))
+	}
 	x.downloadFile(internalRelease)
 	x.unzipPlugin(internalRelease)
 	x.signPlugin(rootUrls)
@@ -364,15 +367,31 @@ func (x *ReleaseManager) getLatestReleaseVersion() string {
 		return x.latestReleaseVersion
 	}
 
-	var buf bytes.Buffer
-	runCmd(nil, &buf, "git", "tag", "--list", "--sort=-v:refname")
-	version := strings.SplitN(buf.String(), "\n", 2)[0]
-	version = strings.TrimPrefix(version, "v")
+	version := os.Getenv("RELEASE_VERSION")
 	if version == "" {
-		handleError(fmt.Errorf("no version found in git tags"))
+		var buf bytes.Buffer
+		runCmd(nil, &buf, "git", "tag", "--list", "--sort=-v:refname")
+		version = strings.SplitN(buf.String(), "\n", 2)[0]
+		if version == "" {
+			handleError(errors.New("no version found in git tags; set RELEASE_VERSION to a published artifact version"))
+		}
 	}
-	x.latestReleaseVersion = version
+	var err error
+	x.latestReleaseVersion, err = normalizeReleaseVersion(version)
+	handleError(err)
 	return x.latestReleaseVersion
+}
+
+var releaseVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)` +
+	`(-((0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?` +
+	`(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$`)
+
+func normalizeReleaseVersion(version string) (string, error) {
+	version = strings.TrimPrefix(version, "v")
+	if !releaseVersionPattern.MatchString(version) {
+		return "", fmt.Errorf("invalid release version %q: expected SemVer, optionally prefixed with v", version)
+	}
+	return version, nil
 }
 
 func (x *ReleaseManager) getArtifactoryToken() string {

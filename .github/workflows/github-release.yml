@@ -271,8 +271,8 @@ jobs:
 
   release:
     name: Build & Release
-    needs: [test_frontend, test_backend, end_to_end]
-    if: ${{ !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.end_to_end.result != 'failure' }}
+    needs: [test_frontend, test_backend, build_plugin, end_to_end]
+    if: ${{ !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -308,23 +308,27 @@ jobs:
 
       - name: Bump version
         id: version
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+          VERSION_BUMP: ${{ inputs.version_bump }}
         run: |
           git config --global user.email "ci@startree.ai"
           git config --global user.name "CI"
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            version=$(npm version ${{ inputs.version_bump }})
+          if [ "$BRANCH_NAME" = "main" ]; then
+            version=$(npm version "$VERSION_BUMP")
             git push --follow-tags
           else
-            sanitized_branch=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
-            npm version --no-git-tag-version ${{ inputs.version_bump }}
+            sanitized_branch=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+            npm version --no-git-tag-version "$VERSION_BUMP"
             base_version=$(node -p "require('./package.json').version")
-            version="v${base_version}-${sanitized_branch}"
+            npm version --no-git-tag-version "${base_version}-${sanitized_branch:-branch}"
+            version="v$(node -p "require('./package.json').version")"
             git add package.json
             git commit -m "$version"
             git tag -a "$version" -m "$version"
             git push origin HEAD "$version"
           fi
-          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build backend
         run: go run cmd/release/main.go build_backend
