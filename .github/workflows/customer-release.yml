@@ -9,6 +9,10 @@ on:
       root_urls:
         description: Comma-separated root urls of the intended Grafana instance, e.g. https://grafana.envId.orgId.startree.cloud.
         required: true
+      version:
+        description: Internal artifact version to re-sign (optional v prefix). Empty uses the latest Git tag.
+        required: false
+        type: string
 
 run-name: Publish release for ${{ inputs.release_name }} triggered by @${{ github.actor }}
 
@@ -32,8 +36,10 @@ jobs:
         with:
           go-version-file: 'go.mod'
       - name: Sign release
-        run: go run cmd/release/main.go resign ${{ inputs.root_urls }}
+        run: go run cmd/release/main.go resign "$ROOT_URLS"
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           ARTIFACTORY_TOKEN: ${{ secrets.ARTIFACTORY_TOKEN }}
           RELEASE_NAME: ${{ inputs.release_name }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          ROOT_URLS: ${{ inputs.root_urls }}
