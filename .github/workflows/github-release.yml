@@ -319,9 +319,11 @@ jobs:
             git push --follow-tags
           else
             sanitized_branch=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
+            current_version=$(node -p "require('./package.json').version.split(/[+-]/)[0]")
+            npm version --no-git-tag-version --allow-same-version "$current_version"
             npm version --no-git-tag-version "$VERSION_BUMP"
             base_version=$(node -p "require('./package.json').version")
-            npm version --no-git-tag-version "${base_version}-${sanitized_branch:-branch}"
+            npm version --no-git-tag-version "${base_version}-branch-${sanitized_branch:-branch}"
             version="v$(node -p "require('./package.json').version")"
             git add package.json
             git commit -m "$version"
