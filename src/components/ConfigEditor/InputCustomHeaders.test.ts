@@ -24,7 +24,7 @@ test('adding a header writes the standard contiguous keys', () => {
 
 test('readHeaderRows round-trips what withHeaderRows wrote', () => {
   const out = withHeaderRows(makeOptions(), [{ name: 'X-A', value: 'secret', configured: false }]);
-  expect(readHeaderRows(out)).toEqual([{ name: 'X-A', value: 'secret', configured: false }]);
+  expect(readHeaderRows(out)).toEqual([{ name: 'X-A', value: 'secret', configured: false, storedIndex: 1 }]);
 });
 
 test('removing the first of two reindexes the rest contiguously', () => {
@@ -36,14 +36,29 @@ test('removing the first of two reindexes the rest contiguously', () => {
   expect(j(afterRemove).httpHeaderName1).toBe('X-B');
   expect(j(afterRemove).httpHeaderName2).toBeUndefined();
   expect(s(afterRemove).httpHeaderValue1).toBe('b');
-  expect(s(afterRemove).httpHeaderValue2).toBeUndefined();
+  expect(s(afterRemove).httpHeaderValue2).toBe('');
 });
 
 test('a configured (saved) value is referenced by index, not re-written as plaintext', () => {
   const opts = makeOptions({ jsonData: { httpHeaderName1: 'X-A' }, secureJsonFields: { httpHeaderValue1: true } });
-  expect(readHeaderRows(opts)).toEqual([{ name: 'X-A', value: '', configured: true }]);
+  expect(readHeaderRows(opts)).toEqual([{ name: 'X-A', value: '', configured: true, storedIndex: 1 }]);
 
   const rewritten = withHeaderRows(opts, readHeaderRows(opts));
   expect(f(rewritten).httpHeaderValue1).toBe(true);
   expect(s(rewritten).httpHeaderValue1).toBeUndefined();
+});
+
+test('removing a saved header resets removed and shifted secrets without rebinding them', () => {
+  const opts = makeOptions({
+    jsonData: { httpHeaderName1: 'X-A', httpHeaderName2: 'X-B', httpHeaderName3: 'X-C' },
+    secureJsonFields: { httpHeaderValue1: true, httpHeaderValue2: true, httpHeaderValue3: true },
+  });
+  const remaining = readHeaderRows(opts).filter((_, i) => i !== 1);
+  const out = withHeaderRows(opts, remaining);
+
+  expect(j(out)).toMatchObject({ httpHeaderName1: 'X-A', httpHeaderName2: 'X-C' });
+  expect(j(out).httpHeaderName3).toBeUndefined();
+  expect(f(out)).toEqual({ httpHeaderValue1: true, httpHeaderValue2: false, httpHeaderValue3: false });
+  expect(s(out)).toEqual({ httpHeaderValue2: '', httpHeaderValue3: '' });
+  expect(readHeaderRows(out)[1]).toMatchObject({ name: 'X-C', value: '', configured: false });
 });
