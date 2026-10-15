@@ -15,8 +15,12 @@ on:
         description: Skip E2E tests
         type: boolean
         default: false
+      recover_v1_1_1_draft:
+        description: Recover exact existing v1.1.1 as a draft only (temporary branch)
+        type: boolean
+        default: false
 
-run-name: Release (${{ inputs.version_bump }}) from ${{ github.ref_name }} by @${{ github.actor }}
+run-name: ${{ inputs.recover_v1_1_1_draft && format('DRAFT ONLY v1.1.1 recovery by @{0}', github.actor) || format('Release ({0}) from {1} by @{2}', inputs.version_bump, github.ref_name, github.actor) }}
 
 # Default least privilege for all jobs; the release job below grants the extra
 # write scopes it needs (id-token / contents / attestations).
@@ -25,6 +29,7 @@ permissions: read-all
 jobs:
   test_frontend:
     name: Test Frontend
+    if: ${{ !inputs.recover_v1_1_1_draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -47,6 +52,7 @@ jobs:
 
   test_backend:
     name: Test Backend
+    if: ${{ !inputs.recover_v1_1_1_draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -90,6 +96,7 @@ jobs:
 
   build_plugin:
     name: Build Plugin
+    if: ${{ !inputs.recover_v1_1_1_draft }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -128,7 +135,7 @@ jobs:
 
   end_to_end:
     name: Test E2E
-    if: ${{ !inputs.skip_e2e }}
+    if: ${{ !inputs.recover_v1_1_1_draft && !inputs.skip_e2e }}
     runs-on: ubuntu-latest
     needs: [build_plugin]
     steps:
@@ -272,7 +279,7 @@ jobs:
   release:
     name: Build & Release
     needs: [test_frontend, test_backend, build_plugin, end_to_end]
-    if: ${{ !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
+    if: ${{ github.ref != 'refs/heads/codex/recover-grafana-v1.1.1-draft-20261015' && !inputs.recover_v1_1_1_draft && !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -386,3 +393,339 @@ jobs:
       # plugin marketplace validator flags this as a packagecode-version-mismatch.
       # Keeping main pinned to the last released version makes the next release's
       # `npm version <bump>` step (above) the single source of truth for version changes.
+
+  recover_v1_1_1_draft:
+    name: Recover v1.1.1 draft (never publish)
+    if: ${{ inputs.recover_v1_1_1_draft }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: recover-v1.1.1-draft
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: write
+      id-token: write
+      attestations: write
+    env:
+      RELEASE_SHA: bdd65e7c74ae42d6e8e226806c22886a5529887f
+      ARCHIVE: startree-pinot-datasource-1.1.1.zip
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: bdd65e7c74ae42d6e8e226806c22886a5529887f
+          persist-credentials: false
+
+      - name: Verify immutable tag, workflow branch, and exact-tag main checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_SHA: ${{ github.sha }}
+          WORKFLOW_REF: ${{ github.ref }}
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          repo = "startreedata/startree-grafana-pinot-datasource"
+          sha = os.environ["RELEASE_SHA"]
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
+          def api(path):
+              return json.loads(subprocess.check_output(["gh", "api", f"repos/{repo}/{path}"], text=True))
+          require(os.environ["GITHUB_REPOSITORY"] == repo, "Unexpected repository")
+          require(os.environ["WORKFLOW_REF"] == "refs/heads/codex/recover-grafana-v1.1.1-draft-20261015",
+                  "Recovery must use its reviewed temporary branch")
+          require(subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() == sha,
+                  "Checkout differs from exact release commit")
+          require(not subprocess.check_output(["git", "status", "--porcelain"], text=True).strip(),
+                  "Release checkout is dirty")
+          tag = api("git/ref/tags/v1.1.1")["object"]
+          require(tag["type"] == "tag" and tag["sha"] == "adaae49c937d7aa2dcc73ce5650035bca4b04e43",
+                  "Existing v1.1.1 tag changed")
+          require(api(f"git/tags/{tag['sha']}")["object"]["sha"] == sha, "Tag commit changed")
+          comparison = api(f"compare/{sha}...{os.environ['WORKFLOW_SHA']}")
+          require(comparison["status"] == "ahead" and comparison["merge_base_commit"]["sha"] == sha
+                  and {f["filename"] for f in comparison["files"]} == {".github/workflows/github-release.yml"},
+                  "Recovery branch must change only the reviewed workflow")
+          checks = []
+          for run_id, workflow, expected_jobs in [
+              (38823150529, "ci.yml", {"Test Frontend", "Test Backend", "Build Plugin", "Test E2E"}),
+              (38823150585, "codeql.yml", {"Analyze (actions)", "Analyze (go)", "Analyze (javascript-typescript)"})
+          ]:
+              run = api(f"actions/runs/{run_id}")
+              require(run["head_sha"] == sha and run["head_branch"] == "main" and run["event"] == "push"
+                      and run["path"] == f".github/workflows/{workflow}"
+                      and run["status"] == "completed" and run["conclusion"] == "success",
+                      f"Exact-tag {workflow} has not succeeded")
+              jobs = api(f"actions/runs/{run_id}/jobs?filter=latest&per_page=100")["jobs"]
+              require(len(jobs) == len(expected_jobs) and {j["name"] for j in jobs} == expected_jobs
+                      and all(j["status"] == "completed" and j["conclusion"] == "success" for j in jobs),
+                      f"Missing or unsuccessful jobs in {workflow}")
+              checks.append(run["html_url"])
+          require(not any(r["tag_name"] == "v1.1.1" for r in api("releases?per_page=100")),
+                  "Existing v1.1.1 release/draft requires inspection before recovery")
+          source = {"tag": "v1.1.1", "checkout_commit": sha, "tag_object": tag["sha"],
+                    "workflow_commit": os.environ["WORKFLOW_SHA"], "workflow_ref": os.environ["WORKFLOW_REF"],
+                    "main_checks": checks, "run": os.environ["GITHUB_SERVER_URL"] + "/" + repo
+                    + "/actions/runs/" + os.environ["GITHUB_RUN_ID"]}
+          Path(os.environ["RUNNER_TEMP"], "release-source.json").write_text(json.dumps(source, indent=2) + "\n")
+          print(json.dumps(source, indent=2))
+          PY
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Rebuild the exact tag
+        run: |
+          yarn install --frozen-lockfile
+          go run github.com/magefile/mage -v
+          yarn run build
+          for target in darwin_amd64 darwin_arm64 linux_amd64 linux_arm linux_arm64 windows_amd64.exe; do
+            test -s "dist/gpx_pinot_$target"
+            test -x "dist/gpx_pinot_$target"
+          done
+          test "$(jq -r .id dist/plugin.json)" = startree-pinot-datasource
+          test "$(jq -r .info.version dist/plugin.json)" = 1.1.1
+          git diff --exit-code
+
+      - name: Sign plugin
+        run: yarn run sign
+        env:
+          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+
+      - name: Package signed plugin without changing versions or tags
+        run: |
+          mv dist startree-pinot-datasource
+          zip "$ARCHIVE" startree-pinot-datasource -r
+          sha1sum "$ARCHIVE" | cut -f1 -d' ' > "$ARCHIVE.sha1"
+          sha256sum "$ARCHIVE" > "$ARCHIVE.sha256"
+
+      - name: Run default latest validator and preserve its real exit code
+        id: validator
+        run: |
+          rm -f validator-report.json validator-raw.log validator-exit-code.txt validator-result.json
+          set +e
+          npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ -output-to-file validator-report.json "$ARCHIVE" 2>&1 | tee validator-raw.log
+          pipeline_status=("${PIPESTATUS[@]}")
+          status="${pipeline_status[0]}"
+          tee_status="${pipeline_status[1]}"
+          set -e
+          printf '%s\n' "exit-code=$status" "tee-exit-code=$tee_status" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$status" > validator-exit-code.txt
+          printf '%s\n' "$tee_status" > validator-tee-exit-code.txt
+          test "${#pipeline_status[@]}" -eq 2
+          test "$tee_status" -eq 0
+          test "$status" -eq 0 || test "$status" -eq 1
+
+      - name: Classify complete validator report (fail closed)
+        id: classification
+        run: |
+          python3 - validator-report.json validator-raw.log "$(cat validator-exit-code.txt)" <<'PY'
+          import json
+          import re
+          from collections import Counter
+          from pathlib import Path
+
+          class Rejected(ValueError):
+              pass
+
+          def strict_object(pairs):
+              result = {}
+              for key, value in pairs:
+                  if key in result:
+                      raise Rejected(f'duplicate JSON key: {key}')
+                  result[key] = value
+              return result
+
+          def parse_report(raw):
+
+              def reject_constant(value):
+                  raise Rejected(f'non-JSON constant: {value}')
+              try:
+                  return json.loads(raw, object_pairs_hook=strict_object, parse_constant=reject_constant)
+              except (ValueError, TypeError) as exc:
+                  raise Rejected(f'invalid JSON report: {exc}') from exc
+          EXPECTED_ANALYZERS = (
+              'archive metadata archivename nestedmetadata backendbinary backenddebug binarypermissions readme '
+              'brokenlinks sourcecode buildtools changelog checksum code-rules discoverability go-manifest go-sec '
+              'govulncheck includesnested jargon jsMap packagejson published-plugin legacybuilder modulejs '
+              'legacyplatform license safelinks metadataschema metadatavalid trackingscripts virusscan unsafesvg '
+              'osv-scanner manifest llmreview logos screenshots metadatapaths org plugindocs pluginname provenance '
+              'reactcompat restrictivedep sdkusage signature templatereadme typesuffix version circulardependencies '
+              'codediff grafanadependency '
+          ).split()
+          KNOWN_REPORT_ERROR_LINES = {'error: osv-scanner detected a high severity issue in package braces', 'error: osv-scanner detected high severity issues', 'suspected: Code diff skipped due to errors in osv-scanner', 'detail: Fix the errors reported by osv-scanner before code diff can run.', 'suspected: LLM review skipped due to errors in osv-scanner', 'detail: Fix the errors reported by osv-scanner before LLM review can run.'}
+
+          def validate_log(raw):
+              if type(raw) is not str or not raw.strip():
+                  raise Rejected('missing raw validator log')
+              started, finished, scanner_open = ([], [], Counter())
+              error_lines = []
+              for original in raw.splitlines():
+                  line = re.sub('^\\d{4}-\\d\\d-\\d\\dT\\S+Z ', '', original).strip()
+                  if line.startswith('PLUGIN_VALIDATOR_EVENT '):
+                      event = parse_report(line.removeprefix('PLUGIN_VALIDATOR_EVENT '))
+                      if type(event) is not dict or type(event.get('failed')) is not bool or event['failed']:
+                          raise Rejected('failed or malformed lifecycle event')
+                      kind = event.get('event')
+                      if kind in ('analyzer_started', 'analyzer_finished'):
+                          name = event.get('analyzer')
+                          if type(name) is not str or name not in EXPECTED_ANALYZERS:
+                              raise Rejected('unknown analyzer event')
+                          (started if kind == 'analyzer_started' else finished).append(name)
+                          if kind == 'analyzer_finished' and (len(finished) > len(started) or started[len(finished) - 1] != name):
+                              raise Rejected('unpaired analyzer completion')
+                      elif kind in ('scanner_started', 'scanner_finished'):
+                          name = event.get('scanner')
+                          if type(name) is not str or not name:
+                              raise Rejected('invalid scanner event')
+                          if kind == 'scanner_started':
+                              scanner_open[name] += 1
+                          else:
+                              if scanner_open[name] != 1 or type(event.get('exit_code')) is not int or event['exit_code'] != 0:
+                                  raise Rejected('failed or unpaired scanner')
+                              scanner_open[name] -= 1
+                      else:
+                          raise Rejected('unknown lifecycle event')
+                  elif line in KNOWN_REPORT_ERROR_LINES:
+                      if line.startswith('error: '):
+                          error_lines.append(line)
+                      continue
+                  elif re.search("(?i)\\b(error|fatal|panic|exception|failed|failure|cannot|unable|unhandled|timed out|signal|scan.incomplete)\\b|could not|couldn't|ENOENT", line):
+                      raise Rejected('suspicious error in raw validator log')
+              if started != EXPECTED_ANALYZERS or finished != EXPECTED_ANALYZERS or any(scanner_open.values()):
+                  raise Rejected('missing, duplicate, or out-of-order lifecycle events')
+              return error_lines
+
+          def classify(raw, exit_code, expected_id='startree-pinot-datasource', expected_version='1.1.1', expected_lockfile='yarn.lock'):
+              if type(exit_code) is not int or exit_code not in (0, 1):
+                  raise Rejected('validator exit code must be exactly 0 or 1')
+              report = parse_report(raw)
+              if type(report) is not dict or set(report) != {'id', 'version', 'plugin-validator'}:
+                  raise Rejected('unexpected report envelope')
+              if report['id'] != expected_id or report['version'] != expected_version:
+                  raise Rejected('report plugin identity/version mismatch')
+              groups = report['plugin-validator']
+              if type(groups) is not dict or not groups:
+                  raise Rejected('missing analyzer report')
+              errors = []
+              diagnostic_count = 0
+              allowed_severities = {'error', 'warning', 'ok', 'suspected', 'recommendation'}
+              for analyzer, diagnostics in groups.items():
+                  if type(analyzer) is not str or not analyzer or type(diagnostics) is not list:
+                      raise Rejected('invalid analyzer entry')
+                  for diagnostic in diagnostics:
+                      diagnostic_count += 1
+                      required = {'Severity', 'Title', 'Detail', 'Name'}
+                      if type(diagnostic) is not dict or not required <= set(diagnostic) or set(diagnostic) - required - {'Context'}:
+                          raise Rejected('unexpected diagnostic schema')
+                      if any((type(value) is not str for value in diagnostic.values())):
+                          raise Rejected('diagnostic fields must be strings')
+                      if diagnostic['Severity'] not in allowed_severities:
+                          raise Rejected('unknown severity')
+                      if diagnostic['Severity'] == 'error':
+                          errors.append((analyzer, diagnostic['Name'], diagnostic['Title'], diagnostic['Detail'], diagnostic.get('Context', '')))
+              if diagnostic_count == 0:
+                  raise Rejected('empty diagnostic report')
+              if exit_code == 0:
+                  if errors:
+                      raise Rejected('exit zero contradicts error diagnostics')
+                  return 'PASS'
+              known_name = 'osv-scanner-high-severity-vulnerabilities-detected'
+              expected_errors = Counter([('osv-scanner', known_name, 'osv-scanner detected a high severity issue in package braces', 'SEVERITY: HIGH in package braces, vulnerable to CVE-2026-93687', ''), ('osv-scanner', known_name, 'osv-scanner detected high severity issues', f'osv-scanner detected 1 unique high severity issues for lockfile: {expected_lockfile}', '')])
+              if Counter(errors) != expected_errors:
+                  raise Rejected('errors differ from the exact known braces finding and summary')
+              return 'BLOCKED_KNOWN_BRACES'
+
+          def classify_with_log(raw, exit_code, log, **kwargs):
+              raw_errors = validate_log(log)
+              result = classify(raw, exit_code, **kwargs)
+              expected = Counter((line for line in KNOWN_REPORT_ERROR_LINES if line.startswith('error: ')))
+              if Counter(raw_errors) != (expected if result == 'BLOCKED_KNOWN_BRACES' else Counter()):
+                  raise Rejected('raw log errors contradict structured report')
+              return result
+
+          import sys
+          # Invocation: python3 - REPORT_JSON RAW_LOG EXIT_CODE <<'PY'
+          try:
+              result = classify_with_log(Path(sys.argv[1]).read_text(), int(sys.argv[3]), Path(sys.argv[2]).read_text())
+          except (Rejected, OSError, UnicodeError, ValueError, IndexError) as exc:
+              raise SystemExit(f"REJECT: {exc}")
+          print(result)
+
+          import hashlib, os
+          summary = {"status": result, "default_validator_exit_code": int(sys.argv[3]),
+                     "scope": "Reported validator findings only; no vulnerability waiver or publication approval",
+                     "json_report_sha256": hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest(),
+                     "raw_log_sha256": hashlib.sha256(Path(sys.argv[2]).read_bytes()).hexdigest()}
+          Path("validator-result.json").write_text(json.dumps(summary, indent=2) + "\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("status=" + result + "\n")
+          PY
+
+      - name: Preserve complete validator evidence even when classification rejects it
+        if: ${{ always() && steps.validator.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: v1.1.1-default-validator-evidence
+          path: |
+            validator-raw.log
+            validator-report.json
+            validator-exit-code.txt
+            validator-tee-exit-code.txt
+            validator-result.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record exact checkout separately from workflow provenance
+        run: cp "$RUNNER_TEMP/release-source.json" release-source.json
+
+      - name: Attest archive, complete reports, and exact source record
+        id: recovery_attestation
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            ${{ env.ARCHIVE }}
+            validator-raw.log
+            validator-report.json
+            validator-result.json
+            release-source.json
+
+      - name: Preserve attestation bundle
+        env:
+          BUNDLE_PATH: ${{ steps.recovery_attestation.outputs.bundle-path }}
+        run: cp "$BUNDLE_PATH" v1.1.1-attestation.json
+
+      - name: Create only a prominently blocked draft (never update an existing release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATION_STATUS: ${{ steps.classification.outputs.status }}
+        run: |
+          cat > recovery-notes.md <<'EOF'
+          **BLOCKED — DRAFT ONLY. DO NOT PUBLISH.**
+          Staging is not validation approval or Grafana catalog acceptance.
+          If braces CVE-2026-93687 persists, this workflow deliberately fails.
+          When the finding remains, OSV also skips code-diff and LLM review; complete reports are attached.
+          Publication requires independent verification and a separate explicit exception decision.
+          Source tag v1.1.1 is unchanged at bdd65e7c74ae42d6e8e226806c22886a5529887f.
+          Workflow provenance identifies the temporary recovery branch; the attested release-source.json
+          separately records the exact source checkout and successful main CI/CodeQL.
+          EOF
+          printf '\nDefault latest validator result: %s\n' "$VALIDATION_STATUS" >> recovery-notes.md
+          test "$(gh api repos/startreedata/startree-grafana-pinot-datasource/git/ref/tags/v1.1.1 --jq .object.sha)" = adaae49c937d7aa2dcc73ce5650035bca4b04e43
+          test "$(gh api 'repos/startreedata/startree-grafana-pinot-datasource/releases?per_page=100' --jq '[.[] | select(.tag_name == "v1.1.1")] | length')" = 0
+          gh release create v1.1.1 --verify-tag --draft --target "$RELEASE_SHA" \
+            --title 'BLOCKED: v1.1.1 — default validation requires review' --notes-file recovery-notes.md \
+            "$ARCHIVE" "$ARCHIVE.sha1" "$ARCHIVE.sha256" validator-raw.log validator-report.json \
+            validator-exit-code.txt validator-tee-exit-code.txt validator-result.json release-source.json v1.1.1-attestation.json
+
+      - name: Fail the recovery whenever default validation failed
+        if: ${{ always() && steps.validator.outputs.exit-code != '0' }}
+        run: |
+          echo "::error::Default plugin validation did not pass; any staged draft remains BLOCKED."
+          exit 1
