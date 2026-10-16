@@ -587,7 +587,9 @@ func (x *ReleaseManager) buildPlugin() {
 
 func (x *ReleaseManager) buildBackend() {
 	fmt.Println("Building backend...")
-	mage.Invoke(mage.Invocation{Verbose: true, Stdout: os.Stdout, Stderr: os.Stderr})
+	if exitCode := mage.Invoke(mage.Invocation{Verbose: true, Stdout: os.Stdout, Stderr: os.Stderr}); exitCode != 0 {
+		handleError(fmt.Errorf("backend build failed: mage exited with code %d", exitCode))
+	}
 }
 
 func (x *ReleaseManager) buildFrontend() {
