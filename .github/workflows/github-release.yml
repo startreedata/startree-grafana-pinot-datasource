@@ -11,6 +11,10 @@ on:
         description: Full 40-character source commit SHA (required for validation only)
         type: string
         default: ''
+      attest_candidate:
+        description: Attest a successful v1.1.2 candidate from current main (requires validation only)
+        type: boolean
+        default: false
       version_bump:
         description: Version bump type
         type: choice
@@ -33,7 +37,7 @@ permissions: read-all
 jobs:
   test_frontend:
     name: Test Frontend
-    if: ${{ !inputs.validate_only }}
+    if: ${{ !inputs.validate_only && !inputs.attest_candidate }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -56,7 +60,7 @@ jobs:
 
   test_backend:
     name: Test Backend
-    if: ${{ !inputs.validate_only }}
+    if: ${{ !inputs.validate_only && !inputs.attest_candidate }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -100,7 +104,7 @@ jobs:
 
   build_plugin:
     name: Build Plugin
-    if: ${{ !inputs.validate_only }}
+    if: ${{ !inputs.validate_only && !inputs.attest_candidate }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -139,7 +143,7 @@ jobs:
 
   end_to_end:
     name: Test E2E
-    if: ${{ !inputs.validate_only && !inputs.skip_e2e }}
+    if: ${{ !inputs.validate_only && !inputs.attest_candidate && !inputs.skip_e2e }}
     runs-on: ubuntu-latest
     needs: [build_plugin]
     steps:
@@ -283,7 +287,7 @@ jobs:
   release:
     name: Build & Release
     needs: [test_frontend, test_backend, build_plugin, end_to_end]
-    if: ${{ !inputs.validate_only && !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
+    if: ${{ !inputs.validate_only && !inputs.attest_candidate && !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -400,7 +404,7 @@ jobs:
 
   validate_only:
     name: Full Grafana Validation (no release)
-    if: ${{ inputs.validate_only }}
+    if: ${{ inputs.validate_only || inputs.attest_candidate }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     defaults:
@@ -408,13 +412,17 @@ jobs:
         shell: bash
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     env:
       VALIDATOR_IMAGE: grafana/plugin-validator-cli@sha256:7c935b2ba3ccc5dfe6fdbec4cb0c1c6a04f7feff93cd4b3d4b6a362a5271996a
     steps:
       - name: Validate source selection
         env:
           VALIDATION_SHA: ${{ inputs.validation_sha }}
+          VALIDATE_ONLY: ${{ inputs.validate_only }}
         run: |
+          [[ "$VALIDATE_ONLY" == 'true' ]] || { echo 'attest_candidate requires validate_only'; exit 1; }
           [[ "$GITHUB_REPOSITORY" == 'startreedata/startree-grafana-pinot-datasource' ]]
           [[ "$VALIDATION_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'validation_sha must be a full commit SHA'; exit 1; }
           mkdir -p "$RUNNER_TEMP/grafana-preflight/evidence/reports" "$RUNNER_TEMP/grafana-preflight/source"
@@ -439,49 +447,82 @@ jobs:
           git archive --format=tar HEAD | tar -xf - -C "$PREFLIGHT_ROOT/source"
           git archive --format=tar.gz --output="$PREFLIGHT_ROOT/evidence/source.tar.gz" HEAD
           python3 - <<'PY'
-          import json, os, pathlib, re, subprocess
+          import hashlib, json, os, pathlib, re, subprocess
           root = pathlib.Path(os.environ['PREFLIGHT_ROOT'])
           package = json.loads(pathlib.Path('package.json').read_text())
           plugin = json.loads(pathlib.Path('src/plugin.json').read_text())
           assert plugin['id'] == 'startree-pinot-datasource' and plugin['backend'] is True
           assert plugin['executable'] == 'gpx_pinot' and plugin['info']['version'] == '%VERSION%'
           assert re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', package['version'])
+          locks = [name for name in ('yarn.lock', 'package-lock.json') if pathlib.Path(name).is_file()]
+          assert len(locks) == 1, 'Exactly one supported Node lockfile is required'
+          lockfile = locks[0]
+          manager = 'npm' if lockfile == 'package-lock.json' else 'yarn'
+          if manager == 'npm':
+              assert package.get('packageManager') == 'npm@10.8.2'
+          else:
+              assert re.fullmatch(r'yarn@1\.22\.\d+', package.get('packageManager', ''))
           go_version = re.search(r'^go (\d+\.\d+(?:\.\d+)?)$', pathlib.Path('go.mod').read_text(), re.M).group(1)
           metadata = {
               'repository': os.environ['GITHUB_REPOSITORY'],
               'source_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
               'source_tree': subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
               'package_version': package['version'], 'plugin_id': plugin['id'],
+              'package_manager': manager, 'declared_package_manager': package['packageManager'],
+              'node_lockfile': lockfile, 'node_lockfile_sha256': hashlib.sha256(pathlib.Path(lockfile).read_bytes()).hexdigest(),
               'go_mod_version': go_version, 'workflow_sha': os.environ['GITHUB_SHA'],
               'workflow_ref': os.environ['GITHUB_WORKFLOW_REF'], 'run_id': os.environ['GITHUB_RUN_ID'],
           }
           (root / 'evidence/source.json').write_text(json.dumps(metadata, indent=2) + '\n')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               print(f'go_version={go_version}', file=output)
+              print(f'package_manager={manager}', file=output)
+              print(f'lockfile={lockfile}', file=output)
               print(f'version={package["version"]}', file=output)
               print(f'archive={plugin["id"]}-{package["version"]}.zip', file=output)
           PY
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: yarn
-          cache-dependency-path: build-source/yarn.lock
+          node-version: '20.20.2'
+          cache: ${{ steps.source.outputs.package_manager }}
+          cache-dependency-path: build-source/${{ steps.source.outputs.lockfile }}
 
       - uses: actions/setup-go@v6
         with:
           go-version: ${{ steps.source.outputs.go_version }}
           cache-dependency-path: build-source/go.sum
 
-      - name: Install locked frontend dependencies
+      - name: Verify package manager and install locked frontend dependencies
         working-directory: build-source
-        run: yarn install --frozen-lockfile 2>&1 | tee "$PREFLIGHT_ROOT/evidence/install.log"
+        env:
+          PACKAGE_MANAGER: ${{ steps.source.outputs.package_manager }}
+        run: |
+          [[ "$(node --version)" == 'v20.20.2' ]] || { echo 'Unexpected Node version'; exit 1; }
+          if [[ "$PACKAGE_MANAGER" == npm ]]; then
+            [[ "$(npm --version)" == '10.8.2' ]] || { echo 'Unexpected bundled npm version'; exit 1; }
+          fi
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess
+          path = pathlib.Path(os.environ['PREFLIGHT_ROOT']) / 'evidence/source.json'
+          metadata = json.loads(path.read_text())
+          metadata['package_manager_version'] = subprocess.check_output([os.environ['PACKAGE_MANAGER'], '--version'], text=True).strip()
+          metadata['node_version'] = subprocess.check_output(['node', '--version'], text=True).strip()
+          path.write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+          if [[ "$PACKAGE_MANAGER" == npm ]]; then
+            npm ci 2>&1 | tee "$PREFLIGHT_ROOT/evidence/install.log"
+          else
+            yarn install --frozen-lockfile 2>&1 | tee "$PREFLIGHT_ROOT/evidence/install.log"
+          fi
 
       - name: Build all backend platforms and production frontend
         working-directory: build-source
+        env:
+          PACKAGE_MANAGER: ${{ steps.source.outputs.package_manager }}
         run: |
           go run cmd/release/main.go build_backend 2>&1 | tee "$PREFLIGHT_ROOT/evidence/build-backend.log"
-          yarn run build 2>&1 | tee "$PREFLIGHT_ROOT/evidence/build-frontend.log"
+          "$PACKAGE_MANAGER" run build 2>&1 | tee "$PREFLIGHT_ROOT/evidence/build-frontend.log"
           git diff --exit-code
           for target in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64 linux_arm windows_amd64; do
             executable="dist/gpx_pinot_$target"
@@ -489,12 +530,13 @@ jobs:
             [[ -s "$executable" && -x "$executable" ]]
             go version -m "$executable" >> "$PREFLIGHT_ROOT/evidence/backend-build-info.txt"
           done
-          { go version; node --version; yarn --version; docker --version; } > "$PREFLIGHT_ROOT/evidence/build-tools.txt"
+          { go version; node --version; "$PACKAGE_MANAGER" --version; docker --version; } > "$PREFLIGHT_ROOT/evidence/build-tools.txt"
 
       - name: Sign plugin
         working-directory: build-source
-        run: yarn run sign 2>&1 | tee "$PREFLIGHT_ROOT/evidence/signing.log"
+        run: '"$PACKAGE_MANAGER" run sign 2>&1 | tee "$PREFLIGHT_ROOT/evidence/signing.log"'
         env:
+          PACKAGE_MANAGER: ${{ steps.source.outputs.package_manager }}
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
 
       - name: Package signed plugin and checksums
@@ -549,9 +591,11 @@ jobs:
           printf '%s\n' "${statuses[1]}" > "$PREFLIGHT_ROOT/evidence/reports/tee.exit"
 
       - name: Require complete successful security validation
+        id: assessment
         if: ${{ always() && steps.validation.outcome == 'success' }}
         env:
           VERSION: ${{ steps.source.outputs.version }}
+          NODE_LOCKFILE: ${{ steps.source.outputs.lockfile }}
         run: |
           python3 - <<'PY'
           import json, os, pathlib
@@ -587,7 +631,7 @@ jobs:
               completed = [event for event in events if event.get('event') == 'scanner_finished' and event.get('scanner') == scanner and event.get('exit_code') in allowed_exits]
               scanners[scanner] = {'started': len(begun), 'completed': len(completed), 'required': minimum}
           osv_results = diagnostics.get('osv-scanner', [])
-          missing_locks = [lock for lock in ('go.mod', 'yarn.lock') if not any(lock in finding.get('Detail', '') for finding in osv_results)]
+          missing_locks = [lock for lock in ('go.mod', os.environ['NODE_LOCKFILE']) if not any(lock in finding.get('Detail', '') for finding in osv_results)]
           validator_exit = int((root / 'validator.exit').read_text())
           tee_exit = int((root / 'tee.exit').read_text())
           complete = not missing and not missing_locks and not osv_scan_errors and all(value['completed'] >= value['required'] and value['started'] == value['completed'] for value in scanners.values())
@@ -599,6 +643,45 @@ jobs:
           print(json.dumps(summary, indent=2))
           raise SystemExit(0 if passed else (validator_exit or tee_exit or 1))
           PY
+
+      - name: Require exact main release candidate before attestation
+        id: candidate_identity
+        if: ${{ inputs.attest_candidate && steps.assessment.outcome == 'success' }}
+        working-directory: build-source
+        env:
+          VALIDATION_SHA: ${{ inputs.validation_sha }}
+          VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          [[ "$VERSION" == '1.1.2' ]] || { echo 'Only v1.1.2 may be attested'; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$VALIDATION_SHA" ]] || { echo 'Source checkout changed'; exit 1; }
+          [[ "$(git ls-remote --exit-code origin refs/heads/main | cut -f1)" == "$VALIDATION_SHA" ]] || { echo 'Source is not current main'; exit 1; }
+          git diff --exit-code
+          jq -e --arg sha "$VALIDATION_SHA" '.source_sha == $sha and .package_version == "1.1.2"' "$PREFLIGHT_ROOT/evidence/source.json"
+
+      - name: Attest validated release candidate and evidence
+        if: ${{ inputs.attest_candidate && steps.assessment.outcome == 'success' && steps.candidate_identity.outcome == 'success' }}
+        id: candidate_attestation
+        # GitHub provenance identifies the workflow commit. Attested source.json
+        # separately records the actual source commit/tree built and validated.
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            ${{ env.PREFLIGHT_ROOT }}/evidence/${{ steps.source.outputs.archive }}
+            ${{ env.PREFLIGHT_ROOT }}/evidence/${{ steps.source.outputs.archive }}.sha1
+            ${{ env.PREFLIGHT_ROOT }}/evidence/${{ steps.source.outputs.archive }}.sha256
+            ${{ env.PREFLIGHT_ROOT }}/evidence/source.json
+            ${{ env.PREFLIGHT_ROOT }}/evidence/reports/validator.json
+
+      - name: Save candidate attestation bundle
+        if: ${{ inputs.attest_candidate && steps.candidate_attestation.outcome == 'success' }}
+        env:
+          BUNDLE_PATH: ${{ steps.candidate_attestation.outputs.bundle-path }}
+          ATTESTATION_ID: ${{ steps.candidate_attestation.outputs.attestation-id }}
+          ATTESTATION_URL: ${{ steps.candidate_attestation.outputs.attestation-url }}
+        run: |
+          [[ -s "$BUNDLE_PATH" ]]
+          cp "$BUNDLE_PATH" "$PREFLIGHT_ROOT/evidence/candidate-attestation.json"
+          jq -n --arg id "$ATTESTATION_ID" --arg url "$ATTESTATION_URL" '{id: $id, url: $url}' > "$PREFLIGHT_ROOT/evidence/candidate-attestation-receipt.json"
 
       - name: Upload signed archive, immutable source and full evidence
         if: ${{ always() && env.PREFLIGHT_ROOT != '' }}
