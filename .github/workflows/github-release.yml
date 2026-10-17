@@ -12,7 +12,7 @@ on:
         type: string
         default: ''
       attest_candidate:
-        description: Attest a successful v1.1.2 candidate from current main (requires validation only)
+        description: Attest a successful v1.1.3 candidate from current main (requires validation only)
         type: boolean
         default: false
       version_bump:
@@ -726,11 +726,11 @@ jobs:
           VALIDATION_SHA: ${{ inputs.validation_sha }}
           VERSION: ${{ steps.source.outputs.version }}
         run: |
-          [[ "$VERSION" == '1.1.2' ]] || { echo 'Only v1.1.2 may be attested'; exit 1; }
+          [[ "$VERSION" == '1.1.3' ]] || { echo 'Only v1.1.3 may be attested'; exit 1; }
           [[ "$(git rev-parse HEAD)" == "$VALIDATION_SHA" ]] || { echo 'Source checkout changed'; exit 1; }
           [[ "$(git ls-remote --exit-code origin refs/heads/main | cut -f1)" == "$VALIDATION_SHA" ]] || { echo 'Source is not current main'; exit 1; }
           git diff --exit-code
-          jq -e --arg sha "$VALIDATION_SHA" '.source_sha == $sha and .package_version == "1.1.2"' "$PREFLIGHT_ROOT/evidence/source.json"
+          jq -e --arg sha "$VALIDATION_SHA" '.source_sha == $sha and .package_version == "1.1.3"' "$PREFLIGHT_ROOT/evidence/source.json"
 
       - name: Attest validated release candidate and evidence
         if: ${{ inputs.attest_candidate && steps.assessment.outcome == 'success' && steps.candidate_identity.outcome == 'success' }}
