@@ -3,6 +3,14 @@ name: Create GitHub Release
 on:
   workflow_dispatch:
     inputs:
+      validate_only:
+        description: Build and validate immutable source without creating a release
+        type: boolean
+        default: false
+      validation_sha:
+        description: Full 40-character source commit SHA (required for validation only)
+        type: string
+        default: ''
       version_bump:
         description: Version bump type
         type: choice
@@ -25,6 +33,7 @@ permissions: read-all
 jobs:
   test_frontend:
     name: Test Frontend
+    if: ${{ !inputs.validate_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -47,6 +56,7 @@ jobs:
 
   test_backend:
     name: Test Backend
+    if: ${{ !inputs.validate_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -90,6 +100,7 @@ jobs:
 
   build_plugin:
     name: Build Plugin
+    if: ${{ !inputs.validate_only }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -128,7 +139,7 @@ jobs:
 
   end_to_end:
     name: Test E2E
-    if: ${{ !inputs.skip_e2e }}
+    if: ${{ !inputs.validate_only && !inputs.skip_e2e }}
     runs-on: ubuntu-latest
     needs: [build_plugin]
     steps:
@@ -272,7 +283,7 @@ jobs:
   release:
     name: Build & Release
     needs: [test_frontend, test_backend, build_plugin, end_to_end]
-    if: ${{ !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
+    if: ${{ !inputs.validate_only && !cancelled() && needs.test_frontend.result == 'success' && needs.test_backend.result == 'success' && needs.build_plugin.result == 'success' && (needs.end_to_end.result == 'success' || (inputs.skip_e2e && needs.end_to_end.result == 'skipped')) }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -386,3 +397,214 @@ jobs:
       # plugin marketplace validator flags this as a packagecode-version-mismatch.
       # Keeping main pinned to the last released version makes the next release's
       # `npm version <bump>` step (above) the single source of truth for version changes.
+
+  validate_only:
+    name: Full Grafana Validation (no release)
+    if: ${{ inputs.validate_only }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        shell: bash
+    permissions:
+      contents: read
+    env:
+      VALIDATOR_IMAGE: grafana/plugin-validator-cli@sha256:7c935b2ba3ccc5dfe6fdbec4cb0c1c6a04f7feff93cd4b3d4b6a362a5271996a
+    steps:
+      - name: Validate source selection
+        env:
+          VALIDATION_SHA: ${{ inputs.validation_sha }}
+        run: |
+          [[ "$GITHUB_REPOSITORY" == 'startreedata/startree-grafana-pinot-datasource' ]]
+          [[ "$VALIDATION_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'validation_sha must be a full commit SHA'; exit 1; }
+          mkdir -p "$RUNNER_TEMP/grafana-preflight/evidence/reports" "$RUNNER_TEMP/grafana-preflight/source"
+          echo "PREFLIGHT_ROOT=$RUNNER_TEMP/grafana-preflight" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.validation_sha }}
+          path: build-source
+          persist-credentials: false
+
+      - name: Export immutable source and identity
+        id: source
+        working-directory: build-source
+        env:
+          VALIDATION_SHA: ${{ inputs.validation_sha }}
+        run: |
+          [[ "$(git rev-parse HEAD)" == "$VALIDATION_SHA" ]]
+          [[ "$(git status --porcelain)" == '' ]]
+          remote_url=$(git config --get remote.origin.url)
+          [[ "${remote_url%.git}" == 'https://github.com/startreedata/startree-grafana-pinot-datasource' ]]
+          git archive --format=tar HEAD | tar -xf - -C "$PREFLIGHT_ROOT/source"
+          git archive --format=tar.gz --output="$PREFLIGHT_ROOT/evidence/source.tar.gz" HEAD
+          python3 - <<'PY'
+          import json, os, pathlib, re, subprocess
+          root = pathlib.Path(os.environ['PREFLIGHT_ROOT'])
+          package = json.loads(pathlib.Path('package.json').read_text())
+          plugin = json.loads(pathlib.Path('src/plugin.json').read_text())
+          assert plugin['id'] == 'startree-pinot-datasource' and plugin['backend'] is True
+          assert plugin['executable'] == 'gpx_pinot' and plugin['info']['version'] == '%VERSION%'
+          assert re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?', package['version'])
+          go_version = re.search(r'^go (\d+\.\d+(?:\.\d+)?)$', pathlib.Path('go.mod').read_text(), re.M).group(1)
+          metadata = {
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'source_sha': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+              'source_tree': subprocess.check_output(['git', 'rev-parse', 'HEAD^{tree}'], text=True).strip(),
+              'package_version': package['version'], 'plugin_id': plugin['id'],
+              'go_mod_version': go_version, 'workflow_sha': os.environ['GITHUB_SHA'],
+              'workflow_ref': os.environ['GITHUB_WORKFLOW_REF'], 'run_id': os.environ['GITHUB_RUN_ID'],
+          }
+          (root / 'evidence/source.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              print(f'go_version={go_version}', file=output)
+              print(f'version={package["version"]}', file=output)
+              print(f'archive={plugin["id"]}-{package["version"]}.zip', file=output)
+          PY
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: yarn
+          cache-dependency-path: build-source/yarn.lock
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ steps.source.outputs.go_version }}
+          cache-dependency-path: build-source/go.sum
+
+      - name: Install locked frontend dependencies
+        working-directory: build-source
+        run: yarn install --frozen-lockfile 2>&1 | tee "$PREFLIGHT_ROOT/evidence/install.log"
+
+      - name: Build all backend platforms and production frontend
+        working-directory: build-source
+        run: |
+          go run cmd/release/main.go build_backend 2>&1 | tee "$PREFLIGHT_ROOT/evidence/build-backend.log"
+          yarn run build 2>&1 | tee "$PREFLIGHT_ROOT/evidence/build-frontend.log"
+          git diff --exit-code
+          for target in darwin_amd64 darwin_arm64 linux_amd64 linux_arm64 linux_arm windows_amd64; do
+            executable="dist/gpx_pinot_$target"
+            if [[ "$target" == windows_* ]]; then executable="$executable.exe"; fi
+            [[ -s "$executable" && -x "$executable" ]]
+            go version -m "$executable" >> "$PREFLIGHT_ROOT/evidence/backend-build-info.txt"
+          done
+          { go version; node --version; yarn --version; docker --version; } > "$PREFLIGHT_ROOT/evidence/build-tools.txt"
+
+      - name: Sign plugin
+        working-directory: build-source
+        run: yarn run sign 2>&1 | tee "$PREFLIGHT_ROOT/evidence/signing.log"
+        env:
+          GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+
+      - name: Package signed plugin and checksums
+        working-directory: build-source
+        env:
+          ARCHIVE: ${{ steps.source.outputs.archive }}
+          VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          jq -e --arg version "$VERSION" '.id == "startree-pinot-datasource" and .info.version == $version' dist/plugin.json
+          [[ -s dist/MANIFEST.txt ]]
+          mkdir -p "$PREFLIGHT_ROOT/package"
+          cp -a dist "$PREFLIGHT_ROOT/package/startree-pinot-datasource"
+          cp dist/plugin.json "$PREFLIGHT_ROOT/evidence/plugin.json"
+          cd "$PREFLIGHT_ROOT/package"
+          zip -q -r "$PREFLIGHT_ROOT/evidence/$ARCHIVE" startree-pinot-datasource
+          cd "$PREFLIGHT_ROOT/evidence"
+          sha1sum "$ARCHIVE" | cut -d' ' -f1 > "$ARCHIVE.sha1"
+          sha256sum "$ARCHIVE" | cut -d' ' -f1 > "$ARCHIVE.sha256"
+          unzip -t "$ARCHIVE" > archive-integrity.txt
+
+      - name: Pull official validator and record tooling
+        run: |
+          # Reporting changes only: retain every default rule and severity.
+          printf 'global:\n  enabled: true\n  reportAll: true\n' > "$PREFLIGHT_ROOT/evidence/reporting-only.yaml"
+          docker pull "$VALIDATOR_IMAGE"
+          docker image inspect "$VALIDATOR_IMAGE" --format '{{json .}}' > "$PREFLIGHT_ROOT/evidence/validator-image.json"
+          docker run --rm --entrypoint /bin/sh "$VALIDATOR_IMAGE" -ec '
+            go version
+            semgrep --version
+            gosec -version
+            govulncheck -version
+            clamscan --version
+          ' > "$PREFLIGHT_ROOT/evidence/validator-tools.txt" 2>&1
+
+      - name: Run default full Grafana validator
+        id: validation
+        env:
+          ARCHIVE: ${{ steps.source.outputs.archive }}
+        run: |
+          set +e
+          docker run --rm -e DEBUG=1 \
+            -v "$PREFLIGHT_ROOT/source:/source:ro" \
+            -v "$PREFLIGHT_ROOT/evidence:/evidence" \
+            "$VALIDATOR_IMAGE" \
+            -sourceCodeUri file:///source \
+            -config /evidence/reporting-only.yaml \
+            -output-to-file /evidence/reports/validator.json \
+            "/evidence/$ARCHIVE" \
+            2>&1 | tee "$PREFLIGHT_ROOT/evidence/reports/validator.log"
+          statuses=("${PIPESTATUS[@]}")
+          printf '%s\n' "${statuses[0]}" > "$PREFLIGHT_ROOT/evidence/reports/validator.exit"
+          printf '%s\n' "${statuses[1]}" > "$PREFLIGHT_ROOT/evidence/reports/tee.exit"
+
+      - name: Require complete successful security validation
+        if: ${{ always() && steps.validation.outcome == 'success' }}
+        env:
+          VERSION: ${{ steps.source.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          root = pathlib.Path(os.environ['PREFLIGHT_ROOT']) / 'evidence/reports'
+          report = json.loads((root / 'validator.json').read_text())
+          assert report['id'] == 'startree-pinot-datasource'
+          assert report['version'] == os.environ['VERSION']
+          diagnostics = report['plugin-validator']
+          assert isinstance(diagnostics, dict)
+          errors = []
+          for analyzer, findings in diagnostics.items():
+              assert isinstance(findings, list)
+              for finding in findings:
+                  assert isinstance(finding, dict) and isinstance(finding.get('Severity'), str)
+                  if finding['Severity'] == 'error' or finding.get('Name') == 'scan-incomplete':
+                      errors.append({'analyzer': analyzer, **finding})
+          events = []
+          osv_scan_errors = []
+          for line in (root / 'validator.log').read_text().splitlines():
+              prefix = '[DEBUG] osv-scanner returned error (vulnerabilities found): '
+              if line.startswith(prefix) and line.removeprefix(prefix) != 'vulnerabilities found':
+                  osv_scan_errors.append(line)
+              if line.startswith('PLUGIN_VALIDATOR_EVENT '):
+                  events.append(json.loads(line.removeprefix('PLUGIN_VALIDATOR_EVENT ')))
+          required_analyzers = {'code-rules', 'go-sec', 'govulncheck', 'virusscan', 'osv-scanner'}
+          started = {event.get('analyzer') for event in events if event.get('event') == 'analyzer_started'}
+          finished = {event.get('analyzer') for event in events if event.get('event') == 'analyzer_finished' and event.get('failed') is False}
+          missing = sorted(required_analyzers - (started & finished))
+          scanners = {}
+          # Exit 1/3 can report findings; error/incomplete diagnostics still reject the run.
+          for scanner, (minimum, allowed_exits) in {'semgrep': (1, {0}), 'gosec': (1, {0, 1}), 'govulncheck': (7, {0, 3}), 'clamscan': (2, {0, 1})}.items():
+              begun = [event for event in events if event.get('event') == 'scanner_started' and event.get('scanner') == scanner]
+              completed = [event for event in events if event.get('event') == 'scanner_finished' and event.get('scanner') == scanner and event.get('exit_code') in allowed_exits]
+              scanners[scanner] = {'started': len(begun), 'completed': len(completed), 'required': minimum}
+          osv_results = diagnostics.get('osv-scanner', [])
+          missing_locks = [lock for lock in ('go.mod', 'yarn.lock') if not any(lock in finding.get('Detail', '') for finding in osv_results)]
+          validator_exit = int((root / 'validator.exit').read_text())
+          tee_exit = int((root / 'tee.exit').read_text())
+          complete = not missing and not missing_locks and not osv_scan_errors and all(value['completed'] >= value['required'] and value['started'] == value['completed'] for value in scanners.values())
+          passed = validator_exit == 0 and tee_exit == 0 and not errors and complete
+          summary = {'passed': passed, 'validator_exit': validator_exit, 'tee_exit': tee_exit,
+                     'errors': errors, 'missing_analyzers': missing, 'missing_lockfiles': missing_locks, 'osv_scan_errors': osv_scan_errors, 'scanners': scanners,
+                     'llm_review': 'No provider key supplied; optional default LLM review is not established by this preflight.'}
+          (root / 'assessment.json').write_text(json.dumps(summary, indent=2) + '\n')
+          print(json.dumps(summary, indent=2))
+          raise SystemExit(0 if passed else (validator_exit or tee_exit or 1))
+          PY
+
+      - name: Upload signed archive, immutable source and full evidence
+        if: ${{ always() && env.PREFLIGHT_ROOT != '' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: grafana-full-validation-${{ inputs.validation_sha }}
+          path: ${{ env.PREFLIGHT_ROOT }}/evidence/
+          if-no-files-found: error
+          retention-days: 7
