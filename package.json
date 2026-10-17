@@ -1,17 +1,17 @@
 {
   "name": "pinot",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Pinot connector for Grafana.",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
     "server": "docker compose up grafana --build",
     "dev": "webpack -w -c ./.config/webpack/webpack.config.ts --env development",
-    "dev:backend": "yarn run build && mage -v && yarn run server",
+    "dev:backend": "npm run build && mage -v && npm run server",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --cache --ignore-path ./.gitignore --ext .js,.jsx,.ts,.tsx .",
-    "lint:fix": "yarn run lint --fix",
+    "lint:fix": "npm run lint -- --fix",
     "test": "jest --passWithNoTests --maxWorkers 4",
-    "test:ci": "yarn run typecheck && yarn run lint && yarn run test",
+    "test:ci": "npm run typecheck && npm run lint && npm run test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:codegen": "playwright codegen",
@@ -36,6 +36,7 @@
     "@types/node": "^18.15.11",
     "@typescript-eslint/eslint-plugin": "^5.42.1",
     "@typescript-eslint/parser": "^5.42.1",
+    "ajv": "8.20.0",
     "copy-webpack-plugin": "^11.0.0",
     "crypto-random-string": "^5.0.0",
     "css-loader": "^6.7.3",
@@ -96,24 +97,42 @@
     "rxjs": "7.8.0",
     "tslib": "2.5.3"
   },
-  "packageManager": "yarn@1.22.19",
-  "resolutions": {
+  "packageManager": "npm@10.8.2",
+  "overrides": {
     "flatted": "^3.4.2",
     "form-data": "^4.0.6",
-    "request/form-data": "^2.5.6",
+    "request": {
+      "form-data": "^2.5.6"
+    },
     "js-cookie": "^3.0.7",
     "underscore": "^1.13.1",
     "uplot": "^1.6.31",
     "immutable": "^4.3.8",
     "lodash": "^4.18.0",
-    "serialize-javascript": "^7.0.3",
+    "serialize-javascript": "^7.1.2",
     "@babel/core": "^7.29.6",
     "qs": "^6.15.2",
     "prismjs": "^1.30.0",
     "picomatch": "^2.3.2",
     "uuid": "^11.1.1",
     "@opentelemetry/core": "^2.8.0",
-    "**/@typescript-eslint/typescript-estree/minimatch": "^9.0.7",
-    "moment": "^2.31.0"
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^9.0.7"
+    },
+    "moment": "^2.31.0",
+    "braces": "npm:@dieub/braces-depth-guard@3.0.3-pn.3",
+    "react-select": {
+      "@emotion/react": "11.11.4"
+    },
+    "@grafana/experimental": {
+      "react-use": "17.5.1"
+    },
+    "@react-aria/dialog": {
+      "@react-aria/overlays": "3.22.1",
+      "@react-aria/focus": "3.17.1"
+    },
+    "ol-mapbox-style": {
+      "ol": "7.5.2"
+    }
   }
 }

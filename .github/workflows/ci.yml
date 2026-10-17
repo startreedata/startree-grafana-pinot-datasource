@@ -64,13 +64,13 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
-      - run: yarn install --frozen-lockfile
-      - run: yarn run typecheck
-      - run: yarn run lint
-      - run: yarn run test
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test
 
   build_plugin:
     name: Build Plugin
@@ -87,12 +87,12 @@ jobs:
       - name: Install Node.js environment
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
       - run: go run cmd/release/main.go build_backend
-      - run: yarn install --frozen-lockfile
-      - run: yarn run build
+      - run: npm ci
+      - run: npm run build
 
       - run: tar cf dist.tar dist
 
@@ -120,8 +120,8 @@ jobs:
       - name: Install Node.js environment
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
       - name: Download plugin
         uses: actions/download-artifact@v7
@@ -179,13 +179,13 @@ jobs:
         run: bash tests/setup-pinot-tables.sh pinot
 
       - name: Install Playwright Browsers
-        run: yarn install --frozen-lockfile && yarn playwright install --with-deps chromium
+        run: npm ci && npm exec -- playwright install --with-deps chromium
 
       - name: Run Playwright tests
         timeout-minutes: 25
         # github reporter -> inline annotations in the step log; html -> the
         # playwright-report/ artifact uploaded below (useful for debugging failures).
-        run: yarn playwright test --reporter=github,html
+        run: npm exec -- playwright test --reporter=github,html
         env:
           # Grafana resolves these URLs from inside the compose network (service name `pinot`).
           # Local StarTree quickstart is unauthenticated, so database/token are empty.

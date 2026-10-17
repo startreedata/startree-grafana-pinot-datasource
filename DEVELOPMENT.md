@@ -11,9 +11,9 @@
 | Golang     | 1.23.0  | `brew install go@1.23`                         | https://go.dev/dl/                                      |
 | Mage       | 1.15.0  | `brew install mage`                            | https://magefile.org/                                   |
 | Docker     | -       |                                                | https://docs.docker.com/desktop/install/mac-install/    |
-| NodeJs     | 20      | `brew install nvm && nvm install 20`           | https://nodejs.org/en/download                          |
-| Yarn       | 1.22.19 | `npm install -g yarn`                          | https://classic.yarnpkg.com/en/docs/install/#mac-stable |
-| Playwright | 1.41.2  | `yarn playwright install --with-deps chromium` | https://playwright.dev/docs/intro                       |
+| NodeJs     | 20.20.2 | `brew install nvm && nvm install`              | https://nodejs.org/en/download                          |
+| npm        | 10.8.2  | Bundled with Node.js 20.20.2                    | https://docs.npmjs.com/cli/v10/                         |
+| Playwright | 1.41.2  | `npm exec -- playwright install --with-deps chromium` | https://playwright.dev/docs/intro                       |
 
 ### Backend
 
@@ -62,19 +62,42 @@ Relevant directories:
 Install dependencies:
 
 ```bash
-yarn install
+nvm use
+npm ci
 ```
+
+Use the committed `package-lock.json` with npm 10.8.2. The checked-in `.npmrc` sets
+`legacy-peer-deps=true` to preserve Yarn Classic's existing peer dependency handling
+for Grafana 10 and React 17.
+
+#### Braces security override
+
+The build dependencies temporarily replace `braces` with
+`@dieub/braces-depth-guard@3.0.3-pn.3` to address
+[CVE-2026-93687](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). The published fork
+was checked against [source commit 305a2e4bfe324bb53c336c1b03387ee1251c926f](https://github.com/dieub/braces-depth-guard/commit/305a2e4bfe324bb53c336c1b03387ee1251c926f).
+It limits combined brace/parenthesis nesting to 100. Deeper strings throw
+`SyntaxError`; direct AST operations reject excessive depth with `RangeError`.
+This intentional input limit prevents recursive stack exhaustion.
+
+npm's lockfile records the installed fork's name, version, URL, and integrity.
+Yarn Classic's alias lockfile causes Grafana's dependency scanner to identify the
+original `braces` package instead. The npm lockfile makes the patched package identity
+explicit to scanners; targeted overrides retain runtime versions npm would otherwise
+downgrade. When upstream publishes a reviewed fix, remove only the `braces` override,
+regenerate the lockfile with npm 10.8.2, and repeat the frontend checks, production
+build, and full Grafana validation.
 
 Launch backend in a separate terminal:
 
 ```bash
-yarn run dev:backend
+npm run dev:backend
 ```
 
 Build plugin in development mode and run in watch mode:
 
 ```bash
-yarn run dev
+npm run dev
 ```
 
 #### Unit tests
@@ -84,7 +107,7 @@ Unit tests are written in [Jest](https://jestjs.io/).
 Run unit tests:
 
 ```bash
-yarn run test
+npm run test
 ```
 
 #### E2E tests
@@ -106,17 +129,17 @@ PINOT_CONNECTION_AUTH_TOKEN="st-..."
 Launch the backend in a separate terminal:
 
 ```bash
-yarn run dev:backend
+npm run dev:backend
 ```
 
 Launch the E2E tests:
 
 ```bash
-yarn run test:e2e
+npm run test:e2e
 ```
 
 Launch E2E UI
 
 ```bash
-yarn run test:e2e:ui
+npm run test:e2e:ui
 ```

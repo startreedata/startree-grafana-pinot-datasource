@@ -16,10 +16,10 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
       - name: Install dependencies
-        run: yarn install
+        run: npm ci
       - name: Build plugin
         run: npm run build
       - name: Compatibility check

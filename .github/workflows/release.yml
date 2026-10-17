@@ -32,11 +32,11 @@ jobs:
       - name: Setup Node.js environment
         uses: actions/setup-node@v5
         with:
-          node-version: '20'
-          cache: 'yarn'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
       - name: Install node dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Setup Go environment
         uses: actions/setup-go@v6
