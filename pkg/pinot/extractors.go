@@ -411,8 +411,17 @@ func DecodeJsonFromColumn[V any](results *ResultTable, colIdx int) ([]V, error) 
 	return vals, nil
 }
 
+// Aliases keep complex union terms compatible with Grafana's source scanner.
+type (
+	bigIntColumnValue    = *big.Int
+	bytesColumnValue     = []byte
+	timestampColumnValue = time.Time
+	jsonColumnValue      = json.RawMessage
+	mapColumnValue       = map[string]any
+)
+
 type NativeColumnType interface {
-	int32 | int64 | float32 | float64 | *big.Int | bool | string | []byte | time.Time | json.RawMessage | map[string]any
+	int32 | int64 | float32 | float64 | bigIntColumnValue | bool | string | bytesColumnValue | timestampColumnValue | jsonColumnValue | mapColumnValue
 }
 
 func extractTypedColumn[V NativeColumnType](rowCount int, colIdx int, getter func(rowIdx int) (V, error)) ([]V, error) {
