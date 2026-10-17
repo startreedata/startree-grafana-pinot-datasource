@@ -656,7 +656,7 @@ jobs:
           NODE_LOCKFILE: ${{ steps.source.outputs.lockfile }}
         run: |
           python3 - <<'PY'
-          import json, os, pathlib
+          import hashlib, json, os, pathlib, re
           root = pathlib.Path(os.environ['PREFLIGHT_ROOT']) / 'evidence/reports'
           report = json.loads((root / 'validator.json').read_text())
           assert report['id'] == 'startree-pinot-datasource'
@@ -672,12 +672,19 @@ jobs:
                       errors.append({'analyzer': analyzer, **finding})
           events = []
           osv_scan_errors = []
+          expected_locks = ('go.mod', os.environ['NODE_LOCKFILE'])
+          lock_scans = {lock: [] for lock in expected_locks}
           for line in (root / 'validator.log').read_text().splitlines():
               prefix = '[DEBUG] osv-scanner returned error (vulnerabilities found): '
               if line.startswith(prefix) and line.removeprefix(prefix) != 'vulnerabilities found':
                   osv_scan_errors.append(line)
               if line.startswith('PLUGIN_VALIDATOR_EVENT '):
                   events.append(json.loads(line.removeprefix('PLUGIN_VALIDATOR_EVENT ')))
+              # v0.51.0 omits lockfile diagnostics for Moderate/Low-only results.
+              # Its pinned OSV library still logs every extraction and package count.
+              scan = re.fullmatch(r'\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2} INFO Scanned /source/(go\.mod|yarn\.lock|package-lock\.json) file and found (\d+) packages', line)
+              if scan and scan[1] in lock_scans:
+                  lock_scans[scan[1]].append(int(scan[2]))
           required_analyzers = {'code-rules', 'go-sec', 'govulncheck', 'virusscan', 'osv-scanner'}
           started = {event.get('analyzer') for event in events if event.get('event') == 'analyzer_started'}
           finished = {event.get('analyzer') for event in events if event.get('event') == 'analyzer_finished' and event.get('failed') is False}
@@ -688,14 +695,23 @@ jobs:
               begun = [event for event in events if event.get('event') == 'scanner_started' and event.get('scanner') == scanner]
               completed = [event for event in events if event.get('event') == 'scanner_finished' and event.get('scanner') == scanner and event.get('exit_code') in allowed_exits]
               scanners[scanner] = {'started': len(begun), 'completed': len(completed), 'required': minimum}
-          osv_results = diagnostics.get('osv-scanner', [])
-          missing_locks = [lock for lock in ('go.mod', os.environ['NODE_LOCKFILE']) if not any(lock in finding.get('Detail', '') for finding in osv_results)]
+          missing_locks = [lock for lock, counts in lock_scans.items() if len(counts) != 1 or counts[0] <= 0]
+          expected_npm_packages = None
+          if os.environ['NODE_LOCKFILE'] == 'package-lock.json':
+              lock_path = pathlib.Path(os.environ['PREFLIGHT_ROOT']) / 'source/package-lock.json'
+              metadata = json.loads((root.parent / 'source.json').read_text())
+              assert metadata['node_lockfile'] == 'package-lock.json'
+              assert hashlib.sha256(lock_path.read_bytes()).hexdigest() == metadata['node_lockfile_sha256'], 'Immutable npm lockfile changed'
+              packages = json.loads(lock_path.read_text())['packages']
+              expected_npm_packages = len({(entry.get('name') or location.rsplit('node_modules/', 1)[-1], entry['version']) for location, entry in packages.items() if location and entry.get('version')})
+              if lock_scans['package-lock.json'] != [expected_npm_packages] and 'package-lock.json' not in missing_locks:
+                  missing_locks.append('package-lock.json')
           validator_exit = int((root / 'validator.exit').read_text())
           tee_exit = int((root / 'tee.exit').read_text())
           complete = not missing and not missing_locks and not osv_scan_errors and all(value['completed'] >= value['required'] and value['started'] == value['completed'] for value in scanners.values())
           passed = validator_exit == 0 and tee_exit == 0 and not errors and complete
           summary = {'passed': passed, 'validator_exit': validator_exit, 'tee_exit': tee_exit,
-                     'errors': errors, 'missing_analyzers': missing, 'missing_lockfiles': missing_locks, 'osv_scan_errors': osv_scan_errors, 'scanners': scanners,
+                     'errors': errors, 'missing_analyzers': missing, 'missing_lockfiles': missing_locks, 'osv_lock_scans': lock_scans, 'expected_npm_packages': expected_npm_packages, 'osv_scan_errors': osv_scan_errors, 'scanners': scanners,
                      'llm_review': 'No provider key supplied; optional default LLM review is not established by this preflight.'}
           (root / 'assessment.json').write_text(json.dumps(summary, indent=2) + '\n')
           print(json.dumps(summary, indent=2))
