@@ -28,7 +28,9 @@ func EscapeStringLiteral(value string) string {
 	return strings.ReplaceAll(value, `'`, `''`)
 }
 
-func LiteralExpr[T string | int | int64 | int32 | bool | float32 | float64](val T) SqlExpr {
+func LiteralExpr[T interface {
+	string | int | int64 | int32 | bool | float32 | float64
+}](val T) SqlExpr {
 	switch valTyped := any(val).(type) {
 	case bool:
 		if valTyped {

@@ -123,7 +123,7 @@ func (query PinotQlCodeQuery) resolveLogColumnAlias() string {
 	return getOrFallback(query.LogColumnAlias, BuilderLogColumn)
 }
 
-func getOrFallback[T ~string](value T, fallback T) T {
+func getOrFallback[T interface{ ~string }](value T, fallback T) T {
 	if value != "" {
 		return value
 	} else {
