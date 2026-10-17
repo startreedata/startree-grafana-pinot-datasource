@@ -516,6 +516,64 @@ jobs:
             yarn install --frozen-lockfile 2>&1 | tee "$PREFLIGHT_ROOT/evidence/install.log"
           fi
 
+      - name: Verify locked Linux native SWC without a WASM fallback
+        if: ${{ steps.source.outputs.package_manager == 'npm' }}
+        working-directory: build-source
+        run: |
+          node <<'JS'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { createRequire } = require('node:module');
+          const evidence = { platform: process.platform, architecture: process.arch, passed: false };
+          let failure;
+          try {
+            assert.equal(process.platform, 'linux');
+            assert.equal(process.arch, 'x64');
+            assert.equal(process.env.SWC_BINARY_PATH, undefined, 'SWC_BINARY_PATH must not override the locked binary');
+            const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+            const coreLock = lock.packages['node_modules/@swc/core'];
+            assert.equal(coreLock.version, '1.6.5');
+            const platforms = Object.entries(coreLock.optionalDependencies);
+            assert.equal(platforms.length, 10, 'All declared SWC platform packages must be locked');
+            evidence.lockedPlatforms = platforms.map(([name, version]) => {
+              const entry = lock.packages[`node_modules/${name}`];
+              assert.ok(entry, `Missing locked platform ${name}`);
+              assert.equal(entry.optional, true, `${name} must remain optional`);
+              assert.equal(entry.version, version);
+              assert.equal(version, coreLock.version);
+              assert.match(entry.integrity, /^sha512-[A-Za-z0-9+/]+={0,2}$/);
+              return { name, version, integrity: entry.integrity };
+            });
+            const nativeName = '@swc/core-linux-x64-gnu';
+            const nativeLock = lock.packages[`node_modules/${nativeName}`];
+            const corePath = require.resolve('@swc/core/package.json');
+            const fromCore = createRequire(corePath);
+            const corePackage = JSON.parse(fs.readFileSync(corePath, 'utf8'));
+            const nativePackage = JSON.parse(fs.readFileSync(fromCore.resolve(`${nativeName}/package.json`), 'utf8'));
+            assert.equal(corePackage.version, coreLock.version);
+            assert.equal(nativePackage.name, nativeName);
+            assert.equal(nativePackage.version, nativeLock.version);
+            const swc = require('@swc/core');
+            const metadata = swc.getBinaryMetadata();
+            assert.equal(metadata.target, 'x86_64-unknown-linux-gnu');
+            const transformed = swc.transformSync('const answer = 40 + 2;', { jsc: { parser: { syntax: 'ecmascript' } } });
+            assert.equal(typeof transformed.code, 'string');
+            assert.match(transformed.code, /answer/);
+            assert.throws(() => fromCore.resolve('@swc/wasm'), error => error.code === 'MODULE_NOT_FOUND', 'No untracked SWC WASM fallback may be installed');
+            Object.assign(evidence, {
+              version: corePackage.version, nativePackage: nativeName, target: metadata.target,
+              lockIntegrity: nativeLock.integrity, transformPassed: true, noWasmFallback: true, passed: true,
+            });
+          } catch (error) {
+            failure = error;
+            evidence.error = error.message;
+          }
+          fs.writeFileSync(path.join(process.env.PREFLIGHT_ROOT, 'evidence/swc-native.json'), JSON.stringify(evidence, null, 2) + '\n');
+          console.log(JSON.stringify(evidence, null, 2));
+          if (failure) throw failure;
+          JS
+
       - name: Build all backend platforms and production frontend
         working-directory: build-source
         env:
