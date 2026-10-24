@@ -129,7 +129,8 @@ jobs:
   end_to_end:
     name: Test E2E
     if: ${{ !inputs.skip_e2e }}
-    runs-on: ubuntu-latest
+    # Match CI: Playwright 1.56.1 supports Ubuntu 24.04, not Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     needs: [build_plugin]
     steps:
       - uses: actions/checkout@v5
