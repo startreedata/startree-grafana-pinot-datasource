@@ -373,7 +373,7 @@ jobs:
             node -e 'const p = require("./package.json"); const l = require("./package-lock.json"); const v = process.env.EXISTING_VERSION; if (p.version !== v || l.version !== v || l.packages[""].version !== v) process.exit(1)'
           elif [ "$BRANCH_NAME" = "main" ]; then
             version=$(npm version "$VERSION_BUMP")
-            git push --follow-tags
+            git push --atomic --follow-tags origin "HEAD:refs/heads/$BRANCH_NAME"
           else
             sanitized_branch=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//;s/-$//')
             current_version=$(node -p "require('./package.json').version.split(/[+-]/)[0]")
@@ -385,7 +385,7 @@ jobs:
             git add package.json package-lock.json
             git commit -m "$version"
             git tag -a "$version" -m "$version"
-            git push origin HEAD "$version"
+            git push --atomic origin "HEAD:refs/heads/$BRANCH_NAME" "refs/tags/$version"
           fi
           python3 "$RUNNER_TEMP/grafana-release-guard.py" "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
