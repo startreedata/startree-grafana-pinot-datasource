@@ -105,7 +105,12 @@ jobs:
 
   end_to_end:
     name: Test E2E
-    runs-on: ubuntu-latest
+    # Pin to ubuntu-24.04: `playwright install --with-deps` only knows how to
+    # install system dependencies for OSes Playwright officially supports, and
+    # the pinned Playwright 1.56.1 does not support ubuntu-latest once it rolls
+    # to 26.04 ("Playwright does not support chromium on ubuntu26.04-x64"),
+    # which fails the browser-install step before any test runs.
+    runs-on: ubuntu-24.04
     needs: [ build_plugin ]
     steps:
       - uses: actions/checkout@v5
