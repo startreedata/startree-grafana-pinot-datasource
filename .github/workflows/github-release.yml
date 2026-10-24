@@ -3,6 +3,16 @@ name: Create GitHub Release
 on:
   workflow_dispatch:
     inputs:
+      existing_version:
+        description: Rebuild an unpublished existing version without changing its tag (for example 1.1.4)
+        type: string
+        required: false
+        default: ''
+      existing_commit:
+        description: Exact 40-character commit for existing_version (required for recovery)
+        type: string
+        required: false
+        default: ''
       version_bump:
         description: Version bump type
         type: choice
@@ -16,11 +26,15 @@ on:
         type: boolean
         default: false
 
-run-name: Release (${{ inputs.version_bump }}) from ${{ github.ref_name }} by @${{ github.actor }}
+run-name: Release (${{ inputs.existing_version || inputs.version_bump }}) from ${{ github.ref_name }} by @${{ github.actor }}
 
 # Default least privilege for all jobs; the release job below grants the extra
 # write scopes it needs (id-token / contents / attestations).
 permissions: read-all
+
+concurrency:
+  group: grafana-public-release
+  cancel-in-progress: false
 
 jobs:
   test_frontend:
@@ -28,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.existing_version && inputs.existing_commit || github.sha }}
 
       - name: Read .nvmrc
         id: node_version
@@ -50,6 +66,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.existing_version && inputs.existing_commit || github.sha }}
 
       - name: Log in to Docker registry
         uses: docker/login-action@v4
@@ -93,6 +111,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.existing_version && inputs.existing_commit || github.sha }}
 
       - name: Read .nvmrc
         id: node_version
@@ -134,6 +154,8 @@ jobs:
     needs: [build_plugin]
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.existing_version && inputs.existing_commit || github.sha }}
 
       - name: Log in to Docker registry
         uses: docker/login-action@v4
@@ -282,6 +304,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.existing_version && inputs.existing_commit || github.sha }}
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
@@ -312,10 +335,43 @@ jobs:
         env:
           BRANCH_NAME: ${{ github.ref_name }}
           VERSION_BUMP: ${{ inputs.version_bump }}
+          EXISTING_VERSION: ${{ inputs.existing_version }}
+          EXISTING_COMMIT: ${{ inputs.existing_commit }}
+          SKIP_E2E: ${{ inputs.skip_e2e }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          # Enumerate authenticated releases so drafts cannot hide behind a tag lookup.
+          cat > "$RUNNER_TEMP/grafana-release-guard.py" <<'PYTHON'
+          import json
+          import os
+          import sys
+          import urllib.request
+          for page in range(1, 101):
+              url = f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/releases?per_page=100&page={page}"
+              request = urllib.request.Request(url, headers={
+                  'Authorization': f"Bearer {os.environ['GH_TOKEN']}",
+                  'Accept': 'application/vnd.github+json',
+              })
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  releases = json.load(response)
+              if any(release['tag_name'] == sys.argv[1] for release in releases):
+                  raise SystemExit('Refusing to replace an existing release or draft')
+              if len(releases) < 100:
+                  break
+          else:
+              raise SystemExit('Could not confirm release destination is empty')
+          PYTHON
           git config --global user.email "ci@startree.ai"
           git config --global user.name "CI"
-          if [ "$BRANCH_NAME" = "main" ]; then
+          if [ -n "$EXISTING_VERSION" ]; then
+            [[ "$EXISTING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || exit 1
+            [[ "$EXISTING_COMMIT" =~ ^[0-9a-f]{40}$ ]] || exit 1
+            test "$SKIP_E2E" != true
+            version="v$EXISTING_VERSION"
+            test "$(git rev-parse HEAD)" = "$EXISTING_COMMIT"
+            test "$(git rev-parse "$version^{commit}")" = "$EXISTING_COMMIT"
+            node -e 'const p = require("./package.json"); const l = require("./package-lock.json"); const v = process.env.EXISTING_VERSION; if (p.version !== v || l.version !== v || l.packages[""].version !== v) process.exit(1)'
+          elif [ "$BRANCH_NAME" = "main" ]; then
             version=$(npm version "$VERSION_BUMP")
             git push --follow-tags
           else
@@ -331,6 +387,7 @@ jobs:
             git tag -a "$version" -m "$version"
             git push origin HEAD "$version"
           fi
+          python3 "$RUNNER_TEMP/grafana-release-guard.py" "$version"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build backend
@@ -344,15 +401,27 @@ jobs:
         run: |
           GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
           GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
+          EXPECTED_VERSION="${{ steps.version.outputs.version }}"
+          test "$GRAFANA_PLUGIN_VERSION" = "${EXPECTED_VERSION#v}"
           echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
           echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
           echo "archive=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip" >> $GITHUB_OUTPUT
           echo "archive-sha1sum=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip.sha1" >> $GITHUB_OUTPUT
 
+      - name: Use signing tool runtime
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.22.1'
+
       - name: Sign plugin
-        run: npm run sign
+        run: npx --yes @grafana/sign-plugin@4.0.0
         env:
           GRAFANA_ACCESS_POLICY_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN_FOR_SIGNING }}
+
+      - name: Restore build tool runtime
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: '.nvmrc'
 
       - name: Package plugin
         run: |
@@ -369,11 +438,18 @@ jobs:
         with:
           subject-path: ${{ steps.metadata.outputs.archive }}
 
+      - name: Verify release destination is still empty
+        run: python3 "$RUNNER_TEMP/grafana-release-guard.py" "${{ steps.version.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.version }}
           draft: true
+          overwrite_files: false
+          fail_on_unmatched_files: true
           generate_release_notes: true
           token: ${{ secrets.GITHUB_TOKEN }}
           files: |
