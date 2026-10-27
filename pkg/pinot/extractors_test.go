@@ -141,6 +141,39 @@ func TestExtractColumn(t *testing.T) {
 	}
 }
 
+func TestExtractColumn_ArrayDataTypes(t *testing.T) {
+	client := setupPinotAndCreateClient(t)
+	resp, err := client.ExecuteSqlQuery(context.Background(),
+		NewSqlQuery(`SELECT "__float_array", "__string_array" FROM "arrayDataTypes" ORDER BY "__timestamp" ASC`))
+	require.NoError(t, err, "client.ExecuteSqlQuery()")
+	require.True(t, resp.HasData(), "resp.HasData()")
+	assert.Equal(t, []string{DataTypeFloatArray, DataTypeStringArray}, resp.ResultTable.DataSchema.ColumnDataTypes)
+
+	// Pinot stores empty multi-value columns as the default null value, which is -Infinity for FLOAT.
+	testCases := []struct {
+		column string
+		want   []json.RawMessage
+	}{
+		{column: "__float_array", want: []json.RawMessage{
+			json.RawMessage(`[1.5,-2.25,0.0]`),
+			json.RawMessage(`[3.25]`),
+			json.RawMessage(`["-Infinity"]`)}},
+		{column: "__string_array", want: []json.RawMessage{
+			json.RawMessage(`["first","second"]`),
+			json.RawMessage(`["only"]`),
+			json.RawMessage(`["null"]`)}},
+	}
+	for _, tt := range testCases {
+		t.Run(tt.column, func(t *testing.T) {
+			colIdx, err := GetColumnIdx(resp.ResultTable, tt.column)
+			require.NoError(t, err)
+			got, err := ExtractColumn(resp.ResultTable, colIdx)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestParseJodaTime(t *testing.T) {
 	testCases := []struct {
 		ts      string

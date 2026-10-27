@@ -13,7 +13,8 @@ The Pinot Data Source Plugin for Grafana enables you to visualize and query data
 
 ## Array columns
 
-`STRING_ARRAY` columns retain their values as JSON arrays in table results.
+`STRING_ARRAY` and `FLOAT_ARRAY` columns retain their values as JSON arrays in table results.
+Non-finite floats are returned as the strings `"NaN"`, `"Infinity"` and `"-Infinity"`.
 Empty arrays and null cells remain distinct. Other array types remain unsupported.
 
 ## System Requirements
