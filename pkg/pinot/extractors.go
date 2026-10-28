@@ -38,6 +38,7 @@ const (
 	DataTypeTimestamp   = "TIMESTAMP"
 	DataTypeString      = "STRING"
 	DataTypeStringArray = "STRING_ARRAY"
+	DataTypeFloatArray  = "FLOAT_ARRAY"
 	DataTypeJson        = "JSON"
 	DataTypeBytes       = "BYTES"
 	DataTypeBigDecimal  = "BIG_DECIMAL"
@@ -128,21 +129,21 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 			return defaultIfNil[string](results.Rows[rowIdx][colIdx], ""), nil
 		})
 	case DataTypeStringArray:
-		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
-			value := results.Rows[rowIdx][colIdx]
-			if value == nil {
-				return json.RawMessage("null"), nil
+		return extractArrayColumn(results, colIdx, "string", func(element any) bool {
+			_, ok := element.(string)
+			return ok
+		})
+	case DataTypeFloatArray:
+		return extractArrayColumn(results, colIdx, "float", func(element any) bool {
+			switch v := element.(type) {
+			case json.Number:
+				return true
+			case string:
+				// Pinot quotes non-finite floats.
+				return v == "NaN" || v == "Infinity" || v == "-Infinity"
+			default:
+				return false
 			}
-			values, ok := value.([]any)
-			if !ok {
-				return nil, fmt.Errorf("expected string array, got %T", value)
-			}
-			for idx, element := range values {
-				if _, ok := element.(string); !ok {
-					return nil, fmt.Errorf("expected string at array index %d, got %T", idx, element)
-				}
-			}
-			return json.Marshal(values)
 		})
 	case DataTypeBytes:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) ([]byte, error) {
@@ -172,6 +173,27 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 			Err:       fmt.Errorf("unknown data type `%s`", colDataType),
 		}
 	}
+}
+
+// extractArrayColumn encodes each array cell as JSON.
+// Null cells are encoded as `null` so they remain distinct from empty arrays.
+func extractArrayColumn(results *ResultTable, colIdx int, elemType string, isValid func(any) bool) ([]json.RawMessage, error) {
+	return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (json.RawMessage, error) {
+		value := results.Rows[rowIdx][colIdx]
+		if value == nil {
+			return json.RawMessage("null"), nil
+		}
+		values, ok := value.([]any)
+		if !ok {
+			return nil, fmt.Errorf("expected %s array, got %T", elemType, value)
+		}
+		for idx, element := range values {
+			if !isValid(element) {
+				return nil, fmt.Errorf("expected %s at array index %d, got %T", elemType, idx, element)
+			}
+		}
+		return json.Marshal(values)
+	})
 }
 
 func ParseJodaTime(ts string) (time.Time, error) {
@@ -281,8 +303,8 @@ func ExtractColumnAsStrings(results *ResultTable, colIdx int) ([]string, error) 
 func ExtractColumnAsExprs(results *ResultTable, colIdx int) ([]string, error) {
 	colDataType := results.DataSchema.ColumnDataTypes[colIdx]
 	switch colDataType {
-	case DataTypeStringArray:
-		return nil, errors.New("STRING_ARRAY SQL expressions are not supported")
+	case DataTypeStringArray, DataTypeFloatArray:
+		return nil, fmt.Errorf("%s SQL expressions are not supported", colDataType)
 	case DataTypeInt, DataTypeLong, DataTypeFloat, DataTypeDouble:
 		return extractTypedColumn[string](results.RowCount(), colIdx, func(rowIdx int) (string, error) {
 			if str, ok := (results.Rows[rowIdx][colIdx]).(string); ok {

@@ -1,0 +1,17 @@
+{
+  "tableName": "arrayDataTypes",
+  "tableType": "OFFLINE",
+  "segmentsConfig": {
+    "timeColumnName": "__timestamp",
+    "schemaName": "arrayDataTypes",
+    "replication": "1"
+  },
+  "tenants": {
+    "broker": "DefaultTenant",
+    "server": "DefaultTenant"
+  },
+  "tableIndexConfig": {
+    "loadMode": "MMAP"
+  },
+  "metadata": {}
+}

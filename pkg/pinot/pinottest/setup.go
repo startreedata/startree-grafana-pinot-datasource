@@ -83,6 +83,11 @@ func CreateTestTables() {
 		configFile: "data/allDataTypes_offline_table_config.json",
 		dataFile:   "data/allDataTypes_data.json",
 	}, {
+		tableName:  "arrayDataTypes",
+		schemaFile: "data/arrayDataTypes_schema.json",
+		configFile: "data/arrayDataTypes_offline_table_config.json",
+		dataFile:   "data/arrayDataTypes_data.json",
+	}, {
 		tableName:  "hourlyEvents",
 		schemaFile: "data/hourlyEvents_schema.json",
 		configFile: "data/hourlyEvents_offline_table_config.json",

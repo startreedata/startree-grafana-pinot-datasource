@@ -1,0 +1,23 @@
+{
+  "schemaName": "arrayDataTypes",
+  "dimensionFieldSpecs": [
+    {
+      "name": "__float_array",
+      "dataType": "FLOAT",
+      "singleValueField": false
+    },
+    {
+      "name": "__string_array",
+      "dataType": "STRING",
+      "singleValueField": false
+    }
+  ],
+  "dateTimeFieldSpecs": [
+    {
+      "name": "__timestamp",
+      "dataType": "TIMESTAMP",
+      "format": "TIMESTAMP",
+      "granularity": "1:MILLISECONDS"
+    }
+  ]
+}
