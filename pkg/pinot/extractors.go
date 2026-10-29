@@ -103,7 +103,13 @@ func ExtractColumn(results *ResultTable, colIdx int) (any, error) {
 	case DataTypeInt:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int32, error) {
 			val, err := defaultIfNil[json.Number](results.Rows[rowIdx][colIdx], json.Number("0")).Int64()
-			return int32(val), err // #nosec G115 -- Pinot DataTypeInt columns are 32-bit by definition; value always fits in int32
+			if err != nil {
+				return 0, err
+			}
+			if val < math.MinInt32 || val > math.MaxInt32 {
+				return 0, fmt.Errorf("value %d out of range for INT column", val)
+			}
+			return int32(val), nil
 		})
 	case DataTypeLong:
 		return extractTypedColumn(results.RowCount(), colIdx, func(rowIdx int) (int64, error) {
