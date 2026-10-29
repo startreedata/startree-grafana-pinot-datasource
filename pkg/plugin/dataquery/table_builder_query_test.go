@@ -218,9 +218,7 @@ GROUP BY
     "fabric"
 ORDER BY
     "SUM(value)" DESC
-LIMIT 10;
-
-SET timeoutMs=1;`
+LIMIT 10;`
 
 	got, err := query.RenderSqlWithMacros()
 	assert.NoError(t, err)

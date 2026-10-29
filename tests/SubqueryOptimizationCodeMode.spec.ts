@@ -3,13 +3,14 @@ import {
   addPanelInCodeMode,
   addPinotQueryVariable,
   queryEditorTest as test,
+  runQueryAndGetQueryOptions,
 } from '@helpers/helpers';
 
 /**
  * Subquery optimization e2e tests — Code (raw SQL) mode.
  *
  * Exercises the Code-mode interpolation path added in PR #184:
- *   - High-cardinality (>1000) `IN (${var:singlequote})` → subquery substitution + auto-appended SET useMultistageEngine=true;
+ *   - High-cardinality (>1000) `IN (${var:singlequote})` → subquery substitution + auto-injected useMultistageEngine=true query option
  *   - Low-cardinality `IN (${var:singlequote})` → IN literals expansion (no MSE)
  *   - Non-IN context (`WHERE col = $var`) → variable left for templateSrv (no rewrite)
  *   - User-supplied `SET useMultistageEngine=false;` is preserved (not duplicated/overridden)
@@ -20,9 +21,9 @@ import {
  */
 test.describe('Code mode subquery optimization', () => {
   /**
-   * Scenario 6: `IN (${var:singlequote})` with var >1000 → subquery + SET MSE auto-appended.
+   * Scenario 6: `IN (${var:singlequote})` with var >1000 → subquery + MSE auto-injected.
    */
-  test('6. Code mode IN with high-card var → subquery + SET MSE auto-appended', async ({ page, datasource }) => {
+  test('6. Code mode IN with high-card var → subquery + MSE auto-injected', async ({ page, datasource }) => {
     await openNewDashboard(page);
 
     await addPinotQueryVariable(page, datasource.name, {
@@ -51,7 +52,7 @@ test.describe('Code mode subquery optimization', () => {
     await expect(page.getByTestId('sql-preview')).toContainText(
       `entity IN (SELECT DISTINCT entity FROM highCardinality LIMIT 4000)`
     );
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -85,7 +86,7 @@ test.describe('Code mode subquery optimization', () => {
     // Country has ~250 distinct values — below threshold, expanded as quoted literals.
     await expect(page.getByTestId('sql-preview')).toContainText(`country IN (`);
     await expect(page.getByTestId('sql-preview')).not.toContainText(`SELECT DISTINCT country FROM`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -121,7 +122,7 @@ test.describe('Code mode subquery optimization', () => {
     await expect(page.getByTestId('sql-preview')).not.toContainText(
       `entity = (SELECT DISTINCT entity FROM`
     );
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -155,7 +156,7 @@ test.describe('Code mode subquery optimization', () => {
 
     // User's `=false` should be preserved as-is; no `=true` line added by the auto-append guard.
     await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=false`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -192,7 +193,7 @@ test.describe('Code mode subquery optimization', () => {
     // this happens via MacroEngine.ExpandMacros which runs over the entire interpolated SQL.
     await expect(page.getByTestId('sql-preview')).toContainText(`"highCardinality"`);
     await expect(page.getByTestId('sql-preview')).not.toContainText(`$__table`);
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 });
 

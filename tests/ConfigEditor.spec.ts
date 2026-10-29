@@ -32,7 +32,7 @@ test.describe('Add Pinot Datasource', async () => {
     await expect(page.getByText('Pinot data source is working')).toBeVisible();
   });
 
-  test('Query Options set at data source are visible in query editor', async ({ page }) => {
+  test('Query Options set at data source are saved', async ({ page }) => {
     await page.getByPlaceholder('Controller URL').fill(Env.PinotConnectionControllerUrl);
     await page.getByPlaceholder('Broker URL').fill(Env.PinotConnectionBrokerUrl);
     await page.getByPlaceholder('default').fill(Env.PinotConnectionDatabase);
@@ -46,8 +46,13 @@ test.describe('Add Pinot Datasource', async () => {
     await page.getByTestId('input-query-option-value').getByRole('textbox').fill('100');
     await page.locator('body').click();
 
+    // The SQL preview doesn't list query options, so check the saved datasource settings instead.
+    const saveRequest = page.waitForRequest(
+      (request) => request.method() === 'PUT' && request.url().includes('/api/datasources/')
+    );
     const healthCheckResponse = page.waitForResponse('http://localhost:3000/api/datasources/*/health');
     await page.getByLabel('Data source settings page Save and Test button').click();
+    expect((await saveRequest).postDataJSON().jsonData.queryOptions).toContainEqual({ name: 'timeoutMs', value: '100' });
     await healthCheckResponse;
     await expect(page.getByText('Pinot data source is working')).toBeVisible();
     const datasourceUrl = page.url();
@@ -71,9 +76,7 @@ GROUP BY
     "__time"
 ORDER BY
     "__time" DESC
-LIMIT 100000;
-
-SET timeoutMs=100;`
+LIMIT 100000;`
     );
 
     await page.goto(datasourceUrl);

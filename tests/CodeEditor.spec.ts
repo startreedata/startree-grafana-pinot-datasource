@@ -5,6 +5,7 @@ import {
   checkRunQueryButton,
   checkTextForm,
   queryEditorTest as test,
+  runQueryAndGetQueryOptions,
   selectDatasource,
   setCodeEditorContent,
   setExploreTimeWindow,
@@ -42,6 +43,8 @@ test.describe('Explore with Code Editor', async () => {
     await checkTextForm(page.getByTestId('input-time-alias').getByRole('textbox')));
 
   test('Modify sql', async ({ page }) => await checkSqlEditor(page));
+
+  test('Set query options', async ({ page }) => await checkQueryOptions(page));
 
   test.describe('Visualize time series', async () => {
     test.beforeEach(async ({ page }) => {
@@ -248,6 +251,19 @@ LIMIT 100000;`
   await expect(codebox).toContainText(
     `123456SELECT $__timeGroup("hoursSinceEpoch", '12:HOURS') AS $__timeAlias(), SUM("views") AS $__metricAlias()FROM $__table()WHERE $__timeFilter("hoursSinceEpoch", '12:HOURS')GROUP BY $__timeAlias()ORDER BY $__timeAlias() DESCLIMIT 100000;Enter to Rename, Shift+Enter to Preview`
   );
+}
+
+async function checkQueryOptions(page: Page) {
+  await page.getByTestId('select-table-dropdown').click();
+  await page.getByText('complex_website', { exact: true }).click();
+
+  await page.getByTestId('add-query-option-btn').click();
+  await page.getByTestId('select-query-option-name').click();
+  await expect(page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true })).toBeVisible();
+  await page.getByLabel('Select options menu').getByText('timeoutMs', { exact: true }).click();
+  await page.getByTestId('input-query-option-value').getByRole('textbox').fill('1000');
+
+  expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'timeoutMs', value: '1000' });
 }
 
 async function checkTimeSeriesRenders(page: Page) {

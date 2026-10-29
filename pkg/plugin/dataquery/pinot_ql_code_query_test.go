@@ -10,6 +10,9 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/test_helpers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -333,4 +336,37 @@ func TestExtractColumnToField(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 		})
 	}
+}
+
+// fakeControllerClient returns a client pointed at an httptest server that serves an empty table
+// schema and table config.
+func fakeControllerClient(t *testing.T) *pinot.Client {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/schema") {
+			_, _ = w.Write([]byte(`{"schemaName":"benchmark"}`))
+		} else {
+			_, _ = w.Write([]byte(`{}`))
+		}
+	}))
+	t.Cleanup(server.Close)
+	return pinot.NewPinotClient(server.Client(), pinot.ClientProperties{ControllerUrl: server.URL})
+}
+
+func TestPinotQlCodeQuery_RenderSqlQuery_QueryOptions(t *testing.T) {
+	client := fakeControllerClient(t)
+	query := PinotQlCodeQuery{
+		Code:         `select 1`,
+		TableName:    "benchmark",
+		IntervalSize: 1 * time.Second,
+		QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}, {Name: "", Value: ""}},
+	}
+
+	got, err := query.RenderSqlQuery(context.Background(), client)
+	require.NoError(t, err)
+	assert.Equal(t, pinot.SqlQuery{
+		Sql:          `select 1`,
+		QueryOptions: []pinot.QueryOption{{Name: "timeoutMs", Value: "1"}},
+	}, got)
 }
