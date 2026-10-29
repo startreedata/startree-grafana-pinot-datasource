@@ -1,4 +1,4 @@
-FROM grafana/grafana:11.5.2
+FROM grafana/grafana:12.4.14
 
 ENV GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=startree-pinot-datasource
 
