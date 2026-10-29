@@ -103,9 +103,7 @@ FROM $__table()
 WHERE $__timeFilter("ts")
     AND ("service_name" = 'frontend')
 ORDER BY "ts" DESC
-LIMIT 100000;
-
-SET timeoutMs=1000;`
+LIMIT 100000;`
 
 	got, err := query.RenderSqlWithMacros()
 	assert.NoError(t, err)

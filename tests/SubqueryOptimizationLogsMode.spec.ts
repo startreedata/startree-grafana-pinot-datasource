@@ -3,6 +3,7 @@ import {
   addPinotQueryVariable,
   queryEditorTest as test,
   selectDatasource,
+  runQueryAndGetQueryOptions,
 } from '@helpers/helpers';
 
 /**
@@ -48,7 +49,7 @@ test.describe('Logs mode subquery optimization', () => {
     await expect(page.getByTestId('sql-preview')).toContainText(
       `("entity" in (SELECT DISTINCT entity FROM highCardinality LIMIT 4000))`
     );
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -76,7 +77,7 @@ test.describe('Logs mode subquery optimization', () => {
     });
 
     await expect(page.getByTestId('sql-preview')).toContainText(`("category" in ('cache', 'api'))`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 
   /**
@@ -109,7 +110,7 @@ test.describe('Logs mode subquery optimization', () => {
     // The injected subquery should have $__table() expanded to the panel's table name.
     await expect(page.getByTestId('sql-preview')).toContainText(`"highCardinality"`);
     await expect(page.getByTestId('sql-preview')).not.toContainText(`$__table`);
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
   });
 });
 

@@ -132,10 +132,77 @@ func TestPinotClient_RenderSql(t *testing.T) {
 	}
 
 	got := client.RenderSql(query)
-	assert.Equal(t, `select * from benchmark;
+	assert.Equal(t, `select * from benchmark`, got)
+}
 
-SET enableNullHandling=true;
-SET maxExecutionThreads=5;
-SET useMultistageEngine=true;
-SET timeoutMs=100;`, got)
+func TestPinotClient_sqlRequestOf(t *testing.T) {
+	client := NewPinotClient(http.DefaultClient, ClientProperties{
+		QueryOptions: []QueryOption{
+			{Name: "useMultistageEngine", Value: "true"},
+			{Name: "timeoutMs", Value: "100"},
+		},
+	})
+
+	got := client.sqlRequestOf(SqlQuery{
+		Sql:   `select * from benchmark`,
+		Trace: true,
+		QueryOptions: []QueryOption{
+			{Name: "enableNullHandling", Value: "true"},
+			{Name: "maxExecutionThreads", Value: "5"},
+		},
+	})
+	assert.Equal(t, sqlRequest{
+		Sql:          `select * from benchmark`,
+		QueryOptions: "enableNullHandling=true;maxExecutionThreads=5;useMultistageEngine=true;timeoutMs=100",
+		Trace:        true,
+	}, got)
+}
+
+func TestPinotClient_mergeQueryOptions(t *testing.T) {
+	tests := []struct {
+		name          string
+		queryOptions  []QueryOption
+		clientOptions []QueryOption
+		want          []QueryOption
+	}{
+		{"nil", nil, nil, nil},
+		{"query then client",
+			[]QueryOption{{Name: "a", Value: "1"}},
+			[]QueryOption{{Name: "b", Value: "2"}},
+			[]QueryOption{{Name: "a", Value: "1"}, {Name: "b", Value: "2"}}},
+		{"client wins on duplicate",
+			[]QueryOption{{Name: "timeoutMs", Value: "5"}, {Name: "a", Value: "1"}},
+			[]QueryOption{{Name: "timeoutMs", Value: "100"}},
+			[]QueryOption{{Name: "timeoutMs", Value: "100"}, {Name: "a", Value: "1"}}},
+		{"duplicate names are case-insensitive",
+			[]QueryOption{{Name: "TimeoutMs", Value: "5"}},
+			[]QueryOption{{Name: "timeoutms", Value: "100"}},
+			[]QueryOption{{Name: "timeoutms", Value: "100"}}},
+		{"last wins within query options",
+			[]QueryOption{{Name: "a", Value: "1"}, {Name: "A", Value: "2"}},
+			nil,
+			[]QueryOption{{Name: "A", Value: "2"}}},
+		{"strips surrounding single quotes",
+			[]QueryOption{{Name: "filterOperator", Value: "'SCAN'"}, {Name: "b", Value: "'"}, {Name: "c", Value: "it's"}},
+			nil,
+			[]QueryOption{{Name: "filterOperator", Value: "SCAN"}, {Name: "b", Value: "'"}, {Name: "c", Value: "it's"}}},
+		{"strips only the outer pair of quotes",
+			[]QueryOption{{Name: "a", Value: "'a'b'"}},
+			nil,
+			[]QueryOption{{Name: "a", Value: "a'b"}}},
+		{"trims names and values",
+			[]QueryOption{{Name: " a ", Value: " 1 "}},
+			nil,
+			[]QueryOption{{Name: "a", Value: "1"}}},
+		{"drops empty options",
+			[]QueryOption{{Name: "", Value: "1"}, {Name: "a", Value: " "}, {Name: "b", Value: "''"}, {Name: "c", Value: "3"}},
+			[]QueryOption{{Name: " ", Value: " "}},
+			[]QueryOption{{Name: "c", Value: "3"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewPinotClient(http.DefaultClient, ClientProperties{QueryOptions: tt.clientOptions})
+			assert.Equal(t, tt.want, client.mergeQueryOptions(tt.queryOptions))
+		})
+	}
 }

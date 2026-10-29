@@ -23,6 +23,7 @@ type PinotQlCodeQuery struct {
 	Legend            string
 	SeriesLimit       int
 	AdHocFilters      []pinot.AdHocFilter
+	QueryOptions      []QueryOption
 }
 
 func (query PinotQlCodeQuery) Validate() error {
@@ -90,7 +91,7 @@ func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		}
 	}
 
-	return pinot.NewSqlQuery(sql), nil
+	return newSqlQueryWithOptions(sql, query.QueryOptions), nil
 }
 
 func (query PinotQlCodeQuery) ExtractResults(results *pinot.ResultTable) (*data.Frame, error) {

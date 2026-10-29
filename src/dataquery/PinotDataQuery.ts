@@ -2,6 +2,7 @@ import { DataQuery } from '@grafana/schema';
 import { DimensionFilter } from './DimensionFilter';
 import { OrderByClause } from './OrderByClause';
 import { QueryOption } from './QueryOption';
+import { EditorMode } from './EditorMode';
 import { getTemplateSrv } from '@grafana/runtime';
 import { AdHocVariableFilter, ScopedVars, TypedVariableModel } from '@grafana/data';
 import { PinotVariableQuery } from './PinotVariableQuery';
@@ -243,15 +244,15 @@ function variableNameOf(ref: string): string {
   return match ? match[1] : '';
 }
 
-function appendSetMultiStageEngine(sql: string): string {
-  // Skip if user has already set useMultistageEngine — respect their explicit value (true or false).
-  // Match is case-insensitive so we honor either useMultiStageEngine or useMultistageEngine spellings.
-  if (/SET\s+useMultistageEngine\s*=/i.test(sql)) {
-    return sql;
+// Adds useMultistageEngine=true unless the options already set it. An explicit value, true or false, always wins.
+function withUseMultistageEngine(queryOptions: QueryOption[] = []): QueryOption[] {
+  const hasUseMultiStageEngineConfigured = queryOptions.some(
+    (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
+  );
+  if (hasUseMultiStageEngineConfigured) {
+    return queryOptions;
   }
-  const trimmed = sql.trimEnd();
-  const separator = trimmed.endsWith(';') ? '\n' : ';\n';
-  return `${trimmed}${separator}\nSET useMultistageEngine=true;`;
+  return [...queryOptions, { name: 'useMultistageEngine', value: 'true' }];
 }
 
 /**
@@ -382,7 +383,7 @@ export function interpolateVariables(
   const replace = (target: string) => templateSrv.replace(target, scopedVars);
   const replaceIfExists = (target?: string | null) => (target ? replace(target) : undefined);
 
-  // --- Builder mode: interpolate filters and inject useMultiStageEngine into queryOptions ---
+  // --- Builder mode: interpolate filters and flag whether a subquery was injected ---
   function interpolateVariablesInBuilderMode() {
     let subqueryWasInjected = false;
 
@@ -414,20 +415,10 @@ export function interpolateVariables(
       value: replaceIfExists(value),
     }));
 
-    if (subqueryWasInjected) {
-      // Check if user has already configured useMultistageEngine — don't override their explicit setting.
-      const hasUseMultiStageEngineConfigured = queryOptions?.some(
-        (queryOption) => queryOption.name?.toLowerCase() === 'usemultistageengine'
-      );
-      if (!hasUseMultiStageEngineConfigured) {
-        queryOptions = [...(queryOptions ?? []), { name: 'useMultistageEngine', value: 'true' }];
-      }
-    }
-
-    return { filters, queryOptions };
+    return { filters, queryOptions, subqueryWasInjected };
   }
 
-  // --- Code mode: interpolate pinotQlCode and append SET if subquery was injected ---
+  // --- Code mode: interpolate pinotQlCode and flag whether queryOptions needs useMultistageEngine ---
   function interpolateVariablesInCodeMode() {
     // Expand $__conditionalAll first so a dropped/kept condition flows through subquery replacement
     // and templateSrv.replace like any other SQL.
@@ -439,20 +430,32 @@ export function interpolateVariables(
       ? replaceAllVariableExpressionsWithSubqueries(sqlWithConditionals, variables)
       : undefined;
 
+    let subqueryNeedsMultistageEngine = false;
     if (pinotQlCodeAfterSubqueryReplacement !== undefined &&
         pinotQlCodeAfterSubqueryReplacement !== sqlWithConditionals) {
       // Subquery replaced a variable — MSE is required for subquery execution.
-      // Append SET so it's visible in SQL Preview and sent to Pinot.
-      pinotQlCodeAfterSubqueryReplacement = appendSetMultiStageEngine(pinotQlCodeAfterSubqueryReplacement);
+      // Skip only when the code sets useMultistageEngine to false. A SET ...=true line is not enough,
+      // because Pinot ignores SET statements when the request sets sqlOptionsMode=IGNORE.
+      // Match is case-insensitive so we honor either useMultiStageEngine or useMultistageEngine spellings.
+      subqueryNeedsMultistageEngine = !/\bSET\s+useMultistageEngine\s*=\s*['"]?false['"]?\s*(;|$)/im.test(
+        pinotQlCodeAfterSubqueryReplacement
+      );
     } else if (pinotQlCodeAfterSubqueryReplacement === undefined) {
       pinotQlCodeAfterSubqueryReplacement = sqlWithConditionals;
     }
 
-    return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement) };
+    return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement), subqueryNeedsMultistageEngine };
   }
 
-  const { filters, queryOptions } = interpolateVariablesInBuilderMode();
-  const { pinotQlCode } = interpolateVariablesInCodeMode();
+  const { filters, queryOptions: interpolatedQueryOptions, subqueryWasInjected } = interpolateVariablesInBuilderMode();
+  const { pinotQlCode, subqueryNeedsMultistageEngine } = interpolateVariablesInCodeMode();
+  // Subqueries need the multi-stage engine. Use the flag from the active editor mode only, because the query
+  // can keep stale filters or code from the other mode.
+  const needsMultistageEngine =
+    query.editorMode === EditorMode.Code ? subqueryNeedsMultistageEngine : subqueryWasInjected;
+  const queryOptions = needsMultistageEngine
+    ? withUseMultistageEngine(interpolatedQueryOptions)
+    : interpolatedQueryOptions;
 
   return {
     ...query,

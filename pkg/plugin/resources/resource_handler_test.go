@@ -28,9 +28,7 @@ GROUP BY
 ORDER BY
     "__time" DESC,
     "fabric" DESC
-LIMIT 100000;
-
-SET timeoutMs=1;`
+LIMIT 100000;`
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/sql/builder", `{
@@ -96,9 +94,7 @@ GROUP BY
     "fabric"
 ORDER BY
     "SUM(value)" DESC
-LIMIT 100000;
-
-SET timeoutMs=1;`
+LIMIT 100000;`
 
 	var got map[string]interface{}
 	doPostRequest(t, server.URL+"/preview/table/sql", `{
@@ -294,9 +290,7 @@ WHERE "logColumn" IS NOT NULL
 ORDER BY
     "ts" ASC,
     "__message" ASC
-LIMIT 10;
-
-SET myOption=myOptionValue;`
+LIMIT 10;`
 
 		payload["expandMacros"] = true
 		var data bytes.Buffer
@@ -321,9 +315,7 @@ WHERE "logColumn" IS NOT NULL
 ORDER BY
     "ts" ASC,
     "__message" ASC
-LIMIT 10;
-
-SET myOption=myOptionValue;`
+LIMIT 10;`
 
 		payload["expandMacros"] = false
 		var data bytes.Buffer
