@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"strings"
 )
 
 var _ ExecutableQuery = TableBuilderQuery{}
@@ -118,7 +119,7 @@ func (query TableBuilderQuery) RenderSqlWithMacros() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return newSqlQueryWithOptions(sql, query.QueryOptions).RenderSql(), nil
+	return strings.TrimSpace(sql), nil
 }
 
 // selectExprs returns the projection: dimensions first, then aggregations, each fully rendered

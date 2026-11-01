@@ -3,6 +3,7 @@ import {
   addPinotQueryVariable,
   queryEditorTest as test,
   selectDatasource,
+  runQueryAndGetQueryOptions,
 } from '@helpers/helpers';
 
 /**
@@ -49,7 +50,7 @@ test.describe('Subquery optimization for template variables', () => {
     await expect(page.getByTestId('sql-preview')).toContainText(
       `("entity" in (SELECT DISTINCT entity FROM highCardinality LIMIT 4000))`
     );
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
 
     await assertPanelRendersWithoutError(page);
   });
@@ -80,7 +81,7 @@ test.describe('Subquery optimization for template variables', () => {
     // Should show quoted literals, not a subquery — country has ~250 distinct values, below threshold.
     await expect(page.getByTestId('sql-preview')).toContainText(`("country" in (`);
     await expect(page.getByTestId('sql-preview')).not.toContainText(`SELECT DISTINCT country FROM`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
 
     await assertPanelRendersWithoutError(page);
   });
@@ -109,7 +110,7 @@ test.describe('Subquery optimization for template variables', () => {
     });
 
     await expect(page.getByTestId('sql-preview')).toContainText(`("browser" in ('edge', 'chrome', 'firefox'))`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
 
     await assertPanelRendersWithoutError(page);
   });
@@ -138,7 +139,7 @@ test.describe('Subquery optimization for template variables', () => {
     });
 
     await expect(page.getByTestId('sql-preview')).toContainText(`("browser" = 'chrome')`);
-    await expect(page.getByTestId('sql-preview')).not.toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).not.toContainEqual({ name: 'useMultistageEngine', value: 'true' });
 
     await assertPanelRendersWithoutError(page);
   });
@@ -170,7 +171,7 @@ test.describe('Subquery optimization for template variables', () => {
     await expect(page.getByTestId('sql-preview')).toContainText(
       `("entity" not in (SELECT DISTINCT entity FROM highCardinality LIMIT 4000))`
     );
-    await expect(page.getByTestId('sql-preview')).toContainText(`SET useMultistageEngine=true;`);
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'useMultistageEngine', value: 'true' });
 
     await assertPanelRendersWithoutError(page);
   });

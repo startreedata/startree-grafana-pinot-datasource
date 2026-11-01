@@ -226,9 +226,7 @@ GROUP BY
     $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;
-
-SET timeoutMs=1;`
+LIMIT 100000;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)
@@ -271,9 +269,7 @@ GROUP BY
     $__timeAlias()
 ORDER BY
     $__timeAlias() DESC
-LIMIT 100000;
-
-SET timeoutMs=1;`
+LIMIT 100000;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)
@@ -311,9 +307,7 @@ WHERE
     "my_metric" IS NOT NULL
     AND $__timeFilter("my_time_column")
 ORDER BY $__timeAlias() DESC
-LIMIT 1000;
-
-SET timeoutMs=1;`
+LIMIT 1000;`
 
 		got, err := query.RenderSqlWithMacros()
 		assert.NoError(t, err)

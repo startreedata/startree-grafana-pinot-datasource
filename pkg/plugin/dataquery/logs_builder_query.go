@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"strings"
 	"time"
 )
 
@@ -148,7 +149,7 @@ func (query LogsBuilderQuery) RenderSqlWithMacros() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return newSqlQueryWithOptions(sql, query.QueryOptions).RenderSql(), nil
+	return strings.TrimSpace(sql), nil
 
 }
 

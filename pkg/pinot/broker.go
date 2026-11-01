@@ -88,36 +88,54 @@ func NewSqlQuery(sql string) SqlQuery {
 	return SqlQuery{Sql: sql}
 }
 
-// RenderSql returns the SQL query string with all query options appended.
-func (query SqlQuery) RenderSql() string {
-	sql := strings.TrimSpace(query.Sql)
-	if len(query.QueryOptions) == 0 {
-		return sql
-	}
-
-	var builder strings.Builder
-	builder.WriteString(sql)
-	if strings.HasSuffix(sql, ";") {
-		builder.WriteString("\n")
-	} else {
-		builder.WriteString(";\n")
-	}
-	for _, o := range query.QueryOptions {
-		builder.WriteString(fmt.Sprintf("\nSET %s=%s;", o.Name, o.Value))
-	}
-	return builder.String()
-}
-
 func (query SqlQuery) cacheKey() string {
 	return fmt.Sprintf("%v", query)
 }
 
-// RenderSql renders the actual SQL query string sent to Pinot.
-// The rendered query includes all query options provided in the client properties and query.
+// RenderSql returns the SQL that ExecuteSqlQuery sends: the query's SQL with the client's row limit applied.
 func (p *Client) RenderSql(query SqlQuery) string {
-	query.Sql = applyRowLimit(query.Sql, p.properties.MaxRowLimit)
-	query.QueryOptions = slices.Concat(query.QueryOptions, p.properties.QueryOptions)
-	return query.RenderSql()
+	return applyRowLimit(query.Sql, p.properties.MaxRowLimit)
+}
+
+// mergeQueryOptions returns options followed by the client's options. For each option it:
+//   - trims the name and the value.
+//   - removes one pair of single quotes around the value. Users quoted string values because the SET
+//     syntax needed them, and Pinot's SET parser removed the quotes.
+//   - drops the option if the name or the value is empty.
+//
+// On a duplicate name (case-insensitive), the last option wins. So a datasource option overrides a query option
+// with the same name.
+func (p *Client) mergeQueryOptions(options []QueryOption) []QueryOption {
+	var merged []QueryOption
+	indexByName := make(map[string]int)
+	for _, o := range slices.Concat(options, p.properties.QueryOptions) {
+		name := strings.TrimSpace(o.Name)
+		value := strings.TrimSpace(o.Value)
+		if len(value) >= 2 && strings.HasPrefix(value, "'") && strings.HasSuffix(value, "'") {
+			value = value[1 : len(value)-1]
+		}
+		if name == "" || value == "" {
+			continue
+		}
+
+		key := strings.ToLower(name)
+		if i, ok := indexByName[key]; ok {
+			merged[i] = QueryOption{Name: name, Value: value}
+		} else {
+			indexByName[key] = len(merged)
+			merged = append(merged, QueryOption{Name: name, Value: value})
+		}
+	}
+	return merged
+}
+
+// renderQueryOptions formats options for the broker request's queryOptions field, e.g. "k1=v1;k2=v2".
+func renderQueryOptions(options []QueryOption) string {
+	pairs := make([]string, len(options))
+	for i, o := range options {
+		pairs[i] = o.Name + "=" + o.Value
+	}
+	return strings.Join(pairs, ";")
 }
 
 var limitClauseRe = regexp.MustCompile(`(?i)\blimit\s+\d`)
@@ -134,6 +152,21 @@ func applyRowLimit(sql string, maxRowLimit int) string {
 	return fmt.Sprintf("%s LIMIT %d", trimmed, maxRowLimit)
 }
 
+// sqlRequest is the body of a broker /query/sql request.
+type sqlRequest struct {
+	Sql          string `json:"sql"`
+	QueryOptions string `json:"queryOptions,omitempty"`
+	Trace        bool   `json:"trace,omitempty"`
+}
+
+func (p *Client) sqlRequestOf(query SqlQuery) sqlRequest {
+	return sqlRequest{
+		Sql:          p.RenderSql(query),
+		QueryOptions: renderQueryOptions(p.mergeQueryOptions(query.QueryOptions)),
+		Trace:        query.Trace,
+	}
+}
+
 func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerResponse, error) {
 	if p.properties.QueryTimeout > 0 {
 		var cancel context.CancelFunc
@@ -141,14 +174,7 @@ func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerRe
 		defer cancel()
 	}
 
-	request := struct {
-		Sql   string `json:"sql"`
-		Trace bool   `json:"trace,omitempty"`
-	}{
-		Sql:   p.RenderSql(query),
-		Trace: query.Trace,
-	}
-
+	request := p.sqlRequestOf(query)
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(request); err != nil {
 		return nil, err
@@ -159,7 +185,7 @@ func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerRe
 		return nil, err
 	}
 
-	p.logger.Info("pinot/http: Executing sql query.", "queryString", request.Sql)
+	p.logger.Info("pinot/http: Executing sql query.", "queryString", request.Sql, "queryOptions", request.QueryOptions)
 
 	var respData BrokerResponse
 	if err = p.doRequestAndDecodeResponse(req, &respData); err != nil {

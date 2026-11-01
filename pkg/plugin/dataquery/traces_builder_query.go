@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"strings"
 )
 
 var _ ExecutableQuery = TracesBuilderQuery{}
@@ -135,7 +136,7 @@ func (query TracesBuilderQuery) RenderSqlWithMacros() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return newSqlQueryWithOptions(sql, query.QueryOptions).RenderSql(), nil
+	return strings.TrimSpace(sql), nil
 }
 
 // selectExprs projects each mapped span column under the fixed alias BuildTracesDataFrame reads.

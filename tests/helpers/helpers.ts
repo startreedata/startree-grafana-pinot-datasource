@@ -216,6 +216,28 @@ export async function checkRunQueryButton(page: Page) {
   await dataQueryResponse;
 }
 
+interface DataQueryRequestQuery {
+  queryType?: string;
+  queryOptions?: Array<{ name?: string; value?: string }>;
+}
+
+function pinotQlQueriesOf(postData: { queries?: DataQueryRequestQuery[] } | null): DataQueryRequestQuery[] {
+  return (postData?.queries ?? []).filter((query) => query.queryType === 'PinotQL');
+}
+
+/**
+ * Clicks Run query and returns the query options of the PinotQL queries in the resulting /api/ds/query request.
+ * The SQL preview doesn't list query options, so this is how a spec checks they reach the query. Grafana
+ * interpolates queries in the frontend, so the options include any the plugin injects, such as useMultistageEngine.
+ */
+export async function runQueryAndGetQueryOptions(page: Page): Promise<DataQueryRequestQuery['queryOptions']> {
+  const dataQueryRequest = page.waitForRequest(
+    (request) => request.url().includes('/api/ds/query') && pinotQlQueriesOf(request.postDataJSON()).length > 0
+  );
+  await page.getByTestId('run-query-btn').click({ force: true });
+  return pinotQlQueriesOf((await dataQueryRequest).postDataJSON()).flatMap((query) => query.queryOptions ?? []);
+}
+
 export async function checkFilterEditor(page: Page) {
   const columnsResponse = page.waitForResponse('/**/resources/columns');
   const distinctValuesResponse = page.waitForResponse('/**/resources/query/distinctValues');

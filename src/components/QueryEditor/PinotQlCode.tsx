@@ -13,6 +13,7 @@ import { SelectTable } from './SelectTable';
 import { DisplayType } from '../../dataquery/DisplayType';
 import { CodeQuery } from '../../pinotql';
 import { InputSeriesLimit } from './InputLimit';
+import { SelectQueryOptions } from './SelectQueryOptions';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -86,6 +87,10 @@ export function PinotQlCode(props: {
         onChange={(pinotQlCode) => onChange({ ...savedParams, pinotQlCode })}
         datasource={datasource}
         tableName={savedParams.tableName}
+      />
+      <SelectQueryOptions
+        selected={savedParams.queryOptions}
+        onChange={(queryOptions) => onChangeAndRun({ ...savedParams, queryOptions })}
       />
       <SqlPreview sql={resources.sqlPreview} />
       {savedParams.displayType === DisplayType.TIMESERIES && (

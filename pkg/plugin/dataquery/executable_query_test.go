@@ -84,6 +84,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 				TableName:    "benchmark",
 				PinotQlCode:  `select 1;`,
 				IntervalSize: 1 * time.Second,
+				QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 			})
 			if assert.IsType(t, PinotQlCodeQuery{}, got) {
 				assert.Equal(t, PinotQlCodeQuery{
@@ -91,6 +92,7 @@ func TestExecutableQueryFrom(t *testing.T) {
 					TableName:    "benchmark",
 					TimeRange:    timeRange,
 					IntervalSize: 1 * time.Second,
+					QueryOptions: []QueryOption{{Name: "timeoutMs", Value: "1"}},
 				}, got.(PinotQlCodeQuery))
 			}
 		})

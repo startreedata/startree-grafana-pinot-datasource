@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Send query options in the request body's `queryOptions` field instead of as `SET` statements in the SQL, so they work when `sqlOptionsMode` is `IGNORE` or `REJECT`.
+- Add a Query Options editor to code mode.
+- The SQL preview shows the SQL sent to Pinot, without the query options.
+
 ## 1.1.3 (2026-10-17)
 
 - Upgrade Grafana Go SDK to v0.297.0 and its required backend dependencies, clearing Grafana's SDK-age warning.

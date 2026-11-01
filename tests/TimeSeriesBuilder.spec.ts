@@ -7,6 +7,7 @@ import {
   checkRunQueryButton,
   checkTextForm,
   queryEditorTest as test,
+  runQueryAndGetQueryOptions,
   selectDatasource,
   setExploreTimeWindow,
   setPanelTimeWindow,
@@ -163,8 +164,9 @@ test.describe('Create Panel with Time Series Builder', async () => {
     await page.waitForTimeout(500);
     
     const sqlPreviewResponse = page.waitForResponse('/**/resources/preview/sql/builder');
-    await page.getByTestId('run-query-btn').click();
+    const queryOptions = await runQueryAndGetQueryOptions(page);
     await sqlPreviewResponse;
+    expect(queryOptions).toContainEqual({ name: 'timeoutMs', value: '1000' });
     
     await expect(page.getByTestId('sql-preview')).toContainText(
       // language=text
@@ -182,9 +184,7 @@ GROUP BY
     "__time"
 ORDER BY
     "browser" ASC
-LIMIT 4000;
-
-SET timeoutMs=1000;`
+LIMIT 4000;`
     );
   });
 
@@ -245,7 +245,7 @@ SET timeoutMs=1000;`
     await addDashboardConstant(page, 'queryOptionValue', '100');
     await page.getByTestId('input-query-option-value').getByRole('textbox').fill('$queryOptionValue');
 
-    await page.getByTestId('run-query-btn').click();
+    expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'timeoutMs', value: '100' });
     await expect(page.getByTestId('sql-preview')).toContainText(
       // language=text
       `SELECT
@@ -262,9 +262,7 @@ GROUP BY
     "__time"
 ORDER BY
     "__metric" ASC
-LIMIT 100000;
-
-SET timeoutMs=100;`
+LIMIT 100000;`
     );
   });
 });
@@ -549,7 +547,7 @@ async function checkTimeSeriesRendersAllFields(page: Page) {
   await page.getByTestId('input-series-limit').getByRole('textbox').fill('2');
   await page.getByTestId('input-metric-legend').getByRole('textbox').fill('{{browser}}');
 
-  await page.getByTestId('run-query-btn').click();
+  expect(await runQueryAndGetQueryOptions(page)).toContainEqual({ name: 'timeoutMs', value: '1000' });
 
   await page.waitForTimeout(500);
 
@@ -569,9 +567,7 @@ GROUP BY
     "__time"
 ORDER BY
     "browser" ASC
-LIMIT 4000;
-
-SET timeoutMs=1000;`
+LIMIT 4000;`
   );
 
   await expect(page.getByText('No data')).not.toBeVisible();
