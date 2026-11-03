@@ -44,7 +44,10 @@ func ExtractTimeSeriesDataFrame(params TimeSeriesExtractorParams, results *pinot
 		return nil, err
 	}
 
-	timeCol, metricSeries := PivotToTimeSeries(metrics, params.Legend, params.SeriesLimit)
+	timeCol, metricSeries, err := PivotToTimeSeries(metrics, params.Legend, params.SeriesLimit)
+	if err != nil {
+		return nil, err
+	}
 	fields := make([]*data.Field, 0, len(metricSeries)+1)
 	for _, series := range metricSeries {
 		field := data.NewField(params.MetricName, series.labels, series.values)
@@ -118,7 +121,7 @@ func ExtractMetrics(results *pinot.ResultTable, timeColumnAlias string, timeColu
 	return metrics, nil
 }
 
-func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time, []MetricSeries) {
+func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time, []MetricSeries, error) {
 	if limit < 1 {
 		limit = DefaultSeriesLimit
 	}
@@ -135,7 +138,10 @@ func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time,
 	var seriesMapper SeriesMapper
 
 	for _, met := range metrics {
-		tsKey := seriesMapper.GetKey(met.Labels)
+		tsKey, err := seriesMapper.GetKey(met.Labels)
+		if err != nil {
+			return nil, nil, err
+		}
 		if tsKey >= limit {
 			continue
 		}
@@ -162,7 +168,7 @@ func PivotToTimeSeries(metrics []Metric, legend string, limit int) ([]time.Time,
 		metricSeries = append(metricSeries, ts)
 	}
 	sort.Slice(metricSeries, func(i, j int) bool { return metricSeries[i].sortKey < metricSeries[j].sortKey })
-	return timeCol, metricSeries
+	return timeCol, metricSeries, nil
 }
 
 func GetTimeColumn(metrics []Metric) []time.Time {
@@ -188,7 +194,7 @@ type SeriesMapper struct {
 // * The slice of labels must always be the same length.
 // * The slice of labels must always have the same names.
 // * The names must appear in the same order.
-func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
+func (x *SeriesMapper) GetKey(labels []MetricLabel) (int, error) {
 	if x.order == nil {
 		x.order = make(map[string]int, len(labels))
 		for i := range labels {
@@ -197,25 +203,25 @@ func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
 	}
 
 	if len(labels) != len(x.order) {
-		panic(fmt.Sprintf(
-			"SeriesMapper.GetKey() called with different length of labels: %d (got) vs %d (want)", len(labels), len(x.order)))
+		return 0, fmt.Errorf(
+			"SeriesMapper.GetKey() called with different length of labels: %d (got) vs %d (want)", len(labels), len(x.order))
 	}
 
 	for i := range labels {
 		name := labels[i].name
 		order, ok := x.order[name]
 		if !ok {
-			panic(fmt.Sprintf("SeriesMapper.GetKey() encountered new label `%s`", name))
+			return 0, fmt.Errorf("SeriesMapper.GetKey() encountered new label `%s`", name)
 		}
 
 		if order != i {
-			panic(fmt.Sprintf(
-				"SeriesMapper.GetKey() called with different order for label `%s`: %d (got) vs %d (want)", name, i, order))
+			return 0, fmt.Errorf(
+				"SeriesMapper.GetKey() called with different order for label `%s`: %d (got) vs %d (want)", name, i, order)
 		}
 	}
 
 	if len(labels) == 0 {
-		return 0
+		return 0, nil
 	}
 
 	if x.nodes == nil {
@@ -239,7 +245,7 @@ func (x *SeriesMapper) GetKey(labels []MetricLabel) int {
 		curNode[finalVal] = x.next
 		x.next++
 	}
-	return curNode[finalVal]
+	return curNode[finalVal], nil
 }
 
 type LegendFormatter struct {

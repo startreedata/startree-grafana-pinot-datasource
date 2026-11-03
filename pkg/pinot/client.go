@@ -42,6 +42,7 @@ type QueryOption struct {
 }
 
 type Logger interface {
+	Debug(msg string, args ...interface{})
 	Info(msg string, args ...interface{})
 	Error(msg string, args ...interface{})
 }
@@ -118,9 +119,9 @@ func (p *Client) doRequestAndDecodeResponse(req *http.Request, dest interface{})
 func (p *Client) doRequest(req *http.Request) (*http.Response, error) {
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.String(), err)
+		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.Path, err)
 	}
-	p.logger.Info("pinot/http: Outgoing http request completed.", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
+	p.logger.Info("pinot/http: Outgoing http request completed.", "method", req.Method, "path", req.URL.Path, "status", resp.StatusCode)
 	return resp, err
 }
 
@@ -138,13 +139,15 @@ func (p *Client) newErrorFromResponseBody(ctx context.Context, resp *http.Respon
 	return newHttpStatusError(resp.StatusCode, body.String())
 }
 
+// HttpStatusError carries the upstream response body for programmatic inspection only.
+// Error() deliberately omits the body so that it never ends up in logs.
 type HttpStatusError struct {
 	StatusCode int
 	Body       string
 }
 
 func (x *HttpStatusError) Error() string {
-	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, x.Body)
+	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, http.StatusText(x.StatusCode))
 }
 
 func IsStatusNotFoundError(err error) bool {

@@ -185,7 +185,8 @@ func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerRe
 		return nil, err
 	}
 
-	p.logger.Info("pinot/http: Executing sql query.", "queryString", request.Sql, "queryOptions", request.QueryOptions)
+	p.logger.Info("pinot/http: Executing sql query.", "trace", request.Trace)
+	p.logger.Debug("pinot/http: Sql query text.", "queryString", request.Sql, "queryOptions", request.QueryOptions)
 
 	var respData BrokerResponse
 	if err = p.doRequestAndDecodeResponse(req, &respData); err != nil {
