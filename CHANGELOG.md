@@ -6,7 +6,7 @@
 - Add a Query Options editor to code mode.
 - The SQL preview shows the SQL sent to Pinot, without the query options.
 - Stop logging query text and request URLs at Info level; query text is now logged at Debug level only, and requests log only method, path and status.
-- Keep upstream response bodies out of error messages for non-200 Pinot responses.
+- Keep upstream response bodies for non-200 Pinot responses out of logs; they are still shown in the panel error.
 - Return an error instead of panicking when a time-series response has inconsistent labels.
 
 ## 1.1.8 (2026-10-29)

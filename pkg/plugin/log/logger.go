@@ -3,6 +3,7 @@ package log
 import (
 	"context"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"sync"
 )
 
@@ -18,7 +19,7 @@ func Info(msg string, args ...interface{})       { logger.Info(msg, args...) }
 func Warn(msg string, args ...interface{})       { logger.Warn(msg, args...) }
 func Error(msg string, args ...interface{})      { logger.Error(msg, args...) }
 func With(args ...interface{}) log.Logger        { return logger.With(args...) }
-func WithError(err error) log.Logger             { return logger.With("error", err) }
+func WithError(err error) log.Logger             { return logger.With("error", pinot.RedactError(err)) } // Keep upstream response bodies out of logs.
 func Level() log.Level                           { return logger.Level() }
 func FromContext(ctx context.Context) log.Logger { return logger.FromContext(ctx) }
 

@@ -139,15 +139,25 @@ func (p *Client) newErrorFromResponseBody(ctx context.Context, resp *http.Respon
 	return newHttpStatusError(resp.StatusCode, body.String())
 }
 
-// HttpStatusError carries the upstream response body for programmatic inspection only.
-// Error() deliberately omits the body so that it never ends up in logs.
+// HttpStatusError includes the upstream response body in Error(), because it is often the only
+// diagnostic shown to the user (e.g. PromQL query errors). Use RedactError before logging.
 type HttpStatusError struct {
 	StatusCode int
 	Body       string
 }
 
 func (x *HttpStatusError) Error() string {
-	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, http.StatusText(x.StatusCode))
+	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, x.Body)
+}
+
+// RedactError returns an error that is safe to log: if err is or wraps an HttpStatusError,
+// only its status code is kept and the response body is dropped. Other errors are returned as is.
+func RedactError(err error) error {
+	var statusErr *HttpStatusError
+	if errors.As(err, &statusErr) {
+		return fmt.Errorf("pinot/http non-200 response: (%d) %s", statusErr.StatusCode, http.StatusText(statusErr.StatusCode))
+	}
+	return err
 }
 
 func IsStatusNotFoundError(err error) bool {
