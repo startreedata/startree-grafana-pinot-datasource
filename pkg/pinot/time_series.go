@@ -151,7 +151,8 @@ func (p *Client) ExecuteTimeSeriesQuery(ctx context.Context, req *TimeSeriesRang
 	}
 
 	var resp TimeSeriesQueryResponse
-	p.logger.Info("pinot/http: Executing timeseries query.", "queryString", req.Query)
+	p.logger.Info("pinot/http: Executing timeseries query.", "table", tableMetadata.TableNameAndType, "language", req.Language)
+	p.logger.Debug("pinot/http: Timeseries query text.", "queryString", req.Query)
 	if err := p.doRequestAndDecodeResponse(httpReq, &resp); err != nil {
 		return nil, err
 	}

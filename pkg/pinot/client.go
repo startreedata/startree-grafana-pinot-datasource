@@ -42,6 +42,7 @@ type QueryOption struct {
 }
 
 type Logger interface {
+	Debug(msg string, args ...interface{})
 	Info(msg string, args ...interface{})
 	Error(msg string, args ...interface{})
 }
@@ -118,9 +119,9 @@ func (p *Client) doRequestAndDecodeResponse(req *http.Request, dest interface{})
 func (p *Client) doRequest(req *http.Request) (*http.Response, error) {
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.String(), err)
+		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.Path, err)
 	}
-	p.logger.Info("pinot/http: Outgoing http request completed.", "method", req.Method, "url", req.URL.String(), "status", resp.StatusCode)
+	p.logger.Info("pinot/http: Outgoing http request completed.", "method", req.Method, "path", req.URL.Path, "status", resp.StatusCode)
 	return resp, err
 }
 
@@ -138,6 +139,8 @@ func (p *Client) newErrorFromResponseBody(ctx context.Context, resp *http.Respon
 	return newHttpStatusError(resp.StatusCode, body.String())
 }
 
+// HttpStatusError includes the upstream response body in Error(), because it is often the only
+// diagnostic shown to the user (e.g. PromQL query errors). Use RedactError before logging.
 type HttpStatusError struct {
 	StatusCode int
 	Body       string
@@ -145,6 +148,16 @@ type HttpStatusError struct {
 
 func (x *HttpStatusError) Error() string {
 	return fmt.Sprintf("pinot/http non-200 response: (%d) %s", x.StatusCode, x.Body)
+}
+
+// RedactError returns an error that is safe to log: if err is or wraps an HttpStatusError,
+// only its status code is kept and the response body is dropped. Other errors are returned as is.
+func RedactError(err error) error {
+	var statusErr *HttpStatusError
+	if errors.As(err, &statusErr) {
+		return fmt.Errorf("pinot/http non-200 response: (%d) %s", statusErr.StatusCode, http.StatusText(statusErr.StatusCode))
+	}
+	return err
 }
 
 func IsStatusNotFoundError(err error) bool {

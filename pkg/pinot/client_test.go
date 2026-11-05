@@ -1,6 +1,8 @@
 package pinot
 
 import (
+	"errors"
+	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot/pinottest"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
@@ -67,4 +69,31 @@ func setupPinotAndCreateClient(t *testing.T) *Client {
 		BrokerUrl:     pinottest.BrokerUrl,
 	})
 	return pinotClient
+}
+
+func TestRedactError(t *testing.T) {
+	statusErr := newHttpStatusError(http.StatusInternalServerError, "Invalid query: secret_value")
+
+	t.Run("status error keeps body in Error()", func(t *testing.T) {
+		assert.ErrorContains(t, statusErr, "Invalid query: secret_value")
+	})
+
+	t.Run("status error is redacted", func(t *testing.T) {
+		got := RedactError(statusErr)
+		assert.EqualError(t, got, "pinot/http non-200 response: (500) Internal Server Error")
+	})
+
+	t.Run("wrapped status error is redacted", func(t *testing.T) {
+		got := RedactError(fmt.Errorf("wrapped: %w", statusErr))
+		assert.NotContains(t, got.Error(), "secret_value")
+	})
+
+	t.Run("other errors are unchanged", func(t *testing.T) {
+		err := errors.New("some error")
+		assert.Equal(t, err, RedactError(err))
+	})
+
+	t.Run("nil", func(t *testing.T) {
+		assert.NoError(t, RedactError(nil))
+	})
 }

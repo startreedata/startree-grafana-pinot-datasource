@@ -71,34 +71,36 @@ func TestGetSeriesKey(t *testing.T) {
 
 	t.Run("no labels", func(t *testing.T) {
 		var seriesMapper SeriesMapper
-		assert.Equal(t, 0, seriesMapper.GetKey(nil))
+		key, err := seriesMapper.GetKey(nil)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, key)
 	})
 
 	t.Run("different sizes", func(t *testing.T) {
 		var seriesMapper SeriesMapper
 
-		assert.Panics(t, func() {
-			seriesMapper.GetKey([]MetricLabel{{name: "a"}})
-			seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
-		})
+		_, err := seriesMapper.GetKey([]MetricLabel{{name: "a"}})
+		assert.NoError(t, err)
+		_, err = seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
+		assert.Error(t, err)
 	})
 
 	t.Run("different names", func(t *testing.T) {
 		var seriesMapper SeriesMapper
 
-		assert.Panics(t, func() {
-			seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
-			seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "c"}})
-		})
+		_, err := seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
+		assert.NoError(t, err)
+		_, err = seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "c"}})
+		assert.Error(t, err)
 	})
 
 	t.Run("different order", func(t *testing.T) {
 		var seriesMapper SeriesMapper
 
-		assert.Panics(t, func() {
-			seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
-			seriesMapper.GetKey([]MetricLabel{{name: "b"}, {name: "a"}})
-		})
+		_, err := seriesMapper.GetKey([]MetricLabel{{name: "a"}, {name: "b"}})
+		assert.NoError(t, err)
+		_, err = seriesMapper.GetKey([]MetricLabel{{name: "b"}, {name: "a"}})
+		assert.Error(t, err)
 	})
 
 	t.Run("first insert", func(t *testing.T) {
@@ -106,7 +108,9 @@ func TestGetSeriesKey(t *testing.T) {
 
 		// Since all the labels are unique and this is the first encounter, the key should be the # of invocations.
 		for i, labels := range labelsMatrix {
-			assert.Equal(t, i, seriesMapper.GetKey(labels), labels)
+			key, err := seriesMapper.GetKey(labels)
+			assert.NoError(t, err)
+			assert.Equal(t, i, key, labels)
 		}
 	})
 
@@ -116,7 +120,9 @@ func TestGetSeriesKey(t *testing.T) {
 		// Repeated labels should always return the same value, so we repeat the loop a few times.
 		for x := 0; x < 3; x++ {
 			for i, labels := range labelsMatrix {
-				assert.Equal(t, i, seriesMapper.GetKey(labels), labels)
+				key, err := seriesMapper.GetKey(labels)
+				assert.NoError(t, err)
+				assert.Equal(t, i, key, labels)
 			}
 		}
 	})
