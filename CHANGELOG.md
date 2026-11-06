@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.9 (2026-11-06)
 
 - Send query options in the request body's `queryOptions` field instead of as `SET` statements in the SQL, so they work when `sqlOptionsMode` is `IGNORE` or `REJECT`.
 - Add a Query Options editor to code mode.
