@@ -56,18 +56,20 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		TracesToLogs: config.TracesToLogsConfig(),
 	}
 	return &Datasource{
-		QueryDataHandler:    newQueryDataHandler(pinotClient, dsMeta),
-		CallResourceHandler: newCallResourceHandler(pinotClient),
+		QueryDataHandler:    newQueryDataHandler(pinotClient, dsMeta, config.QueryAttribution),
+		CallResourceHandler: newCallResourceHandler(pinotClient, config.QueryAttribution),
 		CheckHealthHandler:  newCheckHealthHandler(pinotClient),
 		InstanceDisposer:    disposerFunc(func() {}),
 	}, nil
 }
 
-func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta) backend.QueryDataHandler {
+func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta, queryAttribution string) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
+		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User,
+			req.GetHTTPHeader(dashboardUidHeader), req.GetHTTPHeader(panelIdHeader))
 		// OAuth pass-through is now handled automatically by the SDK HTTP client
 		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
@@ -78,8 +80,12 @@ func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta) 
 	})
 }
 
-func newCallResourceHandler(client *pinot.Client) backend.CallResourceHandler {
-	return httpadapter.New(resources.NewResourceHandler(client))
+func newCallResourceHandler(client *pinot.Client, queryAttribution string) backend.CallResourceHandler {
+	handler := httpadapter.New(resources.NewResourceHandler(client))
+	return backend.CallResourceHandlerFunc(func(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User, "", "")
+		return handler.CallResource(ctx, req, sender)
+	})
 }
 
 func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {

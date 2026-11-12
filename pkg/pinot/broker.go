@@ -159,10 +159,18 @@ type sqlRequest struct {
 	Trace        bool   `json:"trace,omitempty"`
 }
 
-func (p *Client) sqlRequestOf(query SqlQuery) sqlRequest {
+// sqlRequestOf builds the request for query, tagged with clientQueryId unless it is empty.
+func (p *Client) sqlRequestOf(query SqlQuery, clientQueryId string) sqlRequest {
+	sql := p.RenderSql(query)
+	options := query.QueryOptions
+	if clientQueryId != "" {
+		sql = clientQueryIdComment(clientQueryId) + sql
+		// First, so a clientQueryId set in the query or datasource options wins.
+		options = slices.Concat([]QueryOption{{Name: ClientQueryIdOption, Value: clientQueryId}}, options)
+	}
 	return sqlRequest{
-		Sql:          p.RenderSql(query),
-		QueryOptions: renderQueryOptions(p.mergeQueryOptions(query.QueryOptions)),
+		Sql:          sql,
+		QueryOptions: renderQueryOptions(p.mergeQueryOptions(options)),
 		Trace:        query.Trace,
 	}
 }
@@ -174,7 +182,7 @@ func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerRe
 		defer cancel()
 	}
 
-	request := p.sqlRequestOf(query)
+	request := p.sqlRequestOf(query, clientQueryIdFrom(ctx))
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(request); err != nil {
 		return nil, err

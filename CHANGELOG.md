@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Add optional query attribution (off by default). When it's on, each query is tagged with the Grafana user's login and email, and with the dashboard and panel it came from. The tag is sent as Pinot's `clientQueryId` option, which lands in the `clientRequestId` column of `system_query_log`, and as a leading SQL comment so it also shows in broker logs. Shared-token deployments can then tell who ran a query.
+
 ## 1.1.9 (2026-11-06)
 
 - Send query options in the request body's `queryOptions` field instead of as `SET` statements in the SQL, so they work when `sqlOptionsMode` is `IGNORE` or `REJECT`.

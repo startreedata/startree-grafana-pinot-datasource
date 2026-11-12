@@ -36,3 +36,21 @@ test.each([
     })
   );
 });
+
+test.each([
+  [undefined, false],
+  ['off', false],
+  ['on', true],
+  ['login', true],
+  ['email', true],
+])('shows query attribution %s as switched on: %s', (queryAttribution, on) => {
+  const options = {
+    jsonData: { queryOptions: [], queryAttribution },
+    secureJsonData: {},
+    secureJsonFields: {},
+  } as unknown as DataSourcePluginOptionsEditorProps<PinotConnectionConfig>['options'];
+
+  const { getByTestId } = render(<ConfigEditor options={options} onOptionsChange={jest.fn()} />);
+  const toggle = getByTestId('toggle-query-attribution').querySelector('input[type="checkbox"]') as HTMLInputElement;
+  expect(toggle.checked).toBe(on);
+});

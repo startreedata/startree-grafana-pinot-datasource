@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { PinotConnectionConfig, PinotSecureConfig } from '../../config/PinotConnectionConfig';
+import { PinotConnectionConfig, PinotSecureConfig, queryAttributionEnabled } from '../../config/PinotConnectionConfig';
 import { DataSourceDescription } from '@grafana/experimental';
 import { InputPinotToken } from './InputPinotToken';
 import { InputUrl } from './InputUrl';
@@ -141,6 +141,20 @@ export function ConfigEditor(props: ConfigEditorProps) {
               const value = event.currentTarget.value;
               onConfigChange({ ...jsonData, maxRowLimit: value === '' ? undefined : Number(value) });
             }}
+          />
+        </InlineField>
+        <InlineField
+          data-testid="toggle-query-attribution"
+          label={labels.queryAttribution.label}
+          labelWidth={24}
+          tooltip={labels.queryAttribution.tooltip}
+          interactive
+        >
+          <InlineSwitch
+            value={queryAttributionEnabled(jsonData.queryAttribution)}
+            onChange={(event) =>
+              onConfigChange({ ...jsonData, queryAttribution: event.currentTarget.checked ? 'on' : 'off' })
+            }
           />
         </InlineField>
       </div>

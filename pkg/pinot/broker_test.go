@@ -150,7 +150,7 @@ func TestPinotClient_sqlRequestOf(t *testing.T) {
 			{Name: "enableNullHandling", Value: "true"},
 			{Name: "maxExecutionThreads", Value: "5"},
 		},
-	})
+	}, "")
 	assert.Equal(t, sqlRequest{
 		Sql:          `select * from benchmark`,
 		QueryOptions: "enableNullHandling=true;maxExecutionThreads=5;useMultistageEngine=true;timeoutMs=100",

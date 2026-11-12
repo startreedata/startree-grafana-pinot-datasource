@@ -1,6 +1,13 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { QueryOption } from '../dataquery/QueryOption';
 
+// 'login' and 'email' were written by earlier builds of this feature; both mean 'on'.
+export type QueryAttribution = 'off' | 'on' | 'login' | 'email';
+
+export function queryAttributionEnabled(value: QueryAttribution | undefined): boolean {
+  return value === 'on' || value === 'login' || value === 'email';
+}
+
 export interface PinotConnectionConfig extends DataSourceJsonData {
   controllerUrl?: string;
   brokerUrl?: string;
@@ -10,6 +17,8 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   oauthPassThru?: boolean;
   queryTimeoutSeconds?: number;
   maxRowLimit?: number;
+  // Tags broker queries with the Grafana user's login and email via Pinot's clientQueryId option. Defaults to off.
+  queryAttribution?: QueryAttribution;
 
   // Transport security. These are the standard keys the Grafana SDK HTTP client
   // reads (settings.HTTPClientOptions); the backend honors them automatically.

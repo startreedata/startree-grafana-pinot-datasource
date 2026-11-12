@@ -50,6 +50,39 @@ To configure the Pinot data source in Grafana:
    - **Broker URL** - Your Pinot broker endpoint (e.g., `http://localhost:8000`)
    - **Database** (optional) - Default database name
    - **Authentication** - API token if required
+   - **Query Attribution** (optional) - Tag each query with the Grafana user, so you can tell who ran a query when all
+     users share one API token (see below)
+
+### Query attribution
+
+When **Query Attribution** is on, every query the plugin sends is tagged with the Grafana user's login and email, and
+with the dashboard and panel when the query comes from one. The login is always present and unique; the email is
+omitted for users that have none, such as service accounts. The tag is sent twice:
+
+- As Pinot's `clientQueryId` query option. On StarTree, it is stored in the `clientRequestId` column of
+  `system_query_log`.
+- As a comment at the start of the SQL, because the broker log records the query text but not its options:
+
+  ```sql
+  /* clientQueryId: {"source":"grafana","login":"jdoe","email":"jdoe@example.com","dashboardUid":"abc123","panelId":"4"} */
+  SELECT ...
+  ```
+
+To find who ran the slowest queries:
+
+```sql
+SELECT JSON_EXTRACT_SCALAR(clientRequestId, '$.login', 'STRING', '') AS grafanaLogin,
+  JSON_EXTRACT_SCALAR(clientRequestId, '$.email', 'STRING', '') AS grafanaEmail, timeUsedMs, query
+FROM system_query_log
+WHERE clientRequestId LIKE '{"source":"grafana"%'
+ORDER BY timeUsedMs DESC
+LIMIT 20
+```
+
+Queries without a signed-in user (for example, alerting) are tagged with `source` only. A `clientQueryId` set in the
+query or data source query options replaces the option, but the comment still names the Grafana user. Attribution is
+off by default because it writes user identifiers into Pinot's query log and broker logs. Provisioned data sources set
+it with `jsonData.queryAttribution: on` (or `off`).
 
 For detailed configuration instructions, query builders, macros, and advanced features, see the [Plugin Usage & Features Guide](src/README.md).
 

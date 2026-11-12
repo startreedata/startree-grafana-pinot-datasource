@@ -33,6 +33,11 @@ export default {
         tooltip:
           'Caps result size by appending a LIMIT to queries that have no explicit limit, protecting the broker. Leave empty to disable.',
       },
+      queryAttribution: {
+        label: 'Query Attribution',
+        tooltip:
+          "Tags each query with the Grafana user's login and email (plus dashboard and panel) using Pinot's clientQueryId option, so you can see who ran a query in system_query_log (clientRequestId column) and in broker logs. Stores both identifiers in Pinot logs.",
+      },
       tracesToLogs: {
         description:
           'Link trace spans to logs. When all four fields are set, each span in a trace view gets a "Logs for this trace" link that opens a logs query against the table below, filtered by the span\'s trace ID.',
