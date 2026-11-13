@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.10 (2026-11-13)
 
 - Add optional query attribution (off by default). When it's on, each query is tagged with the Grafana user's login and email, with the dashboard and panel or alert rule it came from, and with a per-query `qid` that keeps each id unique. The tag is sent as Pinot's `clientQueryId` option, which lands in the `clientRequestId` column of `system_query_log`, and as a leading SQL comment so it also shows in broker logs. Shared-token deployments can then tell who ran a query. PromQL queries are not tagged.
 
