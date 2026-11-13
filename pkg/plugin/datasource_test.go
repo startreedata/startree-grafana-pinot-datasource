@@ -80,7 +80,7 @@ func TestCheckHealthBrokerExceptions(t *testing.T) {
 func TestQueryData(t *testing.T) {
 	client := test_helpers.SetupPinotAndCreateClient(t)
 
-	handler := newQueryDataHandler(client, dataquery.DataSourceMeta{})
+	handler := newQueryDataHandler(client, dataquery.DataSourceMeta{}, "")
 	resp, err := handler.QueryData(
 		context.Background(),
 		&backend.QueryDataRequest{

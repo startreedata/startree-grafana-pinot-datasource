@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
 import { ConfigEditor } from './ConfigEditor';
 import { InputPinotToken } from './InputPinotToken';
@@ -34,5 +34,45 @@ test.each([
       secureJsonFields: expect.objectContaining({ authToken: false }),
       secureJsonData: { authToken: '' },
     })
+  );
+});
+
+test.each([
+  [undefined, false],
+  ['off', false],
+  ['on', true],
+  ['ON', true],
+  [true, true],
+  [false, false],
+  ['login', false],
+])('shows query attribution %s as switched on: %s', (queryAttribution, on) => {
+  const options = {
+    jsonData: { queryOptions: [], queryAttribution },
+    secureJsonData: {},
+    secureJsonFields: {},
+  } as unknown as DataSourcePluginOptionsEditorProps<PinotConnectionConfig>['options'];
+
+  const { getByTestId } = render(<ConfigEditor options={options} onOptionsChange={jest.fn()} />);
+  const toggle = getByTestId('toggle-query-attribution').querySelector('input[type="checkbox"]') as HTMLInputElement;
+  expect(toggle.checked).toBe(on);
+});
+
+test.each([
+  [undefined, 'on'],
+  ['off', 'on'],
+  ['on', 'off'],
+  [true, 'off'],
+])('toggling query attribution from %s writes %s', (queryAttribution, written) => {
+  const options = {
+    jsonData: { queryOptions: [], queryAttribution },
+    secureJsonData: {},
+    secureJsonFields: {},
+  } as unknown as DataSourcePluginOptionsEditorProps<PinotConnectionConfig>['options'];
+
+  const onOptionsChange = jest.fn();
+  const { getByTestId } = render(<ConfigEditor options={options} onOptionsChange={onOptionsChange} />);
+  fireEvent.click(getByTestId('toggle-query-attribution').querySelector('input[type="checkbox"]') as HTMLInputElement);
+  expect(onOptionsChange).toHaveBeenLastCalledWith(
+    expect.objectContaining({ jsonData: expect.objectContaining({ queryAttribution: written }) })
   );
 });

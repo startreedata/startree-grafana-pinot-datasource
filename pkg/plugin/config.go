@@ -28,6 +28,8 @@ type Config struct {
 	QueryTimeoutSeconds int `json:"queryTimeoutSeconds"`
 	// MaxRowLimit caps result size for queries without an explicit LIMIT. Zero disables it.
 	MaxRowLimit int `json:"maxRowLimit"`
+	// QueryAttribution tags broker queries with the Grafana user, dashboard and panel: "on" or "off" (default).
+	QueryAttribution QueryAttributionMode `json:"queryAttribution"`
 
 	// Transport security (non-secret). These mirror the standard keys the
 	// Grafana SDK reads. The actual *http.Client (TLS, headers, proxy) is built

@@ -1,6 +1,14 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { QueryOption } from '../dataquery/QueryOption';
 
+// The editor writes 'on' or 'off'. A provisioning file can also produce a boolean: Grafana 9 reads an unquoted
+// on/off as one. Matches the backend, which treats any other value as off.
+export type QueryAttribution = 'off' | 'on' | boolean;
+
+export function queryAttributionEnabled(value: QueryAttribution | undefined): boolean {
+  return value === true || (typeof value === 'string' && ['on', 'true'].includes(value.toLowerCase()));
+}
+
 export interface PinotConnectionConfig extends DataSourceJsonData {
   controllerUrl?: string;
   brokerUrl?: string;
@@ -10,6 +18,8 @@ export interface PinotConnectionConfig extends DataSourceJsonData {
   oauthPassThru?: boolean;
   queryTimeoutSeconds?: number;
   maxRowLimit?: number;
+  // Tags broker queries with the Grafana user's login and email via Pinot's clientQueryId option. Defaults to off.
+  queryAttribution?: QueryAttribution;
 
   // Transport security. These are the standard keys the Grafana SDK HTTP client
   // reads (settings.HTTPClientOptions); the backend honors them automatically.
