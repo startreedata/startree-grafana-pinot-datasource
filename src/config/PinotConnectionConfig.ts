@@ -1,11 +1,12 @@
 import { DataSourceJsonData } from '@grafana/data';
 import { QueryOption } from '../dataquery/QueryOption';
 
-// 'login' and 'email' were written by earlier builds of this feature; both mean 'on'.
-export type QueryAttribution = 'off' | 'on' | 'login' | 'email';
+// The editor writes 'on' or 'off'. A provisioning file can also produce a boolean: Grafana 9 reads an unquoted
+// on/off as one. Matches the backend, which treats any other value as off.
+export type QueryAttribution = 'off' | 'on' | boolean;
 
 export function queryAttributionEnabled(value: QueryAttribution | undefined): boolean {
-  return value === 'on' || value === 'login' || value === 'email';
+  return value === true || (typeof value === 'string' && ['on', 'true'].includes(value.toLowerCase()));
 }
 
 export interface PinotConnectionConfig extends DataSourceJsonData {

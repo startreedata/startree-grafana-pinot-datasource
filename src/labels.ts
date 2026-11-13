@@ -36,7 +36,7 @@ export default {
       queryAttribution: {
         label: 'Query Attribution',
         tooltip:
-          "Tags each query with the Grafana user's login and email (plus dashboard and panel) using Pinot's clientQueryId option, so you can see who ran a query in system_query_log (clientRequestId column) and in broker logs. Stores both identifiers in Pinot logs.",
+          "Tags each query with the Grafana user's login and email (plus dashboard and panel, or alert rule) using Pinot's clientQueryId option, so you can see who ran a query in system_query_log (clientRequestId column) and in broker logs. PromQL queries are not tagged. Stores both identifiers in Pinot logs.",
       },
       tracesToLogs: {
         description:

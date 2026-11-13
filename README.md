@@ -55,16 +55,18 @@ To configure the Pinot data source in Grafana:
 
 ### Query attribution
 
-When **Query Attribution** is on, every query the plugin sends is tagged with the Grafana user's login and email, and
-with the dashboard and panel when the query comes from one. The login is always present and unique; the email is
-omitted for users that have none, such as service accounts. The tag is sent twice:
+When **Query Attribution** is on, every SQL query the plugin sends is tagged with the Grafana user's login and email,
+with the dashboard and panel when the query comes from one, and with the alert rule when it comes from an alert
+evaluation. The login is always present and unique; the email is omitted for users that have none, such as service
+accounts. Each query also gets a random `qid`, so its `clientQueryId` stays unique and the broker can still find a
+running query by it. The tag is sent twice:
 
 - As Pinot's `clientQueryId` query option. On StarTree, it is stored in the `clientRequestId` column of
   `system_query_log`.
 - As a comment at the start of the SQL, because the broker log records the query text but not its options:
 
   ```sql
-  /* clientQueryId: {"source":"grafana","login":"jdoe","email":"jdoe@example.com","dashboardUid":"abc123","panelId":"4"} */
+  /* clientQueryId: {"source":"grafana","login":"jdoe","email":"jdoe@example.com","dashboardUid":"abc123","panelId":"4","qid":"9f2c4e1ab07d3368"} */
   SELECT ...
   ```
 
@@ -79,10 +81,15 @@ ORDER BY timeUsedMs DESC
 LIMIT 20
 ```
 
-Queries without a signed-in user (for example, alerting) are tagged with `source` only. A `clientQueryId` set in the
-query or data source query options replaces the option, but the comment still names the Grafana user. Attribution is
-off by default because it writes user identifiers into Pinot's query log and broker logs. Provisioned data sources set
-it with `jsonData.queryAttribution: on` (or `off`).
+Queries without a signed-in user (for example, alerting) carry no login or email; alert queries carry `ruleUid` on
+Grafana versions that pass the rule to the data source. PromQL queries are not tagged yet: they go to Pinot's time series
+API rather than the SQL endpoint. A `clientQueryId` set in the query or data source query options replaces the
+option, but the comment still names the Grafana user. Attribution is off by default because it writes user
+identifiers into Pinot's query log and broker logs.
+
+Provisioned data sources set it with `jsonData.queryAttribution: "on"` (or `"off"`). Quote the value: Grafana 9 reads
+an unquoted `on` as a boolean. The plugin accepts `true`/`false` too, and treats any other value as off and logs a
+warning, so a bad value never stops the data source from loading.
 
 For detailed configuration instructions, query builders, macros, and advanced features, see the [Plugin Usage & Features Guide](src/README.md).
 

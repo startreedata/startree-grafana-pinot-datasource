@@ -49,6 +49,11 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 		return nil, fmt.Errorf("failed to create HTTP client: %w", err)
 	}
 
+	if !config.QueryAttribution.Known() {
+		log.Warn("Unknown queryAttribution value; query attribution is off. Use \"on\" or \"off\".",
+			"datasource", settings.Name, "queryAttribution", string(config.QueryAttribution))
+	}
+
 	pinotClient := PinotClientOf(httpClient, config)
 	dsMeta := dataquery.DataSourceMeta{
 		UID:          settings.UID,
@@ -63,13 +68,16 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 	}, nil
 }
 
-func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta, queryAttribution string) backend.QueryDataHandler {
+func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta, queryAttribution QueryAttributionMode) backend.QueryDataHandler {
 	return backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User,
-			req.GetHTTPHeader(dashboardUidHeader), req.GetHTTPHeader(panelIdHeader))
+		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User, queryOrigin{
+			dashboardUid: req.GetHTTPHeader(dashboardUidHeader),
+			panelId:      req.GetHTTPHeader(panelIdHeader),
+			ruleUid:      req.GetHTTPHeader(ruleUidHeader),
+		})
 		// OAuth pass-through is now handled automatically by the SDK HTTP client
 		resp := backend.NewQueryDataResponse()
 		for _, query := range req.Queries {
@@ -80,10 +88,10 @@ func newQueryDataHandler(client *pinot.Client, dsMeta dataquery.DataSourceMeta, 
 	})
 }
 
-func newCallResourceHandler(client *pinot.Client, queryAttribution string) backend.CallResourceHandler {
+func newCallResourceHandler(client *pinot.Client, queryAttribution QueryAttributionMode) backend.CallResourceHandler {
 	handler := httpadapter.New(resources.NewResourceHandler(client))
 	return backend.CallResourceHandlerFunc(func(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
-		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User, "", "")
+		ctx = withQueryAttribution(ctx, queryAttribution, req.PluginContext.User, queryOrigin{})
 		return handler.CallResource(ctx, req, sender)
 	})
 }

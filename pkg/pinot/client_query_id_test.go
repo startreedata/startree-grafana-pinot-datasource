@@ -3,6 +3,7 @@ package pinot
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
@@ -79,11 +80,23 @@ func TestPinotClient_ExecuteSqlQuery_ClientQueryId(t *testing.T) {
 			client, got := captureBrokerClient(t, ClientProperties{QueryOptions: tt.clientOpts})
 			query := NewSqlQuery("SELECT 1")
 			query.QueryOptions = tt.queryOpts
-			_, err := client.ExecuteSqlQuery(WithClientQueryId(context.Background(), tt.id), query)
+			ctx := WithClientQueryId(context.Background(), func() string { return tt.id })
+			_, err := client.ExecuteSqlQuery(ctx, query)
 			require.NoError(t, err)
 			assert.Equal(t, tt.want, *got)
 		})
 	}
+
+	t.Run("a new id for each query", func(t *testing.T) {
+		client, got := captureBrokerClient(t, ClientProperties{})
+		n := 0
+		ctx := WithClientQueryId(context.Background(), func() string { n++; return fmt.Sprintf("q%d", n) })
+		for _, want := range []string{"clientQueryId=q1", "clientQueryId=q2"} {
+			_, err := client.ExecuteSqlQuery(ctx, NewSqlQuery("SELECT 1"))
+			require.NoError(t, err)
+			assert.Equal(t, want, got.QueryOptions)
+		}
+	})
 
 	t.Run("render for display is never tagged", func(t *testing.T) {
 		client, _ := captureBrokerClient(t, ClientProperties{})

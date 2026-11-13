@@ -28,8 +28,8 @@ type Config struct {
 	QueryTimeoutSeconds int `json:"queryTimeoutSeconds"`
 	// MaxRowLimit caps result size for queries without an explicit LIMIT. Zero disables it.
 	MaxRowLimit int `json:"maxRowLimit"`
-	// QueryAttribution tags broker queries with the Grafana user: "off" (default), "login" or "email".
-	QueryAttribution string `json:"queryAttribution"`
+	// QueryAttribution tags broker queries with the Grafana user, dashboard and panel: "on" or "off" (default).
+	QueryAttribution QueryAttributionMode `json:"queryAttribution"`
 
 	// Transport security (non-secret). These mirror the standard keys the
 	// Grafana SDK reads. The actual *http.Client (TLS, headers, proxy) is built
@@ -83,8 +83,6 @@ func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) erro
 		return errors.New("broker url cannot be empty")
 	} else if config.ControllerUrl == "" {
 		return errors.New("controller url cannot be empty")
-	} else if !validQueryAttribution(config.QueryAttribution) {
-		return errInvalidQueryAttribution(config.QueryAttribution)
 	}
 
 	config.TokenSecret = settings.DecryptedSecureJSONData["authToken"]

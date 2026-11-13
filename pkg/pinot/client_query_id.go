@@ -11,22 +11,32 @@ const ClientQueryIdOption = "clientQueryId"
 
 type clientQueryIdKey struct{}
 
-// WithClientQueryId returns a context whose broker queries are tagged with the given id. The id is sent as
-// the clientQueryId query option, and as a comment at the start of the SQL, because the broker log records
-// the query text but not its options.
+// WithClientQueryId returns a context whose broker queries are tagged with an id from newId, called once per
+// query. The broker looks running queries up by this id (e.g. to cancel one), so each call should return a
+// distinct id. The id is sent as the clientQueryId query option, and as a comment at the start of the SQL,
+// because the broker log records the query text but not its options.
 //
-// An empty id leaves queries untagged, and so does one that can't be sent safely: the queryOptions field
-// is split on ';' and '=', and "*/" would end the comment.
-func WithClientQueryId(ctx context.Context, id string) context.Context {
-	return context.WithValue(ctx, clientQueryIdKey{}, id)
+// Ids must not contain ';' or '=' (the queryOptions field is split on them) or "*/" (it would end the
+// comment); see ClientQueryIdSafe. A query whose id is empty or unsafe is sent untagged.
+func WithClientQueryId(ctx context.Context, newId func() string) context.Context {
+	return context.WithValue(ctx, clientQueryIdKey{}, newId)
 }
 
-func clientQueryIdFrom(ctx context.Context) string {
-	id, _ := ctx.Value(clientQueryIdKey{}).(string)
-	if strings.ContainsAny(id, ";=") || strings.Contains(id, "*/") {
-		return ""
+// ClientQueryIdSafe reports whether id can be sent as a clientQueryId.
+func ClientQueryIdSafe(id string) bool {
+	return !strings.ContainsAny(id, ";=") && !strings.Contains(id, "*/")
+}
+
+// clientQueryIdFrom returns a new id for one query on ctx, and false if ctx has an id that can't be sent.
+func clientQueryIdFrom(ctx context.Context) (string, bool) {
+	newId, _ := ctx.Value(clientQueryIdKey{}).(func() string)
+	if newId == nil {
+		return "", true
 	}
-	return id
+	if id := newId(); ClientQueryIdSafe(id) {
+		return id, true
+	}
+	return "", false
 }
 
 // clientQueryIdComment goes before the query so it survives truncation of long query text in the

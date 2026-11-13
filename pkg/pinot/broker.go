@@ -92,7 +92,8 @@ func (query SqlQuery) cacheKey() string {
 	return fmt.Sprintf("%v", query)
 }
 
-// RenderSql returns the SQL that ExecuteSqlQuery sends: the query's SQL with the client's row limit applied.
+// RenderSql returns the query's SQL with the client's row limit applied. This is what ExecuteSqlQuery sends,
+// apart from the leading clientQueryId comment it adds when the context carries one.
 func (p *Client) RenderSql(query SqlQuery) string {
 	return applyRowLimit(query.Sql, p.properties.MaxRowLimit)
 }
@@ -182,7 +183,11 @@ func (p *Client) ExecuteSqlQuery(ctx context.Context, query SqlQuery) (*BrokerRe
 		defer cancel()
 	}
 
-	request := p.sqlRequestOf(query, clientQueryIdFrom(ctx))
+	clientQueryId, ok := clientQueryIdFrom(ctx)
+	if !ok {
+		p.logger.Error("pinot/http: Sending query without clientQueryId: the id contains ';', '=' or '*/'.")
+	}
+	request := p.sqlRequestOf(query, clientQueryId)
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(request); err != nil {
 		return nil, err
