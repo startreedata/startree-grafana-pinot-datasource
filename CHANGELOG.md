@@ -8,7 +8,7 @@
   - `$__timeFilter` no longer silently compares a non-date-time column in milliseconds: numeric columns get a panel warning, and unknown or string columns are errors.
   - Legacy `timeFieldSpec` schemas are supported by the time macros.
   - Panels and the code editor warn when the SQL doesn't use the dashboard time range at all (e.g. hard-coded timestamps).
-- Query variables expand time macros (they previously sent `$__timeFilter` to Pinot unexpanded), and *Distinct values* variables are limited to the dashboard time range.
+- *Sql Query* variables expand time macros such as `$__timeFilter`; they previously sent them to Pinot unexpanded, which failed.
 - PromQL: parse fractional-second timestamps, derive the step from *Max data points* when Grafana sends no interval, align `start` to the step, and support `$__rate_interval`.
 
 ## 1.1.10 (2026-11-13)

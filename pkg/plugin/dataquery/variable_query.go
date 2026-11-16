@@ -17,13 +17,9 @@ type VariableQuery struct {
 	ColumnName   string
 	ColumnType   ColumnType
 	PinotQlCode  string
-	// TimeRange is the dashboard time range; only applied when the variable refreshes on time range change.
+	// TimeRange is the dashboard time range, used by time macros in PINOT_QL_CODE variables.
 	TimeRange    TimeRange
 	IntervalSize time.Duration
-}
-
-func (query VariableQuery) hasTimeRange() bool {
-	return !query.TimeRange.From.IsZero() && !query.TimeRange.To.IsZero()
 }
 
 func (query VariableQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
@@ -97,15 +93,12 @@ func (query VariableQuery) getDistinctValues(ctx context.Context, client *pinot.
 		return NewEmptyDataResponse()
 	}
 
-	timeFilterExpr, err := query.distinctValuesTimeFilter(ctx, client)
-	if err != nil {
-		return NewPluginErrorResponse(err)
-	}
-
+	// Not time-filtered on purpose: Grafana sends a time range for every refresh mode, so filtering
+	// here would empty the list for tables without recent data. Use a PINOT_QL_CODE variable with
+	// $__timeFilter for time-scoped values.
 	sql, err := pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
-		ColumnExpr:     pinot.ObjectExpr(query.ColumnName),
-		TableName:      query.TableName,
-		TimeFilterExpr: timeFilterExpr,
+		ColumnExpr: pinot.ObjectExpr(query.ColumnName),
+		TableName:  query.TableName,
 	})
 	if err != nil {
 		return NewPluginErrorResponse(err)
@@ -162,34 +155,4 @@ func (query VariableQuery) getTableList(ctx context.Context, client *pinot.Clien
 	}
 	frame := data.NewFrame("result", data.NewField("tables", nil, tables))
 	return NewOkDataResponse(frame)
-}
-
-// distinctValuesTimeFilter limits distinct values to the dashboard time range on the table's primary
-// time column. Tables without a resolvable time column keep the previous unfiltered behavior.
-func (query VariableQuery) distinctValuesTimeFilter(ctx context.Context, client *pinot.Client) (pinot.SqlExpr, error) {
-	if !query.hasTimeRange() {
-		return "", nil
-	}
-	schema, err := client.GetTableSchema(ctx, query.TableName)
-	if err != nil {
-		return "", err
-	}
-	configs, err := client.ListTableConfigs(ctx, query.TableName)
-	if err != nil {
-		return "", err
-	}
-	timeColumn, err := pinot.DefaultTimeColumn(schema, configs)
-	if err != nil {
-		return "", nil
-	}
-	format, err := pinot.GetTimeColumnFormat(schema, timeColumn)
-	if err != nil {
-		return "", nil
-	}
-	return pinot.TimeFilterExpr(pinot.TimeFilter{
-		Column: timeColumn,
-		Format: format,
-		From:   query.TimeRange.From,
-		To:     query.TimeRange.To,
-	}), nil
 }

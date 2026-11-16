@@ -132,9 +132,10 @@ How the time column argument is resolved:
 - Unknown columns, string columns and unsupported formats (e.g. `SIMPLE_DATE_FORMAT`) are errors instead of filters
   that silently match nothing.
 
-**Variables:** query variables expand all the macros above, and *Distinct values* variables only list values from the
-selected time range (on the table's time column). Set the variable's **Refresh** to *On time range change* so the list
-updates when the time picker changes.
+**Variables:** *Sql Query* variables expand all the macros above, so
+`SELECT DISTINCT "pt" FROM $__table WHERE $__timeFilter` lists only values from the selected time range. Set the
+variable's **Refresh** to *On time range change* so the list updates with the time picker. *Distinct values* variables
+are not time-filtered.
 
 **PromQL:** the dashboard range is sent as `start`/`end`, with `start` aligned to the step. The step is the panel interval
 (or the *Step size* override), raised if needed to stay within *Max data points*. `$__rate_interval` is replaced with

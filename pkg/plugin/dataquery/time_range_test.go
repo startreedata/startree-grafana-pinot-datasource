@@ -147,18 +147,12 @@ func TestVariableQuery_TimeRange(t *testing.T) {
 			fake.lastSql(t))
 	})
 
-	t.Run("DISTINCT_VALUES filters on the table time column", func(t *testing.T) {
+	// Distinct values stay unfiltered even with a time range, so tables without recent data keep their values.
+	t.Run("DISTINCT_VALUES is not time-filtered", func(t *testing.T) {
 		fake := &fakePinot{}
 		resp := VariableQuery{VariableType: VariableQueryTypeDistinctValues, TableName: "events", ColumnName: "pt",
 			TimeRange: testTimeRange,
 		}.Execute(fake.client(t), context.Background())
-		require.NoError(t, resp.Error)
-		assert.Contains(t, fake.lastSql(t), `AND "timestamp" >= 1700000040000 AND "timestamp" < 1700003640000`)
-	})
-
-	t.Run("DISTINCT_VALUES without a time range is unfiltered", func(t *testing.T) {
-		fake := &fakePinot{}
-		resp := VariableQuery{VariableType: VariableQueryTypeDistinctValues, TableName: "events", ColumnName: "pt"}.Execute(fake.client(t), context.Background())
 		require.NoError(t, resp.Error)
 		assert.NotContains(t, fake.lastSql(t), `"timestamp"`)
 	})
