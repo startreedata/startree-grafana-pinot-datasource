@@ -205,6 +205,40 @@ describe('interpolateVariables', () => {
 
     expect(interpolateVariables({ refId: 'A', tableName: '$table' }).tableName).toBe('realTable');
   });
+
+  // DP-3035: detection must use the SQL as written, before Grafana turns $__from/$__to into numbers.
+  test('flagsWhetherCodeUsesTimeRange', () => {
+    setTemplateSrv({
+      containsTemplate: () => false,
+      getVariables: () => [],
+      updateTimeRange: () => {},
+      replace: (target?: string) => (target ?? '').replace('$__from', '1700000000000'),
+    } as unknown as TemplateSrv);
+
+    const code = (pinotQlCode: string) =>
+      interpolateVariables({ refId: 'A', editorMode: EditorMode.Code, pinotQlCode });
+    expect(code('SELECT * FROM t WHERE ts > $__from').usesTimeRange).toBe(true);
+    expect(code('SELECT * FROM t WHERE $__timeFilter').usesTimeRange).toBe(true);
+    expect(code('SELECT * FROM t WHERE ts > 1700000000000').usesTimeRange).toBe(false);
+    expect(
+      interpolateVariables({ refId: 'A', editorMode: EditorMode.Builder, pinotQlCode: 'SELECT 1' }).usesTimeRange
+    ).toBeUndefined();
+  });
+
+  test('replacesRateIntervalInPromQl', () => {
+    setTemplateSrv({
+      containsTemplate: () => false,
+      getVariables: () => [],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target ?? '',
+    } as unknown as TemplateSrv);
+
+    expect(
+      interpolateVariables({ refId: 'A', promQlCode: 'rate(m[$__rate_interval])' }, {
+        __interval_ms: { text: '30000', value: 30000 },
+      }).promQlCode
+    ).toBe('rate(m[120s])');
+  });
 });
 
 describe('applyConditionalAll', () => {

@@ -24,7 +24,14 @@ type PinotQlCodeQuery struct {
 	SeriesLimit       int
 	AdHocFilters      []pinot.AdHocFilter
 	QueryOptions      []QueryOption
+	// UsesTimeRange is set by the frontend from the SQL as the user wrote it (before Grafana replaces
+	// $__from/$__to). nil means unknown (e.g. alerting or API callers), which never warns.
+	UsesTimeRange *bool
 }
+
+// NoTimeRangeWarning is shown on code-mode panels whose SQL never references the dashboard time range.
+const NoTimeRangeWarning = "This query does not use the dashboard time range, so changing the time picker will not change the results. " +
+	"Add a time filter such as `WHERE $__timeFilter(\"<time column>\")` (or just `WHERE $__timeFilter` to use the table's time column)."
 
 func (query PinotQlCodeQuery) Validate() error {
 	switch {
@@ -46,9 +53,13 @@ func (query PinotQlCodeQuery) Execute(client *pinot.Client, ctx context.Context)
 		return NewEmptyDataResponse()
 	}
 
-	sqlQuery, err := query.RenderSqlQuery(ctx, client)
+	var warnings []string
+	sqlQuery, err := query.renderSqlQuery(ctx, client, &warnings)
 	if err != nil {
 		return NewPluginErrorResponse(err)
+	}
+	if query.UsesTimeRange != nil && !*query.UsesTimeRange {
+		warnings = append(warnings, NoTimeRangeWarning)
 	}
 
 	results, exceptions, ok, backendResp := doSqlQuery(ctx, client, sqlQuery)
@@ -61,10 +72,14 @@ func (query PinotQlCodeQuery) Execute(client *pinot.Client, ctx context.Context)
 		return NewPluginErrorResponse(err)
 	}
 
-	return NewSqlQueryDataResponse(frame, exceptions)
+	return WithWarningNotices(NewSqlQueryDataResponse(frame, exceptions), warnings)
 }
 
 func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinot.Client) (pinot.SqlQuery, error) {
+	return query.renderSqlQuery(ctx, client, nil)
+}
+
+func (query PinotQlCodeQuery) renderSqlQuery(ctx context.Context, client *pinot.Client, warnings *[]string) (pinot.SqlQuery, error) {
 	tableSchema, err := client.GetTableSchema(ctx, query.TableName)
 	if err != nil {
 		return pinot.SqlQuery{}, err
@@ -84,11 +99,10 @@ func (query PinotQlCodeQuery) RenderSqlQuery(ctx context.Context, client *pinot.
 		IntervalSize: query.IntervalSize,
 		TimeAlias:    query.resolveTimeColumnAlias(),
 		MetricAlias:  query.resolveMetricColumnAlias(),
+		Warnings:     warnings,
 	}.ExpandMacros(ctx, query.Code)
 	if err != nil {
-		if err != nil {
-			return pinot.SqlQuery{}, err
-		}
+		return pinot.SqlQuery{}, err
 	}
 
 	return newSqlQueryWithOptions(sql, query.QueryOptions), nil

@@ -12,6 +12,7 @@ import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
 import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
 import { isQueryVariable, getVariableSubquery, getAllOptions, getSelectedValues, isAllSelected } from './variableQuery.util';
+import { replaceRateInterval, sqlUsesTimeRange } from '../pinotql/timeRange';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -57,6 +58,8 @@ export interface PinotDataQuery extends DataQuery {
 
   // PinotQl Code
   pinotQlCode?: string;
+  // Computed on every run: whether pinotQlCode references the dashboard time range. The backend warns when false.
+  usesTimeRange?: boolean;
   timeColumnAlias?: string;
   timeColumnFormat?: string;
   metricColumnAlias?: string;
@@ -565,10 +568,12 @@ export function interpolateVariables(
     // Sql Editor
 
     pinotQlCode,
+    usesTimeRange:
+      query.editorMode === EditorMode.Code && query.pinotQlCode ? sqlUsesTimeRange(query.pinotQlCode) : undefined,
 
     // PromQl Editor
 
-    promQlCode: replaceIfExists(query.promQlCode),
+    promQlCode: replaceIfExists(mapIfExists(query.promQlCode, (code) => replaceRateInterval(code, scopedVars))),
     promStepSize: replaceIfExists(query.promStepSize),
 
     // Variable Query editor

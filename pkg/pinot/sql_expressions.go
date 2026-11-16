@@ -74,9 +74,18 @@ func ComplexFieldExpr(column string, key string) SqlExpr {
 
 type TimeFilter struct {
 	Column string
-	Format DateTimeFormat
-	From   time.Time
-	To     time.Time
+	// ColumnExpr, when set, is used verbatim instead of quoting Column (e.g. a DATETIMECONVERT(...) expression).
+	ColumnExpr SqlExpr
+	Format     DateTimeFormat
+	From       time.Time
+	To         time.Time
+}
+
+func (x TimeFilter) columnExpr() SqlExpr {
+	if x.ColumnExpr != "" {
+		return x.ColumnExpr
+	}
+	return ObjectExpr(x.Column)
 }
 
 func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) SqlExpr {
@@ -86,18 +95,16 @@ func TimeFilterBucketAlignedExpr(filter TimeFilter, bucketSize time.Duration) Sq
 		toTrunc = toTrunc.Add(bucketSize)
 	}
 
-	return TimeFilterExpr(TimeFilter{
-		Column: filter.Column,
-		Format: filter.Format,
-		From:   fromTrunc,
-		To:     toTrunc,
-	})
+	filter.From = fromTrunc
+	filter.To = toTrunc
+	return TimeFilterExpr(filter)
 }
 
 func TimeFilterExpr(filter TimeFilter) SqlExpr {
+	col := filter.columnExpr()
 	return SqlExpr(fmt.Sprintf(`%s >= %s AND %s < %s`,
-		ObjectExpr(filter.Column), TimeExpr(filter.From, filter.Format),
-		ObjectExpr(filter.Column), TimeExpr(filter.To, filter.Format),
+		col, TimeExpr(filter.From, filter.Format),
+		col, TimeExpr(filter.To, filter.Format),
 	))
 }
 

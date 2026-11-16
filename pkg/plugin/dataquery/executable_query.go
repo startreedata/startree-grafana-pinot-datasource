@@ -74,16 +74,19 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 
 	case query.QueryType == QueryTypePromQl:
 		return PromQlQuery{
-			TableName:    query.TableName,
-			PromQlCode:   query.PromQlCode,
-			TimeRange:    query.TimeRange,
-			IntervalSize: resolveStepSize(query.PromStepSize, query.IntervalSize),
-			Legend:       query.Legend,
-			SeriesLimit:  query.SeriesLimit,
+			TableName:     query.TableName,
+			PromQlCode:    query.PromQlCode,
+			TimeRange:     query.TimeRange,
+			IntervalSize:  resolveStepSize(query.PromStepSize, query.IntervalSize),
+			Legend:        query.Legend,
+			SeriesLimit:   query.SeriesLimit,
+			MaxDataPoints: query.MaxDataPoints,
 		}
 
 	case query.QueryType == QueryTypePinotVariableQuery:
 		return VariableQuery{
+			TimeRange:    query.TimeRange,
+			IntervalSize: query.IntervalSize,
 			TableName:    query.TableName,
 			VariableType: query.VariableQuery.VariableType,
 			ColumnName:   query.VariableQuery.ColumnName,
@@ -105,6 +108,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			SeriesLimit:       query.SeriesLimit,
 			AdHocFilters:      query.AdHocFilters,
 			QueryOptions:      query.QueryOptions,
+			UsesTimeRange:     query.UsesTimeRange,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:

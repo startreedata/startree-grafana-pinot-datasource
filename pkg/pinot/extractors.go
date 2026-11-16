@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -88,7 +89,71 @@ func GetTimeColumnFormat(tableSchema TableSchema, timeColumn string) (DateTimeFo
 			return ParseDateTimeFormat(dtField.Format)
 		}
 	}
+	if name := tableSchema.TimeFieldSpec.Name(); name != "" && name == timeColumn {
+		return ParseDateTimeFormat(tableSchema.TimeFieldSpec.Format())
+	}
 	return DateTimeFormat{}, fmt.Errorf("column `%s` is not a date time column", timeColumn)
+}
+
+// IsEmpty reports whether the schema declares no columns at all (e.g. it could not be fetched).
+func (x TableSchema) IsEmpty() bool {
+	return len(x.DimensionFieldSpecs) == 0 && len(x.MetricFieldSpecs) == 0 &&
+		len(x.DateTimeFieldSpecs) == 0 && len(x.ComplexFieldSpecs) == 0 && x.TimeFieldSpec.Name() == ""
+}
+
+// ColumnDataType returns the data type of a column declared anywhere in the schema.
+func (x TableSchema) ColumnDataType(column string) (string, bool) {
+	for _, spec := range x.DateTimeFieldSpecs {
+		if spec.Name == column {
+			return spec.DataType, true
+		}
+	}
+	for _, spec := range x.DimensionFieldSpecs {
+		if spec.Name == column {
+			return spec.DataType, true
+		}
+	}
+	for _, spec := range x.MetricFieldSpecs {
+		if spec.Name == column {
+			return spec.DataType, true
+		}
+	}
+	for _, spec := range x.ComplexFieldSpecs {
+		if spec.Name == column {
+			return spec.DataType, true
+		}
+	}
+	if spec := x.TimeFieldSpec.spec(); spec != nil && spec.Name == column {
+		return spec.DataType, true
+	}
+	return "", false
+}
+
+// DefaultTimeColumn returns the table's primary time column: the table config's
+// segmentsConfig.timeColumnName when set, otherwise the schema's only date time column.
+func DefaultTimeColumn(tableSchema TableSchema, tableConfigs ListTableConfigsResponse) (string, error) {
+	for _, tableType := range []TableType{TableTypeOffline, TableTypeRealTime} {
+		if name := tableConfigs[tableType].SegmentsConfig.TimeColumnName; name != "" {
+			return name, nil
+		}
+	}
+
+	var candidates []string
+	for _, spec := range tableSchema.DateTimeFieldSpecs {
+		candidates = append(candidates, spec.Name)
+	}
+	if name := tableSchema.TimeFieldSpec.Name(); name != "" {
+		candidates = append(candidates, name)
+	}
+	switch len(candidates) {
+	case 1:
+		return candidates[0], nil
+	case 0:
+		return "", errors.New("the table has no time column; pass the column explicitly, e.g. $__timeFilter(\"ts\")")
+	default:
+		return "", fmt.Errorf("the table has several time columns (%s) and no segmentsConfig.timeColumnName; pass the column explicitly, e.g. $__timeFilter(\"%s\")",
+			strings.Join(candidates, ", "), candidates[0])
+	}
 }
 
 // ExtractColumn extracts a column from the table.

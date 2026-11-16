@@ -145,6 +145,8 @@ type DataQuery struct {
 
 	// Sql code query
 	PinotQlCode       string `json:"pinotQlCode"`
+	// UsesTimeRange is computed by the frontend: whether pinotQlCode references the dashboard time range.
+	UsesTimeRange *bool `json:"usesTimeRange,omitempty"`
 	TimeColumnAlias   string `json:"timeColumnAlias"`
 	TimeColumnFormat  string `json:"timeColumnFormat"`
 	MetricColumnAlias string `json:"metricColumnAlias"`

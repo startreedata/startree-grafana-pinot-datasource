@@ -78,6 +78,11 @@ type TableConfig struct {
 		ExpressionOverrideMap map[string]string `json:"expressionOverrideMap"`
 	} `json:"query"`
 	IngestionConfig IngestionConfig `json:"ingestionConfig"`
+	SegmentsConfig  SegmentsConfig  `json:"segmentsConfig"`
+}
+
+type SegmentsConfig struct {
+	TimeColumnName string `json:"timeColumnName"`
 }
 
 type IngestionConfig struct {
@@ -109,6 +114,58 @@ type TableSchema struct {
 	MetricFieldSpecs    []MetricFieldSpec    `json:"metricFieldSpecs"`
 	DateTimeFieldSpecs  []DateTimeFieldSpec  `json:"dateTimeFieldSpecs"`
 	ComplexFieldSpecs   []ComplexFieldSpec   `json:"complexFieldSpecs,omitempty"`
+	// TimeFieldSpec is the deprecated (pre-dateTimeFieldSpecs) way of declaring a table's time column.
+	// Older schemas still use it, so time macros must be able to resolve it.
+	TimeFieldSpec *TimeFieldSpec `json:"timeFieldSpec,omitempty"`
+}
+
+type TimeFieldSpec struct {
+	IncomingGranularitySpec *TimeGranularitySpec `json:"incomingGranularitySpec,omitempty"`
+	OutgoingGranularitySpec *TimeGranularitySpec `json:"outgoingGranularitySpec,omitempty"`
+}
+
+type TimeGranularitySpec struct {
+	Name         string `json:"name"`
+	DataType     string `json:"dataType"`
+	TimeType     string `json:"timeType"`
+	TimeUnitSize int64  `json:"timeUnitSize"`
+	TimeFormat   string `json:"timeFormat"`
+}
+
+// spec returns the granularity spec describing how the column is stored: the outgoing spec when
+// present (the column was converted at ingestion), otherwise the incoming one.
+func (x *TimeFieldSpec) spec() *TimeGranularitySpec {
+	if x == nil {
+		return nil
+	}
+	if x.OutgoingGranularitySpec != nil && x.OutgoingGranularitySpec.Name != "" {
+		return x.OutgoingGranularitySpec
+	}
+	return x.IncomingGranularitySpec
+}
+
+// Name returns the legacy time column's name, or "" if the schema has none.
+func (x *TimeFieldSpec) Name() string {
+	if spec := x.spec(); spec != nil {
+		return spec.Name
+	}
+	return ""
+}
+
+// Format returns the legacy time column's format in dateTimeFieldSpec notation (e.g. 1:MILLISECONDS:EPOCH).
+func (x *TimeFieldSpec) Format() string {
+	spec := x.spec()
+	if spec == nil {
+		return ""
+	}
+	if spec.TimeFormat != "" && !strings.EqualFold(spec.TimeFormat, "EPOCH") {
+		return spec.TimeFormat // e.g. SIMPLE_DATE_FORMAT:yyyyMMdd, which ParseDateTimeFormat rejects with a clear error.
+	}
+	size := spec.TimeUnitSize
+	if size < 1 {
+		size = 1
+	}
+	return fmt.Sprintf("%d:%s:EPOCH", size, strings.ToUpper(spec.TimeType))
 }
 
 type DimensionFieldSpec struct {

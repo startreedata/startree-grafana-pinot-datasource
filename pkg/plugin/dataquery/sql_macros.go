@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -37,6 +36,10 @@ type MacroEngine struct {
 	AdHocFilters []pinot.AdHocFilter
 	TimeRange
 	IntervalSize time.Duration
+
+	// Warnings, when non-nil, collects non-fatal problems found while expanding macros
+	// (e.g. a guessed time column format) so they can be shown on the panel.
+	Warnings *[]string
 }
 
 func MacroExprFor(macroName string, args ...string) pinot.SqlExpr {
@@ -46,7 +49,6 @@ func MacroExprFor(macroName string, args ...string) pinot.SqlExpr {
 func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, error) {
 	var err error
 	for _, macro := range []func(ctx context.Context, query string) (string, error){
-		// These have to come first because the regex for TimeTo/From/Filter macros also matches.
 		x.ExpandTimeFilterMillis,
 		x.ExpandTimeFromMillis,
 		x.ExpandTimeToMillis,
@@ -81,55 +83,154 @@ func (x MacroEngine) ExpandTableName(_ context.Context, query string) (string, e
 
 func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFilter, func(args []string) (string, error) {
-		if len(args) < 1 {
-			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		if len(args) > 2 {
+			return "", fmt.Errorf("expected at most 2 arguments, got %d", len(args))
 		}
-		timeColumn := pinot.UnquoteObjectName(args[0])
-
-		var granularityExpr string
-		if len(args) > 1 {
-			granularityExpr = pinot.UnquoteStringLiteral(args[1])
+		col, err := x.resolveTimeColumn(argAt(args, 0))
+		if err != nil {
+			return "", err
 		}
-
-		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
-		return pinot.TimeFilterBucketAlignedExpr(pinot.TimeFilter{
-			Column: timeColumn,
-			Format: format,
-			From:   x.TimeRange.From,
-			To:     x.TimeRange.To,
-		}, granularity.Duration()).String(), nil
+		granularity := ResolveGranularity(ctx, pinot.UnquoteStringLiteral(argAt(args, 1)), col.format, x.IntervalSize,
+			pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
+		return pinot.TimeFilterBucketAlignedExpr(col.timeFilter(x.TimeRange), granularity.Duration()).String(), nil
 	})
 }
 
-func getDateTimeFormatOrFallback(tableSchema pinot.TableSchema, timeColumn string) pinot.DateTimeFormat {
-	format, err := pinot.GetTimeColumnFormat(tableSchema, timeColumn)
-	if err != nil {
-		return pinot.DateTimeFormatMillisecondsEpoch()
+// timeColumnRef is a time macro's column argument resolved against the table schema.
+type timeColumnRef struct {
+	name   string        // Column name (for schema and derived-granularity lookups); empty for expressions.
+	expr   pinot.SqlExpr // Raw SQL to use instead of the quoted name (expressions and qualified names).
+	format pinot.DateTimeFormat
+}
+
+func (c timeColumnRef) timeFilter(timeRange TimeRange) pinot.TimeFilter {
+	return pinot.TimeFilter{Column: c.name, ColumnExpr: c.expr, Format: c.format, From: timeRange.From, To: timeRange.To}
+}
+
+func argAt(args []string, i int) string {
+	if i < len(args) {
+		return strings.TrimSpace(args[i])
 	}
-	return format
+	return ""
+}
+
+// resolveTimeColumn turns a time macro's column argument into a column reference and its time format.
+//
+//   - No argument: the table's primary time column (segmentsConfig.timeColumnName, or the only date time column).
+//   - A column name ("ts", `ts`, 'ts' or ts): the format comes from the schema's dateTimeFieldSpecs (or legacy
+//     timeFieldSpec). A numeric column that is not declared as a date time column is assumed to hold epoch
+//     milliseconds, and a warning is attached to the response because the guess may be wrong (e.g. epoch seconds).
+//     Unknown and non-numeric columns are errors instead of silently filtering on the wrong values.
+//   - Anything else (e.g. DATETIMECONVERT(...)) is used verbatim and compared in epoch milliseconds.
+func (x MacroEngine) resolveTimeColumn(arg string) (timeColumnRef, error) {
+	if arg == "" {
+		name, err := pinot.DefaultTimeColumn(x.TableSchema, x.TableConfigs)
+		if err != nil {
+			return timeColumnRef{}, err
+		}
+		arg = name
+	}
+
+	if isTimeColumnExpression(arg) {
+		return timeColumnRef{expr: pinot.SqlExpr(arg), format: pinot.DateTimeFormatMillisecondsEpoch()}, nil
+	}
+
+	name := unquoteColumnArg(arg)
+	ref := timeColumnRef{name: name}
+	if !isQuoted(arg) && strings.Contains(name, ".") {
+		// Qualified name like t.ts: keep it as written and look the column up by its last segment.
+		ref.expr = pinot.SqlExpr(arg)
+		name = name[strings.LastIndex(name, ".")+1:]
+	}
+
+	if x.TableSchema.IsEmpty() {
+		// No schema to check against (e.g. no table selected): keep the historical epoch-millis behavior.
+		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
+		return ref, nil
+	}
+
+	dataType, found := x.TableSchema.ColumnDataType(name)
+	if !found {
+		return timeColumnRef{}, fmt.Errorf("column `%s` not found in table `%s`", name, x.TableName)
+	}
+
+	format, err := pinot.GetTimeColumnFormat(x.TableSchema, name)
+	if err == nil {
+		ref.format = format
+		return ref, nil
+	}
+	if isDateTimeColumn(x.TableSchema, name) {
+		return timeColumnRef{}, fmt.Errorf("column `%s`: %w", name, err) // Declared but unsupported format.
+	}
+
+	switch strings.ToUpper(dataType) {
+	case "TIMESTAMP":
+		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
+	case "LONG", "INT", "FLOAT", "DOUBLE", "BIG_DECIMAL":
+		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
+		x.warn(fmt.Sprintf("Column `%s` is not a date time column, so the time filter assumes it holds epoch milliseconds. "+
+			"If it holds epoch seconds, filter with `%s >= $__fromTime AND %s < $__toTime` instead, "+
+			"or declare it in the schema's dateTimeFieldSpecs.", name, name, name))
+	default:
+		return timeColumnRef{}, fmt.Errorf("column `%s` has type %s and is not a date time column; "+
+			"time macros need a date time column or a numeric epoch column", name, dataType)
+	}
+	return ref, nil
+}
+
+func isDateTimeColumn(schema pinot.TableSchema, name string) bool {
+	for _, spec := range schema.DateTimeFieldSpecs {
+		if spec.Name == name {
+			return true
+		}
+	}
+	return schema.TimeFieldSpec.Name() == name
+}
+
+func isQuoted(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	first, last := s[0], s[len(s)-1]
+	return first == last && (first == '"' || first == '`' || first == '\'')
+}
+
+func unquoteColumnArg(s string) string {
+	if isQuoted(s) {
+		return s[1 : len(s)-1]
+	}
+	return s
+}
+
+// isTimeColumnExpression reports whether a macro's column argument is an SQL expression rather than a column name.
+func isTimeColumnExpression(arg string) bool {
+	return !isQuoted(arg) && strings.ContainsAny(arg, "( +-*/")
+}
+
+// warn records a message to attach to the query response as a warning notice.
+func (x MacroEngine) warn(msg string) {
+	if x.Warnings != nil {
+		*x.Warnings = append(*x.Warnings, msg)
+	}
 }
 
 func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeGroup, func(args []string) (string, error) {
-		if len(args) < 1 || len(args) > 2 {
-			// TODO: Fix confusing error since 2 args is also valid.
-			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		if len(args) > 2 {
+			return "", fmt.Errorf("expected at most 2 arguments, got %d", len(args))
 		}
-		timeColumn := pinot.UnquoteObjectName(args[0])
-
-		var granularityExpr string
-		if len(args) > 1 {
-			granularityExpr = pinot.UnquoteStringLiteral(args[1])
+		col, err := x.resolveTimeColumn(argAt(args, 0))
+		if err != nil {
+			return "", err
 		}
-
-		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
+		if col.expr != "" {
+			return "", fmt.Errorf("expected a column name, got expression `%s`", col.expr)
+		}
+		granularity := ResolveGranularity(ctx, pinot.UnquoteStringLiteral(argAt(args, 1)), col.format, x.IntervalSize,
+			pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
 		return pinot.TimeGroupExpr(x.TableConfigs, pinot.DateTimeConversion{
-			TimeColumn:   timeColumn,
-			InputFormat:  format,
+			TimeColumn:   col.name,
+			InputFormat:  col.format,
 			OutputFormat: pinot.DateTimeFormatMillisecondsEpoch(),
 			Granularity:  granularity,
 		}).String(), nil
@@ -138,23 +239,27 @@ func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string,
 
 func (x MacroEngine) ExpandTimeTo(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeTo, func(args []string) (string, error) {
-		if len(args) < 1 {
-			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+		if len(args) > 1 {
+			return "", fmt.Errorf("expected at most 1 argument, got %d", len(args))
 		}
-		timeColumn := pinot.UnquoteObjectName(args[0])
-		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinot.TimeExpr(x.To, format).String(), nil
+		col, err := x.resolveTimeColumn(argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return pinot.TimeExpr(x.To, col.format).String(), nil
 	})
 }
 
 func (x MacroEngine) ExpandTimeFrom(_ context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFrom, func(args []string) (string, error) {
-		if len(args) < 1 {
-			return "", fmt.Errorf("expected 1 argument, got %d", len(args))
+		if len(args) > 1 {
+			return "", fmt.Errorf("expected at most 1 argument, got %d", len(args))
 		}
-		timeColumn := pinot.UnquoteObjectName(args[0])
-		format := getDateTimeFormatOrFallback(x.TableSchema, timeColumn)
-		return pinot.TimeExpr(x.From, format).String(), nil
+		col, err := x.resolveTimeColumn(argAt(args, 0))
+		if err != nil {
+			return "", err
+		}
+		return pinot.TimeExpr(x.From, col.format).String(), nil
 	})
 }
 
@@ -172,25 +277,25 @@ func (x MacroEngine) ExpandMetricAlias(_ context.Context, query string) (string,
 
 func (x MacroEngine) ExpandTimeFilterMillis(ctx context.Context, query string) (string, error) {
 	return expandMacro(query, MacroTimeFilterMillis, func(args []string) (string, error) {
-		if len(args) < 1 {
-			return "", fmt.Errorf("expected 1 required argument, got %d", len(args))
+		if len(args) > 2 {
+			return "", fmt.Errorf("expected at most 2 arguments, got %d", len(args))
 		}
-		timeColumn := pinot.UnquoteObjectName(args[0])
-
-		var granularityExpr string
-		if len(args) > 1 {
-			granularityExpr = pinot.UnquoteStringLiteral(args[1])
+		// The column is compared in epoch millis by definition, so only its name/expression is resolved here.
+		arg := argAt(args, 0)
+		if arg == "" {
+			name, err := pinot.DefaultTimeColumn(x.TableSchema, x.TableConfigs)
+			if err != nil {
+				return "", err
+			}
+			arg = name
 		}
-
-		format := pinot.DateTimeFormatMillisecondsEpoch()
-		derived := pinot.DerivedGranularitiesFor(x.TableConfigs, timeColumn, OutputTimeFormat())
-		granularity := ResolveGranularity(ctx, granularityExpr, format, x.IntervalSize, derived)
-		return pinot.TimeFilterBucketAlignedExpr(pinot.TimeFilter{
-			Column: timeColumn,
-			Format: format,
-			From:   x.TimeRange.From,
-			To:     x.TimeRange.To,
-		}, granularity.Duration()).String(), nil
+		col := timeColumnRef{name: unquoteColumnArg(arg), format: pinot.DateTimeFormatMillisecondsEpoch()}
+		if isTimeColumnExpression(arg) || (!isQuoted(arg) && strings.Contains(arg, ".")) {
+			col = timeColumnRef{expr: pinot.SqlExpr(arg), format: col.format}
+		}
+		granularity := ResolveGranularity(ctx, pinot.UnquoteStringLiteral(argAt(args, 1)), col.format, x.IntervalSize,
+			pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
+		return pinot.TimeFilterBucketAlignedExpr(col.timeFilter(x.TimeRange), granularity.Duration()).String(), nil
 	})
 }
 
@@ -274,25 +379,124 @@ func adHocFilterWhereExpr(filters []pinot.AdHocFilter) pinot.SqlExpr {
 	return pinot.SqlExpr(strings.Join(exprs, " AND "))
 }
 
+// expandMacro replaces every `$__<macroName>` invocation in query using render.
+//
+// An invocation is the macro name followed by an optional parenthesised argument list. The name must
+// end at a non-identifier character, so `$__timeFilter` never matches inside `$__timeFilterMillis`.
+// Arguments may contain nested parentheses and quoted strings, e.g.
+// `$__timeFilter(DATETIMECONVERT("ts", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES'))`;
+// they are split only on top-level commas.
 func expandMacro(query string, macroName string, render func(args []string) (string, error)) (string, error) {
-	re := regexp.MustCompile(fmt.Sprintf(`\$__%s(\([^)]*\))?`, macroName))
-	for _, matches := range re.FindAllStringSubmatch(query, -1) {
-		invocation, args := parseArgs(matches)
+	token := "$__" + macroName
+	var out strings.Builder
+	pos := 0
+	for {
+		idx := strings.Index(query[pos:], token)
+		if idx < 0 {
+			out.WriteString(query[pos:])
+			return out.String(), nil
+		}
+		start := pos + idx
+		end := start + len(token)
+		if end < len(query) && isIdentChar(query[end]) {
+			// A longer macro name (e.g. $__timeFilterMillis); not ours.
+			out.WriteString(query[pos:end])
+			pos = end
+			continue
+		}
+
+		args := []string{}
+		if end < len(query) && query[end] == '(' {
+			closeIdx, err := findClosingParen(query, end)
+			if err != nil {
+				line, col := offsetCoords(query, start)
+				return "", fmt.Errorf("failed to expand macro `%s` (line %d, col %d): %w", macroName, line, col, err)
+			}
+			args = splitTopLevelArgs(query[end+1 : closeIdx])
+			end = closeIdx + 1
+		}
+
 		result, err := render(args)
 		if err != nil {
-			line, col := invocationCoords(query, invocation)
+			line, col := offsetCoords(query, start)
 			return "", fmt.Errorf("failed to expand macro `%s` (line %d, col %d): %w", macroName, line, col, err)
 		}
-		query = strings.Replace(query, invocation, " "+result+" ", 1)
+		out.WriteString(query[pos:start])
+		out.WriteString(" " + result + " ")
+		pos = end
 	}
-	return query, nil
 }
 
-func invocationCoords(query string, invocation string) (int, int) {
-	index := strings.Index(query, invocation)
+func isIdentChar(c byte) bool {
+	return c == '_' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
+}
+
+// findClosingParen returns the index of the `)` matching the `(` at openIdx, skipping over
+// parentheses inside '...', "..." and `...` quoted sections.
+func findClosingParen(s string, openIdx int) (int, error) {
+	depth := 0
+	var quote byte
+	for i := openIdx; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			quote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				return i, nil
+			}
+		}
+	}
+	return -1, fmt.Errorf("missing closing parenthesis")
+}
+
+// splitTopLevelArgs splits a macro argument list on commas that are not nested in parentheses or quotes.
+func splitTopLevelArgs(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return []string{}
+	}
+	var args []string
+	depth := 0
+	var quote byte
+	last := 0
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if quote != 0 {
+			if c == quote {
+				quote = 0
+			}
+			continue
+		}
+		switch c {
+		case '\'', '"', '`':
+			quote = c
+		case '(':
+			depth++
+		case ')':
+			depth--
+		case ',':
+			if depth == 0 {
+				args = append(args, strings.TrimSpace(s[last:i]))
+				last = i + 1
+			}
+		}
+	}
+	return append(args, strings.TrimSpace(s[last:]))
+}
+
+func offsetCoords(query string, index int) (int, int) {
 	line := 1
 	col := 1
-	for i := 0; i < index; i++ {
+	for i := 0; i < index && i < len(query); i++ {
 		if query[i] == '\n' {
 			line++
 			col = 1
@@ -301,22 +505,4 @@ func invocationCoords(query string, invocation string) (int, int) {
 		}
 	}
 	return line, col
-}
-
-func parseArgs(matches []string) (string, []string) {
-	if len(matches) < 2 {
-		return matches[0], []string{}
-	}
-	argMatch := strings.TrimSpace(matches[1])
-	if len(argMatch) == 0 {
-		return matches[0], []string{}
-	}
-
-	argMatch = argMatch[1 : len(argMatch)-1] // Trim surrounding ().
-	rawArgs := strings.Split(argMatch, ",")
-	args := make([]string, len(rawArgs))
-	for i := range rawArgs {
-		args[i] = strings.TrimSpace(rawArgs[i])
-	}
-	return matches[0], args
 }

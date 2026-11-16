@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Fix code-mode panels that ignore the dashboard time range (DP-3035):
+  - `$__timeFilter`, `$__timeFilterMillis`, `$__timeFrom`, `$__timeTo` and `$__timeGroup` default to the table's time column when called without a column, so `WHERE $__timeFilter` works.
+  - Macro arguments may contain nested parentheses and quoted strings, e.g. `$__timeFilter(DATETIMECONVERT(...))`, and column names may be single-quoted or qualified (`t.ts`).
+  - `$__timeFilter` no longer silently compares a non-date-time column in milliseconds: numeric columns get a panel warning, and unknown or string columns are errors.
+  - Legacy `timeFieldSpec` schemas are supported by the time macros.
+  - Panels and the code editor warn when the SQL doesn't use the dashboard time range at all (e.g. hard-coded timestamps).
+- Query variables expand time macros (they previously sent `$__timeFilter` to Pinot unexpanded), and *Distinct values* variables are limited to the dashboard time range.
+- PromQL: parse fractional-second timestamps, derive the step from *Max data points* when Grafana sends no interval, align `start` to the step, and support `$__rate_interval`.
+
 ## 1.1.10 (2026-11-13)
 
 - Add optional query attribution (off by default). When it's on, each query is tagged with the Grafana user's login and email, with the dashboard and panel or alert rule it came from, and with a per-query `qid` that keeps each id unique. The tag is sent as Pinot's `clientQueryId` option, which lands in the `clientRequestId` column of `system_query_log`, and as a leading SQL comment so it also shows in broker logs. Shared-token deployments can then tell who ran a query. PromQL queries are not tagged.
