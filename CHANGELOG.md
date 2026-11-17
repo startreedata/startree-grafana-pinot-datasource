@@ -5,10 +5,10 @@
 - Fix code-mode panels that ignore the dashboard time range (DP-3035):
   - `$__timeFilter`, `$__timeFilterMillis`, `$__timeFrom`, `$__timeTo` and `$__timeGroup` default to the table's time column when called without a column, so `WHERE $__timeFilter` works.
   - Macro arguments may contain nested parentheses and quoted strings, e.g. `$__timeFilter(DATETIMECONVERT(...))`, and column names may be single-quoted or qualified (`t.ts`).
-  - `$__timeFilter` no longer silently compares a non-date-time column in milliseconds: numeric columns get a panel warning, and unknown or string columns are errors.
+  - `$__timeFilter` no longer silently compares a non-date-time column in milliseconds: numeric columns and columns not in the selected table's schema (e.g. from a join) get a panel warning, and string columns are errors. Each warning is shown once per panel.
   - Legacy `timeFieldSpec` schemas are supported by the time macros.
-  - Panels and the code editor warn when the SQL doesn't use the dashboard time range at all (e.g. hard-coded timestamps).
-- *Sql Query* variables expand time macros such as `$__timeFilter`; they previously sent them to Pinot unexpanded, which failed.
+  - Panels and the code editor warn when the SQL doesn't use the dashboard time range at all (e.g. hard-coded timestamps). Add `-- $__noTimeRange` to a query that ignores the time range on purpose to hide the warning.
+- *Sql Query* variables expand time macros such as `$__timeFilter`; they previously sent them to Pinot unexpanded, which failed. The schema is read only when the SQL uses a time macro.
 - PromQL: parse fractional-second timestamps, derive the step from *Max data points* when Grafana sends no interval, align `start` to the step, and support `$__rate_interval`.
 
 ## 1.1.10 (2026-11-13)

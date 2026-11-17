@@ -37,6 +37,7 @@ type fakePinot struct {
 	sql              []string
 	timeseriesParams url.Values
 	timeseriesBody   string
+	schemaReads      int
 }
 
 func (f *fakePinot) client(t *testing.T) *pinot.Client {
@@ -45,6 +46,9 @@ func (f *fakePinot) client(t *testing.T) *pinot.Client {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/schema"):
+			f.mu.Lock()
+			f.schemaReads++
+			f.mu.Unlock()
 			_, _ = io.WriteString(w, timeRangeTestSchema)
 		case strings.HasSuffix(r.URL.Path, "/metadata"):
 			_, _ = io.WriteString(w, `{"tableName": "events_OFFLINE"}`)
@@ -145,6 +149,19 @@ func TestVariableQuery_TimeRange(t *testing.T) {
 		require.NoError(t, resp.Error)
 		assert.Equal(t, `SELECT DISTINCT pt FROM  "events"  WHERE  "timestamp" >= 1700000040000 AND "timestamp" < 1700003640000`,
 			fake.lastSql(t))
+		assert.Equal(t, 1, fake.schemaReads)
+	})
+
+	// Variables without a time macro don't need the schema, so they keep working if reading it fails.
+	t.Run("PINOT_QL_CODE without a time macro does not read the schema", func(t *testing.T) {
+		fake := &fakePinot{}
+		resp := VariableQuery{VariableType: VariableQueryTypePinotQlCode, TableName: "events",
+			PinotQlCode: `SELECT DISTINCT pt FROM $__table`,
+			TimeRange:   testTimeRange, IntervalSize: time.Minute,
+		}.Execute(fake.client(t), context.Background())
+		require.NoError(t, resp.Error)
+		assert.Equal(t, `SELECT DISTINCT pt FROM  "events"`, fake.lastSql(t))
+		assert.Equal(t, 0, fake.schemaReads)
 	})
 
 	// Distinct values stay unfiltered even with a time range, so tables without recent data keep their values.
@@ -172,6 +189,8 @@ func TestPromQlQuery_SendsDashboardTimeRange(t *testing.T) {
 		{name: "grafana interval", interval: 30 * time.Second, maxDataPoints: 1000, wantStart: "1700000010", wantStep: "30"},
 		{name: "zero interval derives step from maxDataPoints", interval: 0, maxDataPoints: 100, wantStart: "1700000028", wantStep: "36"},
 		{name: "interval below the maxDataPoints bound is raised", interval: time.Second, maxDataPoints: 60, wantStart: "1699999980", wantStep: "60"},
+		// 3600s / 1900 points = 1.89s; rounding down to 1s would return ~2x maxDataPoints.
+		{name: "fractional bound rounds up", interval: time.Second, maxDataPoints: 1900, wantStart: "1700000036", wantStep: "2"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

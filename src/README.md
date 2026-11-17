@@ -118,7 +118,9 @@ _* Indicates an optional parameter._
 A code-mode query only follows the dashboard time picker if its SQL uses one of the time macros above
 (or Grafana's `$__from`/`$__to`). A query with hard-coded timestamps, such as
 `WHERE "ts" >= 1775159508000 AND "ts" < 1775418708000`, always returns the same rows. The editor and the
-panel show a warning for these queries; replace the literals with `WHERE $__timeFilter`.
+panel show a warning for these queries; replace the literals with `WHERE $__timeFilter`. If a query ignores the
+time range on purpose (an all-time total, a lookup, or a fixed window such as `ago('PT24H')`), add the comment
+`-- $__noTimeRange` to hide the warning. The marker expands to nothing.
 
 How the time column argument is resolved:
 
@@ -129,8 +131,10 @@ How the time column argument is resolved:
 - **A numeric column that is not a date time column**: compared in epoch milliseconds, with a warning on the panel.
   If the column holds epoch seconds, use `"col" >= $__fromTime AND "col" < $__toTime`.
 - **An expression** (`DATETIMECONVERT(...)`, `t.ts`): used as written and compared in epoch milliseconds.
-- Unknown columns, string columns and unsupported formats (e.g. `SIMPLE_DATE_FORMAT`) are errors instead of filters
-  that silently match nothing.
+- **A column the selected table doesn't have** (from a join, a subquery alias or a different `FROM`): compared in epoch
+  milliseconds, with a warning on the panel.
+- String columns and unsupported formats (e.g. `SIMPLE_DATE_FORMAT`) are errors instead of filters that silently match
+  nothing.
 
 **Variables:** *Sql Query* variables expand all the macros above, so
 `SELECT DISTINCT "pt" FROM $__table WHERE $__timeFilter` lists only values from the selected time range. Set the
@@ -138,7 +142,7 @@ variable's **Refresh** to *On time range change* so the list updates with the ti
 are not time-filtered.
 
 **PromQL:** the dashboard range is sent as `start`/`end`, with `start` aligned to the step. The step is the panel interval
-(or the *Step size* override), raised if needed to stay within *Max data points*. `$__rate_interval` is replaced with
+(or the *Step size* override), raised if needed to stay within *Max data points* and rounded up to whole seconds. `$__rate_interval` is replaced with
 4 × the panel interval.
 
 

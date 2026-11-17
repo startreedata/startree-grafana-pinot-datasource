@@ -45,7 +45,8 @@ func (query VariableQuery) getSqlResults(ctx context.Context, client *pinot.Clie
 	if engine.IntervalSize <= 0 {
 		engine.IntervalSize = time.Minute
 	}
-	if query.TableName != "" {
+	// Only time macros need the schema and table config, so variables without one don't depend on reading them.
+	if query.TableName != "" && strings.Contains(sqlCode, "$__time") {
 		schema, err := client.GetTableSchema(ctx, query.TableName)
 		if err != nil {
 			return NewPluginErrorResponse(err)

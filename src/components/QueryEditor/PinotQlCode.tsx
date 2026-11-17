@@ -100,7 +100,8 @@ export function PinotQlCode(props: {
           >
             Changing the time picker will not change the results. Add a time filter such as{' '}
             <code>WHERE $__timeFilter</code> (uses the table&apos;s time column) or{' '}
-            <code>WHERE $__timeFilter(&quot;&lt;time column&gt;&quot;)</code>.
+            <code>WHERE $__timeFilter(&quot;&lt;time column&gt;&quot;)</code>. If the query ignores the time range on
+            purpose, add the comment <code>-- $__noTimeRange</code> to hide this warning.
           </Alert>
         )}
       <SelectQueryOptions

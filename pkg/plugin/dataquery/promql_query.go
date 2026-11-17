@@ -38,7 +38,8 @@ func (query PromQlQuery) resolveStep() time.Duration {
 	if step < minPromQlStep {
 		step = minPromQlStep
 	}
-	return step.Truncate(time.Second)
+	// Round up to whole seconds: rounding down could return more than MaxDataPoints points.
+	return (step + time.Second - 1).Truncate(time.Second)
 }
 
 // alignToStep rounds t down to a multiple of step since the Unix epoch. (time.Truncate aligns to

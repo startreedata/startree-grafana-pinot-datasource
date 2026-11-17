@@ -25,6 +25,9 @@ const (
 	MacroFromTime          = "fromTime"
 	MacroToTime            = "toTime"
 	MacroIntervalSeconds   = "interval_s"
+	// MacroNoTimeRange marks a query that ignores the dashboard time range on purpose. It expands to nothing;
+	// the frontend uses it to skip the "ignores the dashboard time range" warning.
+	MacroNoTimeRange = "noTimeRange"
 )
 
 type MacroEngine struct {
@@ -66,6 +69,7 @@ func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, er
 		x.ExpandFromTime,
 		x.ExpandToTime,
 		x.ExpandAdHocFilter,
+		x.ExpandNoTimeRange,
 	} {
 		query, err = macro(ctx, query)
 		if err != nil {
@@ -73,6 +77,12 @@ func (x MacroEngine) ExpandMacros(ctx context.Context, query string) (string, er
 		}
 	}
 	return strings.TrimSpace(query), nil
+}
+
+func (x MacroEngine) ExpandNoTimeRange(_ context.Context, query string) (string, error) {
+	return expandMacro(query, MacroNoTimeRange, func(_ []string) (string, error) {
+		return "", nil
+	})
 }
 
 func (x MacroEngine) ExpandTableName(_ context.Context, query string) (string, error) {
@@ -120,7 +130,9 @@ func argAt(args []string, i int) string {
 //   - A column name ("ts", `ts`, 'ts' or ts): the format comes from the schema's dateTimeFieldSpecs (or legacy
 //     timeFieldSpec). A numeric column that is not declared as a date time column is assumed to hold epoch
 //     milliseconds, and a warning is attached to the response because the guess may be wrong (e.g. epoch seconds).
-//     Unknown and non-numeric columns are errors instead of silently filtering on the wrong values.
+//     A column the selected table's schema doesn't have (e.g. from a join, a subquery alias or a different FROM)
+//     is also compared in epoch milliseconds, with a warning. Declared non-numeric columns are errors instead of
+//     silently filtering on the wrong values.
 //   - Anything else (e.g. DATETIMECONVERT(...)) is used verbatim and compared in epoch milliseconds.
 func (x MacroEngine) resolveTimeColumn(arg string) (timeColumnRef, error) {
 	if arg == "" {
@@ -151,7 +163,12 @@ func (x MacroEngine) resolveTimeColumn(arg string) (timeColumnRef, error) {
 
 	dataType, found := x.TableSchema.ColumnDataType(name)
 	if !found {
-		return timeColumnRef{}, fmt.Errorf("column `%s` not found in table `%s`", name, x.TableName)
+		// The schema is the table picked in the editor, so columns from a joined table, a subquery alias or a
+		// different FROM aren't in it. Keep the historical epoch-millis behavior rather than failing the panel.
+		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
+		x.warn(fmt.Sprintf("Column `%s` is not in the schema of table `%s`, so the time filter assumes it holds epoch milliseconds. "+
+			"If it holds epoch seconds, filter with `%s >= $__fromTime AND %s < $__toTime` instead.", name, x.TableName, name, name))
+		return ref, nil
 	}
 
 	format, err := pinot.GetTimeColumnFormat(x.TableSchema, name)
@@ -209,9 +226,15 @@ func isTimeColumnExpression(arg string) bool {
 
 // warn records a message to attach to the query response as a warning notice.
 func (x MacroEngine) warn(msg string) {
-	if x.Warnings != nil {
-		*x.Warnings = append(*x.Warnings, msg)
+	if x.Warnings == nil {
+		return
 	}
+	for _, existing := range *x.Warnings {
+		if existing == msg {
+			return // Several macros on the same column would otherwise repeat the message.
+		}
+	}
+	*x.Warnings = append(*x.Warnings, msg)
 }
 
 func (x MacroEngine) ExpandTimeGroup(ctx context.Context, query string) (string, error) {

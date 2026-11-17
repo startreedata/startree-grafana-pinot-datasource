@@ -16,6 +16,9 @@ describe('sqlUsesTimeRange', () => {
     ['SELECT * FROM t /* $__timeFilter("ts") */', false],
     ['SELECT $__timeGroup("ts") FROM t', false],
     ['SELECT * FROM t WHERE x = $__fromage', false],
+    ['SELECT COUNT(*) FROM t -- $__noTimeRange', true],
+    ['SELECT COUNT(*) FROM t /* $__noTimeRange */', true],
+    ['SELECT COUNT(*) FROM t -- $__noTimeRanges', false],
   ])('%s -> %s', (sql, want) => {
     expect(sqlUsesTimeRange(sql)).toBe(want);
   });

@@ -31,7 +31,8 @@ type PinotQlCodeQuery struct {
 
 // NoTimeRangeWarning is shown on code-mode panels whose SQL never references the dashboard time range.
 const NoTimeRangeWarning = "This query does not use the dashboard time range, so changing the time picker will not change the results. " +
-	"Add a time filter such as `WHERE $__timeFilter(\"<time column>\")` (or just `WHERE $__timeFilter` to use the table's time column)."
+	"Add a time filter such as `WHERE $__timeFilter(\"<time column>\")` (or just `WHERE $__timeFilter` to use the table's time column). " +
+	"If the query ignores the time range on purpose, add the comment `-- $__noTimeRange` to hide this warning."
 
 func (query PinotQlCodeQuery) Validate() error {
 	switch {
