@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fix backend crashes (nil pointer dereferences) when a time-series label query returns no rows, and when the columns resource is called without a time range.
+- Keep request URLs out of logged transport errors. A failed connection no longer logs the full Broker or Controller URL, which could hold a username or token; only the method, path and underlying error are logged.
+- Remove the plugin template's placeholder text from the README.
+- Use Grafana theme spacing and colors instead of fixed values in the query and config editors. The PromQL editor's highlight colors now follow the light or dark theme.
+- Bump `papaparse` to 5.7.1 (CVE-2026-127056, inefficient algorithmic complexity).
 - Fix code-mode panels that ignore the dashboard time range (DP-3035):
   - `$__timeFilter`, `$__timeFilterMillis`, `$__timeFrom`, `$__timeTo` and `$__timeGroup` default to the table's time column when called without a column, so `WHERE $__timeFilter` works.
   - Macro arguments may contain nested parentheses and quoted strings, e.g. `$__timeFilter(DATETIMECONVERT(...))`, and column names may be single-quoted or qualified (`t.ts`).
