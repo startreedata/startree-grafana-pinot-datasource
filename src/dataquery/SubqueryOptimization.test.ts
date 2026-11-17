@@ -77,18 +77,21 @@ describe('replaceAllVariableExpressionsWithSubqueries', () => {
       expect(result).toBe(sql);
     });
 
-    test('above threshold (1001) — replaces with subquery', () => {
+    test.each([
+      ['plain SQL', subquery],
+      ['Grafana dashboard bounds', subquery + ' WHERE ts >= $__from AND ts < $__to'],
+    ])('above threshold (1001) — replaces with subquery for %s', (_, backingSql) => {
       const selected = allOptions.slice(0, 1001);
       const variable = makeQueryVariable({
         name: 'player',
-        pinotQlCode: subquery,
+        pinotQlCode: backingSql,
         options: allOptions,
         selected,
       });
 
       const sql = "SELECT * FROM baseballStats WHERE playerName IN (${player:singlequote})";
       const result = replaceAllVariableExpressionsWithSubqueries(sql, [variable]);
-      expect(result).toContain('SELECT DISTINCT playerName FROM baseballStats');
+      expect(result).toContain(backingSql);
       expect(result).not.toContain('${player');
     });
   });
@@ -888,6 +891,42 @@ describe('interpolateVariables — Code mode subquery optimization', () => {
       'SELECT * FROM baseballStats WHERE playerName IN (SELECT DISTINCT playerName FROM baseballStats)'
     );
     expect(query.queryOptions).toEqual([{ name: 'useMultistageEngine', value: 'true' }]);
+  });
+
+  test('time-scoped variables keep their selected values across panel modes', () => {
+    const allOptions = generateValues(1001, 'entity');
+    const variable = makeQueryVariable({
+      name: 'entity',
+      pinotQlCode: 'SELECT DISTINCT entity FROM event_catalog WHERE $__timeFilter',
+      options: allOptions,
+      selected: '$__all',
+    });
+    const sqlLiterals = allOptions.map((value) => `'${value}'`);
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable],
+      updateTimeRange: () => {},
+      replace: (target?: string) => (target ?? '').replace('${entity:singlequote}', sqlLiterals.join(',')),
+    });
+
+    const code = interpolateVariables({
+      refId: 'A',
+      editorMode: EditorMode.Code,
+      tableName: 'logs',
+      pinotQlCode: 'SELECT * FROM logs WHERE entity IN (${entity:singlequote})',
+    });
+    expect(code.pinotQlCode).toBe(`SELECT * FROM logs WHERE entity IN (${sqlLiterals.join(',')})`);
+    expect(code.queryOptions).toBeUndefined();
+
+    const builder = interpolateVariables({
+      refId: 'B',
+      editorMode: EditorMode.Builder,
+      tableName: 'logs',
+      filters: [{ columnName: 'entity', operator: '=', valueExprs: ['$entity'] }],
+    });
+    expect(builder.filters?.[0]).toMatchObject({ operator: 'in', valueExprs: sqlLiterals });
+    expect(builder.filters?.[0].subqueryExpr).toBeUndefined();
+    expect(builder.queryOptions).toBeUndefined();
   });
 
   test('useMultistageEngine is appended to existing queryOptions', () => {

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/stretchr/testify/assert"
@@ -152,15 +153,45 @@ func TestVariableQuery_TimeRange(t *testing.T) {
 		assert.Equal(t, 1, fake.schemaReads)
 	})
 
+	// Grafana sends a zero interval when refreshing query variables.
+	for _, tt := range []struct {
+		name       string
+		macro      string
+		from       time.Duration
+		to         time.Duration
+		wantFilter string
+	}{
+		{"first picker window", "$__timeFilter", 10 * time.Second, 20 * time.Second,
+			`"timestamp" >= 1700000050000 AND "timestamp" < 1700000060000`},
+		{"second picker window", "$__timeFilter", 30 * time.Second, 40 * time.Second,
+			`"timestamp" >= 1700000070000 AND "timestamp" < 1700000080000`},
+		{"millis filter", "$__timeFilterMillis", 10 * time.Second, 20 * time.Second,
+			`"timestamp" >= 1700000050000 AND "timestamp" < 1700000060000`},
+		{"explicit granularity", `$__timeFilter("timestamp", '1:MINUTES')`, 10 * time.Second, 20 * time.Second,
+			`"timestamp" >= 1700000040000 AND "timestamp" < 1700000100000`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			fake := &fakePinot{}
+			resp := VariableQuery{
+				VariableType: VariableQueryTypePinotQlCode,
+				TableName:    "events",
+				PinotQlCode:  "SELECT DISTINCT pt FROM $__table WHERE " + tt.macro,
+				TimeRange:    TimeRange{From: testTimeRange.From.Add(tt.from), To: testTimeRange.From.Add(tt.to)},
+			}.Execute(fake.client(t), context.Background())
+			require.NoError(t, resp.Error)
+			assert.Contains(t, fake.lastSql(t), tt.wantFilter)
+		})
+	}
+
 	// Variables without a time macro don't need the schema, so they keep working if reading it fails.
 	t.Run("PINOT_QL_CODE without a time macro does not read the schema", func(t *testing.T) {
 		fake := &fakePinot{}
 		resp := VariableQuery{VariableType: VariableQueryTypePinotQlCode, TableName: "events",
-			PinotQlCode: `SELECT DISTINCT pt FROM $__table`,
+			PinotQlCode: `SELECT DISTINCT pt FROM $__table -- WHERE $__timeFilter(pt)`,
 			TimeRange:   testTimeRange, IntervalSize: time.Minute,
 		}.Execute(fake.client(t), context.Background())
 		require.NoError(t, resp.Error)
-		assert.Equal(t, `SELECT DISTINCT pt FROM  "events"`, fake.lastSql(t))
+		assert.Equal(t, `SELECT DISTINCT pt FROM  "events"  -- WHERE $__timeFilter(pt)`, fake.lastSql(t))
 		assert.Equal(t, 0, fake.schemaReads)
 	})
 
@@ -177,33 +208,60 @@ func TestVariableQuery_TimeRange(t *testing.T) {
 
 func TestPromQlQuery_SendsDashboardTimeRange(t *testing.T) {
 	from := time.Unix(1_700_000_037, 0) // Not step-aligned on purpose.
-	to := time.Unix(1_700_003_637, 0)
 
 	tests := []struct {
 		name          string
 		interval      time.Duration
 		maxDataPoints int64
+		stepOverride  string
+		rangeDuration time.Duration
 		wantStart     string
+		wantEnd       string
 		wantStep      string
 	}{
-		{name: "grafana interval", interval: 30 * time.Second, maxDataPoints: 1000, wantStart: "1700000010", wantStep: "30"},
-		{name: "zero interval derives step from maxDataPoints", interval: 0, maxDataPoints: 100, wantStart: "1700000028", wantStep: "36"},
-		{name: "interval below the maxDataPoints bound is raised", interval: time.Second, maxDataPoints: 60, wantStart: "1699999980", wantStep: "60"},
+		{name: "grafana interval", interval: 30 * time.Second, maxDataPoints: 1000,
+			wantStart: "1700000010", wantEnd: "1700003610", wantStep: "30"},
+		{name: "zero interval derives step from maxDataPoints", maxDataPoints: 100,
+			wantStart: "1700000028", wantEnd: "1700003628", wantStep: "36"},
+		{name: "interval below the maxDataPoints bound is raised", interval: time.Second, maxDataPoints: 60,
+			wantStart: "1699999980", wantEnd: "1700003580", wantStep: "60"},
 		// 3600s / 1900 points = 1.89s; rounding down to 1s would return ~2x maxDataPoints.
-		{name: "fractional bound rounds up", interval: time.Second, maxDataPoints: 1900, wantStart: "1700000036", wantStep: "2"},
+		{name: "fractional bound rounds up", interval: time.Second, maxDataPoints: 1900,
+			wantStart: "1700000036", wantEnd: "1700003636", wantStep: "2"},
+		{name: "saved override takes precedence over max data points", interval: time.Minute, maxDataPoints: 1000,
+			stepOverride: "30s", rangeDuration: 24 * time.Hour,
+			wantStart: "1700000010", wantEnd: "1700086410", wantStep: "30"},
+		{name: "fractional saved override retains API step precision", maxDataPoints: 60, stepOverride: "1500ms",
+			wantStart: "1700000037", wantEnd: "1700003637", wantStep: "1"},
+		{name: "short range keeps both bounds when it would collapse", stepOverride: "2h",
+			wantStart: "1700000037", wantEnd: "1700003637", wantStep: "7200"},
+		{name: "subsecond range respects timeseries API minimum", interval: 100 * time.Millisecond, maxDataPoints: 60,
+			rangeDuration: 500 * time.Millisecond, wantStart: "1700000037", wantEnd: "1700000037", wantStep: "1"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fake := &fakePinot{timeseriesBody: `{"status": "success", "data": {"resultType": "matrix", "result": [
 				{"metric": {"__name__": "m"}, "values": [[1700000040, "1"], [1700000070.5, "2"]]}]}}`}
-			resp := PromQlQuery{TableName: "events", PromQlCode: "m", TimeRange: TimeRange{From: from, To: to},
-				IntervalSize: tt.interval, MaxDataPoints: tt.maxDataPoints,
-			}.Execute(fake.client(t), context.Background())
+			duration := tt.rangeDuration
+			if duration == 0 {
+				duration = time.Hour
+			}
+			model, err := json.Marshal(DataQuery{
+				QueryType: QueryTypePromQl, TableName: "events", PromQlCode: "m", PromStepSize: tt.stepOverride,
+			})
+			require.NoError(t, err)
+			resp := ExecuteQuery(fake.client(t), context.Background(), DataSourceMeta{}, backend.DataQuery{
+				JSON: model, TimeRange: backend.TimeRange{From: from, To: from.Add(duration)},
+				Interval: tt.interval, MaxDataPoints: tt.maxDataPoints,
+			})
 			require.NoError(t, resp.Error)
 
-			assert.Equal(t, tt.wantStart, fake.timeseriesParams.Get("start"))
-			assert.Equal(t, "1700003637", fake.timeseriesParams.Get("end"))
-			assert.Equal(t, tt.wantStep, fake.timeseriesParams.Get("step"))
+			fake.mu.Lock()
+			params := fake.timeseriesParams
+			fake.mu.Unlock()
+			assert.Equal(t, tt.wantStart, params.Get("start"))
+			assert.Equal(t, tt.wantEnd, params.Get("end"))
+			assert.Equal(t, tt.wantStep, params.Get("step"))
 			require.Len(t, resp.Frames, 1)
 			assert.Equal(t, 2, resp.Frames[0].Rows(), "fractional-second timestamps must parse")
 		})

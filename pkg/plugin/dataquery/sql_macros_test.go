@@ -2,11 +2,12 @@ package dataquery
 
 import (
 	"context"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExpandMacros(t *testing.T) {
@@ -297,6 +298,8 @@ func TestExpandMacros_TimeColumnResolution(t *testing.T) {
 		MetricFieldSpecs: []pinot.MetricFieldSpec{{Name: "attempt", DataType: "LONG"}},
 		DateTimeFieldSpecs: []pinot.DateTimeFieldSpec{
 			{Name: "timestamp", DataType: "LONG", Format: "1:MILLISECONDS:EPOCH", Granularity: "1:MINUTES"},
+			{Name: "event_time", DataType: "LONG", Format: "1:SECONDS:EPOCH"},
+			{Name: "event.time", DataType: "LONG", Format: "1:SECONDS:EPOCH"},
 			{Name: "day_str", DataType: "STRING", Format: "1:DAYS:SIMPLE_DATE_FORMAT:yyyy-MM-dd", Granularity: "1:DAYS"},
 		},
 	}
@@ -330,7 +333,11 @@ func TestExpandMacros_TimeColumnResolution(t *testing.T) {
 		{name: "backtick-quoted column name", expr: "$__timeFilter(`timestamp`)",
 			want: `"timestamp" >= 1699999980000 AND "timestamp" < 1700003580000`},
 		{name: "qualified column name", expr: `$__timeFilter(r.timestamp)`,
-			want: `r.timestamp >= 1699999980000 AND r.timestamp < 1700003580000`},
+			want: `r.timestamp >= 1699999980000 AND r.timestamp < 1700003580000`, wantWarnings: 1},
+		{name: "literal dotted column name keeps its schema format", expr: `$__timeFilter(event.time)`,
+			want: `"event.time" >= 1699999980 AND "event.time" < 1700003580`},
+		{name: "literal dotted column name is also quoted by timeFilterMillis", expr: `$__timeFilterMillis(event.time)`,
+			want: `"event.time" >= 1699999980000 AND "event.time" < 1700003580000`},
 		{name: "numeric non-datetime column warns instead of silently assuming millis", expr: `$__timeFilter(ts_sec)`,
 			want: `"ts_sec" >= 1699999980000 AND "ts_sec" < 1700003580000`, wantWarnings: 1},
 		{name: "TIMESTAMP column is millis without warning", expr: `$__timeFilter(ts_type)`,
@@ -339,13 +346,25 @@ func TestExpandMacros_TimeColumnResolution(t *testing.T) {
 			wantErr: "failed to expand macro `timeFilter` (line 1, col 1): column `pt` has type STRING and is not a date time column; time macros need a date time column or a numeric epoch column"},
 		{name: "column not in the schema falls back to millis with a warning", expr: `$__timeFilter("nope")`,
 			want: `"nope" >= 1699999980000 AND "nope" < 1700003580000`, wantWarnings: 1},
-		{name: "joined table's qualified column falls back to millis with a warning", expr: `$__timeFilter(b.event_time)`,
+		{name: "qualified column does not borrow the format of the same-named schema column", expr: `$__timeFilter(b.event_time)`,
 			want: `b.event_time >= 1699999980000 AND b.event_time < 1700003580000`, wantWarnings: 1},
+		{name: "individually quoted qualified components stay qualified", expr: `$__timeFilter("b"."event_time")`,
+			want: `"b"."event_time" >= 1699999980000 AND "b"."event_time" < 1700003580000`, wantWarnings: 1},
 		{name: "same column in several macros warns once", expr: `$__timeGroup(ts_sec) AND $__timeFilter(ts_sec) AND $__timeFrom(ts_sec)`,
 			want:         `DATETIMECONVERT("ts_sec", '1:MILLISECONDS:EPOCH', '1:MILLISECONDS:EPOCH', '1:MINUTES')  AND  "ts_sec" >= 1699999980000 AND "ts_sec" < 1700003580000  AND  1699999980000`,
 			wantWarnings: 1},
-		{name: "noTimeRange marker expands to nothing", expr: `SELECT COUNT(*) FROM t -- $__noTimeRange`,
-			want: `SELECT COUNT(*) FROM t --`},
+		{name: "marker in a comment stays inert", expr: `SELECT COUNT(*) FROM t -- $__noTimeRange`,
+			want: `SELECT COUNT(*) FROM t -- $__noTimeRange`},
+		{name: "standalone marker expands to nothing", expr: `SELECT COUNT(*) FROM t $__noTimeRange`,
+			want: `SELECT COUNT(*) FROM t`},
+		{name: "commented-out string column filter is inert", expr: `SELECT COUNT(*) FROM t -- WHERE $__timeFilter(pt)`,
+			want: `SELECT COUNT(*) FROM t -- WHERE $__timeFilter(pt)`},
+		{name: "marker inside a literal with escaped quotes is preserved",
+			expr: `SELECT COUNT(*) FROM t WHERE message = 'it''s $__noTimeRange'`,
+			want: `SELECT COUNT(*) FROM t WHERE message = 'it''s $__noTimeRange'`},
+		{name: "macro in a block comment is skipped and a following filter still expands",
+			expr: `SELECT COUNT(*) FROM t /* $__timeFilter(pt) */ WHERE pt = 'api--prod' AND $__timeFilter`,
+			want: `SELECT COUNT(*) FROM t /* $__timeFilter(pt) */ WHERE pt = 'api--prod' AND  "timestamp" >= 1699999980000 AND "timestamp" < 1700003580000`},
 		{name: "unsupported date time format is an error", expr: `$__timeFilter(day_str)`,
 			wantErr: "failed to expand macro `timeFilter` (line 1, col 1): column `day_str`: failed to parse date time format `1:DAYS:SIMPLE_DATE_FORMAT:yyyy-MM-dd`: simple date time not supported"},
 		{name: "millis macro is not swallowed by timeFilter", expr: `$__timeFilterMillis("timestamp", '1:MINUTES')`,
@@ -369,6 +388,32 @@ func TestExpandMacros_TimeColumnResolution(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.want, got)
 			assert.Len(t, warnings, tt.wantWarnings)
+		})
+	}
+}
+
+func TestExpandMacros_ExactTimeFilterBounds(t *testing.T) {
+	engine := MacroEngine{
+		TableSchema: pinot.TableSchema{DateTimeFieldSpecs: []pinot.DateTimeFieldSpec{
+			{Name: "ts", DataType: "LONG", Format: "7:SECONDS:EPOCH"},
+		}},
+		TimeRange:                TimeRange{From: time.UnixMilli(6_500), To: time.UnixMilli(14_500)},
+		IntervalSize:             time.Minute,
+		UseExactTimeFilterBounds: true,
+	}
+	for _, tt := range []struct {
+		macro string
+		want  string
+	}{
+		{macro: `$__timeFilter(ts)`, want: `"ts" >= 1 AND "ts" < 3`},
+		{macro: `$__timeFilter(ts, '')`, want: `"ts" >= 1 AND "ts" < 3`},
+		{macro: `$__timeFilterMillis(ts)`, want: `"ts" >= 6500 AND "ts" < 14500`},
+		{macro: `$__timeFilterMillis(ts, '1:SECONDS')`, want: `"ts" >= 6000 AND "ts" < 15000`},
+	} {
+		t.Run(tt.macro, func(t *testing.T) {
+			got, err := engine.ExpandMacros(context.Background(), tt.macro)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

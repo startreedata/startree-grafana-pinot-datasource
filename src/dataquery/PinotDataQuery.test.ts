@@ -225,6 +225,23 @@ describe('interpolateVariables', () => {
     ).toBeUndefined();
   });
 
+  test('checks time range after dropping the conditionalAll predicate', () => {
+    const variable = { name: 'hosts', current: { value: '$__all' } } as unknown as TypedVariableModel;
+    setTemplateSrv({
+      containsTemplate: () => true,
+      getVariables: () => [variable],
+      updateTimeRange: () => {},
+      replace: (target?: string) => target ?? '',
+    });
+    const query = interpolateVariables({
+      refId: 'A',
+      editorMode: EditorMode.Code,
+      pinotQlCode: 'SELECT * FROM events WHERE $__conditionalAll($__timeFilter, $hosts)',
+    });
+    expect(query.pinotQlCode).toBe('SELECT * FROM events WHERE 1=1');
+    expect(query.usesTimeRange).toBe(false);
+  });
+
   test('replacesRateIntervalInPromQl', () => {
     setTemplateSrv({
       containsTemplate: () => false,

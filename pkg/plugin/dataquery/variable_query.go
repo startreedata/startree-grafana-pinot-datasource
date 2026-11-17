@@ -41,12 +41,17 @@ func (query VariableQuery) getSqlResults(ctx context.Context, client *pinot.Clie
 		return NewEmptyDataResponse()
 	}
 
-	engine := MacroEngine{TableName: query.TableName, TimeRange: query.TimeRange, IntervalSize: query.IntervalSize}
+	engine := MacroEngine{
+		TableName:                query.TableName,
+		TimeRange:                query.TimeRange,
+		IntervalSize:             query.IntervalSize,
+		UseExactTimeFilterBounds: true,
+	}
 	if engine.IntervalSize <= 0 {
 		engine.IntervalSize = time.Minute
 	}
-	// Only time macros need the schema and table config, so variables without one don't depend on reading them.
-	if query.TableName != "" && strings.Contains(sqlCode, "$__time") {
+	if query.TableName != "" &&
+		hasSQLMacro(sqlCode, MacroTimeFilter, MacroTimeFilterMillis, MacroTimeGroup, MacroTimeFrom, MacroTimeTo) {
 		schema, err := client.GetTableSchema(ctx, query.TableName)
 		if err != nil {
 			return NewPluginErrorResponse(err)
@@ -57,7 +62,6 @@ func (query VariableQuery) getSqlResults(ctx context.Context, client *pinot.Clie
 		}
 		engine.TableSchema, engine.TableConfigs = schema, configs
 	}
-	// Variables previously only expanded $__table, so time macros reached Pinot unexpanded and failed.
 	sqlCode, err := engine.ExpandMacros(ctx, sqlCode)
 	if err != nil {
 		return NewPluginErrorResponse(err)

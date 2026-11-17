@@ -1,15 +1,39 @@
 import { ScopedVars } from '@grafana/data';
 
-// Macros and Grafana variables that put the dashboard time range into a query.
-const TIME_RANGE_REFERENCE =
-  /\$__(timeFilter|timeFilterMillis|timeFrom|timeTo|timeFromMillis|timeToMillis|fromTime|toTime)(?![A-Za-z0-9_])|\$\{?__(from|to)(?![A-Za-z0-9_])/;
+const TIME_RANGE_MACRO =
+  /\$__(timeFilter|timeFilterMillis|timeFrom|timeTo|timeFromMillis|timeToMillis|fromTime|toTime|panelMillis)(?![A-Za-z0-9_])/;
+const GRAFANA_TIME_RANGE_VARIABLE = /\$\{?__(from|to)(?![A-Za-z0-9_])/;
+const PANEL_CONTEXT_MACRO = /\$__(timeGroup|timeAlias|metricAlias|granularityMillis|interval_s|adHocFilter)(?![A-Za-z0-9_])/;
 
 // Marks a query that ignores the dashboard time range on purpose, e.g. `-- $__noTimeRange`.
 const NO_TIME_RANGE_MARKER = /\$__noTimeRange(?![A-Za-z0-9_])/;
 
-/** Removes SQL comments so a commented-out macro doesn't count as using the time range. */
-function stripSqlComments(sql: string): string {
-  return sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\n]*/g, ' ');
+function sqlHasReference(
+  sql: string,
+  codeHasReference: (code: string) => boolean,
+  quotedReference?: RegExp,
+  commentReference?: RegExp
+): boolean {
+  // SQL escapes a quote by doubling it. Scan whole quoted values and comments as single fragments.
+  const fragments = /--[^\r\n]*|\/\*[\s\S]*?(?:\*\/|$)|'(?:''|[^'])*(?:'|$)|"(?:""|[^"])*(?:"|$)|`(?:``|[^`])*(?:`|$)/g;
+  let cursor = 0;
+  for (let match = fragments.exec(sql); match !== null; match = fragments.exec(sql)) {
+    const fragment = match[0];
+    if (codeHasReference(sql.slice(cursor, match.index))) {
+      return true;
+    }
+    const isComment = fragment.startsWith('--') || fragment.startsWith('/*');
+    if (isComment ? commentReference?.test(fragment) : quotedReference?.test(fragment)) {
+      return true;
+    }
+    cursor = fragments.lastIndex;
+  }
+  return codeHasReference(sql.slice(cursor));
+}
+
+/** Whether raw variable SQL would need its own query context to expand its Pinot macros. */
+export function sqlHasContextDependentMacros(sql: string): boolean {
+  return sqlHasReference(sql, (code) => TIME_RANGE_MACRO.test(code) || PANEL_CONTEXT_MACRO.test(code));
 }
 
 /**
@@ -18,11 +42,16 @@ function stripSqlComments(sql: string): string {
  * This must run before template interpolation: Grafana replaces `$__from`/`$__to` with plain numbers,
  * after which the backend can no longer tell them apart from hard-coded timestamps.
  *
- * A query that contains `$__noTimeRange` (usually in a comment) counts as using it, so panels that ignore
- * the picker on purpose don't get the warning.
+ * A `$__noTimeRange` marker in SQL code or a comment suppresses the warning.
  */
 export function sqlUsesTimeRange(sql: string): boolean {
-  return NO_TIME_RANGE_MARKER.test(sql) || TIME_RANGE_REFERENCE.test(stripSqlComments(sql));
+  return sqlHasReference(
+    sql,
+    (code) => NO_TIME_RANGE_MARKER.test(code) || TIME_RANGE_MACRO.test(code) || GRAFANA_TIME_RANGE_VARIABLE.test(code),
+    // Grafana interpolates variables in quoted SQL too. Backend macros only expand in SQL code.
+    GRAFANA_TIME_RANGE_VARIABLE,
+    NO_TIME_RANGE_MARKER
+  );
 }
 
 /** Formats milliseconds as a whole-second Prometheus duration (e.g. `120s`). */

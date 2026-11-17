@@ -3,9 +3,11 @@ package dataquery
 import (
 	"context"
 	"fmt"
-	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"regexp"
 	"strings"
 	"time"
+
+	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 )
 
 const (
@@ -25,8 +27,8 @@ const (
 	MacroFromTime          = "fromTime"
 	MacroToTime            = "toTime"
 	MacroIntervalSeconds   = "interval_s"
-	// MacroNoTimeRange marks a query that ignores the dashboard time range on purpose. It expands to nothing;
-	// the frontend uses it to skip the "ignores the dashboard time range" warning.
+	// MacroNoTimeRange marks a query that ignores the dashboard time range on purpose.
+	// The frontend recognizes it in comments or SQL code. In SQL code, it expands to nothing.
 	MacroNoTimeRange = "noTimeRange"
 )
 
@@ -39,6 +41,9 @@ type MacroEngine struct {
 	AdHocFilters []pinot.AdHocFilter
 	TimeRange
 	IntervalSize time.Duration
+
+	// UseExactTimeFilterBounds keeps variable filters inside the picker range when granularity is omitted.
+	UseExactTimeFilterBounds bool
 
 	// Warnings, when non-nil, collects non-fatal problems found while expanding macros
 	// (e.g. a guessed time column format) so they can be shown on the panel.
@@ -100,10 +105,34 @@ func (x MacroEngine) ExpandTimeFilter(ctx context.Context, query string) (string
 		if err != nil {
 			return "", err
 		}
-		granularity := ResolveGranularity(ctx, pinot.UnquoteStringLiteral(argAt(args, 1)), col.format, x.IntervalSize,
-			pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
-		return pinot.TimeFilterBucketAlignedExpr(col.timeFilter(x.TimeRange), granularity.Duration()).String(), nil
+		return x.renderTimeFilter(ctx, col, argAt(args, 1)), nil
 	})
+}
+
+func (x MacroEngine) renderTimeFilter(ctx context.Context, col timeColumnRef, granularityExpr string) string {
+	filter := col.timeFilter(x.TimeRange)
+	granularityExpr = pinot.UnquoteStringLiteral(granularityExpr)
+	if x.UseExactTimeFilterBounds && granularityExpr == "" {
+		// For discrete epoch units, rounding both ends up preserves the half-open range.
+		bucketSize := col.format.MinimumGranularity().Duration()
+		epoch := time.Unix(0, 0)
+		// time.Truncate uses Go's zero time as its origin.
+		offset := epoch.Sub(epoch.Truncate(bucketSize))
+		filter.From = ceilTimeToBucket(filter.From, bucketSize, offset)
+		filter.To = ceilTimeToBucket(filter.To, bucketSize, offset)
+		return pinot.TimeFilterExpr(filter).String()
+	}
+	granularity := ResolveGranularity(ctx, granularityExpr, col.format, x.IntervalSize,
+		pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
+	return pinot.TimeFilterBucketAlignedExpr(filter, granularity.Duration()).String()
+}
+
+func ceilTimeToBucket(t time.Time, size, offset time.Duration) time.Time {
+	floor := t.Add(-offset).Truncate(size).Add(offset)
+	if floor.Before(t) {
+		return floor.Add(size)
+	}
+	return floor
 }
 
 // timeColumnRef is a time macro's column argument resolved against the table schema.
@@ -133,39 +162,32 @@ func argAt(args []string, i int) string {
 //     A column the selected table's schema doesn't have (e.g. from a join, a subquery alias or a different FROM)
 //     is also compared in epoch milliseconds, with a warning. Declared non-numeric columns are errors instead of
 //     silently filtering on the wrong values.
-//   - Anything else (e.g. DATETIMECONVERT(...)) is used verbatim and compared in epoch milliseconds.
+//   - A qualified name (e.g. t.ts) is compared in epoch milliseconds with a warning unless the
+//     full name is a literal column in the schema. Other expressions are compared in epoch milliseconds.
 func (x MacroEngine) resolveTimeColumn(arg string) (timeColumnRef, error) {
-	if arg == "" {
-		name, err := pinot.DefaultTimeColumn(x.TableSchema, x.TableConfigs)
-		if err != nil {
-			return timeColumnRef{}, err
+	ref, err := x.timeColumnReference(arg)
+	if err != nil {
+		return timeColumnRef{}, err
+	}
+
+	if ref.expr != "" {
+		if qualifiedColumnName.MatchString(arg) {
+			x.warn(fmt.Sprintf("The source table of column `%s` could not be determined, so the time filter assumes it holds epoch milliseconds. "+
+				"If it holds epoch seconds, filter with `%s >= $__fromTime AND %s < $__toTime` instead.", arg, arg, arg))
 		}
-		arg = name
-	}
-
-	if isTimeColumnExpression(arg) {
-		return timeColumnRef{expr: pinot.SqlExpr(arg), format: pinot.DateTimeFormatMillisecondsEpoch()}, nil
-	}
-
-	name := unquoteColumnArg(arg)
-	ref := timeColumnRef{name: name}
-	if !isQuoted(arg) && strings.Contains(name, ".") {
-		// Qualified name like t.ts: keep it as written and look the column up by its last segment.
-		ref.expr = pinot.SqlExpr(arg)
-		name = name[strings.LastIndex(name, ".")+1:]
+		return ref, nil
 	}
 
 	if x.TableSchema.IsEmpty() {
 		// No schema to check against (e.g. no table selected): keep the historical epoch-millis behavior.
-		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
 		return ref, nil
 	}
 
+	name := ref.name
 	dataType, found := x.TableSchema.ColumnDataType(name)
 	if !found {
 		// The schema is the table picked in the editor, so columns from a joined table, a subquery alias or a
 		// different FROM aren't in it. Keep the historical epoch-millis behavior rather than failing the panel.
-		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
 		x.warn(fmt.Sprintf("Column `%s` is not in the schema of table `%s`, so the time filter assumes it holds epoch milliseconds. "+
 			"If it holds epoch seconds, filter with `%s >= $__fromTime AND %s < $__toTime` instead.", name, x.TableName, name, name))
 		return ref, nil
@@ -182,15 +204,40 @@ func (x MacroEngine) resolveTimeColumn(arg string) (timeColumnRef, error) {
 
 	switch strings.ToUpper(dataType) {
 	case "TIMESTAMP":
-		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
+		return ref, nil
 	case "LONG", "INT", "FLOAT", "DOUBLE", "BIG_DECIMAL":
-		ref.format = pinot.DateTimeFormatMillisecondsEpoch()
 		x.warn(fmt.Sprintf("Column `%s` is not a date time column, so the time filter assumes it holds epoch milliseconds. "+
 			"If it holds epoch seconds, filter with `%s >= $__fromTime AND %s < $__toTime` instead, "+
 			"or declare it in the schema's dateTimeFieldSpecs.", name, name, name))
 	default:
 		return timeColumnRef{}, fmt.Errorf("column `%s` has type %s and is not a date time column; "+
 			"time macros need a date time column or a numeric epoch column", name, dataType)
+	}
+	return ref, nil
+}
+
+const sqlIdentifier = "[\\pL_][\\pL\\pN_$]*|\"(?:[^\"]|\"\")*\"|`(?:[^`]|``)*`"
+
+var qualifiedColumnName = regexp.MustCompile(`^(?:` + sqlIdentifier + `)(?:\s*\.\s*(?:` + sqlIdentifier + `))+$`)
+
+func (x MacroEngine) timeColumnReference(arg string) (timeColumnRef, error) {
+	ref := timeColumnRef{name: arg, format: pinot.DateTimeFormatMillisecondsEpoch()}
+	if arg == "" {
+		name, err := pinot.DefaultTimeColumn(x.TableSchema, x.TableConfigs)
+		ref.name = name
+		return ref, err
+	}
+	if end, closed := skipSQLQuotedSection(arg, 0); closed && end == len(arg) {
+		ref.name = arg[1 : len(arg)-1]
+		return ref, nil
+	}
+	// Pinot permits literal dots in column names. Prefer a full schema match, and never use the
+	// final segment of a qualified reference to look up a column on the editor-selected table.
+	if strings.ContainsAny(arg, ".( +-*/\t\r\n") {
+		if _, found := x.TableSchema.ColumnDataType(arg); !found {
+			ref.name = ""
+			ref.expr = pinot.SqlExpr(arg)
+		}
 	}
 	return ref, nil
 }
@@ -202,26 +249,6 @@ func isDateTimeColumn(schema pinot.TableSchema, name string) bool {
 		}
 	}
 	return schema.TimeFieldSpec.Name() == name
-}
-
-func isQuoted(s string) bool {
-	if len(s) < 2 {
-		return false
-	}
-	first, last := s[0], s[len(s)-1]
-	return first == last && (first == '"' || first == '`' || first == '\'')
-}
-
-func unquoteColumnArg(s string) string {
-	if isQuoted(s) {
-		return s[1 : len(s)-1]
-	}
-	return s
-}
-
-// isTimeColumnExpression reports whether a macro's column argument is an SQL expression rather than a column name.
-func isTimeColumnExpression(arg string) bool {
-	return !isQuoted(arg) && strings.ContainsAny(arg, "( +-*/")
 }
 
 // warn records a message to attach to the query response as a warning notice.
@@ -304,21 +331,11 @@ func (x MacroEngine) ExpandTimeFilterMillis(ctx context.Context, query string) (
 			return "", fmt.Errorf("expected at most 2 arguments, got %d", len(args))
 		}
 		// The column is compared in epoch millis by definition, so only its name/expression is resolved here.
-		arg := argAt(args, 0)
-		if arg == "" {
-			name, err := pinot.DefaultTimeColumn(x.TableSchema, x.TableConfigs)
-			if err != nil {
-				return "", err
-			}
-			arg = name
+		col, err := x.timeColumnReference(argAt(args, 0))
+		if err != nil {
+			return "", err
 		}
-		col := timeColumnRef{name: unquoteColumnArg(arg), format: pinot.DateTimeFormatMillisecondsEpoch()}
-		if isTimeColumnExpression(arg) || (!isQuoted(arg) && strings.Contains(arg, ".")) {
-			col = timeColumnRef{expr: pinot.SqlExpr(arg), format: col.format}
-		}
-		granularity := ResolveGranularity(ctx, pinot.UnquoteStringLiteral(argAt(args, 1)), col.format, x.IntervalSize,
-			pinot.DerivedGranularitiesFor(x.TableConfigs, col.name, OutputTimeFormat()))
-		return pinot.TimeFilterBucketAlignedExpr(col.timeFilter(x.TimeRange), granularity.Duration()).String(), nil
+		return x.renderTimeFilter(ctx, col, argAt(args, 1)), nil
 	})
 }
 
@@ -402,7 +419,7 @@ func adHocFilterWhereExpr(filters []pinot.AdHocFilter) pinot.SqlExpr {
 	return pinot.SqlExpr(strings.Join(exprs, " AND "))
 }
 
-// expandMacro replaces every `$__<macroName>` invocation in query using render.
+// expandMacro replaces every `$__<macroName>` invocation in SQL code using render.
 //
 // An invocation is the macro name followed by an optional parenthesised argument list. The name must
 // end at a non-identifier character, so `$__timeFilter` never matches inside `$__timeFilterMillis`.
@@ -414,19 +431,15 @@ func expandMacro(query string, macroName string, render func(args []string) (str
 	var out strings.Builder
 	pos := 0
 	for {
-		idx := strings.Index(query[pos:], token)
-		if idx < 0 {
+		start := indexSQLMacro(query, token, pos)
+		if start < 0 {
+			if pos == 0 {
+				return query, nil
+			}
 			out.WriteString(query[pos:])
 			return out.String(), nil
 		}
-		start := pos + idx
 		end := start + len(token)
-		if end < len(query) && isIdentChar(query[end]) {
-			// A longer macro name (e.g. $__timeFilterMillis); not ours.
-			out.WriteString(query[pos:end])
-			pos = end
-			continue
-		}
 
 		args := []string{}
 		if end < len(query) && query[end] == '(' {
@@ -450,26 +463,87 @@ func expandMacro(query string, macroName string, render func(args []string) (str
 	}
 }
 
+// hasSQLMacro checks for active invocations of the named macros.
+func hasSQLMacro(query string, names ...string) bool {
+	for _, name := range names {
+		if indexSQLMacro(query, "$__"+name, 0) >= 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func indexSQLMacro(query, token string, start int) int {
+	if !strings.Contains(query[start:], token) {
+		return -1
+	}
+	for i := start; i < len(query); {
+		if next := skipSQLNonCode(query, i); next > i {
+			i = next
+			continue
+		}
+		if strings.HasPrefix(query[i:], token) {
+			end := i + len(token)
+			if end == len(query) || !isIdentChar(query[end]) {
+				return i
+			}
+		}
+		i++
+	}
+	return -1
+}
+
 func isIdentChar(c byte) bool {
 	return c == '_' || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9')
 }
 
-// findClosingParen returns the index of the `)` matching the `(` at openIdx, skipping over
-// parentheses inside '...', "..." and `...` quoted sections.
-func findClosingParen(s string, openIdx int) (int, error) {
-	depth := 0
-	var quote byte
-	for i := openIdx; i < len(s); i++ {
-		c := s[i]
-		if quote != 0 {
-			if c == quote {
-				quote = 0
-			}
+// skipSQLNonCode returns the end of a comment or quoted section starting at i, or i for SQL code.
+func skipSQLNonCode(s string, i int) int {
+	switch {
+	case strings.HasPrefix(s[i:], "--"):
+		if end := strings.IndexAny(s[i+2:], "\r\n"); end >= 0 {
+			return i + 2 + end
+		}
+		return len(s)
+	case strings.HasPrefix(s[i:], "/*"):
+		if end := strings.Index(s[i+2:], "*/"); end >= 0 {
+			return i + 4 + end
+		}
+		return len(s)
+	default:
+		end, _ := skipSQLQuotedSection(s, i)
+		return end
+	}
+}
+
+func skipSQLQuotedSection(s string, i int) (end int, closed bool) {
+	quote := s[i]
+	if quote != '\'' && quote != '"' && quote != '`' {
+		return i, false
+	}
+	for j := i + 1; j < len(s); j++ {
+		if s[j] != quote {
 			continue
 		}
-		switch c {
-		case '\'', '"', '`':
-			quote = c
+		if j+1 < len(s) && s[j+1] == quote {
+			j++ // SQL escapes a quote by doubling it.
+			continue
+		}
+		return j + 1, true
+	}
+	return len(s), false
+}
+
+// findClosingParen returns the index of the `)` matching the `(` at openIdx, skipping over
+// parentheses inside comments and quoted sections.
+func findClosingParen(s string, openIdx int) (int, error) {
+	depth := 0
+	for i := openIdx; i < len(s); {
+		if next := skipSQLNonCode(s, i); next > i {
+			i = next
+			continue
+		}
+		switch s[i] {
 		case '(':
 			depth++
 		case ')':
@@ -478,30 +552,25 @@ func findClosingParen(s string, openIdx int) (int, error) {
 				return i, nil
 			}
 		}
+		i++
 	}
 	return -1, fmt.Errorf("missing closing parenthesis")
 }
 
-// splitTopLevelArgs splits a macro argument list on commas that are not nested in parentheses or quotes.
+// splitTopLevelArgs splits a macro argument list on commas outside parentheses, comments and quotes.
 func splitTopLevelArgs(s string) []string {
 	if strings.TrimSpace(s) == "" {
 		return []string{}
 	}
 	var args []string
 	depth := 0
-	var quote byte
 	last := 0
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if quote != 0 {
-			if c == quote {
-				quote = 0
-			}
+	for i := 0; i < len(s); {
+		if next := skipSQLNonCode(s, i); next > i {
+			i = next
 			continue
 		}
-		switch c {
-		case '\'', '"', '`':
-			quote = c
+		switch s[i] {
 		case '(':
 			depth++
 		case ')':
@@ -512,6 +581,7 @@ func splitTopLevelArgs(s string) []string {
 				last = i + 1
 			}
 		}
+		i++
 	}
 	return append(args, strings.TrimSpace(s[last:]))
 }
