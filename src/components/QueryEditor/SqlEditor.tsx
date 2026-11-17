@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { SQLEditor as GrafanaSqlEditor } from '@grafana/experimental';
-import { Button } from '@grafana/ui';
+import { Button, useTheme2 } from '@grafana/ui';
 import { FormLabel } from './FormLabel';
 import allLabels from '../../labels';
 import { DataSource } from '../../datasource';
@@ -44,6 +44,7 @@ export function SqlEditor(props: {
     []
   );
 
+  const theme = useTheme2();
   return (
     <div className={'gf-form'} data-testid="sql-editor-container">
       <div>
@@ -57,7 +58,7 @@ export function SqlEditor(props: {
           language={language}
         >
           {({ formatQuery }) => (
-            <div style={{ marginTop: '4px' }}>
+            <div style={{ marginTop: theme.spacing(0.5) }}>
               <Button size="sm" variant="secondary" icon="brackets-curly" onClick={formatQuery}>
                 {labels.format}
               </Button>

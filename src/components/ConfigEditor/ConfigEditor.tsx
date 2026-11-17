@@ -51,7 +51,7 @@ export function ConfigEditor(props: ConfigEditorProps) {
   return (
     <>
       <DataSourceDescription dataSourceName={labels.dataSourceName} docsLink={labels.docsLinks} />
-      <hr style={{ marginTop: '50px', marginBottom: '56px' }} />
+      <hr style={{ marginTop: theme.spacing(6), marginBottom: theme.spacing(7) }} />
 
       <h3 data-testid="connection-heading">Connection</h3>
       <div className="gf-form-group">

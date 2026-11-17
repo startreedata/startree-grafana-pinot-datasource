@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fix backend crashes (nil pointer dereferences) when a time-series label query returns no rows, and when the columns resource is called without a time range.
+- Keep request URLs out of logged transport errors. A failed connection no longer logs the full Broker or Controller URL, which could hold a username or token; only the method, path and underlying error are logged.
+- Remove the plugin template's placeholder text from the README.
+- Use Grafana theme spacing and colors instead of fixed values in the query and config editors. The PromQL editor's highlight colors now follow the light or dark theme.
+- Bump `papaparse` to 5.7.1 (CVE-2026-127056, inefficient algorithmic complexity).
+
 ## 1.1.10 (2026-11-13)
 
 - Add optional query attribution (off by default). When it's on, each query is tagged with the Grafana user's login and email, with the dashboard and panel or alert rule it came from, and with a per-query `qid` that keeps each id unique. The tag is sent as Pinot's `clientQueryId` option, which lands in the `clientRequestId` column of `system_query_log`, and as a leading SQL comment so it also shows in broker logs. Shared-token deployments can then tell who ran a query. PromQL queries are not tagged.

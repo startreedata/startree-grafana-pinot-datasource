@@ -1,7 +1,7 @@
 import React, { ChangeEvent, useState } from 'react';
 import { QueryOption } from '../../dataquery/QueryOption';
 import { AccessoryButton, InputGroup } from '@grafana/experimental';
-import { Input, Select } from '@grafana/ui';
+import { Input, Select, useTheme2 } from '@grafana/ui';
 import { styles } from '../../styles';
 
 export function EditQueryOption(props: {
@@ -14,9 +14,10 @@ export function EditQueryOption(props: {
   const [value, setValue] = useState(queryOption.value);
 
   const selectableNames = queryOption.name ? [queryOption.name, ...unused] : [...unused];
+  const theme = useTheme2();
   return (
     <InputGroup>
-      <div style={{ padding: 6 }}>
+      <div style={{ padding: theme.spacing(0.75) }}>
         <span>SET</span>
       </div>
       <div data-testid="select-query-option-name">
@@ -28,7 +29,7 @@ export function EditQueryOption(props: {
           onChange={(change) => onChange({ ...queryOption, name: change.value })}
         />
       </div>
-      <div style={{ padding: 6 }}>
+      <div style={{ padding: theme.spacing(0.75) }}>
         <span>=</span>
       </div>
       <div data-testid="input-query-option-value">

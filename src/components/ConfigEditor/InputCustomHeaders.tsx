@@ -1,6 +1,6 @@
 import React from 'react';
 import { DataSourcePluginOptionsEditorProps } from '@grafana/data';
-import { Button, IconButton, InlineField, Input, SecretInput } from '@grafana/ui';
+import { Button, IconButton, InlineField, Input, SecretInput, useTheme2 } from '@grafana/ui';
 import { PinotConnectionConfig, PinotSecureConfig } from '../../config/PinotConnectionConfig';
 
 // Hand-rolled because @grafana/ui's CustomHeadersSettings isn't a top-level export
@@ -9,7 +9,10 @@ import { PinotConnectionConfig, PinotSecureConfig } from '../../config/PinotConn
 // Writes the same standard wire format the SDK reads: jsonData.httpHeaderName{N} +
 // secureJsonData.httpHeaderValue{N}, indexed contiguously from 1.
 
-type Props = Pick<DataSourcePluginOptionsEditorProps<PinotConnectionConfig, PinotSecureConfig>, 'options' | 'onOptionsChange'>;
+type Props = Pick<
+  DataSourcePluginOptionsEditorProps<PinotConnectionConfig, PinotSecureConfig>,
+  'options' | 'onOptionsChange'
+>;
 
 export interface HeaderRow {
   name: string;
@@ -80,6 +83,7 @@ export function withHeaderRows(options: Props['options'], rows: HeaderRow[]): Pr
 }
 
 export function InputCustomHeaders({ options, onOptionsChange }: Props) {
+  const theme = useTheme2();
   const rows = readHeaderRows(options);
   const update = (next: HeaderRow[]) => onOptionsChange(withHeaderRows(options, next));
 
@@ -87,15 +91,13 @@ export function InputCustomHeaders({ options, onOptionsChange }: Props) {
     <>
       {rows.map((row, idx) => (
         <InlineField key={idx} label={`Header ${idx + 1}`} labelWidth={24}>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: theme.spacing(0.5) }}>
             <Input
               data-testid={`custom-header-name-${idx}`}
               width={20}
               placeholder="X-Custom-Header"
               value={row.name}
-              onChange={(e) =>
-                update(rows.map((r, i) => (i === idx ? { ...r, name: e.currentTarget.value } : r)))
-              }
+              onChange={(e) => update(rows.map((r, i) => (i === idx ? { ...r, name: e.currentTarget.value } : r)))}
             />
             <SecretInput
               data-testid={`custom-header-value-${idx}`}
@@ -103,9 +105,7 @@ export function InputCustomHeaders({ options, onOptionsChange }: Props) {
               isConfigured={row.configured}
               placeholder="Header value"
               value={row.value}
-              onChange={(e) =>
-                update(rows.map((r, i) => (i === idx ? { ...r, value: e.currentTarget.value } : r)))
-              }
+              onChange={(e) => update(rows.map((r, i) => (i === idx ? { ...r, value: e.currentTarget.value } : r)))}
               onReset={() => update(rows.map((r, i) => (i === idx ? { ...r, value: '', configured: false } : r)))}
             />
             <IconButton

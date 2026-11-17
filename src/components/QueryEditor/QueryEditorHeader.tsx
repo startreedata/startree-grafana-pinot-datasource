@@ -1,13 +1,14 @@
 import { PinotQueryEditorProps } from '../../dataquery/PinotQueryEditorProps';
-import { ToolbarButton } from '@grafana/ui';
+import { ToolbarButton, useTheme2 } from '@grafana/ui';
 import React from 'react';
 import { SelectQueryType } from './SelectQueryType';
 import { SelectEditorMode } from './SelectEditorMode';
-import {QueryType} from "../../dataquery/QueryType";
+import { QueryType } from '../../dataquery/QueryType';
 
 export function QueryEditorHeader(props: PinotQueryEditorProps) {
   const { query, onChange, onRunQuery } = props;
 
+  const theme = useTheme2();
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between' }} data-testid="query-editor-header">
       <div className={'gf-form'} data-testid="select-query-type">
@@ -34,7 +35,7 @@ export function QueryEditorHeader(props: PinotQueryEditorProps) {
             data-testid="run-query-btn"
             icon={'play'}
             variant={'primary'}
-            style={{ marginLeft: 4 }}
+            style={{ marginLeft: theme.spacing(0.5) }}
             onClick={() => onRunQuery()}
           >
             Run Query
