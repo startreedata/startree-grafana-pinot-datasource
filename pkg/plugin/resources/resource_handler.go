@@ -679,12 +679,15 @@ func ListColumns(client *pinot.Client, ctx context.Context, req ListColumnsReque
 		return newOkResponse(columns)
 	}
 
-	timeFilterExpr := pinot.TimeFilterExpr(pinot.TimeFilter{
-		Column: req.TimeColumn,
-		Format: format,
-		From:   req.TimeRange.From,
-		To:     req.TimeRange.To,
-	})
+	var timeFilterExpr pinot.SqlExpr
+	if req.TimeRange != nil {
+		timeFilterExpr = pinot.TimeFilterExpr(pinot.TimeFilter{
+			Column: req.TimeColumn,
+			Format: format,
+			From:   req.TimeRange.From,
+			To:     req.TimeRange.To,
+		})
+	}
 	filterExprs := dataquery.FilterExprsFrom(req.DimensionFilters)
 	for _, spec := range schema.ComplexFieldSpecs {
 		keys := listMapColumnKeys(client, ctx, req.TableName, spec.Name, timeFilterExpr, filterExprs)

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -119,7 +120,7 @@ func (p *Client) doRequestAndDecodeResponse(req *http.Request, dest interface{})
 func (p *Client) doRequest(req *http.Request) (*http.Response, error) {
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.Path, err)
+		return nil, fmt.Errorf("pinot/http: Request failed: %s %s %w", req.Method, req.URL.Path, stripRequestURL(err))
 	}
 	p.logger.Info("pinot/http: Outgoing http request completed.", "method", req.Method, "path", req.URL.Path, "status", resp.StatusCode)
 	return resp, err
@@ -156,6 +157,21 @@ func RedactError(err error) error {
 	var statusErr *HttpStatusError
 	if errors.As(err, &statusErr) {
 		return fmt.Errorf("pinot/http non-200 response: (%d) %s", statusErr.StatusCode, http.StatusText(statusErr.StatusCode))
+	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return fmt.Errorf("pinot/http: Request failed: %s %w", urlErr.Op, urlErr.Err)
+	}
+	return err
+}
+
+// stripRequestURL drops the full request URL from a transport error. The
+// *url.Error the HTTP client returns carries the whole URL, which can hold a
+// username, password or token, so only the underlying error is kept.
+func stripRequestURL(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Err
 	}
 	return err
 }

@@ -474,6 +474,22 @@ func TestListColumns(t *testing.T) {
 				{"name":"labels","key":"status","dataType":"STRING"},
 				{"name":"labels","key":"table","dataType":"STRING"}
 			]}`,
+		}, {
+			name: "table=timeSeriesWithMapLabels,timeRange=None",
+			payload: `{
+				"tableName":    "timeSeriesWithMapLabels",
+				"timeColumn":   "ts"
+			}`,
+			want: `{"code":200,"result":[
+				{"name":"ts","dataType":"TIMESTAMP","isTime":true},
+				{"name":"metric","dataType":"STRING"},
+				{"name":"value","dataType":"DOUBLE","isMetric":true},
+				{"name":"labels","key":"db","dataType":"STRING"},
+				{"name":"labels","key":"method","dataType":"STRING"},
+				{"name":"labels","key":"path","dataType":"STRING"},
+				{"name":"labels","key":"status","dataType":"STRING"},
+				{"name":"labels","key":"table","dataType":"STRING"}
+			]}`,
 		},
 	}
 

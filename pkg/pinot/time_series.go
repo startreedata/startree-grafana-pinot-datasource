@@ -293,10 +293,16 @@ type label struct {
 }
 
 func (x *labelsCollection) names() []string {
+	if x == nil {
+		return nil
+	}
 	return x.labelNames
 }
 
 func (x *labelsCollection) valuesOf(name string) []string {
+	if x == nil {
+		return nil
+	}
 	return x.nameToLabel[name].values
 }
 
@@ -361,7 +367,7 @@ func (p *Client) fetchTimeSeriesLabels(ctx context.Context, tableName string, me
 	case resp.HasData():
 		return extractLabels(resp.ResultTable)
 	default:
-		return nil, nil
+		return &labelsCollection{}, nil
 	}
 }
 

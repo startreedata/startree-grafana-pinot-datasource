@@ -114,7 +114,7 @@ export function PromQlExpressionEditor(props: {
         flex: '1 1 auto',
         border: '1px solid ' + grafanaTheme.colors.border.medium,
         width: '100%',
-        padding: '6px',
+        padding: grafanaTheme.spacing(0.75),
         background: grafanaTheme.components.input.background,
       }}
       ref={containerRef}
@@ -168,7 +168,7 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
       outline: '1px dashed transparent',
     },
 
-    '.cm-nonmatchingBracket': { borderColor: 'red' },
+    '.cm-nonmatchingBracket': { borderColor: theme.colors.error.border },
 
     '.cm-tooltip': {
       backgroundColor: theme.colors.background.primary,
@@ -182,7 +182,7 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
         maxWidth: 'unset',
       },
       '& > ul > li': {
-        padding: '2px 1em 2px 3px',
+        padding: theme.spacing(0.25, 2, 0.25, 0.5),
       },
       '& li:hover': {
         backgroundColor: theme.colors.action.hover,
@@ -201,7 +201,7 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
 
     '.cm-tooltip.cm-completionInfo': {
       marginTop: '-11px',
-      padding: '10px',
+      padding: theme.spacing(1.25),
       fontFamily: theme.typography.fontFamily,
       border: 'none',
       backgroundColor: theme.colors.background.secondary,
@@ -219,7 +219,7 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
         border: '10px solid transparent',
         borderRightColor: theme.colors.background.secondary,
       },
-      marginLeft: '12px',
+      marginLeft: theme.spacing(1.5),
     },
     '.cm-completionInfo.cm-completionInfo-left': {
       '&:before': {
@@ -231,36 +231,36 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
         border: '10px solid transparent',
         borderLeftColor: theme.colors.background.secondary,
       },
-      marginRight: '12px',
+      marginRight: theme.spacing(1.5),
     },
 
     '.cm-completionMatchedText': {
       textDecoration: 'none',
       fontWeight: 'bold',
-      color: '#0066bf',
+      color: theme.colors.primary.text,
     },
 
     '.cm-selectionMatch': {
-      backgroundColor: '#e6f3ff',
+      backgroundColor: theme.colors.action.selected,
     },
 
     '.cm-diagnostic': {
       '&.cm-diagnostic-error': {
-        borderLeft: '3px solid #e65013',
+        borderLeft: `3px solid ${theme.colors.error.border}`,
       },
     },
 
     '.cm-completionIcon': {
       boxSizing: 'content-box',
-      fontSize: '16px',
+      fontSize: theme.typography.h5.fontSize,
       lineHeight: '1',
-      marginRight: '10px',
+      marginRight: theme.spacing(1.25),
       verticalAlign: 'top',
       '&:after': { content: "'\\ea88'" },
       fontFamily: 'codicon',
       paddingRight: '0',
       opacity: '1',
-      color: '#007acc',
+      color: theme.colors.primary.text,
     },
   });
 
