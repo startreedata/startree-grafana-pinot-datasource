@@ -63,3 +63,19 @@ func NewErrorDataResponse(status backend.Status, err error) backend.DataResponse
 		Error:  err,
 	}
 }
+
+// WithWarningNotices attaches each message as a warning notice on the response's frames, which
+// Grafana shows as a warning icon in the panel header.
+func WithWarningNotices(resp backend.DataResponse, messages []string) backend.DataResponse {
+	if len(messages) == 0 || len(resp.Frames) == 0 {
+		return resp
+	}
+	frame := resp.Frames[0]
+	if frame.Meta == nil {
+		frame.Meta = &data.FrameMeta{}
+	}
+	for _, msg := range messages {
+		frame.Meta.Notices = append(frame.Meta.Notices, data.Notice{Severity: data.NoticeSeverityWarning, Text: msg})
+	}
+	return resp
+}

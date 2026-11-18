@@ -12,6 +12,7 @@ import { JsonExtractor } from './JsonExtractor';
 import { RegexpExtractor } from './RegexpExtractor';
 import { buildFilterSubqueryReplacement, escapeSqlString } from '../utils/subquery.util';
 import { isQueryVariable, getVariableSubquery, getAllOptions, getSelectedValues, isAllSelected } from './variableQuery.util';
+import { replaceRateInterval, sqlHasContextDependentMacros, sqlUsesTimeRange } from '../pinotql/timeRange';
 
 export interface PinotDataQuery extends DataQuery {
   queryType?: string;
@@ -57,6 +58,8 @@ export interface PinotDataQuery extends DataQuery {
 
   // PinotQl Code
   pinotQlCode?: string;
+  // Computed on every run: whether pinotQlCode references the dashboard time range. The backend warns when false.
+  usesTimeRange?: boolean;
   timeColumnAlias?: string;
   timeColumnFormat?: string;
   metricColumnAlias?: string;
@@ -80,8 +83,8 @@ export const IN_CLAUSE_THRESHOLD = 1000;
 
 /**
  * Replaces variable references inside `IN (...)` or `NOT IN (...)` filter positions with the
- * variable's backing subquery, but only when the variable's selection exceeds the threshold
- * (otherwise null is returned and the variable is left for `templateSrv.replace()` to handle).
+ * variable's backing subquery when the selection exceeds the threshold and the backing SQL can
+ * run in the panel context. Other references are left for `templateSrv.replace()` to handle.
  *
  * Replacement is intentionally restricted to IN/NOT IN contexts because the subquery is only
  * syntactically valid in those positions. Replacing in `WHERE col = ${var}` would produce
@@ -98,7 +101,7 @@ export function replaceAllVariableExpressionsWithSubqueries(sql: string, variabl
   let result = sql;
   for (const variable of queryVariables) {
     const subquery = getVariableSubquery(variable);
-    if (!subquery) {
+    if (!subquery || sqlHasContextDependentMacros(subquery)) {
       continue;
     }
 
@@ -289,7 +292,7 @@ function computeBuilderFilterSubquery(
 
   // Plain literals from the input (or unhandled variables we leave for the fallback path).
   const literalExprs: string[] = [];
-  // Quoted literal expansions from below-threshold Pinot query variables.
+  // Quoted selected values from Pinot query variables that cannot use a subquery.
   const expandedLiterals: string[] = [];
   // Subquery strings from above-threshold Pinot query variables.
   const subqueryParts: string[] = [];
@@ -314,14 +317,18 @@ function computeBuilderFilterSubquery(
     const allOptions = getAllOptions(variable);
     const selectedValues = getSelectedValues(variable);
 
-    const filterSubqueryReplacement = buildFilterSubqueryReplacement(allOptions, selectedValues, subquery, IN_CLAUSE_THRESHOLD);
+    // Expand selected values if the variable's SQL depends on its own table, range, or interval.
+    // Inlined SQL would instead evaluate those macros against the panel query.
+    const filterSubqueryReplacement = sqlHasContextDependentMacros(subquery)
+      ? null
+      : buildFilterSubqueryReplacement(allOptions, selectedValues, subquery, IN_CLAUSE_THRESHOLD);
     if (filterSubqueryReplacement) {
       subqueryParts.push(filterSubqueryReplacement);
       anyPinotVariableHandled = true;
       continue;
     }
     if (selectedValues.length >= 1) {
-      // Below threshold — expand the variable's selected values as properly quoted SQL literals.
+      // Expand selected values as properly quoted SQL literals when no subquery can be used.
       expandedLiterals.push(...selectedValues.map((v) => `'${escapeSqlString(v)}'`));
       anyPinotVariableHandled = true;
       continue;
@@ -444,11 +451,15 @@ export function interpolateVariables(
       pinotQlCodeAfterSubqueryReplacement = sqlWithConditionals;
     }
 
-    return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement), subqueryNeedsMultistageEngine };
+    const usesTimeRange =
+      query.editorMode === EditorMode.Code && pinotQlCodeAfterSubqueryReplacement
+        ? sqlUsesTimeRange(pinotQlCodeAfterSubqueryReplacement)
+        : undefined;
+    return { pinotQlCode: replaceIfExists(pinotQlCodeAfterSubqueryReplacement), subqueryNeedsMultistageEngine, usesTimeRange };
   }
 
   const { filters, queryOptions: interpolatedQueryOptions, subqueryWasInjected } = interpolateVariablesInBuilderMode();
-  const { pinotQlCode, subqueryNeedsMultistageEngine } = interpolateVariablesInCodeMode();
+  const { pinotQlCode, subqueryNeedsMultistageEngine, usesTimeRange } = interpolateVariablesInCodeMode();
   // Subqueries need the multi-stage engine. Use the flag from the active editor mode only, because the query
   // can keep stale filters or code from the other mode.
   const needsMultistageEngine =
@@ -565,10 +576,11 @@ export function interpolateVariables(
     // Sql Editor
 
     pinotQlCode,
+    usesTimeRange,
 
     // PromQl Editor
 
-    promQlCode: replaceIfExists(query.promQlCode),
+    promQlCode: replaceIfExists(mapIfExists(query.promQlCode, (code) => replaceRateInterval(code, scopedVars))),
     promStepSize: replaceIfExists(query.promStepSize),
 
     // Variable Query editor

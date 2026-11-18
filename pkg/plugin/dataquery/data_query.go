@@ -150,6 +150,9 @@ type DataQuery struct {
 	MetricColumnAlias string `json:"metricColumnAlias"`
 	LogColumnAlias    string `json:"logColumnAlias"`
 
+	// UsesTimeRange is computed by the frontend: whether pinotQlCode references the dashboard time range.
+	UsesTimeRange *bool `json:"usesTimeRange,omitempty"`
+
 	// Variable query
 	VariableQuery struct {
 		VariableType VariableQueryType `json:"variableType"`

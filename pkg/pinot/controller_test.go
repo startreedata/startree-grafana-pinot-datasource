@@ -96,6 +96,7 @@ func TestPinotClient_GetTableConfig(t *testing.T) {
 					{ColumnName: "ts_1d", TransformFunction: "FromEpochDaysBucket(ToEpochDaysBucket(\"ts\", 1), 1)"},
 				},
 			},
+			SegmentsConfig: SegmentsConfig{TimeColumnName: "ts"},
 		},
 	}, config)
 }

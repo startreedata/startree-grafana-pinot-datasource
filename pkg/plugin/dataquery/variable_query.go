@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"strings"
+	"time"
 )
 
 var _ ExecutableQuery = VariableQuery{}
@@ -16,6 +17,9 @@ type VariableQuery struct {
 	ColumnName   string
 	ColumnType   ColumnType
 	PinotQlCode  string
+	// TimeRange is the dashboard time range, used by time macros in PINOT_QL_CODE variables.
+	TimeRange    TimeRange
+	IntervalSize time.Duration
 }
 
 func (query VariableQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
@@ -37,7 +41,28 @@ func (query VariableQuery) getSqlResults(ctx context.Context, client *pinot.Clie
 		return NewEmptyDataResponse()
 	}
 
-	sqlCode, err := MacroEngine{TableName: query.TableName}.ExpandTableName(ctx, sqlCode)
+	engine := MacroEngine{
+		TableName:                query.TableName,
+		TimeRange:                query.TimeRange,
+		IntervalSize:             query.IntervalSize,
+		UseExactTimeFilterBounds: true,
+	}
+	if engine.IntervalSize <= 0 {
+		engine.IntervalSize = time.Minute
+	}
+	if query.TableName != "" &&
+		hasSQLMacro(sqlCode, MacroTimeFilter, MacroTimeFilterMillis, MacroTimeGroup, MacroTimeFrom, MacroTimeTo) {
+		schema, err := client.GetTableSchema(ctx, query.TableName)
+		if err != nil {
+			return NewPluginErrorResponse(err)
+		}
+		configs, err := client.ListTableConfigs(ctx, query.TableName)
+		if err != nil {
+			return NewPluginErrorResponse(err)
+		}
+		engine.TableSchema, engine.TableConfigs = schema, configs
+	}
+	sqlCode, err := engine.ExpandMacros(ctx, sqlCode)
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
@@ -73,6 +98,9 @@ func (query VariableQuery) getDistinctValues(ctx context.Context, client *pinot.
 		return NewEmptyDataResponse()
 	}
 
+	// Not time-filtered on purpose: Grafana sends a time range for every refresh mode, so filtering
+	// here would empty the list for tables without recent data. Use a PINOT_QL_CODE variable with
+	// $__timeFilter for time-scoped values.
 	sql, err := pinot.RenderDistinctValuesSql(pinot.DistinctValuesSqlParams{
 		ColumnExpr: pinot.ObjectExpr(query.ColumnName),
 		TableName:  query.TableName,

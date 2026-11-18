@@ -7,7 +7,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -74,16 +73,20 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 
 	case query.QueryType == QueryTypePromQl:
 		return PromQlQuery{
-			TableName:    query.TableName,
-			PromQlCode:   query.PromQlCode,
-			TimeRange:    query.TimeRange,
-			IntervalSize: resolveStepSize(query.PromStepSize, query.IntervalSize),
-			Legend:       query.Legend,
-			SeriesLimit:  query.SeriesLimit,
+			TableName:     query.TableName,
+			PromQlCode:    query.PromQlCode,
+			TimeRange:     query.TimeRange,
+			IntervalSize:  query.IntervalSize,
+			StepOverride:  parseStepOverride(query.PromStepSize),
+			Legend:        query.Legend,
+			SeriesLimit:   query.SeriesLimit,
+			MaxDataPoints: query.MaxDataPoints,
 		}
 
 	case query.QueryType == QueryTypePinotVariableQuery:
 		return VariableQuery{
+			TimeRange:    query.TimeRange,
+			IntervalSize: query.IntervalSize,
 			TableName:    query.TableName,
 			VariableType: query.VariableQuery.VariableType,
 			ColumnName:   query.VariableQuery.ColumnName,
@@ -105,6 +108,7 @@ func ExecutableQueryFrom(query DataQuery) ExecutableQuery {
 			SeriesLimit:       query.SeriesLimit,
 			AdHocFilters:      query.AdHocFilters,
 			QueryOptions:      query.QueryOptions,
+			UsesTimeRange:     query.UsesTimeRange,
 		}
 
 	case query.QueryType == QueryTypePinotQl && query.EditorMode == EditorModeBuilder && query.DisplayType == DisplayTypeLogs:
@@ -205,17 +209,6 @@ func logContextSortDirection(direction string) string {
 		return "DESC"
 	}
 	return "ASC"
-}
-
-// resolveStepSize returns the user-supplied PromQL step override when it parses as a positive Go
-// duration (e.g. "30s", "2h45m"); otherwise it falls back to Grafana's auto-computed interval.
-func resolveStepSize(stepSize string, intervalSize time.Duration) time.Duration {
-	if s := strings.TrimSpace(stepSize); s != "" {
-		if d, err := time.ParseDuration(s); err == nil && d > 0 {
-			return d
-		}
-	}
-	return intervalSize
 }
 
 // groupByColumnsFrom merges the legacy string GROUP BY columns with the ComplexField (v2) form.

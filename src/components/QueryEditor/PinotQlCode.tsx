@@ -14,6 +14,8 @@ import { DisplayType } from '../../dataquery/DisplayType';
 import { CodeQuery } from '../../pinotql';
 import { InputSeriesLimit } from './InputLimit';
 import { SelectQueryOptions } from './SelectQueryOptions';
+import { Alert } from '@grafana/ui';
+import { sqlUsesTimeRange } from '../../pinotql/timeRange';
 
 export function PinotQlCode(props: {
   query: PinotDataQuery;
@@ -88,6 +90,20 @@ export function PinotQlCode(props: {
         datasource={datasource}
         tableName={savedParams.tableName}
       />
+      {savedParams.displayType !== DisplayType.ANNOTATIONS &&
+        savedParams.pinotQlCode?.trim() &&
+        !sqlUsesTimeRange(savedParams.pinotQlCode) && (
+          <Alert
+            title="This query ignores the dashboard time range"
+            severity="warning"
+            data-testid="no-time-range-warning"
+          >
+            Changing the time picker will not change the results. Add a time filter such as{' '}
+            <code>WHERE $__timeFilter</code> (uses the table&apos;s time column) or{' '}
+            <code>WHERE $__timeFilter(&quot;&lt;time column&gt;&quot;)</code>. If the query ignores the time range on
+            purpose, add the comment <code>-- $__noTimeRange</code> to hide this warning.
+          </Alert>
+        )}
       <SelectQueryOptions
         selected={savedParams.queryOptions}
         onChange={(queryOptions) => onChangeAndRun({ ...savedParams, queryOptions })}

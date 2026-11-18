@@ -390,24 +390,23 @@ func runSqlQueryPinotUnreachable(t *testing.T, newDriver func(testCase DriverTes
 	assert.Error(t, got.Error, "DataResponse.Error")
 }
 
-func TestResolveStepSize(t *testing.T) {
-	const auto = 60 * time.Second
+func TestParseStepOverride(t *testing.T) {
 	tests := []struct {
 		name     string
 		stepSize string
 		want     time.Duration
 	}{
-		{"empty falls back to interval", "", auto},
-		{"whitespace falls back to interval", "   ", auto},
-		{"invalid falls back to interval", "not-a-duration", auto},
-		{"zero falls back to interval", "0s", auto},
-		{"negative falls back to interval", "-30s", auto},
+		{"empty uses the automatic interval", "", 0},
+		{"whitespace uses the automatic interval", "   ", 0},
+		{"invalid uses the automatic interval", "not-a-duration", 0},
+		{"zero uses the automatic interval", "0s", 0},
+		{"negative uses the automatic interval", "-30s", 0},
 		{"valid seconds override", "30s", 30 * time.Second},
 		{"valid compound override", "2h45m", 2*time.Hour + 45*time.Minute},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, resolveStepSize(tt.stepSize, auto))
+			assert.Equal(t, tt.want, parseStepOverride(tt.stepSize))
 		})
 	}
 }

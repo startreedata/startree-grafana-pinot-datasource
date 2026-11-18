@@ -5,6 +5,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
+	"math"
 	"strings"
 	"time"
 )
@@ -16,8 +17,52 @@ type PromQlQuery struct {
 	PromQlCode   string
 	TimeRange    TimeRange
 	IntervalSize time.Duration
+	StepOverride time.Duration
 	Legend       string
 	SeriesLimit  int
+	// MaxDataPoints bounds the number of points per series when deriving the automatic step.
+	MaxDataPoints int64
+}
+
+// minPromQlStep is the smallest step sent to the timeseries API.
+const minPromQlStep = time.Second
+
+// parseStepOverride returns zero for an empty or invalid override so the automatic interval is used.
+func parseStepOverride(stepSize string) time.Duration {
+	step, err := time.ParseDuration(strings.TrimSpace(stepSize))
+	if err != nil || step <= 0 {
+		return 0
+	}
+	return step
+}
+
+// resolveStep applies MaxDataPoints to the automatic step. Explicit overrides retain the
+// timeseries API's existing whole-second resolution and one-second minimum.
+func (query PromQlQuery) resolveStep() time.Duration {
+	if query.StepOverride > 0 {
+		return max(minPromQlStep, query.StepOverride.Truncate(time.Second))
+	}
+
+	step := max(minPromQlStep, query.IntervalSize)
+	if span := query.TimeRange.To.Sub(query.TimeRange.From); query.MaxDataPoints > 0 && span > 0 {
+		minStep := 1 + (span-1)/time.Duration(query.MaxDataPoints)
+		step = max(step, minStep)
+	}
+	// Round up to whole seconds without overflowing a time.Duration.
+	stepSeconds := (step-1)/time.Second + 1
+	return min(stepSeconds, math.MaxInt64/time.Second) * time.Second
+}
+
+// alignToStep rounds t down to a multiple of step since the Unix epoch. (time.Truncate aligns to
+// Go's zero time instead, which differs for steps that don't divide a day.)
+func alignToStep(t time.Time, step time.Duration) time.Time {
+	stepSeconds := int64(step / time.Second)
+	unix := t.Unix()
+	offset := unix % stepSeconds
+	if offset < 0 {
+		offset += stepSeconds
+	}
+	return time.Unix(unix-offset, 0).UTC()
 }
 
 func (query PromQlQuery) Execute(client *pinot.Client, ctx context.Context) backend.DataResponse {
@@ -25,19 +70,25 @@ func (query PromQlQuery) Execute(client *pinot.Client, ctx context.Context) back
 		return NewEmptyDataResponse()
 	}
 
+	step := query.resolveStep()
+	start, end := alignToStep(query.TimeRange.From, step), alignToStep(query.TimeRange.To, step)
+	if !start.Before(end) {
+		// Preserve the requested range when alignment would collapse it to zero buckets.
+		start, end = query.TimeRange.From, query.TimeRange.To
+	}
 	queryResponse, err := client.ExecuteTimeSeriesQuery(ctx, &pinot.TimeSeriesRangeQuery{
 		Language:  pinot.TimeSeriesQueryLanguagePromQl,
 		Query:     query.PromQlCode,
-		Start:     query.TimeRange.From,
-		End:       query.TimeRange.To,
-		Step:      query.IntervalSize,
+		Start:     start,
+		End:       end,
+		Step:      step,
 		TableName: query.TableName,
 	})
 	if err != nil {
 		return NewPluginErrorResponse(err)
 	}
 
-	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, query.Legend, query.IntervalSize, query.SeriesLimit)
+	frames := extractTimeSeriesMatrix(queryResponse.Data.Result, query.Legend, step, query.SeriesLimit)
 	return NewOkDataResponse(frames...)
 }
 

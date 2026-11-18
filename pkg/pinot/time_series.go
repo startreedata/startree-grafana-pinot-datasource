@@ -76,11 +76,11 @@ func (x *TimeSeriesResult) UnmarshalJSON(b []byte) error {
 		}
 		x.Values = append(x.Values, value)
 
-		ts, err := data.Values[i][0].(json.Number).Int64()
+		ts, err := parseUnixSeconds(data.Values[i][0])
 		if err != nil {
 			return err
 		}
-		x.Timestamps = append(x.Timestamps, time.Unix(ts, 0).UTC())
+		x.Timestamps = append(x.Timestamps, ts)
 	}
 	x.Values = x.Values[:]
 	x.Timestamps = x.Timestamps[:]
@@ -473,4 +473,26 @@ func IsTimeSeriesTableSchema(schema TableSchema) bool {
 
 func (p *Client) newTimeseriesGetRequest(ctx context.Context, endpoint string) (*http.Request, error) {
 	return p.newRequest(ctx, http.MethodGet, p.properties.BrokerUrl+TimeSeriesEndpoint+endpoint, nil)
+}
+
+// parseUnixSeconds parses a Prometheus-style sample timestamp: Unix seconds, either whole (1726617600)
+// or fractional (1726617600.5), as a JSON number or string.
+func parseUnixSeconds(v interface{}) (time.Time, error) {
+	var raw string
+	switch t := v.(type) {
+	case json.Number:
+		raw = t.String()
+	case string:
+		raw = t
+	default:
+		return time.Time{}, fmt.Errorf("unexpected timestamp type %T", v)
+	}
+	if secs, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return time.Unix(secs, 0).UTC(), nil
+	}
+	secs, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid timestamp %q: %w", raw, err)
+	}
+	return time.UnixMilli(int64(math.Round(secs * 1000))).UTC(), nil
 }
