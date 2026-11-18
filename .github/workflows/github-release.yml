@@ -430,10 +430,48 @@ jobs:
           sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
 
       - name: Validate plugin
-        run: npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ ${{ steps.metadata.outputs.archive }}
-        env:
-          # Narrow, time-boxed ignores for advisories with no patched release; see the file for reasons.
-          PLUGIN_VALIDATOR_OSV_CONFIG: ${{ github.workspace }}/.github/osv-scanner-validator.toml
+        run: |
+          # osv-scanner config for the validator. It is written here, not read from the checkout, so a
+          # recovery build of an older commit (existing_version) gets it too.
+          #
+          # Keep every entry narrow, explained and time-boxed. If osv-scanner cannot load this config it
+          # returns no results, and the validator only debug-logs the error, so the dependency scan would
+          # be skipped and the release would pass. The check below fails the step instead.
+          export PLUGIN_VALIDATOR_OSV_CONFIG="$RUNNER_TEMP/osv-scanner-validator.toml"
+          cat > "$PLUGIN_VALIDATOR_OSV_CONFIG" <<'TOML'
+          # picomatch ReDoS via single-branch repeated extglobs. Every published version (<= 4.0.7) is
+          # affected and no patched release exists yet (fixes are open in micromatch/picomatch).
+          # picomatch is only a dev/build dependency here (jest, webpack and eslint tooling); it is not
+          # bundled into module.js or the backend. Remove these entries once a patched picomatch ships.
+          [[IgnoredVulns]]
+          id = "GHSA-fc5q-39xc-vjpf"
+          ignoreUntil = 2027-01-31
+          reason = "picomatch: no patched release; dev/build-only dependency, not shipped in the plugin"
+
+          [[IgnoredVulns]]
+          id = "CVE-2026-112366"
+          ignoreUntil = 2027-01-31
+          reason = "Alias of GHSA-fc5q-39xc-vjpf (see above)"
+          TOML
+          python3 - "$PLUGIN_VALIDATOR_OSV_CONFIG" <<'PYTHON'
+          import datetime, sys, tomllib
+
+          path = sys.argv[1]
+          with open(path, "rb") as f:
+              config = tomllib.load(f)  # raises (and fails the step) on missing file or invalid TOML
+
+          unknown = set(config) - {"IgnoredVulns"}
+          if unknown:
+              sys.exit(f"{path}: unknown top-level keys {sorted(unknown)}; osv-scanner would skip the scan")
+          for entry in config.get("IgnoredVulns", []):
+              extra = set(entry) - {"id", "ignoreUntil", "reason"}
+              if extra or not isinstance(entry.get("id"), str) or not entry.get("reason"):
+                  sys.exit(f"{path}: invalid IgnoredVulns entry {entry}")
+              if not isinstance(entry.get("ignoreUntil"), datetime.date):
+                  sys.exit(f"{path}: IgnoredVulns entry {entry['id']} needs an ignoreUntil date")
+          print(f"{path}: {len(config.get('IgnoredVulns', []))} ignored advisories, all time-boxed")
+          PYTHON
+          npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ ${{ steps.metadata.outputs.archive }}
 
       - name: Generate artifact attestation
         id: attestation
