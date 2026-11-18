@@ -431,6 +431,9 @@ jobs:
 
       - name: Validate plugin
         run: npx -y @grafana/plugin-validator@latest -sourceCodeUri file://./ ${{ steps.metadata.outputs.archive }}
+        env:
+          # Narrow, time-boxed ignores for advisories with no patched release; see the file for reasons.
+          PLUGIN_VALIDATOR_OSV_CONFIG: ${{ github.workspace }}/.github/osv-scanner-validator.toml
 
       - name: Generate artifact attestation
         id: attestation

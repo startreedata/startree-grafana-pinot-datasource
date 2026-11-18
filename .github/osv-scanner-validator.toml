@@ -1,0 +1,17 @@
+# osv-scanner config for the Grafana plugin validator in github-release.yml
+# (passed via PLUGIN_VALIDATOR_OSV_CONFIG; the validator ignores an osv-scanner.toml in the source tree).
+# Keep every entry narrow, explained and time-boxed.
+
+# picomatch ReDoS via single-branch repeated extglobs. Every published version (<= 4.0.7) is affected and
+# no patched release exists yet (fixes are open upstream in micromatch/picomatch). picomatch is only a
+# dev/build dependency here (jest, webpack and eslint tooling); it is not bundled into module.js or the
+# backend, so the plugin users install is not affected. Remove this entry once a patched picomatch is released.
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-01-31
+reason = "picomatch: no patched release; dev/build-only dependency, not shipped in the plugin"
+
+[[IgnoredVulns]]
+id = "CVE-2026-112366"
+ignoreUntil = 2027-01-31
+reason = "Alias of GHSA-fc5q-39xc-vjpf (see above)"
