@@ -1,13 +1,16 @@
 # Changelog
 
-## Unreleased
+## 1.1.14
 
-- Fix backend crashes (nil pointer dereferences) when a time-series label query returns no rows, and when the columns resource is called without a time range.
-- Keep request URLs out of logged transport errors. A failed connection no longer logs the full Broker or Controller URL, which could hold a username or token; only the method, path and underlying error are logged.
-- Remove the plugin template's placeholder text from the README.
-- Use Grafana theme spacing and colors instead of fixed values in the query and config editors. The PromQL editor's highlight colors now follow the light or dark theme.
-- Bump `papaparse` to 5.7.1 (CVE-2026-127056, inefficient algorithmic complexity).
-- Fix code-mode panels that ignore the dashboard time range (DP-3035):
+- Build the backend with Go 1.26.11 (GO-2026-6859).
+
+## 1.1.13 (2026-11-18)
+
+- No plugin changes; release validation tooling only.
+
+## 1.1.12 (2026-11-18)
+
+- Fix code-mode panels that ignore the dashboard time range:
   - `$__timeFilter`, `$__timeFilterMillis`, `$__timeFrom`, `$__timeTo` and `$__timeGroup` default to the table's time column when called without a column, so `WHERE $__timeFilter` works.
   - Macro arguments may contain nested parentheses and quoted strings, e.g. `$__timeFilter(DATETIMECONVERT(...))`, and column names may be single-quoted or qualified (`t.ts`).
   - `$__timeFilter` no longer silently compares a non-date-time column in milliseconds: numeric columns and columns not in the selected table's schema (e.g. from a join) get a panel warning, and string columns are errors. Each warning is shown once per panel.
@@ -15,6 +18,14 @@
   - Panels and the code editor warn when the SQL doesn't use the dashboard time range at all (e.g. hard-coded timestamps). Add `-- $__noTimeRange` to a query that ignores the time range on purpose to hide the warning.
 - *Sql Query* variables expand time macros such as `$__timeFilter`; they previously sent them to Pinot unexpanded, which failed. The schema is read only when the SQL uses a time macro.
 - PromQL: parse fractional-second timestamps, derive the step from *Max data points* when Grafana sends no interval, align `start` to the step, and support `$__rate_interval`.
+
+## 1.1.11 (2026-11-17)
+
+- Fix backend crashes (nil pointer dereferences) when a time-series label query returns no rows, and when the columns resource is called without a time range.
+- Keep request URLs out of logged transport errors. A failed connection no longer logs the full Broker or Controller URL, which could hold a username or token; only the method, path and underlying error are logged.
+- Remove the plugin template's placeholder text from the README.
+- Use Grafana theme spacing and colors instead of fixed values in the query and config editors. The PromQL editor's highlight colors now follow the light or dark theme.
+- Bump `papaparse` to 5.7.1 (CVE-2026-127056, inefficient algorithmic complexity).
 
 ## 1.1.10 (2026-11-13)
 
