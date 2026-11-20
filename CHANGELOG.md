@@ -3,7 +3,10 @@
 ## 1.1.15
 
 - Fix a backend crash when a query or data source settings payload is `null`.
-- Reject Broker and Controller URLs that contain a username or password, in the config editor and in the backend. URLs are stored in plain text; use the Token field to authenticate.
+- **Breaking:** Broker and Controller URLs can no longer contain a username or password, because URLs are stored in plain text. A data source that has them keeps loading, but Save & test and every query return an error until you migrate:
+  1. Remove `username:password@` from the Broker and Controller URLs.
+  2. Set **Token type** to `Basic`.
+  3. Set **Token** to the base64 encoding of `username:password`, for example the output of `printf '%s' 'username:password' | base64`. Pasting the raw `username:password` is rejected by Pinot with 401 Unauthorized.
 - Keep upstream response bodies out of the data source health check message; it shows only the status code.
 - Use Grafana theme spacing instead of fixed pixel values in the query editors and the PromQL editor.
 

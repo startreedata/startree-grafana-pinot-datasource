@@ -85,14 +85,21 @@ func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) erro
 		return errors.New("broker url cannot be empty")
 	} else if config.ControllerUrl == "" {
 		return errors.New("controller url cannot be empty")
-	} else if err := checkNoUrlCredentials("broker url", config.BrokerUrl); err != nil {
-		return err
-	} else if err := checkNoUrlCredentials("controller url", config.ControllerUrl); err != nil {
-		return err
 	}
 
 	config.TokenSecret = settings.DecryptedSecureJSONData["authToken"]
 	return nil
+}
+
+// CheckUrlCredentials rejects Broker and Controller URLs that contain a username or password.
+// It is separate from ReadFrom so that NewInstance can still load an existing datasource and report
+// this error from the health check and from each query; Grafana replaces instance-creation errors
+// with a generic message.
+func (config *Config) CheckUrlCredentials() error {
+	if err := checkNoUrlCredentials("Broker URL", config.BrokerUrl); err != nil {
+		return err
+	}
+	return checkNoUrlCredentials("Controller URL", config.ControllerUrl)
 }
 
 // checkNoUrlCredentials rejects a URL with a username or password. URLs are stored in jsonData, which
@@ -104,7 +111,8 @@ func checkNoUrlCredentials(name string, rawUrl string) error {
 		return fmt.Errorf("%s is not a valid url", name)
 	}
 	if parsed.User != nil {
-		return fmt.Errorf("%s must not contain a username or password; use the Token field to authenticate", name)
+		return fmt.Errorf("%s must not contain a username or password. Remove them from the URL, then set "+
+			"Token type to Basic and Token to the base64 encoding of username:password", name)
 	}
 	return nil
 }

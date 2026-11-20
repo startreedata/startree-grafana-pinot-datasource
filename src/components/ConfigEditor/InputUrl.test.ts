@@ -1,4 +1,4 @@
-import { urlError } from './InputUrl';
+import { CREDENTIALS_ERROR, urlError } from './InputUrl';
 
 test.each([
   [undefined, ''],
@@ -14,6 +14,6 @@ test.each([
 test.each(['http://admin:secret@localhost:9000', 'https://admin@localhost:9000', 'http://:secret@localhost:9000'])(
   'urlError rejects credentials in %s',
   (url) => {
-    expect(urlError(url)).toBe('Remove the username and password from the URL. Use the Token field to authenticate.');
+    expect(urlError(url)).toBe(CREDENTIALS_ERROR);
   }
 );

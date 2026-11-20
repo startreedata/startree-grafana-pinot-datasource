@@ -35,6 +35,9 @@ export function InputUrl(props: {
 
 // URLs are stored in jsonData, which Grafana sends to the browser in plain text, so they must not carry
 // credentials. Returns an empty string for a valid (or empty) URL.
+export const CREDENTIALS_ERROR =
+  'Remove the username and password from the URL. To keep using them, set Token type to Basic and Token to the base64 encoding of username:password.';
+
 export function urlError(url: string | undefined): string {
   if (!url) {
     return '';
@@ -45,7 +48,7 @@ export function urlError(url: string | undefined): string {
   try {
     const parsed = new URL(url);
     if (parsed.username !== '' || parsed.password !== '') {
-      return 'Remove the username and password from the URL. Use the Token field to authenticate.';
+      return CREDENTIALS_ERROR;
     }
   } catch {
     return 'Please enter a valid URL';
