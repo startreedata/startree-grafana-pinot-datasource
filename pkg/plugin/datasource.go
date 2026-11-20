@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/httpclient"
@@ -11,6 +12,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/log"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/resources"
+	"net/http"
 )
 
 var (
@@ -32,6 +34,10 @@ func NewInstance(ctx context.Context, settings backend.DataSourceInstanceSetting
 	var config Config
 	if err := config.ReadFrom(settings); err != nil {
 		return nil, err
+	}
+	if err := config.CheckUrlCredentials(); err != nil {
+		log.Warn("Data source settings are invalid; refusing all requests.", "datasource", settings.Name, "error", err.Error())
+		return newInvalidConfigDatasource(err), nil
 	}
 
 	// Create HTTP client options from datasource settings
@@ -106,7 +112,7 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if tables, err := client.ListTables(ctx); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
-				Message: err.Error(),
+				Message: pinot.RedactError(err).Error(), // Keep upstream response bodies out of the UI.
 			}, nil
 		} else if len(tables) == 0 {
 			return &backend.CheckHealthResult{
@@ -119,7 +125,7 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if resp, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
-				Message: err.Error(),
+				Message: pinot.RedactError(err).Error(), // Keep upstream response bodies out of the UI.
 			}, nil
 		} else if resp.HasExceptions() {
 			return &backend.CheckHealthResult{
@@ -133,6 +139,33 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 			Message: "Pinot data source is working",
 		}, nil
 	})
+}
+
+// newInvalidConfigDatasource returns an instance that refuses every request with err. Returning err from
+// NewInstance instead would make Grafana show only a generic plugin error on Save & test and in panels.
+func newInvalidConfigDatasource(err error) *Datasource {
+	message := err.Error()
+	return &Datasource{
+		QueryDataHandler: backend.QueryDataHandlerFunc(func(ctx context.Context, req *backend.QueryDataRequest) (*backend.QueryDataResponse, error) {
+			resp := backend.NewQueryDataResponse()
+			for _, query := range req.Queries {
+				resp.Responses[query.RefID] = backend.ErrDataResponseWithSource(backend.StatusBadRequest, backend.ErrorSourceDownstream, message)
+			}
+			return resp, nil
+		}),
+		CallResourceHandler: backend.CallResourceHandlerFunc(func(ctx context.Context, req *backend.CallResourceRequest, sender backend.CallResourceResponseSender) error {
+			body, _ := json.Marshal(resources.Response[any]{Code: http.StatusBadRequest, Error: message})
+			return sender.Send(&backend.CallResourceResponse{
+				Status:  http.StatusBadRequest,
+				Headers: map[string][]string{"Content-Type": {"application/json"}},
+				Body:    body,
+			})
+		}),
+		CheckHealthHandler: backend.CheckHealthHandlerFunc(func(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
+			return &backend.CheckHealthResult{Status: backend.HealthStatusError, Message: message}, nil
+		}),
+		InstanceDisposer: disposerFunc(func() {}),
+	}
 }
 
 type disposerFunc func()

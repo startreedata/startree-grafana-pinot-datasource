@@ -217,7 +217,8 @@ type JsonExtractor struct {
 }
 
 func (query *DataQuery) ReadFrom(backendQuery backend.DataQuery) error {
-	if err := json.Unmarshal(backendQuery.JSON, &query); err != nil {
+	// Unmarshal into the receiver, not &query: a `null` payload would set the pointer itself to nil.
+	if err := json.Unmarshal(backendQuery.JSON, query); err != nil {
 		return fmt.Errorf("failed to unmarshal query model: %w", err)
 	}
 	query.TimeRange = TimeRange{To: backendQuery.TimeRange.To, From: backendQuery.TimeRange.From}

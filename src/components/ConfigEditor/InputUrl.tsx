@@ -8,12 +8,9 @@ export function InputUrl(props: {
   value: string | undefined;
   onChange: (val: string) => void;
 }) {
-  const isValidUrl = (url: string | undefined) => {
-    return url ? /^(http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?$/.test(url) : true;
-  };
-
   const { label, value, tooltip, placeholder, onChange } = props;
-  const isValid = isValidUrl(value);
+  const error = urlError(value);
+  const isValid = error === '';
 
   return (
     <InlineField
@@ -23,7 +20,7 @@ export function InputUrl(props: {
       grow
       required
       invalid={!isValid}
-      error={isValid ? '' : 'Please enter a valid URL'}
+      error={error}
       interactive
     >
       <Input
@@ -34,4 +31,27 @@ export function InputUrl(props: {
       />
     </InlineField>
   );
+}
+
+// URLs are stored in jsonData, which Grafana sends to the browser in plain text, so they must not carry
+// credentials. Returns an empty string for a valid (or empty) URL.
+export const CREDENTIALS_ERROR =
+  'Remove the username and password from the URL. To keep using them, set Token type to Basic and Token to the base64 encoding of username:password.';
+
+export function urlError(url: string | undefined): string {
+  if (!url) {
+    return '';
+  }
+  if (!/^(http|https):\/\/(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?$/.test(url)) {
+    return 'Please enter a valid URL';
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.username !== '' || parsed.password !== '') {
+      return CREDENTIALS_ERROR;
+    }
+  } catch {
+    return 'Please enter a valid URL';
+  }
+  return '';
 }
