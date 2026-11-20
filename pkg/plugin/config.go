@@ -8,6 +8,7 @@ import (
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/pinot"
 	"github.com/startreedata/startree-grafana-pinot-datasource/pkg/plugin/dataquery"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -77,15 +78,34 @@ type QueryOption struct {
 }
 
 func (config *Config) ReadFrom(settings backend.DataSourceInstanceSettings) error {
-	if err := json.Unmarshal(settings.JSONData, &config); err != nil {
+	// Unmarshal into the receiver, not &config: a `null` payload would set the pointer itself to nil.
+	if err := json.Unmarshal(settings.JSONData, config); err != nil {
 		return fmt.Errorf("failed to unmarshal datasource config: %w", err)
 	} else if config.BrokerUrl == "" {
 		return errors.New("broker url cannot be empty")
 	} else if config.ControllerUrl == "" {
 		return errors.New("controller url cannot be empty")
+	} else if err := checkNoUrlCredentials("broker url", config.BrokerUrl); err != nil {
+		return err
+	} else if err := checkNoUrlCredentials("controller url", config.ControllerUrl); err != nil {
+		return err
 	}
 
 	config.TokenSecret = settings.DecryptedSecureJSONData["authToken"]
+	return nil
+}
+
+// checkNoUrlCredentials rejects a URL with a username or password. URLs are stored in jsonData, which
+// Grafana sends to the browser in plain text; credentials belong in the encrypted Token field.
+// The error deliberately does not include the URL.
+func checkNoUrlCredentials(name string, rawUrl string) error {
+	parsed, err := url.Parse(rawUrl)
+	if err != nil {
+		return fmt.Errorf("%s is not a valid url", name)
+	}
+	if parsed.User != nil {
+		return fmt.Errorf("%s must not contain a username or password; use the Token field to authenticate", name)
+	}
 	return nil
 }
 

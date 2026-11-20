@@ -71,3 +71,17 @@ func TestPinotDataQueryFrom(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, want, got)
 }
+
+func TestPinotDataQueryFrom_NullPayload(t *testing.T) {
+	var got DataQuery
+	assert.NotPanics(t, func() {
+		err := got.ReadFrom(backend.DataQuery{
+			Interval:  10 * time.Second,
+			TimeRange: backend.TimeRange{From: time.Unix(0, 0), To: time.Unix(100, 0)},
+			JSON:      json.RawMessage(`null`),
+		})
+		assert.NoError(t, err)
+	})
+	assert.Equal(t, TimeRange{From: time.Unix(0, 0), To: time.Unix(100, 0)}, got.TimeRange)
+	assert.Equal(t, 10*time.Second, got.IntervalSize)
+}

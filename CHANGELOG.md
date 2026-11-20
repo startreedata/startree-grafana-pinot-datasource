@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.15
+
+- Fix a backend crash when a query or data source settings payload is `null`.
+- Reject Broker and Controller URLs that contain a username or password, in the config editor and in the backend. URLs are stored in plain text; use the Token field to authenticate.
+- Keep upstream response bodies out of the data source health check message; it shows only the status code.
+- Use Grafana theme spacing instead of fixed pixel values in the query editors and the PromQL editor.
+
 ## 1.1.14
 
 - Build the backend with Go 1.26.11 (GO-2026-6859).
@@ -74,6 +81,6 @@
 - Keep Go type constraints compatible with Grafana's source scanner and stop release builds when backend compilation fails.
 - Replace vulnerable braces with a pinned security fork, update serialize-javascript, and use npm for reproducible dependency identity and builds.
 
-## 1.0.0 (Unreleased)
+## 1.0.0 (2024-07-23)
 
 Initial release.

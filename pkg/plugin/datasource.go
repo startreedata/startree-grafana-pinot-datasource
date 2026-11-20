@@ -106,7 +106,7 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if tables, err := client.ListTables(ctx); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
-				Message: err.Error(),
+				Message: pinot.RedactError(err).Error(), // Keep upstream response bodies out of the UI.
 			}, nil
 		} else if len(tables) == 0 {
 			return &backend.CheckHealthResult{
@@ -119,7 +119,7 @@ func newCheckHealthHandler(client *pinot.Client) backend.CheckHealthHandler {
 		if resp, err := client.ExecuteSqlQuery(ctx, pinot.NewSqlQuery("SELECT 1")); err != nil {
 			return &backend.CheckHealthResult{
 				Status:  backend.HealthStatusError,
-				Message: err.Error(),
+				Message: pinot.RedactError(err).Error(), // Keep upstream response bodies out of the UI.
 			}, nil
 		} else if resp.HasExceptions() {
 			return &backend.CheckHealthResult{

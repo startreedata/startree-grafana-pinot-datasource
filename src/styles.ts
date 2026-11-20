@@ -8,16 +8,16 @@ export const styles = {
   QueryEditor: {
     inputForm: css`
       margin-right: ${spacing(0.5)};
-      width: 240px !important;
+      width: ${spacing(30)} !important;
     `,
     inlineInputForm: css`
-      min-width: 120px !important;
+      min-width: ${spacing(15)} !important;
     `,
   },
   VariableQueryEditor: {
     inputForm: css`
       margin-right: ${spacing(0.5)};
-      width: 212px !important;
+      width: ${spacing(26.5)} !important;
     `,
   },
 };

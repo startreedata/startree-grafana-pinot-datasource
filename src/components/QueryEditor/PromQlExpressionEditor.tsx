@@ -177,7 +177,7 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
 
     '.cm-tooltip.cm-tooltip-autocomplete': {
       '& > ul': {
-        maxHeight: '350px',
+        maxHeight: theme.spacing(43.75),
         fontFamily: theme.typography.fontFamily,
         maxWidth: 'unset',
       },
@@ -200,12 +200,12 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
     },
 
     '.cm-tooltip.cm-completionInfo': {
-      marginTop: '-11px',
+      marginTop: theme.spacing(-1.375),
       padding: theme.spacing(1.25),
       fontFamily: theme.typography.fontFamily,
       border: 'none',
       backgroundColor: theme.colors.background.secondary,
-      minWidth: '250px',
+      minWidth: theme.spacing(31.25),
       maxWidth: 'min-content',
     },
 
@@ -215,8 +215,8 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
         height: '0',
         position: 'absolute',
         width: '0',
-        left: '-20px',
-        border: '10px solid transparent',
+        left: theme.spacing(-2.5),
+        border: `${theme.spacing(1.25)} solid transparent`,
         borderRightColor: theme.colors.background.secondary,
       },
       marginLeft: theme.spacing(1.5),
@@ -227,8 +227,8 @@ export const getEditorTheme = (theme: GrafanaTheme2) =>
         height: '0',
         position: 'absolute',
         width: '0',
-        right: '-20px',
-        border: '10px solid transparent',
+        right: theme.spacing(-2.5),
+        border: `${theme.spacing(1.25)} solid transparent`,
         borderLeftColor: theme.colors.background.secondary,
       },
       marginRight: theme.spacing(1.5),
