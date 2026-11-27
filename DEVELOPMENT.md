@@ -8,12 +8,12 @@
 
 | Dependency | Version | Mac Install                                    | Download                                                |
 |------------|---------|------------------------------------------------|---------------------------------------------------------|
-| Golang     | 1.23.0  | `brew install go@1.23`                         | https://go.dev/dl/                                      |
-| Mage       | 1.15.0  | `brew install mage`                            | https://magefile.org/                                   |
+| Go         | 1.26.11 | Use the matching macOS installer                | https://go.dev/dl/#go1.26.11                            |
+| Mage       | 1.17.2  | `go install github.com/magefile/mage@v1.17.2`   | https://magefile.org/                                   |
 | Docker     | -       |                                                | https://docs.docker.com/desktop/install/mac-install/    |
 | NodeJs     | 20.20.2 | `brew install nvm && nvm install`              | https://nodejs.org/en/download                          |
 | npm        | 10.8.2  | Bundled with Node.js 20.20.2                    | https://docs.npmjs.com/cli/v10/                         |
-| Playwright | 1.41.2  | `npm exec -- playwright install --with-deps chromium` | https://playwright.dev/docs/intro                       |
+| Playwright | 1.56.1  | After `npm ci`, run `npm exec -- playwright install --with-deps chromium` | https://playwright.dev/docs/intro |
 
 ### Backend
 
